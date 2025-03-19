@@ -3,9 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
+    <title>Omeka S to Wikidata</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        input {
+            padding: 8px;
+            width: 80%;
+            margin-right: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello World</h1>
+    <h1>Omeka S to Wikidata</h1>
+    <p>Enter an Omeka S API endpoint URL to fetch and display the JSON data.</p>
+    
+    <div>
+        <input type="text" id="apiUrl" placeholder="Enter Omeka S API endpoint URL (e.g., https://example.org/api/items)" />
+        <button id="fetchBtn">Fetch Data</button>
+    </div>
+    
+    <div class="loading" id="loading">Loading data...</div>
+    
+    <div id="result"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const apiUrlInput = document.getElementById('apiUrl');
+            const fetchBtn = document.getElementById('fetchBtn');
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+
+            fetchBtn.addEventListener('click', fetchData);
+
+            function fetchData() {
+                const apiUrl = apiUrlInput.value.trim();
+                
+                if (!apiUrl) {
+                    showError('Please enter a valid Omeka S API endpoint URL');
+                    return;
+                }
+
+                // Show loading indicator
+                loadingDiv.style.display = 'block';
+                resultDiv.innerHTML = '';
+
+                fetch(apiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Format and display the JSON data
+                        displayData(data);
+                        loadingDiv.style.display = 'none';
+                    })
+                    .catch(error => {
+                        showError(`Error fetching data: ${error.message}`);
+                        loadingDiv.style.display = 'none';
+                    });
+            }
+
+            function displayData(data) {
+                // Format JSON with indentation for better readability
+                const formattedJson = JSON.stringify(data, null, 4);
+                resultDiv.innerHTML = formattedJson;
+            }
+
+            function showError(message) {
+                resultDiv.innerHTML = `<div class="error">${message}</div>`;
+            }
+        });
+    </script>
 </body>
-</html></html>
+</html>
