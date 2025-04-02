@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,20 +14,25 @@
             max-width: 1200px;
             margin: 0 auto;
         }
-        h1, h2, h3 {
+
+        h1,
+        h2,
+        h3 {
             color: #333;
         }
-        input, select {
+
+        input,
+        select {
             padding: 8px;
-            margin-bottom: 10px;
-            width: 100%;
             box-sizing: border-box;
         }
+
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
         }
+
         button {
             padding: 10px 16px;
             background-color: #4CAF50;
@@ -35,9 +41,11 @@
             cursor: pointer;
             margin-top: 10px;
         }
+
         button:hover {
             background-color: #45a049;
         }
+
         #result {
             margin-top: 20px;
             border: 1px solid #ddd;
@@ -45,6 +53,7 @@
             background-color: #f9f9f9;
             overflow-x: auto;
         }
+
         #requestUrl {
             margin-top: 20px;
             word-break: break-all;
@@ -53,51 +62,56 @@
             background-color: #f0f0f0;
             border: 1px solid #ddd;
         }
+
         .json-key {
             color: #881391;
         }
+
         .json-string {
             color: #c41a16;
         }
+
         .json-string a {
             color: #c41a16;
             text-decoration: underline;
             word-break: break-all;
         }
+
         .json-number {
             color: #1c00cf;
         }
+
         .json-boolean {
             color: #0b6125;
         }
+
         .json-null {
             color: #808080;
         }
+
         .json-line {
             transition: opacity 0.2s ease;
         }
-        .json-line.deselected {
-            opacity: 0.5;
-        }
-        .json-line.selectable {
-            cursor: context-menu;
-        }
+
         .collapsible {
             cursor: pointer;
             user-select: none;
             position: relative;
         }
+
         .collapsible::before {
             content: "▶";
             display: inline-block;
             margin-right: 5px;
             transition: transform 0.3s;
         }
+
         .expanded::before {
             transform: rotate(90deg);
         }
+
         .collapsible::after {
-            content: "Click to toggle. Double-click to toggle all nested items.";
+            content: "Click to toggle";
             position: absolute;
             background: #333;
             color: white;
@@ -112,9 +126,11 @@
             bottom: 100%;
             left: 0;
         }
+
         .collapsible:hover::after {
             opacity: 0.9;
         }
+
         /* Regular styling for all links */
         .tabs-container {
             margin-top: 20px;
@@ -122,10 +138,12 @@
             border-radius: 4px;
             overflow: hidden;
         }
+
         .tabs-header {
             background: #f5f5f5;
             border-bottom: 1px solid #ddd;
         }
+
         #tabs-list {
             display: flex;
             list-style: none;
@@ -134,6 +152,7 @@
             overflow-x: auto;
             white-space: nowrap;
         }
+
         .tab {
             padding: 10px 15px;
             cursor: pointer;
@@ -145,10 +164,12 @@
             min-width: 100px;
             max-width: 200px;
         }
+
         .tab.active {
             background: white;
             border-bottom: 2px solid #4CAF50;
         }
+
         .tab-title {
             overflow: hidden;
             text-overflow: ellipsis;
@@ -156,22 +177,27 @@
             flex-grow: 1;
             margin-right: 5px;
         }
+
         .close-tab {
             font-size: 14px;
             cursor: pointer;
             opacity: 0.7;
             margin-left: 5px;
         }
+
         .close-tab:hover {
             opacity: 1;
         }
+
         .tab-content {
             display: none;
             padding: 15px;
         }
+
         .tab-content.active {
             display: block;
         }
+
         #tabs-content {
             min-height: 300px;
             background: white;
@@ -179,6 +205,7 @@
             border: 1px solid #ddd;
             border-top: none;
         }
+
         .result-container {
             margin-top: 15px;
             padding: 15px;
@@ -186,29 +213,37 @@
             border: 1px solid #eee;
             border-radius: 4px;
         }
+
         .action-buttons {
             display: inline-flex;
             align-items: center;
         }
+
         .ark-link {
-            color: #6f42c1 !important; /* Purple color for ARK links */
+            color: #6f42c1 !important;
+            /* Purple color for ARK links */
         }
+
         .api-btn {
             transition: opacity 0.2s;
         }
+
         .api-btn:hover {
             opacity: 0.7;
         }
+
         .url-container {
             display: flex;
             align-items: stretch;
             gap: 8px;
         }
+
         .small-button {
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
         .small-button {
             padding: 6px 8px;
             background-color: #f0f0f0;
@@ -221,121 +256,185 @@
             height: 36px;
             flex-shrink: 0;
         }
+
         .small-button:hover {
             background-color: #e0e0e0;
         }
+
         .json-line {
             display: flex;
             align-items: baseline;
             flex-wrap: nowrap;
-            padding: 2px 0;
+            padding: 0;
         }
+
         .error {
             color: red;
             font-weight: bold;
         }
+
         .loading {
             display: none;
             margin-top: 20px;
         }
+
         .form-group {
             margin-bottom: 15px;
         }
+
         .query-params {
             border: 1px solid #ddd;
             padding: 15px;
             margin-bottom: 15px;
             background-color: #f5f5f5;
         }
+
         .filter-row {
             display: flex;
             margin-bottom: 8px;
         }
-        .filter-row select, .filter-row input {
+
+        .filter-row select,
+        .filter-row input {
             margin-right: 10px;
             margin-bottom: 0;
         }
+
         .filter-row select {
             width: auto;
         }
+
         .filter-row button {
             margin-top: 0;
             height: 36px;
             padding: 0 10px;
         }
+
         #addFilterBtn {
             margin-bottom: 15px;
         }
+
         #filters {
             margin-bottom: 15px;
         }
+
+        .key-stats-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .key-item {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            border-radius: 4px;
+        }
+
+        .key-item:hover {
+            background-color: #e8e8e8;
+        }
+
+        .key-checkbox {
+            margin-right: 10px;
+            flex: 0 0 auto;
+        }
+
+        .key-name {
+            margin-right: 10px;
+            font-weight: bold;
+            flex: 1 1 auto;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .key-count {
+            color: #666;
+            font-size: 0.9em;
+            flex: 0 0 auto;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .view-toggle {
+            display: flex;
+            margin-bottom: 15px;
+        }
+
+        .view-toggle button {
+            margin-right: 10px;
+        }
+
+        .view-toggle button.active {
+            background-color: #3e8e41;
+        }
     </style>
 </head>
+
 <body>
     <h1>Omeka S to Wikidata</h1>
     <p>Configure your Omeka S API query to fetch and display the data.</p>
-    
+
     <div class="form-group">
         <label for="baseUrl">Omeka S Base URL:</label>
         <div class="url-container">
-            <input type="text" id="baseUrl" value="https://digitalcollections.library.maastrichtuniversity.nl/" placeholder="https://your-omeka-site.org" />
+            <input type="text" id="baseUrl" value="https://digitalcollections.library.maastrichtuniversity.nl/"
+                placeholder="https://your-omeka-site.org" />
             <button id="advancedOptionsBtn" class="small-button" title="Advanced API Options">⚙️</button>
-        </div>
-        <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
-            <strong>Tip:</strong> Right-click any JSON item to select/deselect it individually. Each item can be toggled independently. 
-            Items at 100% opacity are selected, 50% opacity are deselected. Use "Export Selected" to export only selected items.
-            Double right-click for the browser's default context menu.
         </div>
     </div>
 
     <div class="query-params" style="display: none;" id="queryParamsSection">
         <div id="queryParamsContent">
-        
-        <div class="form-group">
-            <label for="resourceType">Resource Type:</label>
-            <select id="resourceType">
-                <option value="items">Items</option>
-                <option value="item_sets">Collections</option>
-                <option value="media">Media</option>
-                <option value="vocabularies">Vocabularies</option>
-                <option value="properties">Properties</option>
-                <option value="resource_classes">Resource Classes</option>
-                <option value="sites">Sites</option>
-                <option value="users">Users</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label for="itemSetId">Item Set ID (Collection):</label>
-            <input type="text" id="itemSetId" placeholder="Leave empty for all items" />
-        </div>
-        
-        <div class="form-group">
-            <label for="searchQuery">Search Query:</label>
-            <input type="text" id="searchQuery" placeholder="Enter search terms" />
-        </div>
-        
-        <h4>Filters</h4>
-        <div id="filters"></div>
-        <button id="addFilterBtn">Add Filter</button>
-        
-        <h4>Pagination</h4>
-        <div class="form-group">
-            <label for="page">Page:</label>
-            <input type="number" id="page" value="1" min="1" />
-        </div>
-        
-        <div class="form-group">
-            <label for="perPage">Results Per Page:</label>
-            <input type="number" id="perPage" value="25" min="1" max="100" />
-        </div>
+
+            <div class="form-group">
+                <label for="resourceType">Resource Type:</label>
+                <select id="resourceType">
+                    <option value="items">Items</option>
+                    <option value="item_sets">Collections</option>
+                    <option value="media">Media</option>
+                    <option value="vocabularies">Vocabularies</option>
+                    <option value="properties">Properties</option>
+                    <option value="resource_classes">Resource Classes</option>
+                    <option value="sites">Sites</option>
+                    <option value="users">Users</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="itemSetId">Item Set ID (Collection):</label>
+                <input type="text" id="itemSetId" placeholder="Leave empty for all items" />
+            </div>
+
+            <div class="form-group">
+                <label for="searchQuery">Search Query:</label>
+                <input type="text" id="searchQuery" placeholder="Enter search terms" />
+            </div>
+
+            <h4>Filters</h4>
+            <div id="filters"></div>
+            <button id="addFilterBtn">Add Filter</button>
+
+            <h4>Pagination</h4>
+            <div class="form-group">
+                <label for="page">Page:</label>
+                <input type="number" id="page" value="1" min="1" />
+            </div>
+
+            <div class="form-group">
+                <label for="perPage">Results Per Page:</label>
+                <input type="number" id="perPage" value="25" min="1" max="100" />
+            </div>
         </div>
     </div>
-    
+
     <button id="fetchBtn">Fetch Data</button>
-    
+
     <div class="loading" id="loading">Loading data...</div>
-    
+
     <div id="tabs-container">
         <div class="tabs-header">
             <ul id="tabs-list">
@@ -348,7 +447,7 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Elements
             const baseUrlInput = document.getElementById('baseUrl');
             const resourceTypeSelect = document.getElementById('resourceType');
@@ -365,16 +464,16 @@
             const loadingDiv = document.getElementById('loading');
             const advancedOptionsBtn = document.getElementById('advancedOptionsBtn');
             const queryParamsSection = document.getElementById('queryParamsSection');
-            
+
             // Tab management variables
             let tabCounter = 0;
             let activeTabId = null;
-            
+
             // Set up toggle behavior for advanced options
-            advancedOptionsBtn.addEventListener('click', function() {
+            advancedOptionsBtn.addEventListener('click', function () {
                 queryParamsSection.style.display = queryParamsSection.style.display === 'none' ? 'block' : 'none';
             });
-            
+
             // Available properties for filters
             const properties = [
                 { id: "dcterms:title", name: "Title" },
@@ -384,7 +483,7 @@
                 { id: "dcterms:identifier", name: "Identifier" },
                 { id: "dcterms:subject", name: "Subject" }
             ];
-            
+
             // Comparison operators
             const operators = [
                 { id: "eq", name: "Equals" },
@@ -392,20 +491,20 @@
                 { id: "in", name: "Contains" },
                 { id: "nin", name: "Does Not Contain" }
             ];
-            
+
             // Add filter row
             addFilterBtn.addEventListener('click', addFilterRow);
-            
+
             // Add initial filter row
             addFilterRow();
-            
+
             // Fetch data
             fetchBtn.addEventListener('click', fetchData);
-            
+
             function addFilterRow() {
                 const filterRow = document.createElement('div');
                 filterRow.className = 'filter-row';
-                
+
                 // Property select
                 const propertySelect = document.createElement('select');
                 propertySelect.className = 'property-select';
@@ -415,7 +514,7 @@
                     option.textContent = prop.name;
                     propertySelect.appendChild(option);
                 });
-                
+
                 // Operator select
                 const operatorSelect = document.createElement('select');
                 operatorSelect.className = 'operator-select';
@@ -425,29 +524,29 @@
                     option.textContent = op.name;
                     operatorSelect.appendChild(option);
                 });
-                
+
                 // Value input
                 const valueInput = document.createElement('input');
                 valueInput.type = 'text';
                 valueInput.className = 'value-input';
                 valueInput.placeholder = 'Enter value';
-                
+
                 // Remove button
                 const removeBtn = document.createElement('button');
                 removeBtn.textContent = '✕';
-                removeBtn.addEventListener('click', function() {
+                removeBtn.addEventListener('click', function () {
                     filtersDiv.removeChild(filterRow);
                 });
-                
+
                 // Append elements
                 filterRow.appendChild(propertySelect);
                 filterRow.appendChild(operatorSelect);
                 filterRow.appendChild(valueInput);
                 filterRow.appendChild(removeBtn);
-                
+
                 filtersDiv.appendChild(filterRow);
             }
-            
+
             function fetchData() {
                 // Construct API URL
                 let baseUrl = baseUrlInput.value.trim();
@@ -455,57 +554,57 @@
                     showError('Please enter a valid Omeka S base URL');
                     return;
                 }
-                
+
                 // Remove trailing slash if present
                 if (baseUrl.endsWith('/')) {
                     baseUrl = baseUrl.slice(0, -1);
                 }
-                
+
                 const resourceType = resourceTypeSelect.value;
                 let apiUrl = `${baseUrl}/api/${resourceType}`;
-                
+
                 // Build query parameters
                 const params = new URLSearchParams();
-                
+
                 // Add pagination
                 params.append('page', pageInput.value);
                 params.append('per_page', perPageInput.value);
-                
+
                 // Add item set filter if provided
                 const itemSetId = itemSetIdInput.value.trim();
                 if (resourceType === 'items' && itemSetId) {
                     params.append('id', itemSetId);
                 }
-                
+
                 // Add search query if provided
                 const searchQuery = searchQueryInput.value.trim();
                 if (searchQuery) {
                     params.append('search', searchQuery);
                 }
-                
+
                 // Add property filters
                 const filterRows = filtersDiv.querySelectorAll('.filter-row');
                 filterRows.forEach((row, index) => {
                     const property = row.querySelector('.property-select').value;
                     const operator = row.querySelector('.operator-select').value;
                     const value = row.querySelector('.value-input').value.trim();
-                    
+
                     if (value) {
                         // Transform dcterms:title to just 'title' for the parameter
                         const propName = property.split(':')[1];
                         params.append(`property[${propName}][${operator}]`, value);
                     }
                 });
-                
+
                 // Append query parameters to URL
                 const finalUrl = `${apiUrl}?${params.toString()}`;
-                
+
                 // Show loading indicator
                 loadingDiv.style.display = 'block';
-                
+
                 // Create a new tab for this request
                 createNewTab(`${resourceType}`, finalUrl);
-                
+
                 // Fetch data
                 fetch(finalUrl)
                     .then(response => {
@@ -524,102 +623,102 @@
                         loadingDiv.style.display = 'none';
                     });
             }
-            
+
             // Function to create a new tab
             function createNewTab(title, url) {
                 // Generate a unique tab ID
                 const tabId = `tab-${tabCounter++}`;
-                
+
                 // Create tab element
                 const tabItem = document.createElement('li');
                 tabItem.className = 'tab';
                 tabItem.setAttribute('data-tab-id', tabId);
                 tabItem.setAttribute('data-url', url);
-                
+
                 // Add title
                 const tabTitle = document.createElement('span');
                 tabTitle.className = 'tab-title';
                 tabTitle.textContent = title;
                 tabItem.appendChild(tabTitle);
-                
+
                 // Add close button
                 const closeBtn = document.createElement('span');
                 closeBtn.className = 'close-tab';
                 closeBtn.innerHTML = '&times;';
-                closeBtn.addEventListener('click', function(e) {
+                closeBtn.addEventListener('click', function (e) {
                     e.stopPropagation();
                     removeTab(tabId);
                 });
                 tabItem.appendChild(closeBtn);
-                
+
                 // Set click handler for the tab
-                tabItem.addEventListener('click', function() {
+                tabItem.addEventListener('click', function () {
                     activateTab(tabId);
                 });
-                
+
                 // Create content container
                 const contentItem = document.createElement('div');
                 contentItem.className = 'tab-content';
                 contentItem.id = tabId;
-                
+
                 // Add URL display
                 const urlDisplay = document.createElement('div');
                 urlDisplay.className = 'request-url';
                 urlDisplay.innerHTML = `<strong>Request URL:</strong> <a href="${url}" target="_blank">${url}</a>`;
                 contentItem.appendChild(urlDisplay);
-                
+
                 // Add content container
                 const resultContainer = document.createElement('div');
                 resultContainer.className = 'result-container';
                 contentItem.appendChild(resultContainer);
-                
+
                 // Add tab to DOM
                 tabsList.appendChild(tabItem);
                 tabsContent.appendChild(contentItem);
-                
+
                 // Activate the new tab
                 activateTab(tabId);
-                
+
                 return tabId;
             }
-            
+
             // Function to activate a tab
             function activateTab(tabId) {
                 // Remove active class from all tabs
                 const tabs = document.querySelectorAll('.tab');
                 tabs.forEach(tab => tab.classList.remove('active'));
-                
+
                 // Remove active class from all content areas
                 const contents = document.querySelectorAll('.tab-content');
                 contents.forEach(content => content.classList.remove('active'));
-                
+
                 // Add active class to selected tab and content
                 const selectedTab = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
                 const selectedContent = document.getElementById(tabId);
-                
+
                 if (selectedTab && selectedContent) {
                     selectedTab.classList.add('active');
                     selectedContent.classList.add('active');
                     activeTabId = tabId;
                 }
             }
-            
+
             // Function to remove a tab
             function removeTab(tabId) {
                 const tabToRemove = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
                 const contentToRemove = document.getElementById(tabId);
-                
+
                 if (tabToRemove && contentToRemove) {
                     // If removing the active tab, activate another tab if available
                     let activateNext = false;
                     if (tabToRemove.classList.contains('active')) {
                         activateNext = true;
                     }
-                    
+
                     // Remove the tab and content
                     tabToRemove.remove();
                     contentToRemove.remove();
-                    
+
                     // If we need to activate another tab
                     if (activateNext) {
                         const remainingTabs = document.querySelectorAll('.tab');
@@ -630,295 +729,1332 @@
                     }
                 }
             }
-            
+
             function displayData(data, url) {
                 // Find the active tab content
                 const activeTab = document.querySelector('.tab-content.active');
                 if (!activeTab) return;
-                
+
                 // Clear previous content
                 const resultContainer = activeTab.querySelector('.result-container');
                 if (!resultContainer) return;
                 resultContainer.innerHTML = '';
-                
-                // Create export button for selected items
+
+                // Create view toggle buttons
+                const viewToggle = document.createElement('div');
+                viewToggle.className = 'view-toggle';
+
+                const jsonViewBtn = document.createElement('button');
+                jsonViewBtn.textContent = 'JSON View';
+                jsonViewBtn.classList.add('active');
+                jsonViewBtn.addEventListener('click', function () {
+                    jsonViewBtn.classList.add('active');
+                    keysViewBtn.classList.remove('active');
+                    rawJsonBtn.classList.remove('active');
+                    lodViewBtn.classList.remove('active');
+                    jsonContainer.style.display = 'block';
+                    keyStatsContainer.style.display = 'none';
+                    rawJsonContainer.style.display = 'none';
+                    lodContainer.style.display = 'none';
+                });
+
+                const keysViewBtn = document.createElement('button');
+                keysViewBtn.textContent = 'Properties View';
+                keysViewBtn.addEventListener('click', function () {
+                    keysViewBtn.classList.add('active');
+                    jsonViewBtn.classList.remove('active');
+                    rawJsonBtn.classList.remove('active');
+                    lodViewBtn.classList.remove('active');
+                    jsonContainer.style.display = 'none';
+                    keyStatsContainer.style.display = 'block';
+                    rawJsonContainer.style.display = 'none';
+                    lodContainer.style.display = 'none';
+                });
+
+                const rawJsonBtn = document.createElement('button');
+                rawJsonBtn.textContent = 'Raw JSON';
+                rawJsonBtn.addEventListener('click', function () {
+                    rawJsonBtn.classList.add('active');
+                    jsonViewBtn.classList.remove('active');
+                    keysViewBtn.classList.remove('active');
+                    lodViewBtn.classList.remove('active');
+                    rawJsonContainer.style.display = 'block';
+                    jsonContainer.style.display = 'none';
+                    keyStatsContainer.style.display = 'none';
+                    lodContainer.style.display = 'none';
+                });
+
+                const lodViewBtn = document.createElement('button');
+                lodViewBtn.textContent = 'Linked Open Data View';
+                lodViewBtn.addEventListener('click', function () {
+                    lodViewBtn.classList.add('active');
+                    jsonViewBtn.classList.remove('active');
+                    keysViewBtn.classList.remove('active');
+                    rawJsonBtn.classList.remove('active');
+                    lodContainer.style.display = 'block';
+                    jsonContainer.style.display = 'none';
+                    keyStatsContainer.style.display = 'none';
+                    rawJsonContainer.style.display = 'none';
+                });
+
+                viewToggle.appendChild(jsonViewBtn);
+                viewToggle.appendChild(keysViewBtn);
+                viewToggle.appendChild(rawJsonBtn);
+                viewToggle.appendChild(lodViewBtn);
+                resultContainer.appendChild(viewToggle);
+
+                // Create a container for JSON view
+                const jsonContainer = document.createElement('div');
+                jsonContainer.id = 'json-view';
+
+                // Create export button for data
                 const exportButton = document.createElement('button');
-                exportButton.textContent = 'Export Selected';
-                exportButton.addEventListener('click', function() {
-                    const selectedData = getSelectedData(activeTab);
-                    if (selectedData) {
+                exportButton.textContent = 'Export JSON';
+                exportButton.addEventListener('click', function () {
+                    // Convert to JSON string with pretty formatting
+                    const jsonString = JSON.stringify(data, null, 2);
+
+                    // Create a blob and download link
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'data.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+
+                // Create interactive JSON display
+                const jsonElement = document.createElement('div');
+                jsonElement.appendChild(createInteractiveJson(data));
+
+                // Add button above the JSON display
+                jsonContainer.appendChild(exportButton);
+                jsonContainer.appendChild(document.createElement('br'));
+                jsonContainer.appendChild(document.createElement('br'));
+                jsonContainer.appendChild(jsonElement);
+
+                // Create container for key stats view
+                const keyStatsContainer = document.createElement('div');
+                keyStatsContainer.className = 'key-stats-container';
+                keyStatsContainer.id = 'keys-view';
+                keyStatsContainer.style.display = 'none';
+
+                // Create RAW JSON container
+                const rawJsonContainer = document.createElement('div');
+                rawJsonContainer.id = 'raw-json-view';
+                rawJsonContainer.style.display = 'none';
+
+                // Add raw JSON content
+                const rawJsonPre = document.createElement('pre');
+                rawJsonPre.style.whiteSpace = 'pre-wrap';
+                rawJsonPre.style.backgroundColor = '#f5f5f5';
+                rawJsonPre.style.padding = '15px';
+                rawJsonPre.style.borderRadius = '5px';
+                rawJsonPre.style.fontFamily = 'monospace';
+                rawJsonPre.style.fontSize = '14px';
+                rawJsonPre.style.overflow = 'auto';
+                rawJsonPre.style.maxHeight = '600px';
+                rawJsonPre.textContent = JSON.stringify(data, null, 2);
+
+                // Create export button for raw JSON
+                const rawExportButton = document.createElement('button');
+                rawExportButton.textContent = 'Export Raw JSON';
+                rawExportButton.style.marginBottom = '15px';
+                rawExportButton.addEventListener('click', function () {
+                    const jsonString = JSON.stringify(data, null, 2);
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'raw_data.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+
+                rawJsonContainer.appendChild(rawExportButton);
+                rawJsonContainer.appendChild(rawJsonPre);
+
+                // Create Linked Open Data view container
+                const lodContainer = document.createElement('div');
+                lodContainer.id = 'lod-view';
+                lodContainer.style.display = 'none';
+
+                // Fetch @context if available in the data
+                let contextUrl = null;
+                let contextData = null;
+
+                // Function to create the LOD view with context information
+                function createLodView() {
+                    // Create LOD view container
+                    const lodContent = document.createElement('div');
+
+                    // Create a container for the context info
+                    const contextInfo = document.createElement('div');
+                    contextInfo.className = 'context-info';
+                    contextInfo.style.marginBottom = '20px';
+                    contextInfo.style.padding = '15px';
+                    contextInfo.style.backgroundColor = '#f0f8ff';
+                    contextInfo.style.borderRadius = '5px';
+                    contextInfo.style.border = '1px solid #add8e6';
+
+                    // Add context title
+                    const contextTitle = document.createElement('h3');
+                    contextTitle.textContent = 'JSON-LD Context';
+                    contextTitle.style.marginTop = '0';
+                    contextInfo.appendChild(contextTitle);
+
+                    // Add context description
+                    const contextDesc = document.createElement('p');
+                    contextDesc.textContent = 'The @context defines the vocabulary terms used in the data, allowing properties to be mapped to full URIs.';
+                    contextInfo.appendChild(contextDesc);
+
+                    // Create prefix table
+                    if (contextData) {
+                        const prefixTable = document.createElement('table');
+                        prefixTable.style.width = '100%';
+                        prefixTable.style.borderCollapse = 'collapse';
+                        prefixTable.style.marginTop = '10px';
+
+                        // Create table header
+                        const thead = document.createElement('thead');
+                        const headerRow = document.createElement('tr');
+
+                        const prefixHeader = document.createElement('th');
+                        prefixHeader.textContent = 'Prefix';
+                        prefixHeader.style.textAlign = 'left';
+                        prefixHeader.style.borderBottom = '1px solid #ddd';
+
+                        const namespaceHeader = document.createElement('th');
+                        namespaceHeader.textContent = 'Namespace';
+                        namespaceHeader.style.textAlign = 'left';
+                        namespaceHeader.style.borderBottom = '1px solid #ddd';
+
+                        headerRow.appendChild(prefixHeader);
+                        headerRow.appendChild(namespaceHeader);
+                        thead.appendChild(headerRow);
+                        prefixTable.appendChild(thead);
+
+                        // Create table body
+                        const tbody = document.createElement('tbody');
+
+                        // Add each prefix mapping
+                        if (contextData['@context'] && typeof contextData['@context'] === 'object') {
+                            Object.entries(contextData['@context']).forEach(([prefix, uri]) => {
+                                if (typeof uri === 'string') {
+                                    const row = document.createElement('tr');
+
+                                    const prefixCell = document.createElement('td');
+                                    prefixCell.textContent = prefix;
+                                    prefixCell.style.borderBottom = '1px solid #eee';
+                                    prefixCell.style.fontWeight = 'bold';
+
+                                    const namespaceCell = document.createElement('td');
+                                    const namespaceLink = document.createElement('a');
+                                    namespaceLink.href = uri;
+                                    namespaceLink.target = '_blank';
+                                    namespaceLink.textContent = uri;
+                                    namespaceCell.appendChild(namespaceLink);
+                                    namespaceCell.style.borderBottom = '1px solid #eee';
+
+                                    row.appendChild(prefixCell);
+                                    row.appendChild(namespaceCell);
+                                    tbody.appendChild(row);
+                                }
+                            });
+                        }
+
+                        prefixTable.appendChild(tbody);
+                        contextInfo.appendChild(prefixTable);
+                    } else {
+                        const noContextMsg = document.createElement('p');
+                        noContextMsg.textContent = 'No context information available.';
+                        noContextMsg.style.fontStyle = 'italic';
+                        contextInfo.appendChild(noContextMsg);
+                    }
+
+                    lodContent.appendChild(contextInfo);
+
+                    // Create the data display section
+                    const dataDisplay = document.createElement('div');
+                    dataDisplay.className = 'lod-data-display';
+
+                    // Function to resolve a prefixed property to full URI
+                    function resolvePropertyUri(prop) {
+                        if (!contextData || !contextData['@context']) return null;
+
+                        // Check if the property has a prefix
+                        const parts = prop.split(':');
+                        if (parts.length === 2) {
+                            const prefix = parts[0];
+                            const term = parts[1];
+
+                            // Get the namespace for this prefix
+                            if (contextData['@context'][prefix]) {
+                                return contextData['@context'][prefix] + term;
+                            }
+                        }
+
+                        // Check if the property is directly in the context
+                        if (contextData['@context'][prop]) {
+                            return contextData['@context'][prop];
+                        }
+
+                        return null;
+                    }
+
+                    // Function to create a well-formatted property row
+                    function createPropertyRow(prop, value) {
+                        const row = document.createElement('div');
+                        row.className = 'lod-property-row';
+                        row.style.marginBottom = '8px';
+                        row.style.paddingBottom = '4px';
+                        row.style.display = 'flex';
+                        row.style.alignItems = 'flex-start';
+
+                        // Format property name with namespace in parentheses
+                        const propContainer = document.createElement('div');
+                        propContainer.className = 'lod-property-name';
+                        propContainer.style.fontWeight = 'bold';
+                        propContainer.style.flexShrink = 0;
+                        propContainer.style.width = '30%';
+
+                        const propUri = resolvePropertyUri(prop);
+
+                        // Extract namespace and local name
+                        let namespace = '';
+                        let localName = prop;
+
+                        if (prop.includes(':')) {
+                            const parts = prop.split(':');
+                            namespace = parts[0];
+                            localName = parts[1];
+
+                            // Map namespace prefixes to readable names
+                            const namespaceLabels = {
+                                'o': 'Omeka S',
+                                'dcterms': 'Dublin Core',
+                                'dctype': 'Dublin Core Type',
+                                'schema': 'Schema.org',
+                                'foaf': 'FOAF',
+                                'bibo': 'Bibliographic Ontology',
+                                'cc': 'Creative Commons',
+                                'curation': 'Curation',
+                                'o-cnt': 'Content',
+                                'o-time': 'Time'
+                            };
+
+                            const readableNamespace = namespaceLabels[namespace] || namespace;
+
+                            if (propUri) {
+                                const propLink = document.createElement('a');
+                                propLink.href = propUri;
+                                propLink.target = '_blank';
+                                propLink.textContent = localName;
+                                propLink.title = propUri;
+                                propContainer.appendChild(propLink);
+
+                                const nsSpan = document.createElement('span');
+                                nsSpan.textContent = ` (${readableNamespace})`;
+                                nsSpan.style.fontWeight = 'normal';
+                                nsSpan.style.color = '#666';
+                                nsSpan.style.fontSize = '0.9em';
+                                propContainer.appendChild(nsSpan);
+                            } else {
+                                propContainer.textContent = `${localName} (${readableNamespace})`;
+                            }
+                        } else {
+                            propContainer.textContent = prop;
+                        }
+
+                        row.appendChild(propContainer);
+
+                        // Create property value
+                        const valueContainer = document.createElement('div');
+                        valueContainer.className = 'lod-property-value';
+                        valueContainer.style.flex = '1';
+
+                        // Handle different value types
+                        if (Array.isArray(value)) {
+                            // Create a container for all array values
+                            const arrayContainer = document.createElement('div');
+                            arrayContainer.className = 'lod-array-container';
+
+                            // Handle array of values
+                            value.forEach((item, index) => {
+                                const itemContainer = document.createElement('div');
+                                itemContainer.className = 'lod-value-item';
+                                itemContainer.style.marginBottom = index < value.length - 1 ? '4px' : '0';
+                                itemContainer.style.position = 'relative';
+
+                                if (typeof item === 'object' && item !== null) {
+                                    // Handle special value objects with @id, @value, @type, etc.
+                                    if (item['@id']) {
+                                        // URI value
+                                        const idLink = document.createElement('a');
+                                        idLink.href = item['@id'];
+                                        idLink.target = '_blank';
+                                        idLink.textContent = item['o:label'] || item['@id'];
+                                        idLink.title = `ID: ${item['@id']}`;
+                                        idLink.style.textDecoration = 'underline';
+
+                                        // Handle specific identifier types
+                                        const idText = item['@id'];
+                                        let idType = document.createElement('span');
+                                        idType.style.color = '#666';
+                                        idType.style.fontSize = '0.9em';
+
+                                        if (idText.includes('wikidata.org/entity/Q')) {
+                                            // Wikidata item
+                                            const qid = idText.match(/Q\d+/)[0];
+                                            idType.textContent = ` (Wikidata: ${qid})`;
+                                        } else if (idText.includes('viaf.org/viaf/')) {
+                                            // VIAF identifier
+                                            const viafId = idText.split('/').pop();
+                                            idType.textContent = ` (VIAF: ${viafId})`;
+                                        } else if (idText.includes('geonames.org')) {
+                                            // GeoNames identifier
+                                            const geoId = idText.split('/').pop();
+                                            idType.textContent = ` (GeoNames: ${geoId})`;
+                                        } else if (idText.includes('id.loc.gov')) {
+                                            // Library of Congress identifier
+                                            const locId = idText.split('/').pop();
+                                            idType.textContent = ` (LoC: ${locId})`;
+                                        } else {
+                                            // Generic URI
+                                            idType.textContent = ' (URI)';
+                                        }
+
+                                        itemContainer.appendChild(idLink);
+                                        itemContainer.appendChild(idType);
+                                    } else if (item['@value']) {
+                                        // Typed value
+                                        const valueText = document.createElement('span');
+                                        valueText.textContent = `"${item['@value']}"`;
+
+                                        const typeInfo = document.createElement('span');
+                                        if (item['@type']) {
+                                            typeInfo.textContent = ` (${item['@type'].split('/').pop()})`;
+                                        } else if (item['type']) {
+                                            typeInfo.textContent = ` (${item['type']})`;
+                                        }
+                                        typeInfo.style.color = '#666';
+                                        typeInfo.style.fontSize = '0.9em';
+
+                                        itemContainer.appendChild(valueText);
+                                        itemContainer.appendChild(typeInfo);
+                                    } else if (item['o:label'] || item['property_label']) {
+                                        // Object with label
+                                        if (item['@id']) {
+                                            const labelLink = document.createElement('a');
+                                            labelLink.href = item['@id'];
+                                            labelLink.target = '_blank';
+                                            labelLink.textContent = item['o:label'] || item['property_label'];
+                                            labelLink.title = `ID: ${item['@id']}`;
+                                            itemContainer.appendChild(labelLink);
+
+                                            // Add ID information for known identifier types
+                                            const idText = item['@id'];
+                                            if (idText.includes('wikidata.org/entity/Q')) {
+                                                const qid = idText.match(/Q\d+/)[0];
+                                                const idSpan = document.createElement('span');
+                                                idSpan.textContent = ` (Wikidata: ${qid})`;
+                                                idSpan.style.color = '#666';
+                                                idSpan.style.fontSize = '0.9em';
+                                                itemContainer.appendChild(idSpan);
+                                            } else if (idText.includes('viaf.org/viaf/')) {
+                                                const viafId = idText.split('/').pop();
+                                                const idSpan = document.createElement('span');
+                                                idSpan.textContent = ` (VIAF: ${viafId})`;
+                                                idSpan.style.color = '#666';
+                                                idSpan.style.fontSize = '0.9em';
+                                                itemContainer.appendChild(idSpan);
+                                            } else if (idText.includes('geonames.org')) {
+                                                const geoId = idText.split('/').pop();
+                                                const idSpan = document.createElement('span');
+                                                idSpan.textContent = ` (GeoNames: ${geoId})`;
+                                                idSpan.style.color = '#666';
+                                                idSpan.style.fontSize = '0.9em';
+                                                itemContainer.appendChild(idSpan);
+                                            }
+                                        } else {
+                                            itemContainer.textContent = item['o:label'] || item['property_label'];
+                                        }
+
+                                        // Add value type if available
+                                        if (item['type']) {
+                                            const typeSpan = document.createElement('span');
+                                            typeSpan.textContent = ` (${item['type']})`;
+                                            typeSpan.style.color = '#666';
+                                            typeSpan.style.fontSize = '0.9em';
+                                            itemContainer.appendChild(typeSpan);
+                                        }
+                                    } else {
+                                        // Generic object display
+                                        const objPre = document.createElement('pre');
+                                        objPre.style.margin = '0';
+                                        objPre.style.background = '#f9f9f9';
+                                        objPre.style.padding = '5px';
+                                        objPre.style.borderRadius = '3px';
+                                        objPre.textContent = JSON.stringify(item, null, 2);
+                                        itemContainer.appendChild(objPre);
+                                    }
+                                } else if (typeof item === 'string') {
+                                    // Check for ARK identifier
+                                    const isArk = /ark:[\\/]?[0-9]+[\\/][0-9a-zA-Z.]+/i.test(item);
+
+                                    // Check if string is a URL or ARK identifier
+                                    if (isUrl(item) || isArk) {
+                                        const link = document.createElement('a');
+
+                                        if (isArk && !item.startsWith('http')) {
+                                            // Make ARK clickable by prepending resolver
+                                            link.href = `https://n2t.net/${item}`;
+                                            link.textContent = item;
+                                            link.title = "ARK Identifier";
+
+                                            const arkSpan = document.createElement('span');
+                                            arkSpan.textContent = ' (ARK)';
+                                            arkSpan.style.color = '#666';
+                                            arkSpan.style.fontSize = '0.9em';
+
+                                            itemContainer.appendChild(link);
+                                            itemContainer.appendChild(arkSpan);
+                                        } else {
+                                            link.href = item;
+                                            link.target = '_blank';
+                                            link.textContent = item;
+                                            itemContainer.appendChild(link);
+                                        }
+                                    } else {
+                                        itemContainer.textContent = `"${item}"`;
+                                    }
+                                } else {
+                                    // Handle other primitive values
+                                    itemContainer.textContent = item;
+                                }
+
+                                arrayContainer.appendChild(itemContainer);
+                            });
+
+                            // Add the array container to the value container
+                            valueContainer.appendChild(arrayContainer);
+                        } else if (typeof value === 'object' && value !== null) {
+                            // Handle thumbnail display URLs
+                            if (prop === 'thumbnail_display_urls') {
+                                // Create a container for the thumbnail and links
+                                const thumbnailContainer = document.createElement('div');
+                                thumbnailContainer.style.display = 'flex';
+                                thumbnailContainer.style.flexDirection = 'column';
+                                thumbnailContainer.style.gap = '8px';
+
+                                // Display the thumbnail image
+                                if (value.medium) {
+                                    const container = document.createElement('div');
+                                    container.style.width = '300px';
+                                    container.style.height = '300px';
+                                    container.style.display = 'flex';
+                                    container.style.alignItems = 'center';
+                                    container.style.justifyContent = 'center';
+                                    container.style.border = '1px solid #ddd';
+                                    container.style.borderRadius = '4px';
+                                    container.style.overflow = 'hidden';
+                                    container.style.backgroundColor = '#f8f8f8'; // optional fallback bg
+
+                                    const img = document.createElement('img');
+                                    img.src = value.large;
+                                    img.alt = "Thumbnail";
+                                    img.style.maxWidth = '100%';
+                                    img.style.maxHeight = '100%';
+                                    img.style.objectFit = 'contain'; // key line: preserve aspect ratio and avoid cropping
+
+                                    container.appendChild(img);
+                                    thumbnailContainer.appendChild(container);
+                                }
+
+                                // Create links to different sizes
+                                const linksContainer = document.createElement('div');
+                                linksContainer.style.display = 'flex';
+                                linksContainer.style.gap = '10px';
+
+                                // Add links for each available size
+                                ['large', 'medium', 'square'].forEach(size => {
+                                    if (value[size]) {
+                                        const link = document.createElement('a');
+                                        link.href = value[size];
+                                        link.target = '_blank';
+                                        link.textContent = size.charAt(0).toUpperCase() + size.slice(1);
+                                        link.style.marginRight = '10px';
+                                        link.style.color = '#0066cc';
+                                        linksContainer.appendChild(link);
+                                    }
+                                });
+
+                                thumbnailContainer.appendChild(linksContainer);
+                                valueContainer.appendChild(thumbnailContainer);
+                            }
+                            // Handle single object value (similar to array case above)
+                            else if (value['@id']) {
+                                const idLink = document.createElement('a');
+                                idLink.href = value['@id'];
+                                idLink.target = '_blank';
+                                idLink.textContent = value['o:label'] || value['@id'];
+                                idLink.title = `ID: ${value['@id']}`;
+                                idLink.style.textDecoration = 'underline';
+
+                                // Handle specific identifier types
+                                const idText = value['@id'];
+                                let idType = document.createElement('span');
+                                idType.style.color = '#666';
+                                idType.style.fontSize = '0.9em';
+
+                                if (idText.includes('wikidata.org/entity/Q')) {
+                                    // Wikidata item
+                                    const qid = idText.match(/Q\d+/)[0];
+                                    idType.textContent = ` (Wikidata: ${qid})`;
+                                } else if (idText.includes('viaf.org/viaf/')) {
+                                    // VIAF identifier
+                                    const viafId = idText.split('/').pop();
+                                    idType.textContent = ` (VIAF: ${viafId})`;
+                                } else if (idText.includes('geonames.org')) {
+                                    // GeoNames identifier
+                                    const geoId = idText.split('/').pop();
+                                    idType.textContent = ` (GeoNames: ${geoId})`;
+                                } else if (idText.includes('id.loc.gov')) {
+                                    // Library of Congress identifier
+                                    const locId = idText.split('/').pop();
+                                    idType.textContent = ` (LoC: ${locId})`;
+                                } else {
+                                    // Generic URI
+                                    idType.textContent = ' (URI)';
+                                }
+
+                                valueContainer.appendChild(idLink);
+                                valueContainer.appendChild(idType);
+                            } else if (value['@value']) {
+                                const valueText = document.createElement('span');
+                                valueText.textContent = `"${value['@value']}"`;
+
+                                const typeInfo = document.createElement('span');
+                                if (value['@type']) {
+                                    typeInfo.textContent = ` (${value['@type'].split('/').pop()})`;
+                                } else if (value['type']) {
+                                    typeInfo.textContent = ` (${value['type']})`;
+                                }
+                                typeInfo.style.color = '#666';
+                                typeInfo.style.fontSize = '0.9em';
+
+                                valueContainer.appendChild(valueText);
+                                valueContainer.appendChild(typeInfo);
+                            } else if (value['o:label'] || value['property_label']) {
+                                // Object with label
+                                if (value['@id']) {
+                                    const labelLink = document.createElement('a');
+                                    labelLink.href = value['@id'];
+                                    labelLink.target = '_blank';
+                                    labelLink.textContent = value['o:label'] || value['property_label'];
+                                    labelLink.title = `ID: ${value['@id']}`;
+                                    valueContainer.appendChild(labelLink);
+
+                                    // Add ID information for known identifier types
+                                    const idText = value['@id'];
+                                    if (idText.includes('wikidata.org/entity/Q')) {
+                                        const qid = idText.match(/Q\d+/)[0];
+                                        const idSpan = document.createElement('span');
+                                        idSpan.textContent = ` (Wikidata: ${qid})`;
+                                        idSpan.style.color = '#666';
+                                        idSpan.style.fontSize = '0.9em';
+                                        valueContainer.appendChild(idSpan);
+                                    } else if (idText.includes('viaf.org/viaf/')) {
+                                        const viafId = idText.split('/').pop();
+                                        const idSpan = document.createElement('span');
+                                        idSpan.textContent = ` (VIAF: ${viafId})`;
+                                        idSpan.style.color = '#666';
+                                        idSpan.style.fontSize = '0.9em';
+                                        valueContainer.appendChild(idSpan);
+                                    } else if (idText.includes('geonames.org')) {
+                                        const geoId = idText.split('/').pop();
+                                        const idSpan = document.createElement('span');
+                                        idSpan.textContent = ` (GeoNames: ${geoId})`;
+                                        idSpan.style.color = '#666';
+                                        idSpan.style.fontSize = '0.9em';
+                                        valueContainer.appendChild(idSpan);
+                                    }
+                                } else {
+                                    valueContainer.textContent = value['o:label'] || value['property_label'];
+                                }
+
+                                // Add value type if available
+                                if (value['type']) {
+                                    const typeSpan = document.createElement('span');
+                                    typeSpan.textContent = ` (${value['type']})`;
+                                    typeSpan.style.color = '#666';
+                                    typeSpan.style.fontSize = '0.9em';
+                                    valueContainer.appendChild(typeSpan);
+                                }
+                            } else {
+                                // Generic object display
+                                const objPre = document.createElement('pre');
+                                objPre.style.margin = '0';
+                                objPre.style.background = '#f9f9f9';
+                                objPre.style.padding = '5px';
+                                objPre.style.borderRadius = '3px';
+                                objPre.textContent = JSON.stringify(value, null, 2);
+                                valueContainer.appendChild(objPre);
+                            }
+                        } else if (typeof value === 'string') {
+                            // Check for ARK identifier
+                            const isArk = /ark:[\\/]?[0-9]+[\\/][0-9a-zA-Z.]+/i.test(value);
+
+                            // Check if string is a URL or ARK identifier
+                            if (isUrl(value) || isArk) {
+                                const link = document.createElement('a');
+
+                                if (isArk && !value.startsWith('http')) {
+                                    // Make ARK clickable by prepending resolver
+                                    link.href = `https://n2t.net/${value}`;
+                                    link.textContent = value;
+                                    link.title = "ARK Identifier";
+
+                                    const arkSpan = document.createElement('span');
+                                    arkSpan.textContent = ' (ARK)';
+                                    arkSpan.style.color = '#666';
+                                    arkSpan.style.fontSize = '0.9em';
+
+                                    valueContainer.appendChild(link);
+                                    valueContainer.appendChild(arkSpan);
+                                } else {
+                                    link.href = value;
+                                    link.target = '_blank';
+                                    link.textContent = value;
+                                    valueContainer.appendChild(link);
+                                }
+                            } else if (prop === 'extracttext:extracted_text') {
+                                // Special handling for extracted text to limit height
+                                const textContainer = document.createElement('div');
+                                textContainer.style.maxHeight = '15em'; // Limit to 15 lines
+                                textContainer.style.overflow = 'auto'; // Add scrollbar when needed
+                                textContainer.style.border = '1px solid #eee';
+                                textContainer.style.padding = '8px';
+                                textContainer.style.borderRadius = '4px';
+                                textContainer.style.backgroundColor = '#f9f9f9';
+                                textContainer.textContent = `"${value}"`;
+                                valueContainer.appendChild(textContainer);
+                            } else {
+                                valueContainer.textContent = `"${value}"`;
+                            }
+                        } else {
+                            // Handle other primitive types
+                            valueContainer.textContent = value;
+                        }
+
+                        row.appendChild(valueContainer);
+                        return row;
+                    }
+
+                    // Display the data
+                    if (Array.isArray(data)) {
+                        data.forEach((item, index) => {
+                            const itemContainer = document.createElement('div');
+                            itemContainer.className = 'lod-item';
+                            itemContainer.style.marginBottom = '25px';
+                            itemContainer.style.paddingBottom = '15px';
+                            itemContainer.style.borderBottom = '1px solid #ddd';
+
+                            // Item header with ID and types
+                            const itemHeader = document.createElement('div');
+                            itemHeader.className = 'lod-item-header';
+                            itemHeader.style.marginBottom = '10px';
+                            itemHeader.style.backgroundColor = '#f9f9f9';
+                            itemHeader.style.padding = '10px';
+                            itemHeader.style.borderRadius = '4px';
+                            itemHeader.style.borderLeft = '4px solid #4CAF50';
+
+                            // Item title
+                            const itemTitle = document.createElement('h3');
+                            itemTitle.style.margin = '0 0 5px 0';
+                            itemTitle.style.fontSize = '1.2em';
+
+                            // Get the title text - use o:title, schema:name, or default
+                            let titleText = `Item ${index + 1}`;
+                            if (item['o:title']) {
+                                titleText = item['o:title'];
+                            } else if (item['schema:name'] && Array.isArray(item['schema:name']) && item['schema:name'].length > 0) {
+                                if (item['schema:name'][0]['@value']) {
+                                    titleText = item['schema:name'][0]['@value'];
+                                } else if (typeof item['schema:name'][0] === 'string') {
+                                    titleText = item['schema:name'][0];
+                                }
+                            }
+
+                            if (item['@id']) {
+                                const idLink = document.createElement('a');
+                                idLink.href = item['@id'];
+                                idLink.target = '_blank';
+                                idLink.textContent = titleText;
+                                itemTitle.appendChild(idLink);
+
+                                // Check for Wikidata or other special identifiers
+                                const idText = item['@id'];
+                                if (idText.includes('wikidata.org/entity/Q')) {
+                                    const qid = idText.match(/Q\d+/)[0];
+                                    const wdSpan = document.createElement('span');
+                                    wdSpan.textContent = ` (${qid})`;
+                                    wdSpan.style.color = '#666';
+                                    wdSpan.style.fontSize = '0.9em';
+                                    itemTitle.appendChild(wdSpan);
+                                }
+                            } else {
+                                itemTitle.textContent = titleText;
+                            }
+
+                            itemHeader.appendChild(itemTitle);
+
+                            // Item ID and types in a compact format
+                            if (item['@id'] || item['@type']) {
+                                const itemDetails = document.createElement('div');
+                                itemDetails.style.fontSize = '0.85em';
+                                itemDetails.style.color = '#555';
+                                itemDetails.style.fontFamily = 'monospace';
+
+                                // Handle ID
+                                if (item['@id']) {
+                                    const idSpan = document.createElement('code');
+                                    idSpan.textContent = item['@id'];
+                                    idSpan.style.display = 'block';
+                                    idSpan.style.overflow = 'hidden';
+                                    idSpan.style.textOverflow = 'ellipsis';
+                                    idSpan.title = item['@id'];
+                                    itemDetails.appendChild(idSpan);
+                                }
+
+                                // Handle type as badges
+                                if (item['@type']) {
+                                    const typeContainer = document.createElement('div');
+                                    typeContainer.style.marginTop = '3px';
+
+                                    const types = Array.isArray(item['@type']) ? item['@type'] : [item['@type']];
+                                    types.forEach(type => {
+                                        const typeSpan = document.createElement('span');
+                                        typeSpan.textContent = type;
+                                        typeSpan.style.display = 'inline-block';
+                                        typeSpan.style.backgroundColor = '#e0e0e0';
+                                        typeSpan.style.color = '#333';
+                                        typeSpan.style.padding = '2px 6px';
+                                        typeSpan.style.borderRadius = '3px';
+                                        typeSpan.style.marginRight = '5px';
+                                        typeSpan.style.fontSize = '0.85em';
+                                        typeContainer.appendChild(typeSpan);
+                                    });
+
+                                    itemDetails.appendChild(typeContainer);
+                                }
+
+                                itemHeader.appendChild(itemDetails);
+                            }
+
+                            itemContainer.appendChild(itemHeader);
+
+                            // Item properties
+                            const properties = document.createElement('div');
+                            properties.className = 'lod-properties';
+                            properties.style.marginLeft = '10px';
+
+                            // Get all properties, sorted by importance
+                            const propKeys = Object.keys(item).filter(key => key !== '@id' && key !== '@type' && key !== '@context');
+
+                            // Order properties: title/name first, then descriptive properties, then technical properties
+                            const titleProps = propKeys.filter(key => key.includes('title') || key.includes('name') || key.includes('label'));
+                            const descProps = propKeys.filter(key => !key.startsWith('o:') && !titleProps.includes(key));
+                            const techProps = propKeys.filter(key => key.startsWith('o:') && !titleProps.includes(key));
+
+                            const orderedProps = [...titleProps, ...descProps, ...techProps];
+
+                            // Only show selected properties in main view (avoid overwhelming display)
+                            const highPriorityProps = orderedProps.filter(prop => {
+                                // Skip title/name props as they're already in the header
+                                if ((prop === 'o:title' || (prop === 'schema:name' && item['o:title']))) {
+                                    return false;
+                                }
+                                return true;
+                            });
+
+                            // Add each property
+                            highPriorityProps.forEach((prop, idx) => {
+                                // Add alternating background for better readability
+                                const row = createPropertyRow(prop, item[prop]);
+                                if (idx % 2 === 0) {
+                                    row.style.backgroundColor = '#f9f9f9';
+                                }
+                                properties.appendChild(row);
+                            });
+
+                            itemContainer.appendChild(properties);
+                            dataDisplay.appendChild(itemContainer);
+                        });
+                    } else if (typeof data === 'object' && data !== null) {
+                        // Single object display
+                        const itemContainer = document.createElement('div');
+                        itemContainer.className = 'lod-item';
+
+                        // Item header
+                        const itemHeader = document.createElement('div');
+                        itemHeader.className = 'lod-item-header';
+                        itemHeader.style.marginBottom = '15px';
+
+                        // Item title
+                        const itemTitle = document.createElement('h3');
+                        itemTitle.style.marginBottom = '5px';
+
+                        if (data['@id']) {
+                            const idLink = document.createElement('a');
+                            idLink.href = data['@id'];
+                            idLink.target = '_blank';
+                            idLink.textContent = data['o:title'] || data['schema:name']?.[0]?.['@value'] || 'Resource';
+                            itemTitle.appendChild(idLink);
+                        } else {
+                            itemTitle.textContent = data['o:title'] || data['schema:name']?.[0]?.['@value'] || 'Resource';
+                        }
+
+                        itemHeader.appendChild(itemTitle);
+
+                        // Item ID and types
+                        if (data['@id'] || data['@type']) {
+                            const itemDetails = document.createElement('div');
+                            itemDetails.style.fontSize = '0.9em';
+                            itemDetails.style.color = '#555';
+
+                            if (data['@id']) {
+                                const idSpan = document.createElement('span');
+                                idSpan.textContent = `ID: ${data['@id']}`;
+                                itemDetails.appendChild(idSpan);
+                            }
+
+                            if (data['@type']) {
+                                const typeSpan = document.createElement('span');
+                                if (data['@id']) {
+                                    typeSpan.textContent = ` | Type: ${Array.isArray(data['@type']) ? data['@type'].join(', ') : data['@type']}`;
+                                } else {
+                                    typeSpan.textContent = `Type: ${Array.isArray(data['@type']) ? data['@type'].join(', ') : data['@type']}`;
+                                }
+                                itemDetails.appendChild(typeSpan);
+                            }
+
+                            itemHeader.appendChild(itemDetails);
+                        }
+
+                        itemContainer.appendChild(itemHeader);
+
+                        // Item properties
+                        const properties = document.createElement('div');
+                        properties.className = 'lod-properties';
+                        properties.style.marginLeft = '15px';
+
+                        // Get all properties, sorted by importance
+                        const propKeys = Object.keys(data).filter(key => key !== '@id' && key !== '@type' && key !== '@context');
+
+                        // Order properties: title/name first, then descriptive properties, then technical properties
+                        const titleProps = propKeys.filter(key => key.includes('title') || key.includes('name') || key.includes('label'));
+                        const descProps = propKeys.filter(key => !key.startsWith('o:') && !titleProps.includes(key));
+                        const techProps = propKeys.filter(key => key.startsWith('o:') && !titleProps.includes(key));
+
+                        const orderedProps = [...titleProps, ...descProps, ...techProps];
+
+                        // Add each property
+                        orderedProps.forEach(prop => {
+                            properties.appendChild(createPropertyRow(prop, data[prop]));
+                        });
+
+                        itemContainer.appendChild(properties);
+                        dataDisplay.appendChild(itemContainer);
+                    } else {
+                        // Unexpected data format
+                        const errorMsg = document.createElement('p');
+                        errorMsg.textContent = 'Unexpected data format. Linked Open Data view requires object or array data.';
+                        errorMsg.style.color = 'red';
+                        dataDisplay.appendChild(errorMsg);
+                    }
+
+                    lodContent.appendChild(dataDisplay);
+                    return lodContent;
+                }
+
+                // Function to fetch context data if not already loaded
+                function loadContextData(callback) {
+                    // Check if we have a context URL
+                    if (!contextUrl) {
+                        // Look for context in the data
+                        if (Array.isArray(data) && data.length > 0 && data[0]['@context']) {
+                            if (typeof data[0]['@context'] === 'string') {
+                                contextUrl = data[0]['@context'];
+                            } else {
+                                // Context is inline
+                                contextData = { '@context': data[0]['@context'] };
+                                callback();
+                                return;
+                            }
+                        } else if (typeof data === 'object' && data !== null && data['@context']) {
+                            if (typeof data['@context'] === 'string') {
+                                contextUrl = data['@context'];
+                            } else {
+                                // Context is inline
+                                contextData = { '@context': data['@context'] };
+                                callback();
+                                return;
+                            }
+                        } else {
+                            // No context found
+                            callback();
+                            return;
+                        }
+                    }
+
+                    // If we have a context URL but no data yet, fetch it
+                    if (contextUrl && !contextData) {
+                        // Add loading message
+                        const loadingMsg = document.createElement('p');
+                        loadingMsg.textContent = 'Loading context data...';
+                        loadingMsg.style.fontStyle = 'italic';
+                        lodContainer.appendChild(loadingMsg);
+
+                        // Fetch the context
+                        fetch(contextUrl)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`HTTP error! Status: ${response.status}`);
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                contextData = data;
+                                lodContainer.innerHTML = '';
+                                callback();
+                            })
+                            .catch(error => {
+                                lodContainer.innerHTML = '';
+                                const errorMsg = document.createElement('p');
+                                errorMsg.textContent = `Error loading context: ${error.message}`;
+                                errorMsg.style.color = 'red';
+                                lodContainer.appendChild(errorMsg);
+                                callback();
+                            });
+                    } else {
+                        callback();
+                    }
+                }
+
+                // Load context data and then create the LOD view
+                loadContextData(() => {
+                    lodContainer.appendChild(createLodView());
+                });
+
+                // Analyze keys in the data
+                if (Array.isArray(data)) {
+                    const keyStats = analyzeJsonKeys(data);
+
+                    // Create title for key stats
+                    const keyStatsTitle = document.createElement('h3');
+                    keyStatsTitle.textContent = 'Properties in JSON Data';
+                    keyStatsContainer.appendChild(keyStatsTitle);
+
+                    // Create button row for action buttons
+                    const buttonRow = document.createElement('div');
+                    buttonRow.style.display = 'flex';
+                    buttonRow.style.gap = '10px';
+                    buttonRow.style.marginBottom = '15px';
+
+                    // Create export filtered button
+                    const exportFilteredButton = document.createElement('button');
+                    exportFilteredButton.textContent = 'Export with Selected Properties';
+                    exportFilteredButton.addEventListener('click', function () {
+                        const filteredData = filterDataBySelectedKeys(data, keyStatsContainer);
                         // Convert to JSON string with pretty formatting
-                        const jsonString = JSON.stringify(selectedData, null, 2);
-                        
+                        const jsonString = JSON.stringify(filteredData, null, 2);
+
                         // Create a blob and download link
                         const blob = new Blob([jsonString], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = 'selected_data.json';
+                        a.download = 'filtered_data.json';
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
+                    });
+
+                    // Apply filters button
+                    const applyFiltersButton = document.createElement('button');
+                    applyFiltersButton.textContent = 'Apply to JSON View';
+                    applyFiltersButton.addEventListener('click', function () {
+                        // Switch to JSON view
+                        jsonViewBtn.click();
+                        // Apply filters to JSON view
+                        applyKeyFiltersToJsonView(keyStatsContainer);
+                    });
+
+                    buttonRow.appendChild(exportFilteredButton);
+                    buttonRow.appendChild(applyFiltersButton);
+                    keyStatsContainer.appendChild(buttonRow);
+
+                    // Add key stats content
+                    const keyList = document.createElement('div');
+
+                    // Sort keys by count (descending)
+                    const sortedKeys = Object.keys(keyStats).sort((a, b) => keyStats[b] - keyStats[a]);
+
+                    // Create a "Select All" checkbox
+                    const selectAllContainer = document.createElement('div');
+                    selectAllContainer.className = 'key-item';
+
+                    const selectAllCheckbox = document.createElement('input');
+                    selectAllCheckbox.type = 'checkbox';
+                    selectAllCheckbox.className = 'key-checkbox';
+                    selectAllCheckbox.id = 'select-all-keys';
+                    selectAllCheckbox.checked = true;
+
+                    const selectAllLabel = document.createElement('label');
+                    selectAllLabel.htmlFor = 'select-all-keys';
+                    selectAllLabel.className = 'key-name';
+                    selectAllLabel.textContent = 'Select All Properties';
+
+                    selectAllCheckbox.addEventListener('change', function () {
+                        const allCheckboxes = keyList.querySelectorAll('.key-checkbox');
+                        allCheckboxes.forEach(checkbox => {
+                            checkbox.checked = this.checked;
+                        });
+                    });
+
+                    selectAllContainer.appendChild(selectAllCheckbox);
+                    selectAllContainer.appendChild(selectAllLabel);
+                    keyList.appendChild(selectAllContainer);
+
+                    // Add a divider
+                    const divider = document.createElement('hr');
+                    keyList.appendChild(divider);
+
+                    // Add each key with its count
+                    sortedKeys.forEach(key => {
+                        const keyItem = document.createElement('div');
+                        keyItem.className = 'key-item';
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'key-checkbox';
+                        checkbox.setAttribute('data-key', key);
+
+                        // By default, deselect properties that start with 'o:'
+                        checkbox.checked = !key.startsWith('o:');
+
+                        const keyName = document.createElement('span');
+                        keyName.className = 'key-name';
+                        keyName.textContent = key;
+
+                        // Make the property name clickable to show values
+                        keyName.style.cursor = 'pointer';
+                        keyName.addEventListener('click', function () {
+                            showPropertyValues(key, data, keyStats[key]);
+                        });
+
+                        const keyCount = document.createElement('span');
+                        keyCount.className = 'key-count';
+                        keyCount.textContent = `(${keyStats[key]} items)`;
+
+                        keyItem.appendChild(checkbox);
+                        keyItem.appendChild(keyName);
+                        keyItem.appendChild(keyCount);
+
+                        keyList.appendChild(keyItem);
+                    });
+
+                    keyStatsContainer.appendChild(keyList);
+                } else {
+                    // If not an array, show message
+                    const noArrayMsg = document.createElement('p');
+                    noArrayMsg.textContent = 'Key analysis is only available for JSON arrays.';
+                    keyStatsContainer.appendChild(noArrayMsg);
+                }
+
+                // Add containers to the result container
+                resultContainer.appendChild(jsonContainer);
+                resultContainer.appendChild(keyStatsContainer);
+                resultContainer.appendChild(rawJsonContainer);
+                resultContainer.appendChild(lodContainer);
+            }
+
+            // Function to analyze keys in a JSON array
+            function analyzeJsonKeys(jsonArray) {
+                if (!Array.isArray(jsonArray) || jsonArray.length === 0) {
+                    return {};
+                }
+
+                const keyStats = {};
+
+                // Go through each item in the array
+                jsonArray.forEach(item => {
+                    if (item && typeof item === 'object' && !Array.isArray(item)) {
+                        // For each key in the object, increment the count
+                        Object.keys(item).forEach(key => {
+                            if (keyStats[key]) {
+                                keyStats[key]++;
+                            } else {
+                                keyStats[key] = 1;
+                            }
+                        });
                     }
                 });
-                
-                // Create interactive JSON display
-                const jsonElement = document.createElement('div');
-                jsonElement.appendChild(createInteractiveJson(data));
-                
-                // Add button above the JSON display
-                resultContainer.appendChild(exportButton);
-                resultContainer.appendChild(document.createElement('br'));
-                resultContainer.appendChild(document.createElement('br'));
-                resultContainer.appendChild(jsonElement);
+
+                return keyStats;
             }
-            
-            // Function to get all selected data from the DOM
-            function getSelectedData(tab) {
-                // This is a complex process that will recreate the JSON structure from the DOM
-                // We'll use a recursive approach similar to createInteractiveJson
-                
-                const result = {};
-                
-                // Helper function to process a container and its children
-                function processContainer(container, targetObj) {
-                    // Find all direct child property containers
-                    const propertyContainers = container.querySelectorAll(':scope > div');
-                    
-                    propertyContainers.forEach(propContainer => {
-                        // Get the json-line for this property
-                        const jsonLine = propContainer.querySelector(':scope > .json-line');
-                        if (!jsonLine || jsonLine.classList.contains('deselected')) {
-                            // Skip deselected items
-                            return;
-                        }
-                        
-                        // Get the key name
-                        const keyElement = jsonLine.querySelector(':scope > .json-key');
-                        if (!keyElement) return;
-                        
-                        // Extract the key name (remove the colon and space)
-                        const key = keyElement.textContent.replace(/:\s*$/, '');
-                        
-                        // Find the value - could be primitive or complex
-                        
-                        // Check for array or object containers
-                        const nestedContainer = jsonLine.querySelector(':scope > div');
-                        if (nestedContainer) {
-                            // This is a complex object or array
-                            const nestedHeader = nestedContainer.querySelector(':scope > .json-line > .collapsible');
-                            const isArray = nestedHeader?.textContent.startsWith('Array');
-                            
-                            if (isArray) {
-                                targetObj[key] = [];
-                                // Find all content in this array
-                                const contentDiv = nestedContainer.querySelector('.json-content');
-                                if (contentDiv) {
-                                    processArrayContainer(contentDiv, targetObj[key]);
-                                }
-                            } else {
-                                targetObj[key] = {};
-                                // Find all content in this object
-                                const contentDiv = nestedContainer.querySelector('.json-content');
-                                if (contentDiv) {
-                                    processContainer(contentDiv, targetObj[key]);
-                                }
-                            }
-                        } else {
-                            // This is a primitive value
-                            const valueElement = jsonLine.querySelector(':scope > .json-string, :scope > .json-number, :scope > .json-boolean, :scope > .json-null');
-                            if (valueElement) {
-                                let value = valueElement.textContent;
-                                
-                                // Handle different types
-                                if (valueElement.classList.contains('json-string')) {
-                                    // Remove the quotes
-                                    value = value.replace(/^"(.+)"$/, '$1');
-                                } else if (valueElement.classList.contains('json-number')) {
-                                    value = parseFloat(value);
-                                } else if (valueElement.classList.contains('json-boolean')) {
-                                    value = value === 'true';
-                                } else if (valueElement.classList.contains('json-null')) {
-                                    value = null;
-                                }
-                                
-                                targetObj[key] = value;
-                            }
-                        }
-                    });
-                }
-                
-                // Helper function to process array containers
-                function processArrayContainer(container, targetArray) {
-                    // Find all direct child item containers
-                    const itemContainers = container.querySelectorAll(':scope > div');
-                    
-                    itemContainers.forEach(itemContainer => {
-                        // Get the json-line for this item
-                        const jsonLine = itemContainer.querySelector(':scope > .json-line');
-                        if (!jsonLine || jsonLine.classList.contains('deselected')) {
-                            // Skip deselected items
-                            return;
-                        }
-                        
-                        // Get the index
-                        const keyElement = jsonLine.querySelector(':scope > .json-key');
-                        if (!keyElement) return;
-                        
-                        // Extract the index (remove the colon and space)
-                        const indexStr = keyElement.textContent.replace(/:\s*$/, '');
-                        const index = parseInt(indexStr, 10);
-                        
-                        // Find the value - could be primitive or complex
-                        
-                        // Check for array or object containers
-                        const nestedContainer = jsonLine.querySelector(':scope > div');
-                        if (nestedContainer) {
-                            // This is a complex object or array
-                            const nestedHeader = nestedContainer.querySelector(':scope > .json-line > .collapsible');
-                            const isArray = nestedHeader?.textContent.startsWith('Array');
-                            
-                            if (isArray) {
-                                targetArray[index] = [];
-                                // Find all content in this array
-                                const contentDiv = nestedContainer.querySelector('.json-content');
-                                if (contentDiv) {
-                                    processArrayContainer(contentDiv, targetArray[index]);
-                                }
-                            } else {
-                                targetArray[index] = {};
-                                // Find all content in this object
-                                const contentDiv = nestedContainer.querySelector('.json-content');
-                                if (contentDiv) {
-                                    processContainer(contentDiv, targetArray[index]);
-                                }
-                            }
-                        } else {
-                            // This is a primitive value
-                            const valueElement = jsonLine.querySelector(':scope > .json-string, :scope > .json-number, :scope > .json-boolean, :scope > .json-null');
-                            if (valueElement) {
-                                let value = valueElement.textContent;
-                                
-                                // Handle different types
-                                if (valueElement.classList.contains('json-string')) {
-                                    // Remove the quotes
-                                    value = value.replace(/^"(.+)"$/, '$1');
-                                } else if (valueElement.classList.contains('json-number')) {
-                                    value = parseFloat(value);
-                                } else if (valueElement.classList.contains('json-boolean')) {
-                                    value = value === 'true';
-                                } else if (valueElement.classList.contains('json-null')) {
-                                    value = null;
-                                }
-                                
-                                targetArray[index] = value;
-                            }
-                        }
-                    });
-                    
-                    // Clean up sparse arrays
-                    const cleanArray = [];
-                    for (let i = 0; i < targetArray.length; i++) {
-                        if (targetArray[i] !== undefined) {
-                            cleanArray.push(targetArray[i]);
-                        }
+
+            // Function to filter data based on selected keys
+            // Function to get selected keys from the key stats container
+            function getSelectedKeys(container) {
+                const checkedKeys = [];
+                const keyCheckboxes = container.querySelectorAll('.key-checkbox[data-key]');
+
+                keyCheckboxes.forEach(checkbox => {
+                    if (checkbox.checked) {
+                        checkedKeys.push(checkbox.getAttribute('data-key'));
                     }
-                    return cleanArray;
-                }
-                
-                // Start from the root JSON container
-                const rootContainer = tab.querySelector('.result-container > div > div');
-                
-                // Check if the root element itself is deselected
-                const rootLine = rootContainer?.querySelector(':scope > .json-line');
-                if (rootLine && rootLine.classList.contains('deselected')) {
-                    // If the root element is deselected, return empty result
-                    return isRootArray ? [] : {};
-                }
-                
-                // Determine if root is an array or object
-                const rootCollapsible = rootContainer?.querySelector(':scope > .json-line > .collapsible');
-                const isRootArray = rootCollapsible?.textContent.startsWith('Array');
-                
-                if (isRootArray) {
-                    const rootResult = [];
-                    const rootContent = rootContainer.querySelector('.json-content');
-                    if (rootContent) {
-                        // Process the array content
-                        const processed = processArrayContainer(rootContent, rootResult);
-                        return processed || [];
-                    }
+                });
+
+                return checkedKeys;
+            }
+
+            // Function to filter data based on selected keys
+            function filterDataBySelectedKeys(jsonArray, container) {
+                if (!Array.isArray(jsonArray) || jsonArray.length === 0) {
                     return [];
-                } else {
-                    const rootContent = rootContainer?.querySelector('.json-content');
-                    if (rootContent) {
-                        processContainer(rootContent, result);
-                        return result;
-                    }
                 }
-                
-                return isRootArray ? [] : {};
+
+                // Get all checked key checkboxes
+                const checkedKeys = getSelectedKeys(container);
+
+                // Filter the data to only include the selected keys
+                return jsonArray.map(item => {
+                    if (item && typeof item === 'object' && !Array.isArray(item)) {
+                        const filteredItem = {};
+
+                        Object.keys(item).forEach(key => {
+                            if (checkedKeys.includes(key)) {
+                                filteredItem[key] = item[key];
+                            }
+                        });
+
+                        return filteredItem;
+                    }
+                    return item;
+                });
             }
-            
+
+            // Function to apply key filters to the JSON view
+            function applyKeyFiltersToJsonView(container) {
+                const checkedKeys = getSelectedKeys(container);
+
+                // Find all keys in the JSON view and hide/show based on selection
+                const jsonContainer = document.getElementById('json-view');
+                if (!jsonContainer) return;
+
+                // Find the array objects in the JSON view
+                const arrayContent = jsonContainer.querySelector('.json-content');
+                if (!arrayContent) return;
+
+                // Look for item containers in the array (these are the top-level objects)
+                const itemContainers = arrayContent.children;
+
+                // Go through each item container
+                Array.from(itemContainers).forEach(itemContainer => {
+                    // Get the object content container for this item
+                    const objectContentContainer = itemContainer.querySelector('.json-content');
+                    if (!objectContentContainer) return;
+
+                    // Find all property lines in this object (top-level properties only)
+                    const propertyLines = objectContentContainer.querySelectorAll(':scope > div > .json-line');
+
+                    propertyLines.forEach(line => {
+                        const keyElement = line.querySelector(':scope > .json-key');
+                        if (!keyElement) return;
+
+                        // Get the key name (remove the colon and space)
+                        const keyText = keyElement.textContent;
+                        const key = keyText.replace(/:\s*$/, '');
+
+                        // Skip array indices
+                        if (/^\d+$/.test(key)) return;
+
+                        // Hide/show based on selection
+                        if (checkedKeys.includes(key)) {
+                            line.style.display = 'flex'; // Show
+                        } else {
+                            line.style.display = 'none'; // Hide
+                        }
+                    });
+                });
+            }
+
             // Function to detect if a string is a URL
             function isUrl(str) {
                 return typeof str === 'string' && /^https?:\/\//.test(str);
             }
-            
+
             // Function to detect if a URL is an API URL from the same domain
             function isApiUrl(url, baseUrl) {
                 if (!url || typeof url !== 'string') return false;
-                
+
                 // Check if it's a URL
                 if (!isUrl(url)) return false;
-                
+
                 try {
                     // Extract the domain from baseUrl
                     const baseUrlObj = new URL(baseUrl);
                     const urlObj = new URL(url);
-                    
+
                     // Check if it's from the same domain
                     const sameDomain = urlObj.hostname === baseUrlObj.hostname;
-                    
+
                     // Check if it's an API URL
-                    const isApi = url.includes('/api/') || 
-                                 urlObj.pathname.startsWith('/api/') || 
-                                 url.includes('?') && (url.includes('resource=') || url.includes('property='));
-                    
+                    const isApi = url.includes('/api/') ||
+                        urlObj.pathname.startsWith('/api/') ||
+                        url.includes('?') && (url.includes('resource=') || url.includes('property='));
+
                     return sameDomain && isApi;
                 } catch (e) {
                     return false;
                 }
             }
-            
+
             // Function to detect if a string is an ARK identifier
             function isArkIdentifier(str) {
                 // ARK identifiers typically start with 'ark:/' followed by numbers and slashes
-                return typeof str === 'string' && 
-                       /ark:[\\/]?[0-9]+[\\/][0-9a-zA-Z.]+/i.test(str);
+                return typeof str === 'string' &&
+                    /ark:[\\/]?[0-9]+[\\/][0-9a-zA-Z.]+/i.test(str);
             }
-            
+
             // Function to convert ARK to a resolvable URL
             function getArkUrl(arkId) {
                 // If it already has http/https, return as is
                 if (arkId.startsWith('http')) {
                     return arkId;
                 }
-                
+
                 // First try the N2T resolver (Name-to-Thing)
                 return `https://n2t.net/${arkId}`;
             }
-            
+
             // Function to toggle all nested content
             function toggleAllNested(element, show) {
                 // Get content ID directly from the element
                 const contentId = element.getAttribute('data-content-id');
                 if (!contentId) return;
-                
+
                 const contentContainer = document.getElementById(contentId);
                 if (!contentContainer) return;
-                
+
                 // Toggle this content
                 contentContainer.style.display = show ? 'block' : 'none';
                 if (show) {
@@ -926,7 +2062,7 @@
                 } else {
                     element.classList.remove('expanded');
                 }
-                
+
                 // Find and toggle all nested collapsible elements
                 const nestedCollapsibles = contentContainer.querySelectorAll('.collapsible');
                 nestedCollapsibles.forEach(nestedHeader => {
@@ -934,77 +2070,26 @@
                     toggleAllNested(nestedHeader, show);
                 });
             }
-            
+
             // Click delay timer to handle click vs double-click
             let clickTimer = null;
             const clickDelay = 250; // milliseconds
 
-            // Function to add right-click toggle selection
-            function addRightClickToggle(element) {
-                element.classList.add('selectable');
-                
-                // Make the element selectable on right-click
-                element.addEventListener('contextmenu', function(e) {
-                    e.preventDefault(); // Prevent the default context menu
-                    e.stopPropagation(); // Stop the event from bubbling up
-                    
-                    // Toggle the selection state of just this element
-                    this.classList.toggle('deselected');
-                    
-                    // Don't propagate to children - we want independent selection
-                    
-                    return false;
-                });
-                
-                // Allow double right-click to show the default context menu
-                let rightClickCount = 0;
-                let rightClickTimer = null;
-                
-                element.addEventListener('mousedown', function(e) {
-                    // Only handle right clicks (button 2)
-                    if (e.button === 2) {
-                        rightClickCount++;
-                        
-                        if (rightClickCount === 2) {
-                            // Double right-click - allow default context menu
-                            if (rightClickTimer) {
-                                clearTimeout(rightClickTimer);
-                                rightClickTimer = null;
-                            }
-                            rightClickCount = 0;
-                            // Do nothing to allow the default context menu
-                        } else {
-                            // Single right-click - reset after delay
-                            if (rightClickTimer) {
-                                clearTimeout(rightClickTimer);
-                            }
-                            rightClickTimer = setTimeout(() => {
-                                rightClickCount = 0;
-                                rightClickTimer = null;
-                            }, 300); // 300ms threshold for double-click
-                        }
-                    }
-                });
-            }
-            
             function createInteractiveJson(data, indent = 0) {
                 const container = document.createElement('div');
-                
+
                 if (Array.isArray(data)) {
                     // Handle array
                     const arrayContainer = document.createElement('div');
                     const jsonLine = document.createElement('div');
                     jsonLine.className = 'json-line';
-                    
-                    // Add selection toggle functionality
-                    addRightClickToggle(jsonLine);
-                    
+
                     const header = document.createElement('span');
                     header.className = 'collapsible';
                     header.textContent = `Array(${data.length})`;
-                    
+
                     // Use a single click handler with a delay to distinguish between clicks
-                    header.addEventListener('click', function(e) {
+                    header.addEventListener('click', function (e) {
                         // If it's a double-click, handle it and clear any pending single-click
                         if (e.detail === 2) {
                             e.stopPropagation();
@@ -1014,7 +2099,7 @@
                             }
                             const willShow = !this.classList.contains('expanded');
                             toggleAllNested(this, willShow);
-                        } 
+                        }
                         // If it's a single-click, set a timer before handling it
                         else if (e.detail === 1) {
                             const headerElement = this;
@@ -1024,7 +2109,7 @@
                             clickTimer = setTimeout(() => {
                                 const contentId = headerElement.getAttribute('data-content-id');
                                 const contentElem = document.getElementById(contentId);
-                                
+
                                 if (contentElem) {
                                     headerElement.classList.toggle('expanded');
                                     contentElem.style.display = contentElem.style.display === 'none' ? 'block' : 'none';
@@ -1033,42 +2118,39 @@
                             }, clickDelay);
                         }
                     });
-                    
+
                     jsonLine.appendChild(header);
                     arrayContainer.appendChild(jsonLine);
-                    
+
                     // Create unique ID for linking header to content
                     const contentId = 'json-content-array-' + Math.random().toString(36).substr(2, 9);
-                    
+
                     // Set data attribute on header
                     header.setAttribute('data-content-id', contentId);
-                    
+
                     const content = document.createElement('div');
                     content.id = contentId;
                     content.className = 'json-content';
                     content.style.display = 'none';
                     content.style.paddingLeft = '20px';
-                    
+
                     data.forEach((item, index) => {
                         const itemContainer = document.createElement('div');
                         const jsonLine = document.createElement('div');
                         jsonLine.className = 'json-line';
-                        
-                        // Add selection toggle functionality
-                        addRightClickToggle(jsonLine);
-                        
+
                         const indexSpan = document.createElement('span');
                         indexSpan.className = 'json-key';
                         indexSpan.textContent = `${index}: `;
                         jsonLine.appendChild(indexSpan);
-                        
+
                         // Always handle in the same way, the recursive function will determine rendering
                         jsonLine.appendChild(createInteractiveJson(item, indent + 1));
-                        
+
                         itemContainer.appendChild(jsonLine);
                         content.appendChild(itemContainer);
                     });
-                    
+
                     arrayContainer.appendChild(content);
                     container.appendChild(arrayContainer);
                 } else if (data !== null && typeof data === 'object') {
@@ -1076,16 +2158,13 @@
                     const objContainer = document.createElement('div');
                     const jsonLine = document.createElement('div');
                     jsonLine.className = 'json-line';
-                    
-                    // Add selection toggle functionality
-                    addRightClickToggle(jsonLine);
-                    
+
                     const header = document.createElement('span');
                     header.className = 'collapsible';
                     header.textContent = 'Object';
-                    
+
                     // Use a single click handler with a delay to distinguish between clicks
-                    header.addEventListener('click', function(e) {
+                    header.addEventListener('click', function (e) {
                         // If it's a double-click, handle it and clear any pending single-click
                         if (e.detail === 2) {
                             e.stopPropagation();
@@ -1095,7 +2174,7 @@
                             }
                             const willShow = !this.classList.contains('expanded');
                             toggleAllNested(this, willShow);
-                        } 
+                        }
                         // If it's a single-click, set a timer before handling it
                         else if (e.detail === 1) {
                             const headerElement = this;
@@ -1105,7 +2184,7 @@
                             clickTimer = setTimeout(() => {
                                 const contentId = headerElement.getAttribute('data-content-id');
                                 const contentElem = document.getElementById(contentId);
-                                
+
                                 if (contentElem) {
                                     headerElement.classList.toggle('expanded');
                                     contentElem.style.display = contentElem.style.display === 'none' ? 'block' : 'none';
@@ -1114,45 +2193,42 @@
                             }, clickDelay);
                         }
                     });
-                    
+
                     jsonLine.appendChild(header);
                     objContainer.appendChild(jsonLine);
-                    
+
                     // Create unique ID for linking header to content
                     const contentId = 'json-content-obj-' + Math.random().toString(36).substr(2, 9);
-                    
+
                     // Set data attribute on header
                     header.setAttribute('data-content-id', contentId);
-                    
+
                     const content = document.createElement('div');
                     content.id = contentId;
                     content.className = 'json-content';
                     content.style.display = 'none';
                     content.style.paddingLeft = '20px';
-                    
+
                     Object.keys(data).forEach(key => {
                         const propertyContainer = document.createElement('div');
                         const jsonLine = document.createElement('div');
                         jsonLine.className = 'json-line';
-                        
-                        // Add selection toggle functionality
-                        addRightClickToggle(jsonLine);
-                        
+
                         const keySpan = document.createElement('span');
                         keySpan.className = 'json-key';
                         keySpan.textContent = `${key}: `;
                         jsonLine.appendChild(keySpan);
-                        
+
                         // Special handling for URL strings
                         if (typeof data[key] === 'string' && (isUrl(data[key]) || isArkIdentifier(data[key]))) {
                             const valueSpan = document.createElement('span');
                             valueSpan.className = 'json-string';
-                            
+
                             const isArk = isArkIdentifier(data[key]);
                             const url = isArk ? getArkUrl(data[key]) : data[key];
                             const baseUrl = document.getElementById('baseUrl').value.trim();
                             const isApi = !isArk && isApiUrl(url, baseUrl);
-                            
+
                             const link = document.createElement('a');
                             link.href = url;
                             link.target = '_blank';
@@ -1162,11 +2238,11 @@
                                 link.title = 'ARK identifier - Click to resolve';
                             }
                             valueSpan.appendChild(link);
-                            
+
                             // Create action buttons container
                             const actionBtns = document.createElement('span');
                             actionBtns.className = 'action-buttons';
-                            
+
                             // Regular link button
                             const linkBtn = document.createElement('a');
                             linkBtn.href = url;
@@ -1177,7 +2253,7 @@
                             linkBtn.style.marginLeft = '5px';
                             linkBtn.style.fontSize = '12px';
                             actionBtns.appendChild(linkBtn);
-                            
+
                             // If it's an API URL, add a button to load it in a new tab
                             if (isApi) {
                                 const apiBtn = document.createElement('a');
@@ -1189,30 +2265,30 @@
                                 apiBtn.style.cursor = 'pointer';
                                 apiBtn.style.textDecoration = 'none';
                                 apiBtn.style.fontSize = '14px';
-                                
-                                apiBtn.addEventListener('click', function(e) {
+
+                                apiBtn.addEventListener('click', function (e) {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    
+
                                     // Create a new tab and load the API URL directly
                                     const tabId = createNewTab(getResourceNameFromUrl(url), url);
                                     loadUrlInTab(url, tabId);
                                 });
-                                
+
                                 actionBtns.appendChild(apiBtn);
                             }
-                            
+
                             valueSpan.appendChild(actionBtns);
                             jsonLine.appendChild(valueSpan);
                         } else {
                             // For all other values, use the recursive function
                             jsonLine.appendChild(createInteractiveJson(data[key], indent + 1));
                         }
-                        
+
                         propertyContainer.appendChild(jsonLine);
                         content.appendChild(propertyContainer);
                     });
-                    
+
                     objContainer.appendChild(content);
                     container.appendChild(objContainer);
                 } else {
@@ -1220,14 +2296,14 @@
                     const valueSpan = document.createElement('span');
                     if (typeof data === 'string') {
                         valueSpan.className = 'json-string';
-                        
+
                         // Check if the string is a URL or ARK identifier
                         if (isUrl(data) || isArkIdentifier(data)) {
                             const isArk = isArkIdentifier(data);
                             const url = isArk ? getArkUrl(data) : data;
                             const baseUrl = document.getElementById('baseUrl').value.trim();
                             const isApi = !isArk && isApiUrl(url, baseUrl);
-                            
+
                             // Create a link if it's a URL or ARK
                             const link = document.createElement('a');
                             link.href = url;
@@ -1238,7 +2314,7 @@
                                 link.title = 'ARK identifier - Click to resolve';
                             }
                             valueSpan.appendChild(link);
-                            
+
                             // If it's an API URL, add action buttons
                             if (isApi) {
                                 // API button - load in new tab
@@ -1251,16 +2327,16 @@
                                 apiBtn.style.cursor = 'pointer';
                                 apiBtn.style.textDecoration = 'none';
                                 apiBtn.style.fontSize = '14px';
-                                
-                                apiBtn.addEventListener('click', function(e) {
+
+                                apiBtn.addEventListener('click', function (e) {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    
+
                                     // Create a new tab and load the API URL directly
                                     const tabId = createNewTab(getResourceNameFromUrl(url), url);
                                     loadUrlInTab(url, tabId);
                                 });
-                                
+
                                 valueSpan.appendChild(apiBtn);
                             }
                         } else {
@@ -1278,51 +2354,51 @@
                     }
                     container.appendChild(valueSpan);
                 }
-                
+
                 return container;
             }
-            
+
             // Function to extract a readable name from URL
             function getResourceNameFromUrl(url) {
                 try {
                     const urlObj = new URL(url);
                     const pathParts = urlObj.pathname.split('/');
-                    
+
                     // Find the resource type from the URL
                     const apiIndex = pathParts.indexOf('api');
                     if (apiIndex !== -1 && apiIndex < pathParts.length - 1) {
                         let name = pathParts[apiIndex + 1];
-                        
+
                         // If there's an ID in the path, add it to the name
                         if (apiIndex + 2 < pathParts.length && pathParts[apiIndex + 2]) {
                             name += ' ' + pathParts[apiIndex + 2];
                         }
-                        
+
                         return name.charAt(0).toUpperCase() + name.slice(1);
                     }
-                    
+
                     // Fallback to showing part of the URL
                     return url.split('/').slice(-2).join('/');
                 } catch (e) {
                     return 'API Result';
                 }
             }
-            
+
             // Function to load URL in a specific tab
             function loadUrlInTab(url, tabId) {
                 // Show loading indicator
                 loadingDiv.style.display = 'block';
-                
+
                 // Find tab content
                 const tabContent = document.getElementById(tabId);
                 if (!tabContent) return;
-                
+
                 const resultContainer = tabContent.querySelector('.result-container');
                 if (!resultContainer) return;
-                
+
                 // Clear previous content
                 resultContainer.innerHTML = '';
-                
+
                 // Fetch the data
                 fetch(url)
                     .then(response => {
@@ -1333,9 +2409,7 @@
                     })
                     .then(data => {
                         // Format and display the JSON data
-                        const jsonElement = document.createElement('div');
-                        jsonElement.appendChild(createInteractiveJson(data));
-                        resultContainer.appendChild(jsonElement);
+                        displayData(data, url);
                         loadingDiv.style.display = 'none';
                     })
                     .catch(error => {
@@ -1343,13 +2417,175 @@
                         loadingDiv.style.display = 'none';
                     });
             }
-            
+
+            // Function to show property values in a modal
+            function showPropertyValues(propertyName, jsonArray, count) {
+                // Create modal container
+                const modal = document.createElement('div');
+                modal.style.position = 'fixed';
+                modal.style.top = '0';
+                modal.style.left = '0';
+                modal.style.width = '100%';
+                modal.style.height = '100%';
+                modal.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                modal.style.zIndex = '1000';
+                modal.style.display = 'flex';
+                modal.style.justifyContent = 'center';
+                modal.style.alignItems = 'center';
+                modal.style.overflowY = 'auto';
+
+                // Create modal content
+                const content = document.createElement('div');
+                content.style.backgroundColor = 'white';
+                content.style.padding = '20px';
+                content.style.borderRadius = '5px';
+                content.style.maxWidth = '800px';
+                content.style.width = '80%';
+                content.style.maxHeight = '80vh';
+                content.style.overflowY = 'auto';
+
+                // Create header
+                const header = document.createElement('div');
+                header.style.display = 'flex';
+                header.style.justifyContent = 'space-between';
+                header.style.marginBottom = '15px';
+
+                const title = document.createElement('h3');
+                title.textContent = `Values for property "${propertyName}" (${count} occurrences)`;
+
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '×';
+                closeBtn.style.background = 'none';
+                closeBtn.style.border = 'none';
+                closeBtn.style.fontSize = '24px';
+                closeBtn.style.cursor = 'pointer';
+                closeBtn.style.padding = '0 5px';
+                closeBtn.style.marginTop = '-5px';
+                closeBtn.addEventListener('click', function () {
+                    document.body.removeChild(modal);
+                });
+
+                header.appendChild(title);
+                header.appendChild(closeBtn);
+                content.appendChild(header);
+
+                // Extract unique values for this property
+                const values = [];
+
+                jsonArray.forEach(item => {
+                    if (item && typeof item === 'object' && !Array.isArray(item) && propertyName in item) {
+                        // Get the value
+                        const value = item[propertyName];
+                        values.push(value);
+                    }
+                });
+
+                // Group identical values and count them
+                const valueCount = {};
+                values.forEach(value => {
+                    const valueStr = JSON.stringify(value);
+                    if (valueCount[valueStr]) {
+                        valueCount[valueStr].count++;
+                    } else {
+                        valueCount[valueStr] = {
+                            value: value,
+                            count: 1
+                        };
+                    }
+                });
+
+                // Create a table to display values
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+
+                // Create table header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+
+                const valueHeader = document.createElement('th');
+                valueHeader.textContent = 'Value';
+                valueHeader.style.textAlign = 'left';
+                valueHeader.style.padding = '8px';
+                valueHeader.style.borderBottom = '1px solid #ddd';
+
+                const countHeader = document.createElement('th');
+                countHeader.textContent = 'Count';
+                countHeader.style.textAlign = 'right';
+                countHeader.style.padding = '8px';
+                countHeader.style.borderBottom = '1px solid #ddd';
+
+                headerRow.appendChild(valueHeader);
+                headerRow.appendChild(countHeader);
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                // Create table body
+                const tbody = document.createElement('tbody');
+
+                // Sort by count (descending)
+                const sortedValues = Object.values(valueCount).sort((a, b) => b.count - a.count);
+
+                sortedValues.forEach(item => {
+                    const row = document.createElement('tr');
+
+                    const valueCell = document.createElement('td');
+                    valueCell.style.padding = '8px';
+                    valueCell.style.borderBottom = '1px solid #ddd';
+
+                    // Format the value based on its type
+                    if (typeof item.value === 'object' && item.value !== null) {
+                        const codeBlock = document.createElement('pre');
+                        codeBlock.style.margin = '0';
+                        codeBlock.style.whiteSpace = 'pre-wrap';
+                        codeBlock.style.wordBreak = 'break-word';
+                        codeBlock.style.backgroundColor = '#f5f5f5';
+                        codeBlock.style.padding = '5px';
+                        codeBlock.style.borderRadius = '3px';
+                        codeBlock.textContent = JSON.stringify(item.value, null, 2);
+                        valueCell.appendChild(codeBlock);
+                    } else if (isUrl(item.value)) {
+                        const link = document.createElement('a');
+                        link.href = item.value;
+                        link.target = '_blank';
+                        link.textContent = item.value;
+                        valueCell.appendChild(link);
+                    } else {
+                        valueCell.textContent = typeof item.value === 'string' ? item.value : JSON.stringify(item.value);
+                    }
+
+                    const countCell = document.createElement('td');
+                    countCell.textContent = item.count;
+                    countCell.style.textAlign = 'right';
+                    countCell.style.padding = '8px';
+                    countCell.style.borderBottom = '1px solid #ddd';
+
+                    row.appendChild(valueCell);
+                    row.appendChild(countCell);
+
+                    tbody.appendChild(row);
+                });
+
+                table.appendChild(tbody);
+                content.appendChild(table);
+
+                modal.appendChild(content);
+                document.body.appendChild(modal);
+
+                // Close modal when clicking outside content
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) {
+                        document.body.removeChild(modal);
+                    }
+                });
+            }
+
             function showError(message, tabId) {
                 if (tabId) {
                     // Show error in specific tab
                     const tabContent = document.getElementById(tabId);
                     if (!tabContent) return;
-                    
+
                     const resultContainer = tabContent.querySelector('.result-container');
                     if (resultContainer) {
                         resultContainer.innerHTML = `<div class="error">${message}</div>`;
@@ -1358,7 +2594,7 @@
                     // Show error in active tab
                     const activeTab = document.querySelector('.tab-content.active');
                     if (!activeTab) return;
-                    
+
                     const resultContainer = activeTab.querySelector('.result-container');
                     if (resultContainer) {
                         resultContainer.innerHTML = `<div class="error">${message}</div>`;
@@ -1368,4 +2604,5 @@
         });
     </script>
 </body>
+
 </html>
