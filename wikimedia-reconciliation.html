@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikimedia Reconciliation API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            margin-bottom: 20px;
+        }
+        #results {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            min-height: 100px;
+        }
+        input, button {
+            padding: 8px;
+            margin: 5px 0;
+        }
+        input[type="text"] {
+            width: 300px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wikimedia Reconciliation API</h1>
+    
+    <div class="container">
+        <h2>Reconcile Values with Wikidata</h2>
+        <p>Enter a term to reconcile against Wikidata entities:</p>
+        <input type="text" id="queryInput" placeholder="e.g., Paris, Albert Einstein, etc.">
+        <button onclick="reconcile()">Reconcile</button>
+    </div>
+    
+    <div class="container">
+        <h2>Property Reconciliation</h2>
+        <p>Enter a property name to find its Wikidata property ID:</p>
+        <input type="text" id="propertyInput" placeholder="e.g., population, date of birth, etc.">
+        <button onclick="reconcileProperty()">Find Property</button>
+    </div>
+    
+    <div id="results">
+        <p>Results will appear here...</p>
+    </div>
+
+    <script>
+        async function reconcile() {
+            const query = document.getElementById('queryInput').value;
+            if (!query) {
+                alert('Please enter a term to reconcile');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                // Using the Wikidata reconciliation API
+                const url = 'https://wikidata.reconci.link/en/api';
+                const data = {
+                    q0: {
+                        query: query,
+                        type: ''
+                    }
+                };
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        queries: JSON.stringify(data)
+                    })
+                });
+                
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                resultsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function reconcileProperty() {
+            const property = document.getElementById('propertyInput').value;
+            if (!property) {
+                alert('Please enter a property name');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                // Using the Wikidata API to search for properties
+                const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(property)}&language=en&type=property&format=json&origin=*`;
+                
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                displayPropertyResults(result);
+            } catch (error) {
+                resultsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data || !data.q0 || !data.q0.result || data.q0.result.length === 0) {
+                resultsDiv.innerHTML = '<p>No results found</p>';
+                return;
+            }
+            
+            let html = '<h3>Reconciliation Results</h3>';
+            html += '<table>';
+            html += '<tr><th>Name</th><th>Description</th><th>Score</th><th>ID</th><th>Link</th></tr>';
+            
+            data.q0.result.forEach(item => {
+                html += `<tr>
+                    <td>${item.name || 'N/A'}</td>
+                    <td>${item.description || 'N/A'}</td>
+                    <td>${item.score || 'N/A'}</td>
+                    <td>${item.id || 'N/A'}</td>
+                    <td><a href="https://www.wikidata.org/wiki/${item.id}" target="_blank">View</a></td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            resultsDiv.innerHTML = html;
+        }
+        
+        function displayPropertyResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data || !data.search || data.search.length === 0) {
+                resultsDiv.innerHTML = '<p>No property results found</p>';
+                return;
+            }
+            
+            let html = '<h3>Property Reconciliation Results</h3>';
+            html += '<table>';
+            html += '<tr><th>Property ID</th><th>Label</th><th>Description</th><th>Link</th></tr>';
+            
+            data.search.forEach(item => {
+                html += `<tr>
+                    <td>${item.id || 'N/A'}</td>
+                    <td>${item.label || 'N/A'}</td>
+                    <td>${item.description || 'N/A'}</td>
+                    <td><a href="https://www.wikidata.org/wiki/Property:${item.id}" target="_blank">View</a></td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
