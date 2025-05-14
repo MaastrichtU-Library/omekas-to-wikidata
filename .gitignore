@@ -1,2 +1,5 @@
-Ai context/
 .DS_Store
+._*
+.env
+*.env
+
