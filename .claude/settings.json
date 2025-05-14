@@ -1,0 +1,18 @@
+{
+    "permissions": {
+        "allow": [
+            // core file-editing capability
+            "Edit",
+            // version-control workflow (auto-commit + undo)
+            "Bash(git add:*)",
+            "Bash(git commit:*)",
+            "Bash(git restore:*)", // single-file undo
+            "Bash(git revert:*)", // revert whole commit
+            "Bash(git diff:*)", // show diffs in replies
+            "Bash(git log:*)" // let Claude answer “why/when was this added?”
+        ]
+    },
+    "ignorePatterns": [
+        ".git/**" // internal Git files – never useful to the model
+    ]
+}

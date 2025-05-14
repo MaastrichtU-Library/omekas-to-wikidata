@@ -1,0 +1,28 @@
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # - name: Clear old artefacts
+      #   run: rm -rf docs/${{ github.ref_name == 'main' && '' || github.ref_name }}/*
+      - name: Clear old artefacts
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            shopt -s extglob
+            rm -rf docs/!(dev|test)
+          else
+            rm -rf docs/${{ github.ref_name }}/*
+          fi
+      - name: Copy build
+        run: |
+          TARGET=docs
+          [[ "${{ github.ref_name }}" != "main" ]] && TARGET="docs/${{ github.ref_name }}"
+          mkdir -p "$TARGET"
+          cp -R src/* "$TARGET"
+      - name: Push
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "github-actions@github.com"
+          git add docs
+          git commit -m "Deploy ${{ github.ref_name }} build" || echo "no changes"
+          git push

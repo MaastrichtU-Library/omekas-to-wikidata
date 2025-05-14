@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikidata Reconciliation Tool</title>
+    <link rel="stylesheet" href="dev/style.css">
+</head>
+<body>
+    <h1>Wikidata Reconciliation Tool</h1>
+    <p>This tool helps reconcile authors from Omeka S datasets with Wikidata entities.</p>
+
+    <!-- Hidden element required by interactive-json.js -->
+    <input type="hidden" id="baseUrl" value="https://www.wikidata.org">
+
+    <div class="form-group">
+        <label for="jsonInput">Paste your JSON data:</label>
+        <textarea id="jsonInput" rows="10" cols="80" style="width: 100%; font-family: monospace;"></textarea>
+    </div>
+
+    <div class="form-group">
+        <button id="loadSampleBtn">Load Sample Data</button>
+        <button id="parseBtn">Parse JSON</button>
+    </div>
+
+    <div id="dataPreview" style="display: none;">
+        <h2>Data Preview</h2>
+        <div id="dataCount"></div>
+        <div class="form-group">
+            <button id="toggleJsonBtn">Show/Hide JSON Preview</button>
+        </div>
+        <div id="jsonPreview" class="result-container" style="display: none;"></div>
+    </div>
+
+    <div id="reconciliationSection" style="display: none;">
+        <h2>Reconciliation Results</h2>
+        <div id="reconciliationProgress"></div>
+        <div class="form-group">
+            <button id="clearResultsBtn">Clear Results</button>
+            <label for="batchSize" style="display: inline-block; margin-left: 20px;">Batch Size:</label>
+            <select id="batchSize" style="width: 60px; margin-left: 5px;">
+                <option value="1">1</option>
+                <option value="3">3</option>
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+            </select>
+            <label for="preferredApi" style="display: inline-block; margin-left: 20px;">Preferred API:</label>
+            <select id="preferredApi" style="width: 200px; margin-left: 5px;">
+                <option value="hybrid" selected>Hybrid (Try both APIs)</option>
+                <option value="reconciliation">Reconciliation API only</option>
+                <option value="direct">Direct Wikidata API only</option>
+            </select>
+            
+            <div style="margin-top: 10px;">
+                <label for="skipLinkedEntities" style="display: inline-block;">
+                    <input type="checkbox" id="skipLinkedEntities"> 
+                    Ignore existing Wikidata links (for testing)
+                </label>
+                <span style="margin-left: 5px; color: #666; font-size: 0.9em; font-style: italic;">
+                    Forces reconciliation even for entities that already have Wikidata IDs
+                </span>
+            </div>
+        </div>
+        <div id="reconciliationResults" class="result-container"></div>
+    </div>
+
+    <div id="loading" class="loading">
+        <p>Loading...</p>
+    </div>
+
+    <script>
+        // Simplified version of interactive JSON display
+        function createInteractiveJson(data, indent = 0) {
+            const container = document.createElement('div');
+            
+            if (Array.isArray(data)) {
+                // Handle array
+                const arrayContainer = document.createElement('div');
+                const header = document.createElement('div');
+                header.textContent = `Array(${data.length})`;
+                header.style.fontWeight = 'bold';
+                header.style.cursor = 'pointer';
+                header.onclick = function() {
+                    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                };
+                arrayContainer.appendChild(header);
+                
+                const content = document.createElement('div');
+                content.style.paddingLeft = '20px';
+                
+                data.forEach((item, index) => {
+                    const itemContainer = document.createElement('div');
+                    const indexSpan = document.createElement('span');
+                    indexSpan.style.color = '#881391';
+                    indexSpan.textContent = `${index}: `;
+                    itemContainer.appendChild(indexSpan);
+                    
+                    itemContainer.appendChild(createInteractiveJson(item, indent + 1));
+                    content.appendChild(itemContainer);
+                });
+                
+                arrayContainer.appendChild(content);
+                container.appendChild(arrayContainer);
+            } else if (data !== null && typeof data === 'object') {
+                // Handle object
+                const objContainer = document.createElement('div');
+                const header = document.createElement('div');
+                header.textContent = 'Object';
+                header.style.fontWeight = 'bold';
+                header.style.cursor = 'pointer';
+                header.onclick = function() {
+                    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                };
+                objContainer.appendChild(header);
+                
+                const content = document.createElement('div');
+                content.style.paddingLeft = '20px';
+                
+                Object.keys(data).forEach(key => {
+                    const propertyContainer = document.createElement('div');
+                    const keySpan = document.createElement('span');
+                    keySpan.style.color = '#881391';
+                    keySpan.textContent = `${key}: `;
+                    propertyContainer.appendChild(keySpan);
+                    
+                    // Special handling for URLs
+                    if (typeof data[key] === 'string' && data[key].startsWith('http')) {
+                        const valueSpan = document.createElement('span');
+                        valueSpan.style.color = '#c41a16';
+                        
+                        const link = document.createElement('a');
+                        link.href = data[key];
+                        link.target = '_blank';
+                        link.textContent = `"${data[key]}"`;
+                        valueSpan.appendChild(link);
+                        propertyContainer.appendChild(valueSpan);
+                    } else {
+                        propertyContainer.appendChild(createInteractiveJson(data[key], indent + 1));
+                    }
+                    
+                    content.appendChild(propertyContainer);
+                });
+                
+                objContainer.appendChild(content);
+                container.appendChild(objContainer);
+            } else {
+                // Handle primitive values
+                const valueSpan = document.createElement('span');
+                if (typeof data === 'string') {
+                    valueSpan.style.color = '#c41a16';
+                    
+                    // Check if the string is a URL
+                    if (data.startsWith('http')) {
+                        const link = document.createElement('a');
+                        link.href = data;
+                        link.target = '_blank';
+                        link.textContent = `"${data}"`;
+                        valueSpan.appendChild(link);
+                    } else {
+                        valueSpan.textContent = `"${data}"`;
+                    }
+                } else if (typeof data === 'number') {
+                    valueSpan.style.color = '#1c00cf';
+                    valueSpan.textContent = data;
+                } else if (typeof data === 'boolean') {
+                    valueSpan.style.color = '#0b6125';
+                    valueSpan.textContent = data;
+                } else if (data === null) {
+                    valueSpan.style.color = '#808080';
+                    valueSpan.textContent = 'null';
+                }
+                container.appendChild(valueSpan);
+            }
+            
+            return container;
+        }
+
+        // Input elements
+        const jsonInput = document.getElementById('jsonInput');
+        const parseBtn = document.getElementById('parseBtn');
+        const loadSampleBtn = document.getElementById('loadSampleBtn');
+        const toggleJsonBtn = document.getElementById('toggleJsonBtn');
+        const batchSizeSelect = document.getElementById('batchSize');
+        const preferredApiSelect = document.getElementById('preferredApi');
+        const skipLinkedEntitiesCheck = document.getElementById('skipLinkedEntities');
+        const clearResultsBtn = document.getElementById('clearResultsBtn');
+        const dataPreview = document.getElementById('dataPreview');
+        const jsonPreview = document.getElementById('jsonPreview');
+        const dataCount = document.getElementById('dataCount');
+        const reconciliationSection = document.getElementById('reconciliationSection');
+        const reconciliationProgress = document.getElementById('reconciliationProgress');
+        const reconciliationResults = document.getElementById('reconciliationResults');
+        const loading = document.getElementById('loading');
+        
+        // Toggle JSON preview
+        toggleJsonBtn.addEventListener('click', () => {
+            jsonPreview.style.display = jsonPreview.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        // Clear reconciliation results
+        clearResultsBtn.addEventListener('click', () => {
+            reconciliationResults.innerHTML = '';
+            reconciliationProgress.textContent = 'Results cleared.';
+        });
+
+        // Sample data path - using a relative path for browser access
+        const sampleDataPath = 'data-sample.json';
+
+        // For storing parsed data
+        let parsedData = null;
+
+        // Load sample data
+        loadSampleBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch(sampleDataPath);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const data = await response.text();
+                jsonInput.value = data;
+            } catch (error) {
+                alert(`Error loading sample data: ${error.message}`);
+            }
+        });
+
+        // Parse JSON data
+        parseBtn.addEventListener('click', () => {
+            const inputData = jsonInput.value.trim();
+            if (!inputData) {
+                alert('Please enter JSON data.');
+                return;
+            }
+
+            try {
+                parsedData = JSON.parse(inputData);
+                console.log('Parsed JSON data:', parsedData);
+                displayDataPreview(parsedData);
+                prepareReconciliation(parsedData);
+            } catch (error) {
+                console.error('JSON parsing error:', error);
+                alert(`Error parsing JSON: ${error.message}`);
+            }
+        });
+
+        // Display data preview
+        function displayDataPreview(data) {
+            // Show preview section
+            dataPreview.style.display = 'block';
+            
+            // Show item count
+            const count = Array.isArray(data) ? data.length : 1;
+            dataCount.textContent = `Found ${count} item(s).`;
+            
+            // Clear previous preview
+            jsonPreview.innerHTML = '';
+            
+            // Create expandable/collapsible JSON viewer
+            jsonPreview.appendChild(createInteractiveJson(data));
+        }
+
+        // Extract persons and organizations from data
+        function extractAuthors(data) {
+            const contributors = [];
+            
+            // Function to process a single item
+            function processItem(item) {
+                // Define fields to extract
+                const fieldTypes = [
+                    { key: 'schema:author', type: 'author' },
+                    { key: 'schema:creator', type: 'creator' },
+                    { key: 'schema:editor', type: 'editor' },
+                    { key: 'schema:publisher', type: 'publisher' },
+                    { key: 'schema:copyrightHolder', type: 'copyrightHolder' },
+                    { key: 'schema:contributor', type: 'contributor' }
+                ];
+                
+                // Process each field type
+                fieldTypes.forEach(field => {
+                    if (item[field.key] && Array.isArray(item[field.key])) {
+                        item[field.key].forEach(entity => {
+                            // For entities with labels
+                            if (entity['o:label']) {
+                                contributors.push({
+                                    name: entity['o:label'],
+                                    id: entity['@id'] || null,
+                                    item: item['o:title'] || 'Untitled',
+                                    type: field.type
+                                });
+                            }
+                            // For literal values (like some copyrightHolders)
+                            else if (entity['@value']) {
+                                contributors.push({
+                                    name: entity['@value'],
+                                    id: null,
+                                    item: item['o:title'] || 'Untitled',
+                                    type: field.type
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // Process all items in the array, or just the single item if it's an object
+            if (Array.isArray(data)) {
+                data.forEach(processItem);
+            } else if (typeof data === 'object' && data !== null) {
+                processItem(data);
+            }
+            
+            return contributors;
+        }
+
+        // Prepare reconciliation
+        function prepareReconciliation(data) {
+            const contributors = extractAuthors(data);
+            console.log('Extracted contributors:', contributors);
+            
+            if (contributors.length === 0) {
+                console.warn('No contributors found in the data.');
+                reconciliationProgress.textContent = 'No contributors found in the data.';
+                reconciliationSection.style.display = 'block';
+                return;
+            }
+            
+            reconciliationProgress.textContent = `Found ${contributors.length} contributor(s). Starting reconciliation...`;
+            reconciliationSection.style.display = 'block';
+            
+            // Process contributors in batches
+            processAuthorsBatch(contributors, 0);
+        }
+
+        // Process contributors in batches
+        async function processAuthorsBatch(contributors, startIndex) {
+            if (startIndex >= contributors.length) {
+                reconciliationProgress.textContent = 'Reconciliation completed.';
+                return;
+            }
+            
+            // Get selected batch size
+            const batchSize = parseInt(batchSizeSelect.value, 10);
+            
+            const endIndex = Math.min(startIndex + batchSize, contributors.length);
+            const batch = contributors.slice(startIndex, endIndex);
+            
+            // Create a nice description of the entity types being processed
+            const typeDesc = batch.map(entity => entity.type).filter((v, i, a) => a.indexOf(v) === i).join('/');
+            reconciliationProgress.textContent = `Processing ${typeDesc} ${startIndex + 1} to ${endIndex} of ${contributors.length}...`;
+            
+            try {
+                // Process each contributor in the batch
+                const batchPromises = batch.map(contributor => reconcileEntity(contributor));
+                const batchResults = await Promise.all(batchPromises);
+                
+                // Display results
+                batchResults.forEach(displayReconciliationResult);
+                
+                // Process next batch
+                setTimeout(() => {
+                    processAuthorsBatch(contributors, endIndex);
+                }, 1000); // Add a delay to avoid overloading the API
+            } catch (error) {
+                reconciliationProgress.textContent = `Error during reconciliation: ${error.message}`;
+            }
+        }
+
+        // Reconcile a single entity using hybrid approach
+        async function reconcileEntity(entity) {
+            loading.style.display = 'block';
+            
+            // Get preferred API method
+            const apiMethod = preferredApiSelect.value;
+            // Check if we should skip direct matching for linked entities
+            const skipLinked = skipLinkedEntitiesCheck.checked;
+            
+            // If already linked to Wikidata and we're not skipping direct matches, fetch details directly
+            if (!skipLinked && entity.id && entity.id.includes('wikidata.org')) {
+                console.log(`Entity ${entity.name} already has Wikidata ID - using direct lookup`);
+                return await getExistingEntityDetails(entity);
+            }
+            
+            // If we're skipping linked entities but entity has a Wikidata ID, log this
+            if (skipLinked && entity.id && entity.id.includes('wikidata.org')) {
+                console.log(`Entity ${entity.name} has Wikidata ID but skipping direct lookup due to user setting`);
+                // We'll still include the ID information in the results, but force reconciliation
+            }
+            
+            // Hybrid approach - try both APIs
+            if (apiMethod === 'hybrid' || apiMethod === 'reconciliation') {
+                // Try reconciliation API first
+                try {
+                    const reconMatches = await tryReconciliationApi(entity);
+                    if (reconMatches && reconMatches.length > 0) {
+                        loading.style.display = 'none';
+                        return {
+                            entity,
+                            matches: reconMatches,
+                            source: 'reconciliation',
+                            // Flag if we're ignoring a direct match due to user setting
+                            ignoreDirectMatch: skipLinked && entity.id && entity.id.includes('wikidata.org')
+                        };
+                    }
+                    
+                    // If we specifically want reconciliation API only, return empty results
+                    if (apiMethod === 'reconciliation') {
+                        loading.style.display = 'none';
+                        return {
+                            entity,
+                            matches: [],
+                            source: 'reconciliation',
+                            ignoreDirectMatch: skipLinked && entity.id && entity.id.includes('wikidata.org')
+                        };
+                    }
+                } catch (error) {
+                    console.log(`%c Reconciliation API failed for ${entity.name}: ${error.message}`, 'color: orange; font-weight: bold;');
+                    console.error(`Error details for ${entity.name}:`, error);
+                    
+                    // If we specifically want reconciliation API only, don't fall back
+                    if (apiMethod === 'reconciliation') {
+                        loading.style.display = 'none';
+                        return {
+                            entity,
+                            matches: [],
+                            source: 'reconciliation',
+                            error: error.message,
+                            ignoreDirectMatch: skipLinked && entity.id && entity.id.includes('wikidata.org')
+                        };
+                    }
+                    // Continue to fallback for hybrid approach
+                }
+            }
+            
+            // Use direct Wikidata API search
+            if (apiMethod === 'hybrid' || apiMethod === 'direct') {
+                const result = await searchWikidataApi(entity);
+                // Add ignore flag if applicable
+                result.ignoreDirectMatch = skipLinked && entity.id && entity.id.includes('wikidata.org');
+                return result;
+            }
+            
+            // Shouldn't reach here, but just in case
+            loading.style.display = 'none';
+            return {
+                entity,
+                matches: [],
+                source: 'none',
+                ignoreDirectMatch: skipLinked && entity.id && entity.id.includes('wikidata.org')
+            };
+        }
+        
+        // Try the reconciliation API first
+        async function tryReconciliationApi(entity) {
+            const reconApiUrl = 'https://wikidata.reconci.link/en/api';
+            
+            console.log(`%c RECONCILIATION REQUEST for ${entity.type}: "${entity.name}"`, 'background: #ccf; color: #226; padding: 3px; border-radius: 3px; font-weight: bold;');
+            
+            // Select appropriate entity type based on the contributor type
+            let entityType = ["Q5"];  // Default: human (Q5)
+            
+            // Use more specific types for different kinds of contributors
+            if (entity.type === 'publisher') {
+                entityType = ["Q2085381"]; // Publisher (Q2085381)
+            } else if (entity.type === 'copyrightHolder') {
+                entityType = ["Q43229", "Q783794"]; // Organization (Q43229) or company (Q783794)
+            }
+            
+            // Create query object
+            const query = {
+                queries: {
+                    q1: {
+                        query: entity.name,
+                        type: entityType,
+                        properties: []
+                    }
+                }
+            };
+            
+            // Add item title as property if available
+            if (entity.item) {
+                // Select appropriate property based on entity type
+                let propertyId = "P800"; // Default: notable work (P800)
+                
+                if (entity.type === 'author') {
+                    propertyId = "P800"; // notable work (P800)
+                } else if (entity.type === 'publisher') {
+                    propertyId = "P98";  // publisher (P98)
+                } else if (entity.type === 'editor') {
+                    propertyId = "P98";  // editor (P98)
+                }
+                
+                query.queries.q1.properties.push({
+                    pid: propertyId,
+                    v: entity.item
+                });
+            }
+            
+            console.log('Reconciliation query:', JSON.stringify(query, null, 2));
+            
+            // Create request
+            const requestBody = "queries=" + encodeURIComponent(JSON.stringify(query.queries));
+            console.log(`%c REQUEST URL: %c${reconApiUrl}`, 'font-weight: bold;', 'color: blue; text-decoration: underline;');
+            
+            // Send request directly to reconciliation API
+            const response = await fetch(reconApiUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: requestBody
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Reconciliation API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            console.log(`%c RECONCILIATION RESPONSE for "${entity.name}"`, 'background: #dfd; color: #262; padding: 3px; border-radius: 3px; font-weight: bold;');
+            console.log(data);
+            
+            // Extract and return matches
+            if (data.q1 && data.q1.result) {
+                return data.q1.result;
+            }
+            
+            return [];
+        }
+        
+        // Fallback to direct Wikidata API search
+        async function searchWikidataApi(entity) {
+            const apiUrl = 'https://www.wikidata.org/w/api.php';
+            
+            // Log with more emphasis
+            console.log(`%c DIRECT SEARCH for ${entity.type}: "${entity.name}" on Wikidata`, 'background: #ddf; color: #226; padding: 3px; border-radius: 3px; font-weight: bold;');
+            
+            // Build the URL with parameters
+            const params = new URLSearchParams({
+                action: 'wbsearchentities',
+                search: entity.name,
+                language: 'en',
+                format: 'json',
+                origin: '*', // This is key for CORS
+                type: 'item',
+                limit: 10
+            });
+            
+            const searchUrl = `${apiUrl}?${params.toString()}`;
+            console.log(`%c REQUEST URL: %c${searchUrl}`, 'font-weight: bold;', 'color: blue; text-decoration: underline;');
+            console.table({
+                action: 'wbsearchentities',
+                search: entity.name,
+                language: 'en',
+                format: 'json',
+                origin: '*',
+                type: 'item',
+                limit: 10
+            });
+            
+            try {
+                const response = await fetch(searchUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Log the API response with more emphasis
+                console.log(`%c SEARCH RESPONSE for ${entity.type}: "${entity.name}"`, 'background: #dfd; color: #262; padding: 3px; border-radius: 3px; font-weight: bold;');
+                console.log('%c Response data:', 'font-weight: bold;');
+                console.log(data);
+                
+                // Log the number of results
+                if (data.search) {
+                    console.log(`%c Found ${data.search.length} results:`, 'font-weight: bold; color: green;');
+                    console.table(data.search.map(item => ({
+                        id: item.id,
+                        label: item.label,
+                        description: item.description || 'No description'
+                    })));
+                }
+                
+                // Process matches from search results
+                const matches = data.search.map(item => {
+                    return {
+                        id: item.id,
+                        name: item.label,
+                        description: item.description || 'No description available',
+                        score: item.match ? parseFloat(item.match.text) * 100 : 50, // Approximate score
+                        type: ['Q5'] // Assuming human
+                    };
+                });
+                
+                // Filter results to prioritize authors/creators
+                const filteredMatches = matches.filter(match => 
+                    match.description && 
+                    (match.description.toLowerCase().includes('author') || 
+                     match.description.toLowerCase().includes('writer') ||
+                     match.description.toLowerCase().includes('poet') ||
+                     match.description.toLowerCase().includes('novelist') ||
+                     match.description.toLowerCase().includes('journalist') ||
+                     match.description.toLowerCase().includes('scholar'))
+                );
+                
+                // Use filtered matches if available, otherwise use all matches
+                const finalMatches = filteredMatches.length > 0 ? filteredMatches : matches;
+                
+                loading.style.display = 'none';
+                
+                return {
+                    entity,
+                    matches: finalMatches,
+                    source: 'direct'
+                };
+            } catch (error) {
+                console.error(`Error in direct Wikidata search for ${entity.name}:`, error);
+                loading.style.display = 'none';
+                throw error;
+            }
+        }
+                
+        // Get details for an entity that already has a Wikidata ID
+        async function getExistingEntityDetails(entity) {
+            const apiUrl = 'https://www.wikidata.org/w/api.php';
+            
+            // Extract ID from URL
+            const wikidataId = entity.id.split('/').pop();
+            
+            // Get entity details directly with emphasized logging
+            console.log(`%c ENTITY REQUEST for ${wikidataId} (${entity.name})`, 'background: #fde; color: #622; padding: 3px; border-radius: 3px; font-weight: bold;');
+            
+            try {
+                const entityParams = new URLSearchParams({
+                    action: 'wbgetentities',
+                    ids: wikidataId,
+                    languages: 'en',
+                    format: 'json',
+                    origin: '*'
+                });
+                
+                const entityUrl = `${apiUrl}?${entityParams.toString()}`;
+                console.log(`%c ENTITY URL: %c${entityUrl}`, 'font-weight: bold;', 'color: purple; text-decoration: underline;');
+                console.table({
+                    action: 'wbgetentities',
+                    ids: wikidataId,
+                    languages: 'en',
+                    format: 'json'
+                });
+                
+                const entityResponse = await fetch(entityUrl);
+                
+                if (!entityResponse.ok) {
+                    throw new Error(`Entity API error: ${entityResponse.status}`);
+                }
+                
+                const entityData = await entityResponse.json();
+                console.log(`%c ENTITY RESPONSE for ${wikidataId}`, 'background: #ffd; color: #662; padding: 3px; border-radius: 3px; font-weight: bold;');
+                console.log('%c Entity data:', 'font-weight: bold;');
+                console.log(entityData);
+                
+                let finalMatches = [];
+                
+                // Log a more readable version if entity exists
+                if (entityData.entities && entityData.entities[wikidataId]) {
+                    const entity = entityData.entities[wikidataId];
+                    console.log('%c Formatted entity data:', 'font-weight: bold;');
+                    console.table({
+                        id: wikidataId,
+                        label: entity.labels?.en?.value || 'No label',
+                        description: entity.descriptions?.en?.value || 'No description',
+                        aliases: entity.aliases?.en?.map(a => a.value).join(', ') || 'No aliases'
+                    });
+                    
+                    finalMatches.push({
+                        id: wikidataId,
+                        name: entity.labels?.en?.value || wikidataId,
+                        description: entity.descriptions?.en?.value || 'No description available',
+                        score: 100, // Exact match
+                        type: ['Q5'],
+                        alreadyLinked: true
+                    });
+                }
+                
+                loading.style.display = 'none';
+                
+                return {
+                    entity,
+                    matches: finalMatches,
+                    source: 'entity'
+                };
+            } catch (error) {
+                console.error(`Error fetching entity details for ${entity.name} (${wikidataId}):`, error);
+                loading.style.display = 'none';
+                throw error;
+            }
+        }
+
+        // Display reconciliation result
+        function displayReconciliationResult(result) {
+            const { entity, matches, source, error, ignoreDirectMatch } = result;
+            
+            // Create result container
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'reconciliation-result';
+            resultDiv.style.marginBottom = '20px';
+            resultDiv.style.padding = '10px';
+            resultDiv.style.border = '1px solid #ddd';
+            resultDiv.style.borderRadius = '4px';
+            
+            // Set background color based on source
+            if (source === 'reconciliation') {
+                resultDiv.style.backgroundColor = '#f0f8ff'; // Light blue
+            } else if (source === 'entity') {
+                resultDiv.style.backgroundColor = '#f0fff0'; // Light green
+            }
+            
+            // Entity info
+            const authorDiv = document.createElement('div');
+            
+            // Display appropriate label based on entity type
+            let typeLabel = "Person";
+            switch(entity.type) {
+                case 'author': typeLabel = 'Author'; break;
+                case 'creator': typeLabel = 'Creator'; break;
+                case 'editor': typeLabel = 'Editor'; break;
+                case 'publisher': typeLabel = 'Publisher'; break;
+                case 'copyrightHolder': typeLabel = 'Copyright Holder'; break;
+                case 'contributor': typeLabel = 'Contributor'; break;
+                default: typeLabel = entity.type.charAt(0).toUpperCase() + entity.type.slice(1);
+            }
+            
+            authorDiv.innerHTML = `<strong>${typeLabel}:</strong> ${entity.name} <br>
+                                  <strong>Item:</strong> ${entity.item || 'N/A'}`;
+            
+            if (entity.id && entity.id.includes('wikidata.org')) {
+                const wikidataId = entity.id.split('/').pop();
+                authorDiv.innerHTML += `<br><strong>Already linked to:</strong> 
+                                       <a href="${entity.id}" target="_blank">${wikidataId}</a>`;
+            } else if (entity.id) {
+                authorDiv.innerHTML += `<br><strong>External ID:</strong> 
+                                       <a href="${entity.id}" target="_blank">${entity.id}</a>`;
+            }
+            
+            // Add API source info
+            authorDiv.innerHTML += `<br><em>Source: ${source === 'reconciliation' ? 'Wikidata Reconciliation API' : 
+                                   (source === 'direct' ? 'Direct Wikidata API' : 
+                                   (source === 'entity' ? 'Linked Entity' : 'Unknown'))}</em>`;
+            
+            // Add error info if present
+            if (error) {
+                authorDiv.innerHTML += `<br><span style="color: red;"><strong>Error:</strong> ${error}</span>`;
+            }
+            
+            // Add info if we're ignoring a direct match due to user setting
+            if (ignoreDirectMatch) {
+                authorDiv.innerHTML += `<br><span style="color: orange; font-weight: bold;">⚠️ Existing Wikidata link ignored for testing</span>`;
+            }
+            
+            resultDiv.appendChild(authorDiv);
+            
+            // Matches heading
+            const matchesHeading = document.createElement('h3');
+            matchesHeading.textContent = `Matches (${matches.length})`;
+            matchesHeading.style.marginTop = '10px';
+            resultDiv.appendChild(matchesHeading);
+            
+            // No matches
+            if (matches.length === 0) {
+                const noMatchesDiv = document.createElement('div');
+                noMatchesDiv.textContent = 'No matches found.';
+                resultDiv.appendChild(noMatchesDiv);
+                
+                // Add search button for manual search
+                const manualSearchBtn = document.createElement('button');
+                manualSearchBtn.textContent = 'Try Manual Search';
+                manualSearchBtn.className = 'small-button';
+                manualSearchBtn.style.marginTop = '10px';
+                manualSearchBtn.addEventListener('click', async () => {
+                    manualSearchBtn.disabled = true;
+                    manualSearchBtn.textContent = 'Searching...';
+                    
+                    try {
+                        // Force direct search
+                        const searchResult = await searchWikidataApi(entity);
+                        
+                        if (searchResult.matches.length > 0) {
+                            // Replace the current result with the new one
+                            const parent = resultDiv.parentNode;
+                            const newResultDiv = displayReconciliationResult(searchResult);
+                            parent.replaceChild(newResultDiv, resultDiv);
+                        } else {
+                            manualSearchBtn.textContent = 'No Results Found';
+                            setTimeout(() => {
+                                manualSearchBtn.textContent = 'Try Manual Search';
+                                manualSearchBtn.disabled = false;
+                            }, 2000);
+                        }
+                    } catch (error) {
+                        console.error('Manual search error:', error);
+                        manualSearchBtn.textContent = 'Search Failed';
+                        setTimeout(() => {
+                            manualSearchBtn.textContent = 'Try Manual Search';
+                            manualSearchBtn.disabled = false;
+                        }, 2000);
+                    }
+                });
+                
+                resultDiv.appendChild(manualSearchBtn);
+            } else {
+                // Create table for matches
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+                
+                // Table header
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Score</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Name</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">ID</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Actions</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                
+                // Table body
+                const tbody = document.createElement('tbody');
+                
+                matches.forEach(match => {
+                    const tr = document.createElement('tr');
+                    
+                    // Score
+                    const scoreCell = document.createElement('td');
+                    scoreCell.textContent = match.score ? match.score.toFixed(1) : 'N/A';
+                    scoreCell.style.border = '1px solid #ddd';
+                    scoreCell.style.padding = '8px';
+                    
+                    // Highlight already linked items
+                    if (match.alreadyLinked) {
+                        scoreCell.style.backgroundColor = '#e6ffe6'; // Light green
+                        tr.style.backgroundColor = '#f0fff0'; // Very light green background
+                    }
+                    
+                    // Name
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = match.name || 'N/A';
+                    nameCell.style.border = '1px solid #ddd';
+                    nameCell.style.padding = '8px';
+                    
+                    // Description
+                    const descCell = document.createElement('td');
+                    descCell.textContent = match.description || 'No description available';
+                    descCell.style.border = '1px solid #ddd';
+                    descCell.style.padding = '8px';
+                    
+                    // ID
+                    const idCell = document.createElement('td');
+                    const idLink = document.createElement('a');
+                    idLink.href = `https://www.wikidata.org/wiki/${match.id}`;
+                    idLink.textContent = match.id;
+                    idLink.target = '_blank';
+                    idCell.appendChild(idLink);
+                    idCell.style.border = '1px solid #ddd';
+                    idCell.style.padding = '8px';
+                    
+                    // Actions
+                    const actionsCell = document.createElement('td');
+                    const viewBtn = document.createElement('button');
+                    viewBtn.textContent = 'View on Wikidata';
+                    viewBtn.className = 'small-button';
+                    viewBtn.addEventListener('click', () => {
+                        window.open(`https://www.wikidata.org/wiki/${match.id}`, '_blank');
+                    });
+                    actionsCell.appendChild(viewBtn);
+                    actionsCell.style.border = '1px solid #ddd';
+                    actionsCell.style.padding = '8px';
+                    
+                    // Add cells to row
+                    tr.appendChild(scoreCell);
+                    tr.appendChild(nameCell);
+                    tr.appendChild(descCell);
+                    tr.appendChild(idCell);
+                    tr.appendChild(actionsCell);
+                    
+                    // Add row to table
+                    tbody.appendChild(tr);
+                });
+                
+                table.appendChild(tbody);
+                resultDiv.appendChild(table);
+            }
+            
+            // Add result to container
+            reconciliationResults.appendChild(resultDiv);
+            
+            return resultDiv; // Return the created element for potential replacement
+        }
+    </script>
+</body>
+</html>
