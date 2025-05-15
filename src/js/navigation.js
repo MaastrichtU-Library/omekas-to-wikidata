@@ -20,6 +20,14 @@ export function setupNavigation(state) {
     // Initialize test mode (default true for development, switch to false for production)
     let testMode = true;
     console.log('Navigation initialized with testMode:', testMode);
+    
+    // Get the test mode switch element
+    const testModeSwitch = document.getElementById('test-mode-switch');
+    const testModeStatus = document.getElementById('test-mode-status');
+    console.log('Test mode DOM elements:', {
+        'testModeSwitch': testModeSwitch ? 'Found' : 'Not found',
+        'testModeStatus': testModeStatus ? 'Found' : 'Not found'
+    });
 
     // Function to navigate to a specific step
     function navigateToStep(stepNumber) {
@@ -54,12 +62,16 @@ export function setupNavigation(state) {
 
     // Function to update UI and functionality based on test mode
     function updateTestModeStatus() {
+        console.log('Updating test mode status. Current value:', testMode);
+        
         // In test mode, ensure all step buttons are clickable by adding a visual indicator
         steps.forEach(step => {
             if (testMode) {
                 step.classList.add('test-mode-enabled');
+                console.log('Added test-mode-enabled class to step', step.getAttribute('data-step'));
             } else {
                 step.classList.remove('test-mode-enabled');
+                console.log('Removed test-mode-enabled class from step', step.getAttribute('data-step'));
             }
         });
         
@@ -69,16 +81,29 @@ export function setupNavigation(state) {
             [proceedToMappingBtn, proceedToReconciliationBtn, proceedToDesignerBtn, proceedToExportBtn].forEach(btn => {
                 if (btn) {
                     btn.disabled = false;
+                    console.log('Enabled button:', btn.id);
                 }
             });
             
             console.log('⚠️ TEST MODE ENABLED: Step validation is bypassed and all steps are accessible');
         } else {
             // In normal mode, disable buttons based on validation state
-            if (proceedToMappingBtn) proceedToMappingBtn.disabled = !state.validateStep(1);
-            if (proceedToReconciliationBtn) proceedToReconciliationBtn.disabled = !state.validateStep(2);
-            if (proceedToDesignerBtn) proceedToDesignerBtn.disabled = !state.validateStep(3);
-            if (proceedToExportBtn) proceedToExportBtn.disabled = !state.validateStep(4);
+            if (proceedToMappingBtn) {
+                proceedToMappingBtn.disabled = !state.validateStep(1);
+                console.log('Button proceedToMapping disabled state:', proceedToMappingBtn.disabled);
+            }
+            if (proceedToReconciliationBtn) {
+                proceedToReconciliationBtn.disabled = !state.validateStep(2);
+                console.log('Button proceedToReconciliation disabled state:', proceedToReconciliationBtn.disabled);
+            }
+            if (proceedToDesignerBtn) {
+                proceedToDesignerBtn.disabled = !state.validateStep(3);
+                console.log('Button proceedToDesigner disabled state:', proceedToDesignerBtn.disabled);
+            }
+            if (proceedToExportBtn) {
+                proceedToExportBtn.disabled = !state.validateStep(4);
+                console.log('Button proceedToExport disabled state:', proceedToExportBtn.disabled);
+            }
             
             console.log('✅ TEST MODE DISABLED: Step validation is enabled');
         }
@@ -93,14 +118,25 @@ export function setupNavigation(state) {
         let lastClickTime = 0;
         
         step.addEventListener('click', (event) => {
+            console.log('Step clicked:', step.getAttribute('data-step'), 'Event target:', event.target.tagName, 'Event path:', event.composedPath().map(el => el.tagName || el.nodeName).join(' > '));
+            
             const stepNumber = parseInt(step.getAttribute('data-step'));
             const currentTime = new Date().getTime();
-            const isDoubleClick = (currentTime - lastClickTime) < 300; // 300ms threshold for double click
+            const timeSinceLastClick = currentTime - lastClickTime;
+            const isDoubleClick = timeSinceLastClick < 300; // 300ms threshold for double click
+            
+            console.log('Click timing:', {
+                currentTime,
+                lastClickTime,
+                timeSinceLastClick,
+                isDoubleClick
+            });
+            
             lastClickTime = currentTime;
             
             // Toggle test mode with Control+Click or Command+Click on any step
             if (event.ctrlKey || event.metaKey) {
-                console.log('Modifier key detected: testMode toggled');
+                console.log('Modifier key detected: ctrlKey=', event.ctrlKey, 'metaKey=', event.metaKey);
                 testMode = !testMode;
                 updateTestModeStatus();
                 
@@ -129,7 +165,7 @@ export function setupNavigation(state) {
             
             // Alternative: Toggle test mode with double-click on any step
             if (isDoubleClick) {
-                console.log('Double-click detected: testMode toggled');
+                console.log('Double-click detected on step', stepNumber, '- testMode toggled from', testMode, 'to', !testMode);
                 testMode = !testMode;
                 updateTestModeStatus();
                 
@@ -317,12 +353,20 @@ export function setupNavigation(state) {
         }
     }
     
+    // Check if testModeSwitch exists
+    console.log('Testing for testModeSwitch element:', testModeSwitch ? 'Found' : 'Not found');
+    
     // Add event listener for test mode toggle
     if (testModeSwitch) {
         testModeSwitch.addEventListener('change', updateTestMode);
+        console.log('Added change event listener to testModeSwitch');
         
         // Initialize test mode
         updateTestMode();
+    } else {
+        console.log('testModeSwitch element not found, using default test mode state:', testMode);
+        // Initialize with default test mode
+        updateTestModeStatus();
     }
 
     // Return the navigation API so it can be used by other modules
