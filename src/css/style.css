@@ -76,6 +76,7 @@ button {
 
 .form-group {
     margin-bottom: 1rem;
+    width: 100%;
 }
 
 .form-group label {
@@ -216,7 +217,28 @@ main {
 
 /* Step 1: Input */
 .input-container {
-    max-width: 800px;
+    width: 100%;
+}
+
+/* Input form with button in a row */
+#step1 .form-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+#step1 .form-group label {
+    width: 100%;
+}
+
+#step1 .form-group input {
+    flex: 1;
+    min-width: 200px;
+}
+
+#step1 #fetch-data {
+    width: auto;
 }
 
 .advanced-params {
