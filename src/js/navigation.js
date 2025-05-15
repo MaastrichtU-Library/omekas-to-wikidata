@@ -17,17 +17,9 @@ export function setupNavigation(state) {
     const backToDesignerBtn = document.getElementById('back-to-designer');
     const startNewProjectBtn = document.getElementById('start-new-project');
     
-    // Initialize test mode (default true for development, switch to false for production)
-    let testMode = true;
+    // Initialize test mode (default false for production)
+    let testMode = false;
     console.log('Navigation initialized with testMode:', testMode);
-    
-    // Get the test mode switch element
-    const testModeSwitch = document.getElementById('test-mode-switch');
-    const testModeStatus = document.getElementById('test-mode-status');
-    console.log('Test mode DOM elements:', {
-        'testModeSwitch': testModeSwitch ? 'Found' : 'Not found',
-        'testModeStatus': testModeStatus ? 'Found' : 'Not found'
-    });
 
     // Function to navigate to a specific step
     function navigateToStep(stepNumber) {
@@ -68,10 +60,8 @@ export function setupNavigation(state) {
         steps.forEach(step => {
             if (testMode) {
                 step.classList.add('test-mode-enabled');
-                console.log('Added test-mode-enabled class to step', step.getAttribute('data-step'));
             } else {
                 step.classList.remove('test-mode-enabled');
-                console.log('Removed test-mode-enabled class from step', step.getAttribute('data-step'));
             }
         });
         
@@ -81,31 +71,44 @@ export function setupNavigation(state) {
             [proceedToMappingBtn, proceedToReconciliationBtn, proceedToDesignerBtn, proceedToExportBtn].forEach(btn => {
                 if (btn) {
                     btn.disabled = false;
-                    console.log('Enabled button:', btn.id);
                 }
             });
             
             console.log('⚠️ TEST MODE ENABLED: Step validation is bypassed and all steps are accessible');
         } else {
             // In normal mode, disable buttons based on validation state
-            if (proceedToMappingBtn) {
-                proceedToMappingBtn.disabled = !state.validateStep(1);
-                console.log('Button proceedToMapping disabled state:', proceedToMappingBtn.disabled);
-            }
-            if (proceedToReconciliationBtn) {
-                proceedToReconciliationBtn.disabled = !state.validateStep(2);
-                console.log('Button proceedToReconciliation disabled state:', proceedToReconciliationBtn.disabled);
-            }
-            if (proceedToDesignerBtn) {
-                proceedToDesignerBtn.disabled = !state.validateStep(3);
-                console.log('Button proceedToDesigner disabled state:', proceedToDesignerBtn.disabled);
-            }
-            if (proceedToExportBtn) {
-                proceedToExportBtn.disabled = !state.validateStep(4);
-                console.log('Button proceedToExport disabled state:', proceedToExportBtn.disabled);
-            }
+            if (proceedToMappingBtn) proceedToMappingBtn.disabled = !state.validateStep(1);
+            if (proceedToReconciliationBtn) proceedToReconciliationBtn.disabled = !state.validateStep(2);
+            if (proceedToDesignerBtn) proceedToDesignerBtn.disabled = !state.validateStep(3);
+            if (proceedToExportBtn) proceedToExportBtn.disabled = !state.validateStep(4);
             
             console.log('✅ TEST MODE DISABLED: Step validation is enabled');
+        }
+        
+        // Remove old test mode indicator if it exists
+        const oldIndicator = document.getElementById('test-mode-indicator');
+        if (oldIndicator) {
+            document.body.removeChild(oldIndicator);
+        }
+        
+        // Only show indicator if test mode is enabled
+        if (testMode) {
+            // Create small green indicator in the top right corner
+            const indicator = document.createElement('div');
+            indicator.id = 'test-mode-indicator';
+            indicator.textContent = 'Test Mode';
+            indicator.style.position = 'fixed';
+            indicator.style.top = '10px';
+            indicator.style.right = '10px';
+            indicator.style.backgroundColor = '#4caf50'; // Green background
+            indicator.style.color = 'white';
+            indicator.style.padding = '5px 10px';
+            indicator.style.fontSize = '12px';
+            indicator.style.fontWeight = 'bold';
+            indicator.style.borderRadius = '4px';
+            indicator.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+            indicator.style.zIndex = '1000';
+            document.body.appendChild(indicator);
         }
     }
     
@@ -118,7 +121,7 @@ export function setupNavigation(state) {
         let lastClickTime = 0;
         
         step.addEventListener('click', (event) => {
-            console.log('Step clicked:', step.getAttribute('data-step'), 'Event target:', event.target.tagName, 'Event path:', event.composedPath().map(el => el.tagName || el.nodeName).join(' > '));
+            console.log('Step clicked:', step.getAttribute('data-step'), 'Event target:', event.target.tagName);
             
             const stepNumber = parseInt(step.getAttribute('data-step'));
             const currentTime = new Date().getTime();
@@ -126,8 +129,6 @@ export function setupNavigation(state) {
             const isDoubleClick = timeSinceLastClick < 300; // 300ms threshold for double click
             
             console.log('Click timing:', {
-                currentTime,
-                lastClickTime,
                 timeSinceLastClick,
                 isDoubleClick
             });
@@ -139,27 +140,6 @@ export function setupNavigation(state) {
                 console.log('Modifier key detected: ctrlKey=', event.ctrlKey, 'metaKey=', event.metaKey);
                 testMode = !testMode;
                 updateTestModeStatus();
-                
-                // Show a temporary message to indicate mode change
-                const message = document.createElement('div');
-                message.className = testMode ? 'test-mode-active' : 'test-mode-inactive';
-                message.textContent = testMode ? 'Test Mode Enabled' : 'Test Mode Disabled';
-                message.style.position = 'fixed';
-                message.style.top = '10px';
-                message.style.right = '10px';
-                message.style.padding = '8px 16px';
-                message.style.borderRadius = '4px';
-                message.style.backgroundColor = '#f5f5f5';
-                message.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-                message.style.zIndex = '1000';
-                
-                document.body.appendChild(message);
-                
-                // Remove the message after 2 seconds
-                setTimeout(() => {
-                    document.body.removeChild(message);
-                }, 2000);
-                
                 return;
             }
             
@@ -168,27 +148,6 @@ export function setupNavigation(state) {
                 console.log('Double-click detected on step', stepNumber, '- testMode toggled from', testMode, 'to', !testMode);
                 testMode = !testMode;
                 updateTestModeStatus();
-                
-                // Show a temporary message to indicate mode change
-                const message = document.createElement('div');
-                message.className = testMode ? 'test-mode-active' : 'test-mode-inactive';
-                message.textContent = testMode ? 'Test Mode Enabled' : 'Test Mode Disabled';
-                message.style.position = 'fixed';
-                message.style.top = '10px';
-                message.style.right = '10px';
-                message.style.padding = '8px 16px';
-                message.style.borderRadius = '4px';
-                message.style.backgroundColor = '#f5f5f5';
-                message.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-                message.style.zIndex = '1000';
-                
-                document.body.appendChild(message);
-                
-                // Remove the message after 2 seconds
-                setTimeout(() => {
-                    document.body.removeChild(message);
-                }, 2000);
-                
                 return;
             }
             
@@ -322,64 +281,13 @@ export function setupNavigation(state) {
         }
     });
 
-    // Function to update test mode
-    function updateTestMode() {
-        testMode = testModeSwitch.checked;
-        
-        // Update UI
-        if (testMode) {
-            testModeStatus.textContent = 'Active';
-            testModeStatus.className = 'test-mode-active';
-            
-            // Enable all navigation buttons
-            [proceedToMappingBtn, proceedToReconciliationBtn, proceedToDesignerBtn, proceedToExportBtn].forEach(btn => {
-                if (btn) {
-                    btn.disabled = false;
-                }
-            });
-            
-            console.log('⚠️ TEST MODE ENABLED: Step validation is bypassed and all steps are accessible');
-        } else {
-            testModeStatus.textContent = 'Inactive';
-            testModeStatus.className = 'test-mode-inactive';
-            
-            // Disable buttons based on validation state
-            if (proceedToMappingBtn) proceedToMappingBtn.disabled = !state.validateStep(1);
-            if (proceedToReconciliationBtn) proceedToReconciliationBtn.disabled = !state.validateStep(2);
-            if (proceedToDesignerBtn) proceedToDesignerBtn.disabled = !state.validateStep(3);
-            if (proceedToExportBtn) proceedToExportBtn.disabled = !state.validateStep(4);
-            
-            console.log('✅ TEST MODE DISABLED: Step validation is enabled');
-        }
-    }
-    
-    // Check if testModeSwitch exists
-    console.log('Testing for testModeSwitch element:', testModeSwitch ? 'Found' : 'Not found');
-    
-    // Add event listener for test mode toggle
-    if (testModeSwitch) {
-        testModeSwitch.addEventListener('change', updateTestMode);
-        console.log('Added change event listener to testModeSwitch');
-        
-        // Initialize test mode
-        updateTestMode();
-    } else {
-        console.log('testModeSwitch element not found, using default test mode state:', testMode);
-        // Initialize with default test mode
-        updateTestModeStatus();
-    }
-
     // Return the navigation API so it can be used by other modules
     return {
         navigateToStep,
         getTestMode: () => testMode,
         setTestMode: (mode) => {
-            if (testModeSwitch) {
-                testModeSwitch.checked = !!mode;
-                updateTestMode();
-            } else {
-                testMode = !!mode;
-            }
+            testMode = !!mode;
+            updateTestModeStatus();
         }
     };
 }
