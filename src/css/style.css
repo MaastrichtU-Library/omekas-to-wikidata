@@ -216,9 +216,7 @@ main {
 }
 
 /* Step 1: Input */
-.input-container {
-    width: 100%;
-}
+/* No additional constraints on width */
 
 /* Input form with button in a row */
 #step1 .form-group {
