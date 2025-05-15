@@ -17,12 +17,9 @@ export function setupNavigation(state) {
     const backToDesignerBtn = document.getElementById('back-to-designer');
     const startNewProjectBtn = document.getElementById('start-new-project');
     
-    // Test mode toggle elements
-    const testModeSwitch = document.getElementById('test-mode-switch');
-    const testModeStatus = document.getElementById('test-mode-status');
-
-    // Initialize test mode from checkbox (defaults to true)
-    let testMode = testModeSwitch ? testModeSwitch.checked : true;
+    // Initialize test mode (default true for development, switch to false for production)
+    let testMode = true;
+    console.log('Navigation initialized with testMode:', testMode);
 
     // Function to navigate to a specific step
     function navigateToStep(stepNumber) {
@@ -55,13 +52,113 @@ export function setupNavigation(state) {
         }
     }
 
+    // Function to update UI and functionality based on test mode
+    function updateTestModeStatus() {
+        // In test mode, ensure all step buttons are clickable by adding a visual indicator
+        steps.forEach(step => {
+            if (testMode) {
+                step.classList.add('test-mode-enabled');
+            } else {
+                step.classList.remove('test-mode-enabled');
+            }
+        });
+        
+        // Update button states based on test mode
+        if (testMode) {
+            // Enable all navigation buttons in test mode
+            [proceedToMappingBtn, proceedToReconciliationBtn, proceedToDesignerBtn, proceedToExportBtn].forEach(btn => {
+                if (btn) {
+                    btn.disabled = false;
+                }
+            });
+            
+            console.log('⚠️ TEST MODE ENABLED: Step validation is bypassed and all steps are accessible');
+        } else {
+            // In normal mode, disable buttons based on validation state
+            if (proceedToMappingBtn) proceedToMappingBtn.disabled = !state.validateStep(1);
+            if (proceedToReconciliationBtn) proceedToReconciliationBtn.disabled = !state.validateStep(2);
+            if (proceedToDesignerBtn) proceedToDesignerBtn.disabled = !state.validateStep(3);
+            if (proceedToExportBtn) proceedToExportBtn.disabled = !state.validateStep(4);
+            
+            console.log('✅ TEST MODE DISABLED: Step validation is enabled');
+        }
+    }
+    
+    // Initialize test mode UI
+    updateTestModeStatus();
+    
     // Enable step navigation by clicking on step indicators
     steps.forEach(step => {
-        step.addEventListener('click', () => {
+        // Track double-click timing
+        let lastClickTime = 0;
+        
+        step.addEventListener('click', (event) => {
             const stepNumber = parseInt(step.getAttribute('data-step'));
+            const currentTime = new Date().getTime();
+            const isDoubleClick = (currentTime - lastClickTime) < 300; // 300ms threshold for double click
+            lastClickTime = currentTime;
             
-            // In test mode, allow navigation to any step
+            // Toggle test mode with Control+Click or Command+Click on any step
+            if (event.ctrlKey || event.metaKey) {
+                console.log('Modifier key detected: testMode toggled');
+                testMode = !testMode;
+                updateTestModeStatus();
+                
+                // Show a temporary message to indicate mode change
+                const message = document.createElement('div');
+                message.className = testMode ? 'test-mode-active' : 'test-mode-inactive';
+                message.textContent = testMode ? 'Test Mode Enabled' : 'Test Mode Disabled';
+                message.style.position = 'fixed';
+                message.style.top = '10px';
+                message.style.right = '10px';
+                message.style.padding = '8px 16px';
+                message.style.borderRadius = '4px';
+                message.style.backgroundColor = '#f5f5f5';
+                message.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+                message.style.zIndex = '1000';
+                
+                document.body.appendChild(message);
+                
+                // Remove the message after 2 seconds
+                setTimeout(() => {
+                    document.body.removeChild(message);
+                }, 2000);
+                
+                return;
+            }
+            
+            // Alternative: Toggle test mode with double-click on any step
+            if (isDoubleClick) {
+                console.log('Double-click detected: testMode toggled');
+                testMode = !testMode;
+                updateTestModeStatus();
+                
+                // Show a temporary message to indicate mode change
+                const message = document.createElement('div');
+                message.className = testMode ? 'test-mode-active' : 'test-mode-inactive';
+                message.textContent = testMode ? 'Test Mode Enabled' : 'Test Mode Disabled';
+                message.style.position = 'fixed';
+                message.style.top = '10px';
+                message.style.right = '10px';
+                message.style.padding = '8px 16px';
+                message.style.borderRadius = '4px';
+                message.style.backgroundColor = '#f5f5f5';
+                message.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+                message.style.zIndex = '1000';
+                
+                document.body.appendChild(message);
+                
+                // Remove the message after 2 seconds
+                setTimeout(() => {
+                    document.body.removeChild(message);
+                }, 2000);
+                
+                return;
+            }
+            
+            // Normal navigation behavior
             if (testMode) {
+                // In test mode, allow navigation to any step
                 navigateToStep(stepNumber);
             } else {
                 // Normal behavior: Only allow navigation to steps that are already completed or the current step + 1
