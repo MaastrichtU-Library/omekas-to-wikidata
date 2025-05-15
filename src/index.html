@@ -11,13 +11,12 @@
         <header>
             <h1>Omeka S to Wikidata Mapping Tool</h1>
             <p class="warning">Warning: Page refresh will clear all data. Make sure to export your work!</p>
-            <div class="test-mode-toggle">
-                <label for="test-mode-switch">Test Mode:</label>
-                <label class="switch">
-                    <input type="checkbox" id="test-mode-switch" checked>
-                    <span class="slider round"></span>
-                </label>
-                <span id="test-mode-status" class="test-mode-active">Active</span>
+            <!-- Test mode toggle for debugging -->
+            <div style="display: flex; align-items: center; margin-top: 10px; background: #f5f5f5; padding: 8px; border-radius: 4px;">
+                <label for="test-mode-switch" style="margin-right: 10px;">Test Mode:</label>
+                <input type="checkbox" id="test-mode-switch" checked>
+                <span id="test-mode-status" class="test-mode-active" style="margin-left: 10px;">Active</span>
+                <span style="margin-left: 10px; font-size: 0.8em; color: #666;">(Double-click on steps to toggle)</span>
             </div>
         </header>
 
