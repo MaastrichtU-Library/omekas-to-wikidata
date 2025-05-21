@@ -2,12 +2,12 @@
 
 ## 1. Algemene Overzicht
 
-Deze front-end only webgebaseerde tool helpt gebruikers om data vanuit een externe API in JSON-formaat te mappen naar Wikidata-properties, met ondersteuning voor entity schemas, reconciliation van waarden, bronvermelding, en export naar QuickStatements. De tool werkt in de browser zonder backend, met alle data opgeslagen in-memory als JavaScript-object, en begeleidt gebruikers stapsgewijs door het proces.
+Deze front-end only webgebaseerde tool helpt gebruikers om data vanuit een externe Omeka S API (Linked Open Data) in JSON-formaat te mappen naar Wikidata-properties, met ondersteuning voor entity schemas, reconciliation van waarden, bronvermelding, en export naar QuickStatements. De tool werkt in de browser zonder backend, met alle data opgeslagen in-memory als JavaScript-object, en begeleidt gebruikers stapsgewijs door het proces.
 
 ## 2. Globale Architectuur
 
 * **Front-end only** (geen backend).
-* **Volledig in-memory** opslag van gebruikersinput, beschikbaar als downloadbare JSON.
+* **Volledig in-memory** opslag van gebruikersinput, beschikbaar als downloadbare JSON. (voor SAVE en LOAD functinoaliteit)
 * **Statische configuratie en content via GitHub-hosted JSON-files** voor tooltips, placeholder teksten, extra uitleg, en standaardconfiguratie.
 * **UI met vijf stappen** zichtbaar als navigatie bovenaan, vergelijkbaar met een webwinkel-checkout.
 * **Microtask-benadering** via modals per JSON-key, property, of waarde.
@@ -27,7 +27,7 @@ Deze front-end only webgebaseerde tool helpt gebruikers om data vanuit een exter
 * Mogelijkheid om een voorbeeld-object te selecteren voor verdere stappen (#Functionaliteit).
 * Configuratie voor verstopt houden van bepaalde keys (#Settings).
 * Tool toont JSON als een hiërarchische boomstructuur.
-* Detectie en filtering van custom keys (irrelevant voor LOD). Deze worden standaard genegeerd.
+* Detectie en filtering van custom keys uit Omeka S (Deze zijn irrelevant voor Wikidata). Deze worden standaard genegeerd.
 
 ## 🧩 Stap 2: Mapping (#Stap2 #Modal #Functionaliteit #Gebruikerservaring #UI)
 
@@ -154,6 +154,12 @@ Deze front-end only webgebaseerde tool helpt gebruikers om data vanuit een exter
 * Gebruik van EntitySchema regels (vereiste bronnen, types)
 * EntitySchema als hoofdbron voor validatie, niet alleen Wikidata properties
 
+### 4.5 De verschillende modals
+Een modal is binnen de website een soort schermpje wat opent en over de rest heen ligt. Dit wordt gebruikt voor focus.
+1. Mapping Modal: Een modal om de individuele mappings toevoegen.
+2. Reconciliation Modal: Een modal om de individuele reconciliation te doen.
+3. Info Modal: Een modal om meer infromatie te geven over de tool. Een soort Help center.
+
 ## 5. Suggestie- en matchinglogica (#Suggesties #Wikidata #EntitySchema #Reconciliation #Functionaliteit)
 
 * Matching via Reconciliation API.
@@ -236,6 +242,90 @@ Deze front-end only webgebaseerde tool helpt gebruikers om data vanuit een exter
 
 * Meerdere waardes per key mogelijk (bijv. meerdere acteurs).
 * Duidelijke waarschuwing op homepage dat data alleen lokaal leeft.
-* EntitySchema als hoofdbron voor validatie, niet alleen Wikidata properties.
+* EntitySchema als hoofdbron voor validatie, secondaire: Wikidata propertie requirements.
 * Bronnen, qualifiers en andere metadata worden expliciet ondersteund.
 * Altijd expliciete controle en validatie per item/property.
+
+Ik zal een nieuw kopje voor het MVP in het SPECS document voor je maken. Hierbij focus ik op de cruciale functionaliteiten versus de "nice-to-have" features voor latere implementatie.
+
+## 12. Minimum Viable Product (MVP)
+
+### 12.1 Cruciale Functionaliteiten (MVP)
+
+#### Algemeen
+- Front-end only applicatie zonder backend of gegevensopslag
+- De vijf hoofdstappen als checkout-achtige navigatie bovenaan
+- Duidelijke waarschuwing over dataverlies bij vernieuwen van de pagina
+
+#### Stap 1: Input
+- API-endpoint configuratie door middel van complete URL inclusief parameters
+- Link naar de ruwe json data
+
+#### Stap 2: Mapping
+- Drie collapsible secties: Non-linked, Mapped, en Ignored keys
+- Mapping-modal met autosuggesties en Wikidata property zoekfunctie
+- hardcoded Entity Schema
+
+#### Stap 3: Reconciliation
+- Basis reconciliation-tabel (items als rijen, properties als kolommen)
+- Modal voor reconciliation per rij en per cel
+- Zoekfunctie voor manuele Q-selectie
+- Ondersteuning voor multiple-value properties
+
+#### Stap 4: Wikidata Designer
+- een vaste voorbeeld item
+- bronen toevoegen
+- Wikidata-preview stijl weergave van items
+
+#### Stap 5: Export
+- Export naar QuickStatements formaat
+- Kopieerfunctie voor QuickStatements
+- Basale instrucites voor gebruik van QuickStatements
+
+### 12.2 Functionaliteiten voor Latere Implementatie
+
+#### Algemeen
+- Persistente workflow-object in geheugen met handmatige download/export mogelijkheid
+- Keyboard-navigatie (pijltjes, Tab, Enter, Esc) en letter-sneltoetsen
+- Gedetailleerde voortgangsindicatoren per stap
+- Uitgebreid info-modal systeem met zoekfunctionaliteit
+- Community-reuse van bekende mappings via GitHub
+- Universele info-modal trigger voor snel opzoeken van hulpartikelen
+
+#### Stap 1: Input
+- API-endpoint configuratie met basis paginering
+- Basale weergave van linked-open-data met "Toon ruwe JSON" knop
+- Duidelijke gebruikersinstructies en contextgevoelige hulp
+- Advanced API parameters
+- Uitgebreide JSON-viewer met uitklapbare secties
+- Geavanceerde preview-functionaliteit voor JSON-structuur
+
+#### Stap 2: Mapping
+- Mogelijkheid om Entity Schema te selecteren en te tonen
+- Automatische detectie van ignored keys (custom velden zonder LOD-link)
+- Automatische suggestie van mappings tussen Entity Schema en LOD schema
+- Mogelijkheid om frequentiegebaseerde suggesties op te halen via SPARQL
+
+#### Stap 3: Reconciliation
+- Automatische herkenning van veldtype op basis van property restricties
+- Reconciliation API voor Q-matches
+- Contextuele suggesties op basis van eerder ingevulde waarden
+- Mogelijkheid om "Keep for later" status toe te wijzen aan properties
+- Kolom-gebaseerde workflow tijdens reconciliation
+- Mogelijkheid om nieuwe Wikidata-items aan te maken
+
+#### Stap 4: Wikidata Designer
+- Validatie op basis van Entity Schema en Property restricties
+- Ondersteuning voor complexe qualifier-structuren
+- Geavanceerde bronvermeldingssysteem met hergebruikfunctionaliteit
+- Live update van voorbeelditem in Wikidata Designer
+
+#### Stap 5: Export
+- Geavanceerde exportopties
+- Integratie met andere Wikidata-tools
+- Demo-video's en uitgebreide documentatie
+
+#### Onderzoek & Automatisering
+- Geautomatiseerde alignment tussen resource templates en entity schema's
+- Opslaan en delen van bekende mappings in openbare git-file
+- Uitbreiden van de SPARQL-queries voor betere suggesties
