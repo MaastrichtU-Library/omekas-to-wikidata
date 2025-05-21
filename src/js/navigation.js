@@ -1,13 +1,16 @@
 /**
  * Handles step navigation and progress tracking for the application workflow
+ * Separates navigation logic from UI manipulation
  * @module navigation
  * @param {Object} state - Application state manager
  * @returns {Object} Navigation API with methods to control step navigation
  */
+import { eventSystem } from './events.js';
+import { setupNavigationUI } from './ui/navigation-ui.js';
+
 export function setupNavigation(state) {
-    const steps = document.querySelectorAll('.step');
-    const stepContents = document.querySelectorAll('.step-content');
-    const progressBar = document.querySelector('.progress');
+    // Set up the UI component
+    const navigationUI = setupNavigationUI();
     
     // Navigation buttons
     const proceedToMappingBtn = document.getElementById('proceed-to-mapping');
@@ -20,10 +23,12 @@ export function setupNavigation(state) {
     const backToDesignerBtn = document.getElementById('back-to-designer');
     const startNewProjectBtn = document.getElementById('start-new-project');
     
-    // Use test mode from state
+    // Step indicator elements
+    const steps = document.querySelectorAll('.step');
+    
+    // Initialize with current state
     let testMode = state.isTestMode();
-    console.log('Navigation initialized with testMode:', testMode);
-
+    
     /**
      * Navigates to a specific step in the workflow
      * @param {number} stepNumber - The step number to navigate to (1-5)
@@ -31,28 +36,9 @@ export function setupNavigation(state) {
     function navigateToStep(stepNumber) {
         if (stepNumber < 1 || stepNumber > 5) return;
         
-        // Update state
+        // Update state (this will trigger STEP_CHANGED event)
         state.setCurrentStep(stepNumber);
         
-        // Update UI
-        steps.forEach(step => {
-            step.classList.remove('active');
-            step.classList.remove('step--active');
-        });
-        
-        stepContents.forEach(content => {
-            content.classList.remove('active');
-        });
-        
-        const targetStep = document.querySelector(`.step[data-step="${stepNumber}"]`);
-        targetStep.classList.add('active');
-        targetStep.classList.add('step--active');
-        document.getElementById(`step${stepNumber}`).classList.add('active');
-        
-        // Update progress bar
-        const progressPercentage = ((stepNumber - 1) / 4) * 100;
-        progressBar.style.width = `${progressPercentage}%`;
-
         // In test mode, mark all steps up to current as completed
         if (testMode && stepNumber > state.getHighestCompletedStep()) {
             for (let i = 1; i < stepNumber; i++) {
@@ -60,237 +46,178 @@ export function setupNavigation(state) {
             }
         }
     }
-
+    
     /**
-     * Updates UI and functionality based on current test mode status
-     * Enables or disables buttons and adds visual indicators for test mode
+     * Requests navigation to the next step with validation
+     * @param {number} currentStep - The current step number
      */
-    function updateTestModeStatus() {
-        // In test mode, ensure all step buttons are clickable by adding a visual indicator
+    function requestNextStep(currentStep) {
+        const nextStep = currentStep + 1;
+        if (nextStep > 5) return;
+        
+        // In test mode, bypass validation
+        if (testMode) {
+            state.completeStep(currentStep);
+            navigateToStep(nextStep);
+            return;
+        }
+        
+        // Validate current step before proceeding
+        if (state.validateStep(currentStep)) {
+            state.completeStep(currentStep);
+            navigateToStep(nextStep);
+        }
+    }
+    
+    /**
+     * Requests navigation to the previous step
+     * @param {number} currentStep - The current step number
+     */
+    function requestPreviousStep(currentStep) {
+        const previousStep = currentStep - 1;
+        if (previousStep < 1) return;
+        
+        navigateToStep(previousStep);
+    }
+    
+    /**
+     * Toggles test mode
+     */
+    function toggleTestMode() {
+        testMode = !testMode;
+        state.setTestMode(testMode);
+    }
+    
+    // Set up event listeners for navigation elements
+    function setupEventListeners() {
+        // Enable step navigation by clicking on step indicators
         steps.forEach(step => {
-            if (testMode) {
-                step.classList.add('test-mode-enabled');
-            } else {
-                step.classList.remove('test-mode-enabled');
-            }
-        });
-        
-        // Update button states based on test mode
-        if (testMode) {
-            // Enable all navigation buttons in test mode
-            [proceedToMappingBtn, proceedToReconciliationBtn, proceedToDesignerBtn, proceedToExportBtn].forEach(btn => {
-                if (btn) {
-                    btn.disabled = false;
+            // Track double-click timing
+            let lastClickTime = 0;
+            
+            step.addEventListener('click', (event) => {
+                const stepNumber = parseInt(step.getAttribute('data-step'));
+                const currentTime = new Date().getTime();
+                const timeSinceLastClick = currentTime - lastClickTime;
+                const isDoubleClick = timeSinceLastClick < 300; // 300ms threshold for double click
+                
+                lastClickTime = currentTime;
+                
+                // Toggle test mode with Control+Click or Command+Click on any step
+                if (event.ctrlKey || event.metaKey) {
+                    toggleTestMode();
+                    return;
                 }
-            });
-        } else {
-            // In normal mode, disable buttons based on validation state
-            if (proceedToMappingBtn) proceedToMappingBtn.disabled = !state.validateStep(1);
-            if (proceedToReconciliationBtn) proceedToReconciliationBtn.disabled = !state.validateStep(2);
-            if (proceedToDesignerBtn) proceedToDesignerBtn.disabled = !state.validateStep(3);
-            if (proceedToExportBtn) proceedToExportBtn.disabled = !state.validateStep(4);
-        }
-        
-        // Remove old test mode indicator if it exists
-        const oldIndicator = document.getElementById('test-mode-indicator');
-        if (oldIndicator) {
-            document.body.removeChild(oldIndicator);
-        }
-        
-        // Add or remove test mode class on the body
-        if (testMode) {
-            document.body.classList.add('test-mode-active');
-            
-            // Create small green indicator in the top right corner
-            const indicator = document.createElement('div');
-            indicator.id = 'test-mode-indicator';
-            indicator.textContent = 'Test Mode';
-            indicator.style.position = 'fixed';
-            indicator.style.top = '10px';
-            indicator.style.right = '10px';
-            indicator.style.backgroundColor = '#4caf50'; // Green background
-            indicator.style.color = 'white';
-            indicator.style.padding = '5px 10px';
-            indicator.style.fontSize = '12px';
-            indicator.style.fontWeight = 'bold';
-            indicator.style.borderRadius = '4px';
-            indicator.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-            indicator.style.zIndex = '1000';
-            document.body.appendChild(indicator);
-        } else {
-            document.body.classList.remove('test-mode-active');
-        }
-    }
-    
-    // Initialize test mode UI
-    updateTestModeStatus();
-    
-    // Enable step navigation by clicking on step indicators
-    steps.forEach(step => {
-        // Track double-click timing
-        let lastClickTime = 0;
-        
-        step.addEventListener('click', (event) => {
-            console.log('Step clicked:', step.getAttribute('data-step'), 'Event target:', event.target.tagName);
-            
-            const stepNumber = parseInt(step.getAttribute('data-step'));
-            const currentTime = new Date().getTime();
-            const timeSinceLastClick = currentTime - lastClickTime;
-            const isDoubleClick = timeSinceLastClick < 300; // 300ms threshold for double click
-            
-            console.log('Click timing:', {
-                timeSinceLastClick,
-                isDoubleClick
-            });
-            
-            lastClickTime = currentTime;
-            
-            // Toggle test mode with Control+Click or Command+Click on any step
-            if (event.ctrlKey || event.metaKey) {
-                testMode = !testMode;
-                state.setTestMode(testMode);
-                updateTestModeStatus();
-                return;
-            }
-            
-            // Alternative: Toggle test mode with double-click on any step
-            if (isDoubleClick) {
-                testMode = !testMode;
-                state.setTestMode(testMode);
-                updateTestModeStatus();
-                return;
-            }
-            
-            // Normal navigation behavior
-            if (testMode) {
-                // In test mode, allow navigation to any step
-                navigateToStep(stepNumber);
-            } else {
-                // Normal behavior: Only allow navigation to steps that are already completed or the current step + 1
-                if (stepNumber <= state.getHighestCompletedStep() + 1) {
+                
+                // Alternative: Toggle test mode with double-click on any step
+                if (isDoubleClick) {
+                    toggleTestMode();
+                    return;
+                }
+                
+                // Normal navigation behavior
+                if (testMode) {
+                    // In test mode, allow navigation to any step
                     navigateToStep(stepNumber);
+                } else {
+                    // Normal behavior: Only allow navigation to steps that are already completed or the current step + 1
+                    if (stepNumber <= state.getHighestCompletedStep() + 1) {
+                        navigateToStep(stepNumber);
+                    }
                 }
-            }
+            });
         });
-    });
-
-    // Step navigation button handlers
-    if (proceedToMappingBtn) {
-        proceedToMappingBtn.addEventListener('click', () => {
-            // In test mode, bypass validation
-            if (testMode) {
-                state.completeStep(1);
-                navigateToStep(2);
-            } else {
-                // Validate step 1 before proceeding
-                if (state.validateStep(1)) {
-                    state.completeStep(1);
-                    navigateToStep(2);
-                }
-            }
-        });
-    }
-
-    if (backToInputBtn) {
-        backToInputBtn.addEventListener('click', () => {
-            navigateToStep(1);
-        });
-    }
-
-    if (proceedToReconciliationBtn) {
-        proceedToReconciliationBtn.addEventListener('click', () => {
-            // In test mode, bypass validation
-            if (testMode) {
-                state.completeStep(2);
-                navigateToStep(3);
-            } else {
-                // Validate step 2 before proceeding
-                if (state.validateStep(2)) {
-                    state.completeStep(2);
-                    navigateToStep(3);
-                }
-            }
-        });
-    }
-
-    if (backToMappingBtn) {
-        backToMappingBtn.addEventListener('click', () => {
-            navigateToStep(2);
-        });
-    }
-
-    if (proceedToDesignerBtn) {
-        proceedToDesignerBtn.addEventListener('click', () => {
-            // In test mode, bypass validation
-            if (testMode) {
-                state.completeStep(3);
-                navigateToStep(4);
-            } else {
-                // Validate step 3 before proceeding
-                if (state.validateStep(3)) {
-                    state.completeStep(3);
-                    navigateToStep(4);
-                }
-            }
-        });
-    }
-
-    if (backToReconciliationBtn) {
-        backToReconciliationBtn.addEventListener('click', () => {
-            navigateToStep(3);
-        });
-    }
-
-    if (proceedToExportBtn) {
-        proceedToExportBtn.addEventListener('click', () => {
-            // In test mode, bypass validation
-            if (testMode) {
-                state.completeStep(4);
-                navigateToStep(5);
-            } else {
-                // Validate step 4 before proceeding
-                if (state.validateStep(4)) {
-                    state.completeStep(4);
-                    navigateToStep(5);
-                }
-            }
-        });
-    }
-
-    if (backToDesignerBtn) {
-        backToDesignerBtn.addEventListener('click', () => {
-            navigateToStep(4);
-        });
-    }
-
-    if (startNewProjectBtn) {
-        startNewProjectBtn.addEventListener('click', () => {
-            if (confirm('Starting a new project will clear all current data. Are you sure?')) {
-                state.resetState();
-                navigateToStep(1);
-            }
-        });
-    }
-
-    // Add keyboard navigation (arrow keys)
-    document.addEventListener('keydown', (event) => {
-        const currentStep = state.getCurrentStep();
-        
-        if (event.key === 'ArrowRight' && currentStep < 5) {
-            // In test mode, allow navigation to any step with arrow keys
-            if (testMode) {
-                navigateToStep(currentStep + 1);
-            } else {
-                // Normal behavior: Check if we can proceed to the next step
-                if (currentStep <= state.getHighestCompletedStep()) {
-                    navigateToStep(currentStep + 1);
-                }
-            }
-        } else if (event.key === 'ArrowLeft' && currentStep > 1) {
-            navigateToStep(currentStep - 1);
+    
+        // Step navigation button handlers
+        if (proceedToMappingBtn) {
+            proceedToMappingBtn.addEventListener('click', () => {
+                requestNextStep(1);
+            });
         }
-    });
-
+    
+        if (backToInputBtn) {
+            backToInputBtn.addEventListener('click', () => {
+                requestPreviousStep(2);
+            });
+        }
+    
+        if (proceedToReconciliationBtn) {
+            proceedToReconciliationBtn.addEventListener('click', () => {
+                requestNextStep(2);
+            });
+        }
+    
+        if (backToMappingBtn) {
+            backToMappingBtn.addEventListener('click', () => {
+                requestPreviousStep(3);
+            });
+        }
+    
+        if (proceedToDesignerBtn) {
+            proceedToDesignerBtn.addEventListener('click', () => {
+                requestNextStep(3);
+            });
+        }
+    
+        if (backToReconciliationBtn) {
+            backToReconciliationBtn.addEventListener('click', () => {
+                requestPreviousStep(4);
+            });
+        }
+    
+        if (proceedToExportBtn) {
+            proceedToExportBtn.addEventListener('click', () => {
+                requestNextStep(4);
+            });
+        }
+    
+        if (backToDesignerBtn) {
+            backToDesignerBtn.addEventListener('click', () => {
+                requestPreviousStep(5);
+            });
+        }
+    
+        if (startNewProjectBtn) {
+            startNewProjectBtn.addEventListener('click', () => {
+                if (confirm('Starting a new project will clear all current data. Are you sure?')) {
+                    state.resetState();
+                    navigateToStep(1);
+                }
+            });
+        }
+    
+        // Add keyboard navigation (arrow keys)
+        document.addEventListener('keydown', (event) => {
+            const currentStep = state.getCurrentStep();
+            
+            if (event.key === 'ArrowRight' && currentStep < 5) {
+                // In test mode, allow navigation to any step with arrow keys
+                if (testMode) {
+                    navigateToStep(currentStep + 1);
+                } else {
+                    // Normal behavior: Check if we can proceed to the next step
+                    if (currentStep <= state.getHighestCompletedStep()) {
+                        navigateToStep(currentStep + 1);
+                    }
+                }
+            } else if (event.key === 'ArrowLeft' && currentStep > 1) {
+                navigateToStep(currentStep - 1);
+            }
+        });
+        
+        // Subscribe to state events that affect navigation
+        eventSystem.subscribe(eventSystem.Events.UI_TEST_MODE_CHANGED, (data) => {
+            testMode = data.newMode;
+        });
+    }
+    
+    // Initialize
+    setupEventListeners();
+    
+    // Initialize UI with current state
+    navigationUI.updateStepUI(state.getCurrentStep());
+    navigationUI.updateTestModeUI(testMode);
+    
     // Return the navigation API so it can be used by other modules
     return {
         /**
@@ -300,22 +227,38 @@ export function setupNavigation(state) {
         navigateToStep,
         
         /**
+         * Request navigation to the next step with validation
+         * @param {number} currentStep - The current step number
+         */
+        requestNextStep,
+        
+        /**
+         * Request navigation to the previous step
+         * @param {number} currentStep - The current step number
+         */
+        requestPreviousStep,
+        
+        /**
          * Gets the current test mode status
          * @returns {boolean} True if test mode is enabled
          */
-        getTestMode: () => {
-            testMode = state.isTestMode(); // Sync with state
-            return testMode;
-        },
+        getTestMode: () => testMode,
         
         /**
-         * Sets the test mode status and updates UI accordingly
+         * Sets the test mode status
          * @param {boolean} mode - True to enable test mode, false to disable
          */
         setTestMode: (mode) => {
-            testMode = !!mode;
-            state.setTestMode(testMode);
-            updateTestModeStatus();
-        }
+            const newMode = !!mode;
+            if (testMode !== newMode) {
+                testMode = newMode;
+                state.setTestMode(newMode);
+            }
+        },
+        
+        /**
+         * Toggles test mode
+         */
+        toggleTestMode
     };
 }

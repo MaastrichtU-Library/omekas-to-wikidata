@@ -1,9 +1,12 @@
 /**
  * State management for the application.
  * Maintains the application state and provides methods to access and update it.
+ * Uses the event system to notify other modules of state changes.
  * @module state
  * @returns {Object} State management API with methods for state manipulation
  */
+import { eventSystem } from './events.js';
+
 export function setupState() {
     // Initial state
     const initialState = {
@@ -56,20 +59,74 @@ export function setupState() {
     }
     
     /**
+     * Updates part of the state
+     * @param {string} path - Dot-notation path to the state property to update (e.g., 'mappings.nonLinkedKeys')
+     * @param {any} value - New value to set
+     * @param {boolean} markUnsaved - Whether to mark state as having unsaved changes (default: true)
+     */
+    function updateState(path, value, markUnsaved = true) {
+        // Split the path by dots
+        const pathParts = path.split('.');
+        
+        // Start at the root of the state
+        let current = state;
+        
+        // Navigate to the nested property (all except the last part)
+        for (let i = 0; i < pathParts.length - 1; i++) {
+            if (current[pathParts[i]] === undefined) {
+                current[pathParts[i]] = {};
+            }
+            current = current[pathParts[i]];
+        }
+        
+        // Set the value at the final property
+        const finalProperty = pathParts[pathParts.length - 1];
+        const oldValue = current[finalProperty];
+        current[finalProperty] = value;
+        
+        // Mark changes as unsaved if needed
+        if (markUnsaved) {
+            state.hasUnsavedChanges = true;
+        }
+        
+        // Notify listeners of the state change
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path,
+            oldValue,
+            newValue: value
+        });
+    }
+    
+    /**
      * Replaces the entire state with a new state object
      * @param {Object} newState - The new state to set
      */
     function setState(newState) {
+        const oldState = JSON.parse(JSON.stringify(state));
         state = JSON.parse(JSON.stringify(newState));
         state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the complete state change
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: '',
+            oldValue: oldState,
+            newValue: state
+        });
     }
     
     /**
      * Resets the state to the initial default values
      */
     function resetState() {
+        const oldState = JSON.parse(JSON.stringify(state));
         state = JSON.parse(JSON.stringify(initialState));
         state.hasUnsavedChanges = false;
+        
+        // Notify listeners of the state reset
+        eventSystem.publish(eventSystem.Events.STATE_RESET, {
+            oldState,
+            newState: state
+        });
     }
     
     /**
@@ -85,7 +142,16 @@ export function setupState() {
      * @param {number} step - The step number to set as current (1-5)
      */
     function setCurrentStep(step) {
+        if (step < 1 || step > 5 || step === state.currentStep) return;
+        
+        const oldStep = state.currentStep;
         state.currentStep = step;
+        
+        // Notify listeners of the step change
+        eventSystem.publish(eventSystem.Events.STEP_CHANGED, {
+            oldStep,
+            newStep: step
+        });
     }
     
     /**
@@ -101,9 +167,17 @@ export function setupState() {
      * @param {number} step - The step number to mark as completed
      */
     function completeStep(step) {
-        if (step > state.highestCompletedStep) {
-            state.highestCompletedStep = step;
-        }
+        if (step <= state.highestCompletedStep) return;
+        
+        const oldHighestStep = state.highestCompletedStep;
+        state.highestCompletedStep = step;
+        
+        // Notify listeners of the step completion
+        eventSystem.publish(eventSystem.Events.STEP_COMPLETED, {
+            step,
+            oldHighestStep,
+            newHighestStep: step
+        });
     }
     
     /**
@@ -118,6 +192,8 @@ export function setupState() {
      * Marks all changes as saved
      */
     function markChangesSaved() {
+        if (!state.hasUnsavedChanges) return;
+        
         state.hasUnsavedChanges = false;
     }
     
@@ -125,6 +201,8 @@ export function setupState() {
      * Marks that there are unsaved changes in the state
      */
     function markChangesUnsaved() {
+        if (state.hasUnsavedChanges) return;
+        
         state.hasUnsavedChanges = true;
     }
     
@@ -134,6 +212,22 @@ export function setupState() {
      * @returns {boolean} True if the step is complete with all required data
      */
     function validateStep(step) {
+        const result = _validateStepInternal(step);
+        
+        // Publish validation result
+        eventSystem.publish(
+            result ? eventSystem.Events.VALIDATION_SUCCEEDED : eventSystem.Events.VALIDATION_FAILED, 
+            { step, result }
+        );
+        
+        return result;
+    }
+    
+    /**
+     * Internal step validation logic
+     * @private
+     */
+    function _validateStepInternal(step) {
         switch (step) {
             case 1:
                 return !!state.fetchedData && !!state.selectedExample;
@@ -156,6 +250,10 @@ export function setupState() {
     function exportState() {
         const exportData = JSON.parse(JSON.stringify(state));
         exportData.exportTimestamp = new Date().toISOString();
+        
+        // Notify listeners of the state export
+        eventSystem.publish(eventSystem.Events.STATE_EXPORTED, { exportData });
+        
         return exportData;
     }
     
@@ -173,9 +271,17 @@ export function setupState() {
                 throw new Error('Invalid state format');
             }
             
+            const oldState = JSON.parse(JSON.stringify(state));
+            
             // Update state
             state = importedState;
             state.hasUnsavedChanges = false;
+            
+            // Notify listeners of the state import
+            eventSystem.publish(eventSystem.Events.STATE_IMPORTED, {
+                oldState,
+                newState: state
+            });
             
             return true;
         } catch (error) {
@@ -197,13 +303,25 @@ export function setupState() {
      * @param {boolean} mode - True to enable test mode, false to disable
      */
     function setTestMode(mode) {
-        state.testMode = !!mode;
+        const oldMode = state.testMode;
+        const newMode = !!mode;
+        
+        if (oldMode === newMode) return;
+        
+        state.testMode = newMode;
+        
+        // Notify listeners of the test mode change
+        eventSystem.publish(eventSystem.Events.UI_TEST_MODE_CHANGED, {
+            oldMode,
+            newMode
+        });
     }
     
     // API for state management
     return {
         getState,
         setState,
+        updateState,
         resetState,
         getCurrentStep,
         setCurrentStep,
