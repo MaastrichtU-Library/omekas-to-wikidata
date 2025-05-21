@@ -1,0 +1,78 @@
+{
+    "datasources": {
+        "RawOmekasApiRespons": [ // array in case of pagination
+            {
+                "url": "https://omeka.example.com/api/items/1", //complete url with query params
+                "size": 0, //used to deside if the data can be kept or should be let go because of size.
+                "RawResponsData": {} // the data that is returned from the API.
+            }
+        ],
+        "RawWikidataEntitySchemas": [ // array for the different schemas used.
+            {
+                "id": "E473", // This should be a "E473" like number
+                "label": "individual copy of a book - Maastricht University Library", // label of the schema form wikidata
+                "description": "schema to describe a single unique copy, or exemplar, of a book, in the collections of Maastricht University Library", // description of the schema form wikidata
+                "url": "https://www.wikidata.org/wiki/EntitySchema:E473", // url of the schema form wikidata
+            }
+        ]
+    },
+    "inputStep": {
+        "UiInput": [
+            {
+                "elementID": "input1", // id of the input element
+                "elementValue": "value1", // value of the input element
+            }
+        ]
+    },
+    "MappingStep": {
+        "UiInput": [
+            {
+                "elementID": "input1", // id of the input element
+                "elementValue": "value1", // value of the input element
+            }
+        ]
+        // this should host:
+        // - the generated lsit of properties from:
+        //    - Entety schema
+        //    - Omeka API data Keys
+        // - Keys from the Omeka API data:
+        //    - the keys that are used in the API data
+        //    - boolean for ignored status or not
+        //    - boolean if the key is used in the mapping
+        // - for every property: (this should be populated by Entety schema, Open schemas from OmekaS that match to wikidata properties, frequently used properties from user defined collection(or ther property value pair), user input)
+        //    - its origins (like entety schema, Open schemas that match to wikidata properties, user input)
+        // - mapped keys to properties:
+        //    - the keys that are used in the API data
+        //    - property that is mapped to
+
+
+    },
+    "reconciliationStep": {
+        "UiInput": [
+            {
+                "elementID": "input1", // id of the input element
+                "elementValue": "value1", // value of the input element
+            }
+        ]
+                // this should host: every cell can be an array, reconciliation API comes with suggestions that should be saved, values, 
+
+    },
+    "DesignStep": {
+        "UiInput": [
+            {
+                "elementID": "input1", // id of the input element
+                "elementValue": "value1", // value of the input element
+            }
+        ]
+        // this should host: sources, qualifiers, ...
+    },
+    "exportStep": {
+        "UiInput": [
+            {
+                "elementID": "input1", // id of the input element
+                "elementValue": "value1", // value of the input element
+            }
+        ]
+        // this should host: raw QuickStatements code, ... 
+    }
+}
