@@ -1,0 +1,52 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  padding: 0;
+  margin: 0;
+}
+
+header {
+  background-color: #f4f4f4;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+#mocha {
+  margin: 0 1rem;
+}
+
+/* Override Mocha styles for better readability */
+#mocha .test.pass::before {
+  color: #00c851;
+}
+
+#mocha .test.fail::before {
+  color: #ff4444;
+}
+
+#mocha .test pre {
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+#mocha-stats {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+}
+
+/* Test DOM should be hidden */
+#test-area {
+  position: absolute;
+  left: -9999px;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
