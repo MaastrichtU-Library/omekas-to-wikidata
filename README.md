@@ -9,8 +9,8 @@ Developed as part of the 2025 project "Open Topstukken" ("Open Collection Highli
 - [development version](https://maastrichtu-library.github.io/omekas-to-wikidata/dev)
 - old prototypes:
     - [Original prototype](https://maastrichtu-library.github.io/omekas-to-wikidata/dev/prototypes/index.html)
-    - [Mapping] (https://maastrichtu-library.github.io/omekas-to-wikidata/dev/prototypes/map.html)
-    - [Reconciliation] (https://maastrichtu-library.github.io/omekas-to-wikidata/dev/prototypes/wikimedia-reconciliation.html)
+    - [Mapping](https://maastrichtu-library.github.io/omekas-to-wikidata/dev/prototypes/map.html)
+    - [Reconciliation](https://maastrichtu-library.github.io/omekas-to-wikidata/dev/prototypes/wikimedia-reconciliation.html)
 
 # Links
 [Wikidata Project Page](https://www.wikidata.org/wiki/Wikidata:WikiProject_Open_Topstukken_Maastricht_University_and_Radboud_University)
