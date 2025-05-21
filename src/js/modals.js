@@ -1,5 +1,6 @@
 /**
  * Handles modal functionality for the application
+ * Provides methods for opening and closing modals, as well as pre-defined modal templates
  */
 export function setupModals(state) {
     const modalContainer = document.getElementById('modal-container');
@@ -8,7 +9,9 @@ export function setupModals(state) {
     const modalFooter = document.getElementById('modal-footer');
     const closeModalBtn = document.getElementById('close-modal');
     
-    // Simple function to close the modal
+    /**
+     * Closes the current modal
+     */
     function closeModal() {
         if (modalContainer) {
             // Important: Set the style directly instead of using classList
@@ -22,7 +25,12 @@ export function setupModals(state) {
     }
     
     /**
-     * Open a modal with the given content
+     * Opens a modal with the given content
+     * @param {string} title - The title of the modal
+     * @param {string|HTMLElement} content - The content to display in the modal
+     * @param {Array} buttons - Array of button configurations
+     * @param {Function} onClose - Callback to execute when the modal is closed
+     * @returns {Function} Function to close the modal
      */
     function openModal(title, content, buttons = [], onClose = null) {
         // Set title
@@ -46,7 +54,10 @@ export function setupModals(state) {
             buttons.forEach(button => {
                 const btn = document.createElement('button');
                 btn.textContent = button.text;
-                btn.className = button.type === 'primary' ? 'primary-button' : 'secondary-button';
+                // Use both BEM and legacy class names for compatibility
+                btn.className = button.type === 'primary' 
+                    ? 'button button--primary primary-button' 
+                    : 'button button--secondary secondary-button';
                 
                 if (button.keyboardShortcut) {
                     // Add keyboard shortcut indicator
@@ -104,6 +115,85 @@ export function setupModals(state) {
         return handleCloseModal;
     }
     
+    /**
+     * Shows a simple mapping modal with example data structure
+     */
+    function showMappingModal() {
+        const content = `
+            <div class="mapping-model-preview">
+                <div class="model-explanation">
+                    <h4>Mapping Data Structure</h4>
+                    <p>This is a preview of the internal mapping data structure that would be used to map Omeka S properties to Wikidata properties.</p>
+                    <pre class="model-schema">
+{
+  "mappings": {
+    "nonLinkedKeys": ["title", "description", ...],  // Keys that need mapping
+    "mappedKeys": ["creator", ...],                  // Keys already mapped to Wikidata properties
+    "ignoredKeys": ["format", "rights", ...]         // Keys that will be ignored
+  },
+  "wikidataProperties": {
+    "creator": {
+      "property": "P170",
+      "label": "creator",
+      "datatype": "wikibase-item",
+      "reconciliationService": "https://wikidata.reconci.link/en/api"
+    },
+    // Additional mapped properties would appear here
+  }
+}
+                    </pre>
+                </div>
+            </div>
+        `;
+        
+        return openModal('Mapping Data Preview', content, [
+            { text: 'Close', type: 'secondary', callback: closeModal }
+        ]);
+    }
+    
+    /**
+     * Shows a simple reconciliation modal with example data structure
+     */
+    function showReconciliationModal() {
+        const content = `
+            <div class="reconciliation-model-preview">
+                <div class="model-explanation">
+                    <h4>Reconciliation Data Structure</h4>
+                    <p>This is a preview of the internal reconciliation data structure that would be used to match Omeka S values to Wikidata entities.</p>
+                    <pre class="model-schema">
+{
+  "reconciliationProgress": {
+    "total": 10,           // Total number of items to reconcile
+    "completed": 3         // Number of completed reconciliations
+  },
+  "reconciliationData": [
+    {
+      "id": "item1",
+      "properties": {
+        "creator": {
+          "original": "Leonardo da Vinci",
+          "reconciled": {
+            "id": "Q762",
+            "label": "Leonardo da Vinci",
+            "description": "Italian Renaissance polymath",
+            "score": 0.98,
+            "match": true
+          }
+        }
+      }
+    }
+  ]
+}
+                    </pre>
+                </div>
+            </div>
+        `;
+        
+        return openModal('Reconciliation Data Preview', content, [
+            { text: 'Close', type: 'secondary', callback: closeModal }
+        ]);
+    }
+    
     // Setup close button
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', () => {
@@ -125,8 +215,27 @@ export function setupModals(state) {
         modalContainer.style.display = 'none';
     }
     
+    // Set up event listeners for test modal buttons
+    const testMappingBtn = document.getElementById('test-mapping-model');
+    const testReconciliationBtn = document.getElementById('test-reconciliation-model');
+    
+    if (testMappingBtn) {
+        testMappingBtn.addEventListener('click', showMappingModal);
+    }
+    
+    if (testReconciliationBtn) {
+        testReconciliationBtn.addEventListener('click', showReconciliationModal);
+    }
+    
+    // Also create global functions for direct access (helpful for debugging)
+    window.showModalMapping = showMappingModal;
+    window.showModalReconciliation = showReconciliationModal;
+    
+    // Return the modal API so it can be used by other modules
     return {
         openModal,
-        closeModal
+        closeModal,
+        showMappingModal,
+        showReconciliationModal
     };
 }

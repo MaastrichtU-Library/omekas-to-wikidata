@@ -1,3 +1,9 @@
+/**
+ * Main application entry point for the Omeka S to Wikidata Mapping Tool
+ * Initializes all modules and sets up the application workflow
+ * @module app
+ */
+
 // Import modules
 import { setupNavigation } from './navigation.js';
 import { setupState } from './state.js';

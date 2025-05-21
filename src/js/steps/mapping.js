@@ -1,5 +1,6 @@
 /**
  * Handles the Mapping step functionality
+ * Provides UI for mapping Omeka S fields to Wikidata properties
  */
 export function setupMappingStep(state) {
     // Initialize DOM elements
@@ -8,6 +9,7 @@ export function setupMappingStep(state) {
     const mappedKeysList = document.getElementById('mapped-keys');
     const ignoredKeysList = document.getElementById('ignored-keys');
     const proceedToReconciliationBtn = document.getElementById('proceed-to-reconciliation');
+    const testMappingModelBtn = document.getElementById('test-mapping-model');
     
     // When we enter this step, populate the lists
     document.addEventListener('DOMContentLoaded', () => {
@@ -24,6 +26,8 @@ export function setupMappingStep(state) {
         document.getElementById('proceed-to-mapping')?.addEventListener('click', () => {
             populateLists();
         });
+        
+        // Event listener for test modal button is now handled in modals.js
     });
     
     // Entity schema input
@@ -108,8 +112,4 @@ export function setupMappingStep(state) {
         populateLists();
     }
     
-    // Empty function as placeholder - using inline handlers instead
-    function showMappingModelModal() {
-        // This function is not used - we use inline handlers in HTML
-    }
 }

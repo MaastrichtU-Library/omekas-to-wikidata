@@ -1,5 +1,8 @@
 /**
- * Handles step navigation and progress tracking
+ * Handles step navigation and progress tracking for the application workflow
+ * @module navigation
+ * @param {Object} state - Application state manager
+ * @returns {Object} Navigation API with methods to control step navigation
  */
 export function setupNavigation(state) {
     const steps = document.querySelectorAll('.step');
@@ -21,7 +24,10 @@ export function setupNavigation(state) {
     let testMode = state.isTestMode();
     console.log('Navigation initialized with testMode:', testMode);
 
-    // Function to navigate to a specific step
+    /**
+     * Navigates to a specific step in the workflow
+     * @param {number} stepNumber - The step number to navigate to (1-5)
+     */
     function navigateToStep(stepNumber) {
         if (stepNumber < 1 || stepNumber > 5) return;
         
@@ -31,13 +37,16 @@ export function setupNavigation(state) {
         // Update UI
         steps.forEach(step => {
             step.classList.remove('active');
+            step.classList.remove('step--active');
         });
         
         stepContents.forEach(content => {
             content.classList.remove('active');
         });
         
-        document.querySelector(`.step[data-step="${stepNumber}"]`).classList.add('active');
+        const targetStep = document.querySelector(`.step[data-step="${stepNumber}"]`);
+        targetStep.classList.add('active');
+        targetStep.classList.add('step--active');
         document.getElementById(`step${stepNumber}`).classList.add('active');
         
         // Update progress bar
@@ -52,7 +61,10 @@ export function setupNavigation(state) {
         }
     }
 
-    // Function to update UI and functionality based on test mode
+    /**
+     * Updates UI and functionality based on current test mode status
+     * Enables or disables buttons and adds visual indicators for test mode
+     */
     function updateTestModeStatus() {
         // In test mode, ensure all step buttons are clickable by adding a visual indicator
         steps.forEach(step => {
@@ -281,11 +293,25 @@ export function setupNavigation(state) {
 
     // Return the navigation API so it can be used by other modules
     return {
+        /**
+         * Navigate to a specific step
+         * @param {number} stepNumber - The step number to navigate to (1-5)
+         */
         navigateToStep,
+        
+        /**
+         * Gets the current test mode status
+         * @returns {boolean} True if test mode is enabled
+         */
         getTestMode: () => {
             testMode = state.isTestMode(); // Sync with state
             return testMode;
         },
+        
+        /**
+         * Sets the test mode status and updates UI accordingly
+         * @param {boolean} mode - True to enable test mode, false to disable
+         */
         setTestMode: (mode) => {
             testMode = !!mode;
             state.setTestMode(testMode);

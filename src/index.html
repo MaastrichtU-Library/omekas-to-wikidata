@@ -16,25 +16,25 @@
         <!-- Step Navigation -->
         <nav class="steps-navigation">
             <ul>
-                <li class="step active" data-step="1">
-                    <div class="step-number">1</div>
-                    <div class="step-label">Input</div>
+                <li class="step step--active active" data-step="1">
+                    <div class="step__number step-number">1</div>
+                    <div class="step__label step-label">Input</div>
                 </li>
                 <li class="step" data-step="2">
-                    <div class="step-number">2</div>
-                    <div class="step-label">Mapping</div>
+                    <div class="step__number step-number">2</div>
+                    <div class="step__label step-label">Mapping</div>
                 </li>
                 <li class="step" data-step="3">
-                    <div class="step-number">3</div>
-                    <div class="step-label">Reconciliation</div>
+                    <div class="step__number step-number">3</div>
+                    <div class="step__label step-label">Reconciliation</div>
                 </li>
                 <li class="step" data-step="4">
-                    <div class="step-number">4</div>
-                    <div class="step-label">Wikidata Designer</div>
+                    <div class="step__number step-number">4</div>
+                    <div class="step__label step-label">Wikidata Designer</div>
                 </li>
                 <li class="step" data-step="5">
-                    <div class="step-number">5</div>
-                    <div class="step-label">Export</div>
+                    <div class="step__number step-number">5</div>
+                    <div class="step__label step-label">Export</div>
                 </li>
             </ul>
             <div class="progress-bar">
@@ -51,7 +51,7 @@
                     <div class="form-group">
                         <label for="api-url">API URL:</label>
                         <input type="text" id="api-url" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
-                        <button id="fetch-data">Fetch Data</button>
+                        <button id="fetch-data" class="button button--primary primary-button">Fetch Data</button>
                     </div>
                     
                     <details class="advanced-params">
@@ -68,22 +68,22 @@
                     
                     <div id="loading" class="loading">Loading data...</div>
                     
-                    <div class="json-viewer-container">
-                        <div class="json-viewer-header">
+                    <div class="json-viewer json-viewer-container">
+                        <div class="json-viewer__header json-viewer-header">
                             <h3>JSON Preview</h3>
-                            <button id="toggle-json-view" class="toggle-button">Show Raw JSON</button>
+                            <button id="toggle-json-view" class="button button--secondary toggle-button">Show Raw JSON</button>
                         </div>
-                        <div id="json-tree-view" class="json-tree-view">
+                        <div id="json-tree-view" class="json-viewer__tree-view json-tree-view">
                             <p class="placeholder">JSON data will appear here</p>
                         </div>
-                        <div id="raw-json" class="raw-json hidden">
+                        <div id="raw-json" class="json-viewer__raw raw-json hidden">
                             <pre><code id="json-content"></code></pre>
                         </div>
                     </div>
                     
                     <div class="selection-controls">
-                        <button id="select-example" class="secondary-button">Select Example Object</button>
-                        <button id="proceed-to-mapping" class="primary-button" disabled>Continue to Mapping</button>
+                        <button id="select-example" class="button button--secondary secondary-button">Select Example Object</button>
+                        <button id="proceed-to-mapping" class="button button--primary primary-button" disabled>Continue to Mapping</button>
                     </div>
                 </div>
             </section>
@@ -95,7 +95,7 @@
                     <div class="entity-schema-selector">
                         <label for="entity-schema">Entity Schema:</label>
                         <input type="text" id="entity-schema" placeholder="Enter Entity Schema URL or ID">
-                        <button class="edit-button" title="Edit Entity Schema"><span class="icon">✏️</span></button>
+                        <button class="button button--edit edit-button" title="Edit Entity Schema"><span class="icon">✏️</span></button>
                     </div>
                     
                     <div class="key-sections">
@@ -122,9 +122,9 @@
                     </div>
                     
                     <div class="navigation-buttons">
-                        <button id="back-to-input" class="secondary-button">Back to Input</button>
-                        <button id="test-mapping-model" class="test-button test-mode-only" onclick="showSimpleMappingModal()">Test Modal</button>
-                        <button id="proceed-to-reconciliation" class="primary-button" disabled>Continue to Reconciliation</button>
+                        <button id="back-to-input" class="button button--secondary secondary-button">Back to Input</button>
+                        <button id="test-mapping-model" class="button button--test test-button test-mode-only">Test Modal</button>
+                        <button id="proceed-to-reconciliation" class="button button--primary primary-button" disabled>Continue to Reconciliation</button>
                     </div>
                 </div>
             </section>
@@ -155,13 +155,13 @@
                             <span>Progress: </span>
                             <span id="reconciliation-progress">0/0 items reconciled</span>
                         </div>
-                        <button id="reconcile-next" class="primary-button">Reconcile Next Item</button>
+                        <button id="reconcile-next" class="button button--primary primary-button">Reconcile Next Item</button>
                     </div>
                     
                     <div class="navigation-buttons">
-                        <button id="back-to-mapping" class="secondary-button">Back to Mapping</button>
-                        <button id="test-reconciliation-model" class="test-button test-mode-only" onclick="showSimpleReconciliationModal()">Test Modal</button>
-                        <button id="proceed-to-designer" class="primary-button" disabled>Continue to Wikidata Designer</button>
+                        <button id="back-to-mapping" class="button button--secondary secondary-button">Back to Mapping</button>
+                        <button id="test-reconciliation-model" class="button button--test test-button test-mode-only">Test Modal</button>
+                        <button id="proceed-to-designer" class="button button--primary primary-button" disabled>Continue to Wikidata Designer</button>
                     </div>
                 </div>
             </section>
@@ -175,7 +175,7 @@
                         <div class="reference-list" id="reference-list">
                             <p class="placeholder">Add at least one reference before continuing</p>
                         </div>
-                        <button id="add-reference" class="secondary-button">Add Reference</button>
+                        <button id="add-reference" class="button button--secondary secondary-button">Add Reference</button>
                     </div>
                     
                     <div class="example-selector">
@@ -206,8 +206,8 @@
                     </div>
                     
                     <div class="navigation-buttons">
-                        <button id="back-to-reconciliation" class="secondary-button">Back to Reconciliation</button>
-                        <button id="proceed-to-export" class="primary-button" disabled>Continue to Export</button>
+                        <button id="back-to-reconciliation" class="button button--secondary secondary-button">Back to Reconciliation</button>
+                        <button id="proceed-to-export" class="button button--primary primary-button" disabled>Continue to Export</button>
                     </div>
                 </div>
             </section>
@@ -224,21 +224,21 @@
                     
                     <div class="quick-statements-output">
                         <textarea id="quick-statements" readonly rows="10" placeholder="QuickStatements code will appear here"></textarea>
-                        <button id="copy-quick-statements" class="secondary-button">Copy to Clipboard</button>
+                        <button id="copy-quick-statements" class="button button--secondary secondary-button">Copy to Clipboard</button>
                     </div>
                     
                     <div class="json-export">
                         <h3>Save Project Data</h3>
                         <p>Save your work to continue later. Download the JSON file and import it when you return.</p>
                         <div class="export-buttons">
-                            <button id="download-json" class="secondary-button">Download Project JSON</button>
-                            <button id="import-json" class="secondary-button">Import Project</button>
+                            <button id="download-json" class="button button--secondary secondary-button">Download Project JSON</button>
+                            <button id="import-json" class="button button--secondary secondary-button">Import Project</button>
                         </div>
                     </div>
                     
                     <div class="navigation-buttons">
-                        <button id="back-to-designer" class="secondary-button">Back to Wikidata Designer</button>
-                        <button id="start-new-project" class="primary-button">Start New Project</button>
+                        <button id="back-to-designer" class="button button--secondary secondary-button">Back to Wikidata Designer</button>
+                        <button id="start-new-project" class="button button--primary primary-button">Start New Project</button>
                     </div>
                 </div>
             </section>
@@ -261,140 +261,7 @@
         </div>
     </div>
     
-    <!-- Modal Functionality -->
-    <script>
-    // Define these at top level to make them available globally
-    window.showSimpleMappingModal = showSimpleMappingModal;
-    window.showSimpleReconciliationModal = showSimpleReconciliationModal;
-    window.hideModal = hideModal;
-    
-    function showSimpleMappingModal() {
-        // Get the modal container
-        const modalContainer = document.getElementById('modal-container');
-        const modalTitle = document.getElementById('modal-title');
-        const modalContent = document.getElementById('modal-content');
-        const modalFooter = document.getElementById('modal-footer');
-        
-        // Set title
-        if (modalTitle) modalTitle.textContent = 'Mapping Data Preview';
-        
-        // Set content
-        modalContent.innerHTML = `
-            <div class="mapping-model-preview">
-                <div class="model-explanation">
-                    <h4>Mapping Data Structure</h4>
-                    <p>This is a preview of the internal mapping data structure that would be used to map Omeka S properties to Wikidata properties.</p>
-                    <pre class="model-schema">
-{
-  "mappings": {
-    "nonLinkedKeys": ["title", "description", ...],  // Keys that need mapping
-    "mappedKeys": ["creator", ...],                  // Keys already mapped to Wikidata properties
-    "ignoredKeys": ["format", "rights", ...]         // Keys that will be ignored
-  },
-  "wikidataProperties": {
-    "creator": {
-      "property": "P170",
-      "label": "creator",
-      "datatype": "wikibase-item",
-      "reconciliationService": "https://wikidata.reconci.link/en/api"
-    },
-    // Additional mapped properties would appear here
-  }
-}
-                    </pre>
-                </div>
-            </div>
-        `;
-        
-        // Set footer
-        modalFooter.innerHTML = `
-            <button class="secondary-button" onclick="hideModal()">Close</button>
-        `;
-        
-        // Show modal
-        modalContainer.style.display = 'flex';
-    }
-    
-    function showSimpleReconciliationModal() {
-        // Get the modal container
-        const modalContainer = document.getElementById('modal-container');
-        const modalTitle = document.getElementById('modal-title');
-        const modalContent = document.getElementById('modal-content');
-        const modalFooter = document.getElementById('modal-footer');
-        
-        // Set title
-        modalTitle.textContent = 'Reconciliation Data Preview';
-        
-        // Set content
-        modalContent.innerHTML = `
-            <div class="reconciliation-model-preview">
-                <div class="model-explanation">
-                    <h4>Reconciliation Data Structure</h4>
-                    <p>This is a preview of the internal reconciliation data structure that would be used to match Omeka S values to Wikidata entities.</p>
-                    <pre class="model-schema">
-{
-  "reconciliationProgress": {
-    "total": 10,           // Total number of items to reconcile
-    "completed": 3         // Number of completed reconciliations
-  },
-  "reconciliationData": [
-    {
-      "id": "item1",
-      "properties": {
-        "creator": {
-          "original": "Leonardo da Vinci",
-          "reconciled": {
-            "id": "Q762",
-            "label": "Leonardo da Vinci",
-            "description": "Italian Renaissance polymath",
-            "score": 0.98,
-            "match": true
-          }
-        }
-      }
-    }
-  ]
-}
-                    </pre>
-                </div>
-            </div>
-        `;
-        
-        // Set footer
-        modalFooter.innerHTML = `
-            <button class="secondary-button" onclick="hideModal()">Close</button>
-        `;
-        
-        // Show modal
-        modalContainer.style.display = 'flex';
-    }
-    
-    function hideModal() {
-        // Get the modal container
-        const modalContainer = document.getElementById('modal-container');
-        
-        // Hide modal
-        modalContainer.style.display = 'none';
-        
-        // Clear content
-        document.getElementById('modal-title').textContent = '';
-        document.getElementById('modal-content').innerHTML = '';
-        document.getElementById('modal-footer').innerHTML = '';
-    }
-    
-    // Add event listeners when the document is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add event listener to close button
-        document.getElementById('close-modal').addEventListener('click', hideModal);
-        
-        // Close on click outside
-        document.getElementById('modal-container').addEventListener('click', function(e) {
-            if (e.target === this) {
-                hideModal();
-            }
-        });
-    });
-    </script>
+    <!-- Note: Modal functionality has been moved to modals.js -->
 
     <!-- JavaScript -->
     <script src="js/app.js" type="module"></script>

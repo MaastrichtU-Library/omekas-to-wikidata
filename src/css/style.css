@@ -43,6 +43,58 @@ button {
     border: none;
 }
 
+.button {
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    border: none;
+}
+
+.button--primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.button--primary:hover {
+    background-color: #1976d2;
+}
+
+.button--primary:disabled {
+    background-color: #90caf9;
+    cursor: not-allowed;
+}
+
+.button--secondary {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.button--secondary:hover {
+    background-color: #e0e0e0;
+}
+
+.button--test {
+    background-color: var(--success-color);
+    color: white;
+    margin-left: auto;
+    margin-right: 10px;
+}
+
+.button--test:hover {
+    background-color: #388e3c;
+}
+
+.button--edit {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+}
+
+/* Legacy class names for backward compatibility */
 .primary-button {
     background-color: var(--primary-color);
     color: white;
@@ -174,6 +226,33 @@ body.test-mode-active .test-mode-only {
     cursor: pointer;
 }
 
+.step__number {
+    width: 40px;
+    height: 40px;
+    background-color: var(--secondary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.step--active .step__number {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.step__label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.step--active .step__label {
+    color: var(--primary-color);
+}
+
+/* Legacy class names for backward compatibility */
 .step-number {
     width: 40px;
     height: 40px;
@@ -273,6 +352,29 @@ main {
     font-weight: 500;
 }
 
+.json-viewer {
+    margin-top: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.json-viewer__header {
+    padding: 0.5rem 1rem;
+    background-color: var(--secondary-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.json-viewer__tree-view, .json-viewer__raw {
+    padding: 1rem;
+    min-height: 200px;
+    max-height: 400px;
+    overflow: auto;
+}
+
+/* Legacy class names for backward compatibility */
 .json-viewer-container {
     margin-top: 1.5rem;
     border: 1px solid var(--border-color);

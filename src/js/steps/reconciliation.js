@@ -1,5 +1,6 @@
 /**
  * Handles the Reconciliation step functionality
+ * Manages the process of reconciling Omeka S values with Wikidata entities
  */
 export function setupReconciliationStep(state) {
     // Initialize DOM elements
@@ -8,6 +9,7 @@ export function setupReconciliationStep(state) {
     const reconciliationProgress = document.getElementById('reconciliation-progress');
     const reconcileNextBtn = document.getElementById('reconcile-next');
     const proceedToDesignerBtn = document.getElementById('proceed-to-designer');
+    const testReconciliationModelBtn = document.getElementById('test-reconciliation-model');
     
     // Initialize reconciliation data when entering this step
     document.addEventListener('DOMContentLoaded', () => {
@@ -24,6 +26,8 @@ export function setupReconciliationStep(state) {
         document.getElementById('proceed-to-reconciliation')?.addEventListener('click', () => {
             initializeReconciliation();
         });
+        
+        // Event listener for test modal button is now handled in modals.js
     });
     
     // Reconcile next item button
@@ -151,8 +155,4 @@ export function setupReconciliationStep(state) {
         }
     }
     
-    // Empty function as placeholder - using inline handlers instead
-    function showReconciliationModelModal() {
-        // This function is not used - we use inline handlers in HTML
-    }
 }

@@ -1,6 +1,8 @@
 /**
- * State management for the application
- * Maintains the application state and provides methods to access and update it
+ * State management for the application.
+ * Maintains the application state and provides methods to access and update it.
+ * @module state
+ * @returns {Object} State management API with methods for state manipulation
  */
 export function setupState() {
     // Initial state
@@ -45,61 +47,92 @@ export function setupState() {
     // Create a deep copy of the initial state to work with
     let state = JSON.parse(JSON.stringify(initialState));
     
-    // Get state
+    /**
+     * Returns a deep copy of the current state
+     * @returns {Object} Deep copy of the current state
+     */
     function getState() {
         return JSON.parse(JSON.stringify(state));
     }
     
-    // Set full state
+    /**
+     * Replaces the entire state with a new state object
+     * @param {Object} newState - The new state to set
+     */
     function setState(newState) {
         state = JSON.parse(JSON.stringify(newState));
         state.hasUnsavedChanges = true;
     }
     
-    // Reset state to initial
+    /**
+     * Resets the state to the initial default values
+     */
     function resetState() {
         state = JSON.parse(JSON.stringify(initialState));
         state.hasUnsavedChanges = false;
     }
     
-    // Get current step
+    /**
+     * Gets the current active step number
+     * @returns {number} Current step number (1-5)
+     */
     function getCurrentStep() {
         return state.currentStep;
     }
     
-    // Set current step
+    /**
+     * Sets the current active step
+     * @param {number} step - The step number to set as current (1-5)
+     */
     function setCurrentStep(step) {
         state.currentStep = step;
     }
     
-    // Get highest completed step
+    /**
+     * Gets the highest step number that has been completed
+     * @returns {number} Highest completed step number
+     */
     function getHighestCompletedStep() {
         return state.highestCompletedStep;
     }
     
-    // Mark a step as completed
+    /**
+     * Marks a step as completed if it's higher than the current highest completed step
+     * @param {number} step - The step number to mark as completed
+     */
     function completeStep(step) {
         if (step > state.highestCompletedStep) {
             state.highestCompletedStep = step;
         }
     }
     
-    // Check if state has unsaved changes
+    /**
+     * Checks if there are unsaved changes in the state
+     * @returns {boolean} True if there are unsaved changes
+     */
     function hasUnsavedChanges() {
         return state.hasUnsavedChanges;
     }
     
-    // Mark changes as saved
+    /**
+     * Marks all changes as saved
+     */
     function markChangesSaved() {
         state.hasUnsavedChanges = false;
     }
     
-    // Mark that there are unsaved changes
+    /**
+     * Marks that there are unsaved changes in the state
+     */
     function markChangesUnsaved() {
         state.hasUnsavedChanges = true;
     }
     
-    // Validate a step to check if it's complete
+    /**
+     * Validates if a step has all required data to be considered complete
+     * @param {number} step - The step number to validate
+     * @returns {boolean} True if the step is complete with all required data
+     */
     function validateStep(step) {
         switch (step) {
             case 1:
@@ -116,14 +149,21 @@ export function setupState() {
         }
     }
     
-    // Save state to JSON
+    /**
+     * Exports the current state to a serializable object with timestamp
+     * @returns {Object} Current state with added export timestamp
+     */
     function exportState() {
         const exportData = JSON.parse(JSON.stringify(state));
         exportData.exportTimestamp = new Date().toISOString();
         return exportData;
     }
     
-    // Import state from JSON
+    /**
+     * Imports state from a JSON string
+     * @param {string} jsonData - JSON string containing state data
+     * @returns {boolean} True if import was successful, false otherwise
+     */
     function importState(jsonData) {
         try {
             const importedState = JSON.parse(jsonData);
@@ -144,12 +184,18 @@ export function setupState() {
         }
     }
     
-    // Get test mode status
+    /**
+     * Gets the current test mode status
+     * @returns {boolean} True if test mode is enabled
+     */
     function isTestMode() {
         return state.testMode;
     }
     
-    // Set test mode
+    /**
+     * Enables or disables test mode
+     * @param {boolean} mode - True to enable test mode, false to disable
+     */
     function setTestMode(mode) {
         state.testMode = !!mode;
     }
