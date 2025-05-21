@@ -8,86 +8,78 @@ on:
       - main
 
 permissions:
-  contents: write  # allow push via GITHUB_TOKEN
+  contents: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Get full history so we can switch branches & push commits
+      # 1) Grab full history & allow pushes
       - name: Checkout all branches
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
 
-      # 2) Detect current branch name
+      # 2) Extract branch name into an output
       - name: Set branch variable
         id: vars
         run: |
           echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
 
-      # 3) Build / copy `src` into a temp folder
+      # 3) Build (or just copy) your src into a temp location
       - name: Stash build
         run: |
           BRANCH=${{ steps.vars.outputs.branch }}
           TMP=./_temp_docs
+          rm -rf "$TMP"
           mkdir -p "$TMP/$BRANCH"
           cp -R src/* "$TMP/$BRANCH"
 
-      # 4) Check out main
+      # 4) Switch context to main
       - name: Switch to main
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          persist-credentials: true
+        run: git switch main
 
-      # 5) Clean docs/ on main (keep dev & test), or remove old branch folder
-      - name: Clean old artefacts
+      # 5) Clean old docs safely (no errors on unmatched globs)
+      - name: Clean docs directory
         run: |
           BRANCH=${{ steps.vars.outputs.branch }}
-
+          mkdir -p docs
+          shopt -s nullglob
           if [ "$BRANCH" = "main" ]; then
-            # remove everything under docs/ except docs/dev & docs/test
-            for D in docs/*; do
-              NAME=$(basename "$D")
-              if [ "$NAME" != "dev" ] && [ "$NAME" != "test" ]; then
-                rm -rf "docs/$NAME"
+            for path in docs/*; do
+              name=$(basename "$path")
+              if [ "$name" != "dev" ] && [ "$name" != "test" ]; then
+                rm -rf "docs/$name"
               fi
             done
           else
-            rm -rf "docs/$BRANCH"
+            rm -rf "docs/$BRANCH" 2>/dev/null || true
           fi
 
-      # 6) Copy the new build back into docs/
+      # 6) Copy the new build into docs/
       - name: Deploy build into docs
         run: |
           BRANCH=${{ steps.vars.outputs.branch }}
           TMP=./_temp_docs
-
           if [ "$BRANCH" = "main" ]; then
-            # main branch output goes into docs root
             cp -R "$TMP/main/"* docs/
           else
-            # other branches get their own subfolder
             mkdir -p docs/"$BRANCH"
             cp -R "$TMP/$BRANCH/"* docs/"$BRANCH"/
           fi
 
-      # 7) Commit & push only if there are changes
+      # 7) Commit & push only when there are changes
       - name: Commit & Push
         run: |
           BRANCH=${{ steps.vars.outputs.branch }}
           git config user.name  "github-actions"
           git config user.email "github-actions@github.com"
-
           git add docs
-
-          if git diff --cached --exit-code; then
+          if git diff --cached --quiet; then
             echo "🟡 No changes to deploy for branch '$BRANCH'."
           else
-            git commit -m "Deploy ${BRANCH} build"
+            git commit -m "Deploy $BRANCH build"
             git push origin main
           fi
