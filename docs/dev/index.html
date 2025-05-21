@@ -4,54 +4,262 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omeka S to Wikidata</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1, h2 {
-            color: #333;
-        }
-        input {
-            padding: 8px;
-            width: 80%;
-            margin-right: 10px;
-        }
-        button {
-            padding: 8px 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #result {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 20px;
-            background-color: #f9f9f9;
-            white-space: pre-wrap;
-            overflow-x: auto;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
-        .loading {
-            display: none;
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h1>Omeka S to Wikidata</h1>
-    <p>In aanbouw</p>
+    <div class="container">
+        <header>
+            <h1>Omeka S to Wikidata Mapping Tool</h1>
+            <p class="warning">Warning: Page refresh will clear all data. Make sure to export your work!</p>
+        </header>
 
+        <!-- Step Navigation -->
+        <nav class="steps-navigation">
+            <ul>
+                <li class="step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Input</div>
+                </li>
+                <li class="step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Mapping</div>
+                </li>
+                <li class="step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Reconciliation</div>
+                </li>
+                <li class="step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Wikidata Designer</div>
+                </li>
+                <li class="step" data-step="5">
+                    <div class="step-number">5</div>
+                    <div class="step-label">Export</div>
+                </li>
+            </ul>
+            <div class="progress-bar">
+                <div class="progress" style="width: 20%;"></div>
+            </div>
+        </nav>
+
+        <!-- Main Content Container -->
+        <main>
+            <!-- Step 1: Input -->
+            <section id="step1" class="step-content active">
+                <h2>Step 1: Input</h2>
+                <div class="input-container">
+                    <div class="form-group">
+                        <label for="api-url">API URL:</label>
+                        <input type="text" id="api-url" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
+                        <button id="fetch-data">Fetch Data</button>
+                    </div>
+                    
+                    <details class="advanced-params">
+                        <summary>Advanced Parameters</summary>
+                        <div class="form-group">
+                            <label for="api-key">API Key (optional):</label>
+                            <input type="text" id="api-key" placeholder="Enter API key if required">
+                        </div>
+                        <div class="form-group">
+                            <label for="pagination">Pagination:</label>
+                            <input type="number" id="pagination" placeholder="Number of items per page" value="10">
+                        </div>
+                    </details>
+                    
+                    <div id="loading" class="loading">Loading data...</div>
+                    
+                    <div class="json-viewer-container">
+                        <div class="json-viewer-header">
+                            <h3>JSON Preview</h3>
+                            <button id="toggle-json-view" class="toggle-button">Show Raw JSON</button>
+                        </div>
+                        <div id="json-tree-view" class="json-tree-view">
+                            <p class="placeholder">JSON data will appear here</p>
+                        </div>
+                        <div id="raw-json" class="raw-json hidden">
+                            <pre><code id="json-content"></code></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="selection-controls">
+                        <button id="select-example" class="secondary-button">Select Example Object</button>
+                        <button id="proceed-to-mapping" class="primary-button" disabled>Continue to Mapping</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Mapping -->
+            <section id="step2" class="step-content">
+                <h2>Step 2: Mapping</h2>
+                <div class="mapping-container">
+                    <div class="entity-schema-selector">
+                        <label for="entity-schema">Entity Schema:</label>
+                        <input type="text" id="entity-schema" placeholder="Enter Entity Schema URL or ID">
+                        <button class="edit-button" title="Edit Entity Schema"><span class="icon">✏️</span></button>
+                    </div>
+                    
+                    <div class="key-sections">
+                        <details class="section" open>
+                            <summary>Non-linked Keys</summary>
+                            <ul id="non-linked-keys" class="key-list">
+                                <li class="placeholder">Keys will appear here after fetching data</li>
+                            </ul>
+                        </details>
+                        
+                        <details class="section">
+                            <summary>Mapped Keys</summary>
+                            <ul id="mapped-keys" class="key-list">
+                                <li class="placeholder">Mapped keys will appear here</li>
+                            </ul>
+                        </details>
+                        
+                        <details class="section">
+                            <summary>Ignored Keys</summary>
+                            <ul id="ignored-keys" class="key-list">
+                                <li class="placeholder">Ignored keys will appear here</li>
+                            </ul>
+                        </details>
+                    </div>
+                    
+                    <div class="navigation-buttons">
+                        <button id="back-to-input" class="secondary-button">Back to Input</button>
+                        <button id="proceed-to-reconciliation" class="primary-button" disabled>Continue to Reconciliation</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Reconciliation -->
+            <section id="step3" class="step-content">
+                <h2>Step 3: Reconciliation</h2>
+                <div class="reconciliation-container">
+                    <div class="reconciliation-table-container">
+                        <table class="reconciliation-table">
+                            <thead>
+                                <tr id="property-headers">
+                                    <th>Item</th>
+                                    <th class="placeholder">Properties will appear here</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reconciliation-rows">
+                                <tr class="placeholder">
+                                    <td>Item 1</td>
+                                    <td>Values will appear here after mapping</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="reconciliation-controls">
+                        <div class="progress-info">
+                            <span>Progress: </span>
+                            <span id="reconciliation-progress">0/0 items reconciled</span>
+                        </div>
+                        <button id="reconcile-next" class="primary-button">Reconcile Next Item</button>
+                    </div>
+                    
+                    <div class="navigation-buttons">
+                        <button id="back-to-mapping" class="secondary-button">Back to Mapping</button>
+                        <button id="proceed-to-designer" class="primary-button" disabled>Continue to Wikidata Designer</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Wikidata Designer -->
+            <section id="step4" class="step-content">
+                <h2>Step 4: Wikidata Designer</h2>
+                <div class="designer-container">
+                    <div class="reference-section">
+                        <h3>References (Sources)</h3>
+                        <div class="reference-list" id="reference-list">
+                            <p class="placeholder">Add at least one reference before continuing</p>
+                        </div>
+                        <button id="add-reference" class="secondary-button">Add Reference</button>
+                    </div>
+                    
+                    <div class="example-selector">
+                        <label for="example-item">Preview using:</label>
+                        <select id="example-item">
+                            <option value="">Select an item for preview</option>
+                        </select>
+                    </div>
+                    
+                    <div class="designer-layout">
+                        <div class="property-editor">
+                            <h3>Properties</h3>
+                            <div id="property-list" class="property-list">
+                                <p class="placeholder">Properties will appear here after reconciliation</p>
+                            </div>
+                        </div>
+                        
+                        <div class="wikidata-preview">
+                            <h3>Wikidata Preview</h3>
+                            <div id="preview-container" class="preview-container">
+                                <p class="placeholder">Preview will appear here</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="validation-messages" id="validation-messages">
+                        <!-- Validation messages will appear here -->
+                    </div>
+                    
+                    <div class="navigation-buttons">
+                        <button id="back-to-reconciliation" class="secondary-button">Back to Reconciliation</button>
+                        <button id="proceed-to-export" class="primary-button" disabled>Continue to Export</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 5: Export -->
+            <section id="step5" class="step-content">
+                <h2>Step 5: Export</h2>
+                <div class="export-container">
+                    <div class="export-info">
+                        <h3>QuickStatements Export</h3>
+                        <p>QuickStatements is a tool for batch editing Wikidata. Copy the generated code below and paste it into QuickStatements.</p>
+                        <a href="https://www.wikidata.org/wiki/Help:QuickStatements" target="_blank" class="info-link">Learn more about QuickStatements</a>
+                    </div>
+                    
+                    <div class="quick-statements-output">
+                        <textarea id="quick-statements" readonly rows="10" placeholder="QuickStatements code will appear here"></textarea>
+                        <button id="copy-quick-statements" class="secondary-button">Copy to Clipboard</button>
+                    </div>
+                    
+                    <div class="json-export">
+                        <h3>Save Project Data</h3>
+                        <p>Save your work to continue later. Download the JSON file and import it when you return.</p>
+                        <div class="export-buttons">
+                            <button id="download-json" class="secondary-button">Download Project JSON</button>
+                            <button id="import-json" class="secondary-button">Import Project</button>
+                        </div>
+                    </div>
+                    
+                    <div class="navigation-buttons">
+                        <button id="back-to-designer" class="secondary-button">Back to Wikidata Designer</button>
+                        <button id="start-new-project" class="primary-button">Start New Project</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-container" id="modal-container" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="close-button" id="close-modal">×</button>
+            </div>
+            <div class="modal-content" id="modal-content">
+                <!-- Modal content will be inserted here dynamically -->
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <!-- Footer buttons will be inserted here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/app.js" type="module"></script>
 </body>
 </html>
