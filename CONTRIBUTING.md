@@ -1,0 +1,1 @@
+Here should come a text about how to contribute to this project 
