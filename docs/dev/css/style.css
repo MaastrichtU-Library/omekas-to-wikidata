@@ -67,6 +67,17 @@ button {
     background-color: #e0e0e0;
 }
 
+.test-button {
+    background-color: var(--success-color);
+    color: white;
+    margin-left: auto;
+    margin-right: 10px;
+}
+
+.test-button:hover {
+    background-color: #388e3c;
+}
+
 .edit-button {
     background: none;
     border: none;
@@ -130,6 +141,16 @@ header {
 /* Visual indicator for test mode enabled steps */
 .test-mode-enabled .step-number {
     border: 2px dashed var(--success-color);
+}
+
+/* Test mode only elements */
+.test-mode-only {
+    display: none !important;
+}
+
+/* When test mode is active, we'll override the display property */
+body.test-mode-active .test-mode-only {
+    display: inline-block !important;
 }
 
 /* Step Navigation */
@@ -478,6 +499,32 @@ main {
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
+}
+
+/* Model preview styles for test mode */
+.mapping-model-preview, .reconciliation-model-preview {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.model-explanation, .current-mapping-state, .current-reconciliation-state {
+    margin-bottom: 20px;
+}
+
+.model-schema, .current-state-json {
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    font-size: 12px;
+    overflow-x: auto;
+}
+
+.shortcut-hint {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-left: 4px;
 }
 
 /* Responsive */

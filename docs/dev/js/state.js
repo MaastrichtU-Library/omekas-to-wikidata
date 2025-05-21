@@ -8,6 +8,7 @@ export function setupState() {
         currentStep: 1,
         highestCompletedStep: 0,
         hasUnsavedChanges: false,
+        testMode: false,
         
         // Step 1: Input
         apiUrl: '',
@@ -143,6 +144,16 @@ export function setupState() {
         }
     }
     
+    // Get test mode status
+    function isTestMode() {
+        return state.testMode;
+    }
+    
+    // Set test mode
+    function setTestMode(mode) {
+        state.testMode = !!mode;
+    }
+    
     // API for state management
     return {
         getState,
@@ -157,6 +168,8 @@ export function setupState() {
         markChangesUnsaved,
         validateStep,
         exportState,
-        importState
+        importState,
+        isTestMode,
+        setTestMode
     };
 }
