@@ -17,8 +17,8 @@ export function setupNavigation(state) {
     const backToDesignerBtn = document.getElementById('back-to-designer');
     const startNewProjectBtn = document.getElementById('start-new-project');
     
-    // Initialize test mode (default false for production)
-    let testMode = false;
+    // Use test mode from state
+    let testMode = state.isTestMode();
     console.log('Navigation initialized with testMode:', testMode);
 
     // Function to navigate to a specific step
@@ -54,8 +54,6 @@ export function setupNavigation(state) {
 
     // Function to update UI and functionality based on test mode
     function updateTestModeStatus() {
-        console.log('Updating test mode status. Current value:', testMode);
-        
         // In test mode, ensure all step buttons are clickable by adding a visual indicator
         steps.forEach(step => {
             if (testMode) {
@@ -73,16 +71,12 @@ export function setupNavigation(state) {
                     btn.disabled = false;
                 }
             });
-            
-            console.log('⚠️ TEST MODE ENABLED: Step validation is bypassed and all steps are accessible');
         } else {
             // In normal mode, disable buttons based on validation state
             if (proceedToMappingBtn) proceedToMappingBtn.disabled = !state.validateStep(1);
             if (proceedToReconciliationBtn) proceedToReconciliationBtn.disabled = !state.validateStep(2);
             if (proceedToDesignerBtn) proceedToDesignerBtn.disabled = !state.validateStep(3);
             if (proceedToExportBtn) proceedToExportBtn.disabled = !state.validateStep(4);
-            
-            console.log('✅ TEST MODE DISABLED: Step validation is enabled');
         }
         
         // Remove old test mode indicator if it exists
@@ -91,8 +85,10 @@ export function setupNavigation(state) {
             document.body.removeChild(oldIndicator);
         }
         
-        // Only show indicator if test mode is enabled
+        // Add or remove test mode class on the body
         if (testMode) {
+            document.body.classList.add('test-mode-active');
+            
             // Create small green indicator in the top right corner
             const indicator = document.createElement('div');
             indicator.id = 'test-mode-indicator';
@@ -109,6 +105,8 @@ export function setupNavigation(state) {
             indicator.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
             indicator.style.zIndex = '1000';
             document.body.appendChild(indicator);
+        } else {
+            document.body.classList.remove('test-mode-active');
         }
     }
     
@@ -137,16 +135,16 @@ export function setupNavigation(state) {
             
             // Toggle test mode with Control+Click or Command+Click on any step
             if (event.ctrlKey || event.metaKey) {
-                console.log('Modifier key detected: ctrlKey=', event.ctrlKey, 'metaKey=', event.metaKey);
                 testMode = !testMode;
+                state.setTestMode(testMode);
                 updateTestModeStatus();
                 return;
             }
             
             // Alternative: Toggle test mode with double-click on any step
             if (isDoubleClick) {
-                console.log('Double-click detected on step', stepNumber, '- testMode toggled from', testMode, 'to', !testMode);
                 testMode = !testMode;
+                state.setTestMode(testMode);
                 updateTestModeStatus();
                 return;
             }
@@ -284,9 +282,13 @@ export function setupNavigation(state) {
     // Return the navigation API so it can be used by other modules
     return {
         navigateToStep,
-        getTestMode: () => testMode,
+        getTestMode: () => {
+            testMode = state.isTestMode(); // Sync with state
+            return testMode;
+        },
         setTestMode: (mode) => {
             testMode = !!mode;
+            state.setTestMode(testMode);
             updateTestModeStatus();
         }
     };

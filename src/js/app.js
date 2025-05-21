@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize app modules
     const state = setupState();
-    setupNavigation(state);
-    setupModals(state);
+    const navigation = setupNavigation(state);
+    const modals = setupModals(state);
     
     // Initialize steps
     setupInputStep(state);
@@ -28,6 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setupReconciliationStep(state);
     setupDesignerStep(state);
     setupExportStep(state);
+    
+    // Create a global app object to allow modules to access each other
+    window.app = {
+        modules: {
+            state,
+            navigation,
+            modals
+        }
+    };
 
     // Log application start
     console.log('Omeka S to Wikidata Mapping Tool initialized');

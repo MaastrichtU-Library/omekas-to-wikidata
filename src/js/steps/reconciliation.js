@@ -2,6 +2,7 @@
  * Handles the Reconciliation step functionality
  */
 export function setupReconciliationStep(state) {
+    // Initialize DOM elements
     const propertyHeaders = document.getElementById('property-headers');
     const reconciliationRows = document.getElementById('reconciliation-rows');
     const reconciliationProgress = document.getElementById('reconciliation-progress');
@@ -148,5 +149,10 @@ export function setupReconciliationStep(state) {
             state.reconciliationProgress.completed++;
             updateProgressDisplay();
         }
+    }
+    
+    // Empty function as placeholder - using inline handlers instead
+    function showReconciliationModelModal() {
+        // This function is not used - we use inline handlers in HTML
     }
 }

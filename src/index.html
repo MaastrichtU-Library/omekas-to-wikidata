@@ -123,6 +123,7 @@
                     
                     <div class="navigation-buttons">
                         <button id="back-to-input" class="secondary-button">Back to Input</button>
+                        <button id="test-mapping-model" class="test-button test-mode-only" onclick="showSimpleMappingModal()">Test Modal</button>
                         <button id="proceed-to-reconciliation" class="primary-button" disabled>Continue to Reconciliation</button>
                     </div>
                 </div>
@@ -159,6 +160,7 @@
                     
                     <div class="navigation-buttons">
                         <button id="back-to-mapping" class="secondary-button">Back to Mapping</button>
+                        <button id="test-reconciliation-model" class="test-button test-mode-only" onclick="showSimpleReconciliationModal()">Test Modal</button>
                         <button id="proceed-to-designer" class="primary-button" disabled>Continue to Wikidata Designer</button>
                     </div>
                 </div>
@@ -258,6 +260,141 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal Functionality -->
+    <script>
+    // Define these at top level to make them available globally
+    window.showSimpleMappingModal = showSimpleMappingModal;
+    window.showSimpleReconciliationModal = showSimpleReconciliationModal;
+    window.hideModal = hideModal;
+    
+    function showSimpleMappingModal() {
+        // Get the modal container
+        const modalContainer = document.getElementById('modal-container');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        const modalFooter = document.getElementById('modal-footer');
+        
+        // Set title
+        if (modalTitle) modalTitle.textContent = 'Mapping Data Preview';
+        
+        // Set content
+        modalContent.innerHTML = `
+            <div class="mapping-model-preview">
+                <div class="model-explanation">
+                    <h4>Mapping Data Structure</h4>
+                    <p>This is a preview of the internal mapping data structure that would be used to map Omeka S properties to Wikidata properties.</p>
+                    <pre class="model-schema">
+{
+  "mappings": {
+    "nonLinkedKeys": ["title", "description", ...],  // Keys that need mapping
+    "mappedKeys": ["creator", ...],                  // Keys already mapped to Wikidata properties
+    "ignoredKeys": ["format", "rights", ...]         // Keys that will be ignored
+  },
+  "wikidataProperties": {
+    "creator": {
+      "property": "P170",
+      "label": "creator",
+      "datatype": "wikibase-item",
+      "reconciliationService": "https://wikidata.reconci.link/en/api"
+    },
+    // Additional mapped properties would appear here
+  }
+}
+                    </pre>
+                </div>
+            </div>
+        `;
+        
+        // Set footer
+        modalFooter.innerHTML = `
+            <button class="secondary-button" onclick="hideModal()">Close</button>
+        `;
+        
+        // Show modal
+        modalContainer.style.display = 'flex';
+    }
+    
+    function showSimpleReconciliationModal() {
+        // Get the modal container
+        const modalContainer = document.getElementById('modal-container');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        const modalFooter = document.getElementById('modal-footer');
+        
+        // Set title
+        modalTitle.textContent = 'Reconciliation Data Preview';
+        
+        // Set content
+        modalContent.innerHTML = `
+            <div class="reconciliation-model-preview">
+                <div class="model-explanation">
+                    <h4>Reconciliation Data Structure</h4>
+                    <p>This is a preview of the internal reconciliation data structure that would be used to match Omeka S values to Wikidata entities.</p>
+                    <pre class="model-schema">
+{
+  "reconciliationProgress": {
+    "total": 10,           // Total number of items to reconcile
+    "completed": 3         // Number of completed reconciliations
+  },
+  "reconciliationData": [
+    {
+      "id": "item1",
+      "properties": {
+        "creator": {
+          "original": "Leonardo da Vinci",
+          "reconciled": {
+            "id": "Q762",
+            "label": "Leonardo da Vinci",
+            "description": "Italian Renaissance polymath",
+            "score": 0.98,
+            "match": true
+          }
+        }
+      }
+    }
+  ]
+}
+                    </pre>
+                </div>
+            </div>
+        `;
+        
+        // Set footer
+        modalFooter.innerHTML = `
+            <button class="secondary-button" onclick="hideModal()">Close</button>
+        `;
+        
+        // Show modal
+        modalContainer.style.display = 'flex';
+    }
+    
+    function hideModal() {
+        // Get the modal container
+        const modalContainer = document.getElementById('modal-container');
+        
+        // Hide modal
+        modalContainer.style.display = 'none';
+        
+        // Clear content
+        document.getElementById('modal-title').textContent = '';
+        document.getElementById('modal-content').innerHTML = '';
+        document.getElementById('modal-footer').innerHTML = '';
+    }
+    
+    // Add event listeners when the document is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add event listener to close button
+        document.getElementById('close-modal').addEventListener('click', hideModal);
+        
+        // Close on click outside
+        document.getElementById('modal-container').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideModal();
+            }
+        });
+    });
+    </script>
 
     <!-- JavaScript -->
     <script src="js/app.js" type="module"></script>

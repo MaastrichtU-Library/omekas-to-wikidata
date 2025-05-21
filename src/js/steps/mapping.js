@@ -2,6 +2,7 @@
  * Handles the Mapping step functionality
  */
 export function setupMappingStep(state) {
+    // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
     const nonLinkedKeysList = document.getElementById('non-linked-keys');
     const mappedKeysList = document.getElementById('mapped-keys');
@@ -105,5 +106,10 @@ export function setupMappingStep(state) {
         
         // Update UI
         populateLists();
+    }
+    
+    // Empty function as placeholder - using inline handlers instead
+    function showMappingModelModal() {
+        // This function is not used - we use inline handlers in HTML
     }
 }
