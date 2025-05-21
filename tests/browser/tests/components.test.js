@@ -10,9 +10,12 @@ import {
   updateElementContent
 } from '../../../src/js/ui/components.js';
 
+// Use the globally defined test helpers
+const { resetTestDOM, mockEventSystem } = window;
+
 describe('UI Components Module', () => {
   beforeEach(() => {
-    window.resetTestDOM();
+    resetTestDOM();
   });
   
   describe('createElement', () => {

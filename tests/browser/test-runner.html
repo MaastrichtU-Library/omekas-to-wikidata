@@ -90,27 +90,28 @@
     </div>
   </div>
   
+  <!-- Area for test DOM manipulation -->
+  <div id="test-area"></div>
+  
   <!-- Initialize Mocha -->
   <script>
     mocha.setup('bdd');
     const expect = chai.expect;
     
-    // Test helpers
+    // Test helpers - MUST BE DEFINED BEFORE TEST MODULES ARE LOADED
     window.resetTestDOM = function() {
       // Clone the test DOM for each test
       const container = document.getElementById('test-dom-container');
       const testArea = document.getElementById('test-area');
       
       if (testArea) {
-        testArea.remove();
+        testArea.innerHTML = '';
       }
       
-      const newTestArea = document.createElement('div');
-      newTestArea.id = 'test-area';
-      newTestArea.innerHTML = container.innerHTML;
-      document.body.appendChild(newTestArea);
+      const newContent = container.innerHTML;
+      testArea.innerHTML = newContent;
       
-      return newTestArea;
+      return testArea;
     };
     
     // Mock event system
@@ -134,14 +135,12 @@
     };
   </script>
   
-  <!-- Import test modules -->
-  <script type="module" src="tests/components.test.js"></script>
-  <script type="module" src="tests/modal-ui.test.js"></script>
-  <script type="module" src="tests/navigation-ui.test.js"></script>
-  
   <!-- Run the tests -->
   <script type="module">
-    // Run tests when modules have loaded
+    // Import test modules
+    import './tests/components.test.js';
+    
+    // Run tests when all modules have loaded
     mocha.run();
   </script>
 </body>
