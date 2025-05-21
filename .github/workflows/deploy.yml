@@ -1,10 +1,19 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches:
+      - dev
+      - test
+      - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # - name: Clear old artefacts
-      #   run: rm -rf docs/${{ github.ref_name == 'main' && '' || github.ref_name }}/*
+
+      # Optional: Clear old artefacts depending on branch
       - name: Clear old artefacts
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
@@ -13,12 +22,14 @@ jobs:
           else
             rm -rf docs/${{ github.ref_name }}/*
           fi
+
       - name: Copy build
         run: |
           TARGET=docs
           [[ "${{ github.ref_name }}" != "main" ]] && TARGET="docs/${{ github.ref_name }}"
           mkdir -p "$TARGET"
           cp -R src/* "$TARGET"
+
       - name: Push
         run: |
           git config user.name  "github-actions"
