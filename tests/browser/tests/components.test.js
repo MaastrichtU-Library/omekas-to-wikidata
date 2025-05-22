@@ -1,21 +1,9 @@
 /**
  * Browser-based tests for the UI components module
  */
-import { 
-  createElement, 
-  createButton,
-  setVisibility,
-  toggleClass,
-  createListItem,
-  updateElementContent
-} from '../../../src/js/ui/components.js';
-
-// Use the globally defined test helpers
-const { resetTestDOM, mockEventSystem } = window;
-
 describe('UI Components Module', () => {
   beforeEach(() => {
-    resetTestDOM();
+    window.resetTestDOM();
   });
   
   describe('createElement', () => {

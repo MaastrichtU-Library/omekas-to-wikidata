@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Omeka S to Wikidata Tests</title>
+  <title>Omeka S to Wikidata Tests - Module Version</title>
   <link rel="stylesheet" href="styles/test-runner.css">
   
   <!-- Testing framework - Mocha -->
@@ -15,7 +15,7 @@
 </head>
 <body>
   <header>
-    <h1>Omeka S to Wikidata - Browser Tests</h1>
+    <h1>Omeka S to Wikidata - Browser Tests (Module Version)</h1>
   </header>
   
   <!-- Test results will appear here -->
@@ -99,7 +99,7 @@
     mocha.setup('bdd');
     const expect = chai.expect;
     
-    // CRITICAL: Define test helpers directly on window object before modules load
+    // Define test helpers directly on window object before modules load
     window.resetTestDOM = function() {
       // Clone the test DOM for each test
       const container = document.getElementById('test-dom-container');
@@ -136,20 +136,32 @@
     };
   </script>
   
-  <!-- Load UI components and expose them to the window -->
-  <script type="module" src="components-test-loader.js"></script>
-  
-  <!-- Run the tests after components are loaded -->
+  <!-- Import components module for testing -->
   <script type="module">
-    // Import and run the tests
+    // Import UI components
+    import { 
+      createElement, 
+      createButton,
+      setVisibility,
+      toggleClass,
+      createListItem,
+      updateElementContent
+    } from '../../src/js/ui/components.js';
+    
+    // Make them available globally for testing
+    window.createElement = createElement;
+    window.createButton = createButton;
+    window.setVisibility = setVisibility;
+    window.toggleClass = toggleClass;
+    window.createListItem = createListItem;
+    window.updateElementContent = updateElementContent;
+    
+    // Import and run tests
     import './tests/components.test.js';
     
-    // Run the tests after everything is loaded
+    // Run tests after all modules are loaded
     window.addEventListener('load', function() {
-      // A small delay to ensure all components are loaded
-      setTimeout(() => {
-        mocha.run();
-      }, 100);
+      mocha.run();
     });
   </script>
 </body>
