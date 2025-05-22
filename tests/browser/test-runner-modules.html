@@ -138,15 +138,16 @@
   
   <!-- Import components module for testing -->
   <script type="module">
-    // Import UI components
+    // Import UI components - using absolute path to avoid path issues
     import { 
       createElement, 
       createButton,
       setVisibility,
       toggleClass,
       createListItem,
-      updateElementContent
-    } from '../../src/js/ui/components.js';
+      updateElementContent,
+      showMessage
+    } from '/src/js/ui/components.js';
     
     // Make them available globally for testing
     window.createElement = createElement;
@@ -155,12 +156,14 @@
     window.toggleClass = toggleClass;
     window.createListItem = createListItem;
     window.updateElementContent = updateElementContent;
+    window.showMessage = showMessage;
     
     // Import and run tests
     import './tests/components.test.js';
     
     // Run tests after all modules are loaded
     window.addEventListener('load', function() {
+      console.log('All modules loaded, running tests...');
       mocha.run();
     });
   </script>

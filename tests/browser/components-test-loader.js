@@ -3,7 +3,7 @@
  * This script loads the UI components and exposes them to the test window
  */
 
-// Import UI components 
+// Import UI components - using absolute path to avoid path issues
 import { 
   createElement, 
   createButton,
@@ -12,7 +12,7 @@ import {
   createListItem,
   updateElementContent,
   showMessage
-} from '../../src/js/ui/components.js';
+} from '/src/js/ui/components.js';
 
 // Make them available globally for testing
 window.createElement = createElement;

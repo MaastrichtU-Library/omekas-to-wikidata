@@ -142,14 +142,15 @@
   <!-- Run the tests after components are loaded -->
   <script type="module">
     // Import and run the tests
-    import './tests/components.test.js';
+    import '/tests/browser/tests/components.test.js';
     
     // Run the tests after everything is loaded
     window.addEventListener('load', function() {
+      console.log('All modules loaded, running tests...');
       // A small delay to ensure all components are loaded
       setTimeout(() => {
         mocha.run();
-      }, 100);
+      }, 300);
     });
   </script>
 </body>

@@ -1,6 +1,11 @@
 /**
  * Browser-based tests for the UI components module
  */
+// Make sure we have access to the component functions and window.resetTestDOM
+if (typeof createElement !== 'function' || typeof resetTestDOM !== 'function') {
+  console.error('UI Components or test helpers not loaded correctly.');
+}
+
 describe('UI Components Module', () => {
   beforeEach(() => {
     window.resetTestDOM();
