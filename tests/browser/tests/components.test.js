@@ -1,10 +1,40 @@
 /**
  * Browser-based tests for the UI components module
  */
-// Make sure we have access to the component functions and window.resetTestDOM
-if (typeof createElement !== 'function' || typeof resetTestDOM !== 'function') {
-  console.error('UI Components or test helpers not loaded correctly.');
-}
+// Check that we have access to all required functions
+(function verifyTestEnvironment() {
+  const requiredFunctions = [
+    'createElement', 
+    'createButton', 
+    'setVisibility', 
+    'toggleClass', 
+    'createListItem', 
+    'updateElementContent'
+  ];
+  
+  const missingFunctions = requiredFunctions.filter(
+    fn => typeof window[fn] !== 'function'
+  );
+  
+  if (missingFunctions.length > 0) {
+    console.error('❌ Missing required component functions:', missingFunctions.join(', '));
+  } else {
+    console.log('✅ All component functions loaded correctly');
+  }
+  
+  if (typeof resetTestDOM !== 'function') {
+    console.error('❌ resetTestDOM helper is not defined!');
+    // Define a fallback if missing
+    window.resetTestDOM = function() {
+      console.warn('⚠️ Using fallback resetTestDOM function');
+      const testArea = document.getElementById('test-area');
+      if (testArea) testArea.innerHTML = '';
+      return testArea || document.body;
+    };
+  } else {
+    console.log('✅ Test DOM helper loaded correctly');
+  }
+})();
 
 describe('UI Components Module', () => {
   beforeEach(() => {

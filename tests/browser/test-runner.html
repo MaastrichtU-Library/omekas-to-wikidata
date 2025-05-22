@@ -141,17 +141,41 @@
   
   <!-- Run the tests after components are loaded -->
   <script type="module">
-    // Import and run the tests
-    import '/tests/browser/tests/components.test.js';
+    // Import the tests using a dynamic import for better error handling
+    console.log('Loading test module...');
     
-    // Run the tests after everything is loaded
-    window.addEventListener('load', function() {
-      console.log('All modules loaded, running tests...');
-      // A small delay to ensure all components are loaded
-      setTimeout(() => {
+    // Function to check if components are ready
+    function checkComponentsAndRunTests() {
+      if (window.componentsLoaded) {
+        console.log('✅ Components loaded, running tests...');
         mocha.run();
-      }, 300);
-    });
+      } else {
+        console.log('⏳ Waiting for components to load...');
+        setTimeout(checkComponentsAndRunTests, 100);
+      }
+    }
+    
+    // Import the test file
+    import('./tests/components.test.js')
+      .then(() => {
+        console.log('✅ Test module loaded successfully');
+        // Wait for page to fully load before checking components
+        window.addEventListener('load', function() {
+          // Give a bit more time for everything to initialize
+          setTimeout(() => {
+            checkComponentsAndRunTests();
+          }, 500);
+        });
+      })
+      .catch(error => {
+        console.error('❌ Error loading test module:', error);
+        document.getElementById('mocha').innerHTML = 
+          '<div style="color: red; padding: 20px; border: 1px solid red;">' +
+          '<h3>Error Loading Tests</h3>' +
+          '<p>' + error.message + '</p>' +
+          '<p>Check the console for more details.</p>' +
+          '</div>';
+      });
   </script>
 </body>
 </html>

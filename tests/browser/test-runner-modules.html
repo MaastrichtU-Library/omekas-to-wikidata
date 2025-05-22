@@ -138,34 +138,67 @@
   
   <!-- Import components module for testing -->
   <script type="module">
-    // Import UI components - using absolute path to avoid path issues
-    import { 
-      createElement, 
-      createButton,
-      setVisibility,
-      toggleClass,
-      createListItem,
-      updateElementContent,
-      showMessage
-    } from '/src/js/ui/components.js';
+    console.log('Starting module loading...');
     
-    // Make them available globally for testing
-    window.createElement = createElement;
-    window.createButton = createButton;
-    window.setVisibility = setVisibility;
-    window.toggleClass = toggleClass;
-    window.createListItem = createListItem;
-    window.updateElementContent = updateElementContent;
-    window.showMessage = showMessage;
+    // Define a loading status flag to track when components are ready
+    window.componentsLoaded = false;
     
-    // Import and run tests
-    import './tests/components.test.js';
+    // Function to check if components are ready
+    function checkComponentsAndRunTests() {
+      if (window.componentsLoaded) {
+        console.log('✅ Components loaded, running tests...');
+        mocha.run();
+      } else {
+        console.log('⏳ Waiting for components to load...');
+        setTimeout(checkComponentsAndRunTests, 100);
+      }
+    }
     
-    // Run tests after all modules are loaded
-    window.addEventListener('load', function() {
-      console.log('All modules loaded, running tests...');
-      mocha.run();
-    });
+    try {
+      // Import UI components - using relative path to improve compatibility
+      const modulePath = '../../../src/js/ui/components.js';
+      console.log('Loading components from:', modulePath);
+      
+      import(modulePath)
+        .then(module => {
+          // Make all exported functions available globally for testing
+          window.createElement = module.createElement;
+          window.createButton = module.createButton;
+          window.setVisibility = module.setVisibility;
+          window.toggleClass = module.toggleClass;
+          window.createListItem = module.createListItem;
+          window.updateElementContent = module.updateElementContent;
+          window.showMessage = module.showMessage;
+          
+          // Signal that components are loaded
+          window.componentsLoaded = true;
+          console.log('✅ UI Components loaded and exposed to window');
+          
+          // Now import the tests
+          return import('./tests/components.test.js');
+        })
+        .then(() => {
+          console.log('✅ Test module loaded successfully');
+          // Wait for page to fully load before running tests
+          window.addEventListener('load', function() {
+            // Give a bit more time for everything to initialize
+            setTimeout(() => {
+              checkComponentsAndRunTests();
+            }, 500);
+          });
+        })
+        .catch(error => {
+          console.error('❌ Error in module loading:', error);
+          document.getElementById('mocha').innerHTML = 
+            '<div style="color: red; padding: 20px; border: 1px solid red;">' +
+            '<h3>Error Loading Modules</h3>' +
+            '<p>' + error.message + '</p>' +
+            '<p>Check the console for more details.</p>' +
+            '</div>';
+        });
+    } catch (error) {
+      console.error('❌ Unexpected error in module script:', error);
+    }
   </script>
 </body>
 </html>
