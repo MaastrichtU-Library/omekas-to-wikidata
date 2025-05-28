@@ -58,8 +58,50 @@ export function setupMappingStep(state) {
         });
     }
     
+    // Cache for fetched contexts to avoid repeated API calls
+    const contextCache = new Map();
+    
+    // Function to fetch and parse @context from URL
+    async function fetchContextDefinitions(contextUrl) {
+        if (contextCache.has(contextUrl)) {
+            return contextCache.get(contextUrl);
+        }
+        
+        try {
+            console.log(`Fetching context from: ${contextUrl}`);
+            const response = await fetch(contextUrl);
+            const contextData = await response.json();
+            
+            const contextMap = new Map();
+            
+            // Handle nested @context structure
+            let context = contextData;
+            if (contextData['@context']) {
+                context = contextData['@context'];
+            }
+            
+            if (typeof context === 'object') {
+                for (const [prefix, definition] of Object.entries(context)) {
+                    if (typeof definition === 'string') {
+                        contextMap.set(prefix, definition);
+                        console.log(`Remote context mapping: ${prefix} → ${definition}`);
+                    } else if (typeof definition === 'object' && definition['@id']) {
+                        contextMap.set(prefix, definition['@id']);
+                        console.log(`Remote context mapping: ${prefix} → ${definition['@id']}`);
+                    }
+                }
+            }
+            
+            contextCache.set(contextUrl, contextMap);
+            return contextMap;
+        } catch (error) {
+            console.error(`Failed to fetch context from ${contextUrl}:`, error);
+            return new Map();
+        }
+    }
+    
     // Helper function to extract and analyze keys from all items
-    function extractAndAnalyzeKeys(data) {
+    async function extractAndAnalyzeKeys(data) {
         const keyFrequency = new Map();
         const contextMap = new Map();
         let items = [];
@@ -85,6 +127,12 @@ export function setupMappingStep(state) {
                         contextMap.set(prefix, uri);
                         console.log(`Context mapping: ${prefix} → ${uri}`);
                     }
+                }
+            } else if (typeof context === 'string') {
+                // Fetch remote context definitions
+                const remoteContext = await fetchContextDefinitions(context);
+                for (const [prefix, uri] of remoteContext) {
+                    contextMap.set(prefix, uri);
                 }
             }
         }
@@ -163,7 +211,8 @@ export function setupMappingStep(state) {
                     totalItems: items.length,
                     sampleValue,
                     linkedDataUri,
-                    type: Array.isArray(sampleValue) ? 'array' : typeof sampleValue
+                    type: Array.isArray(sampleValue) ? 'array' : typeof sampleValue,
+                    contextMap: contextMap
                 };
             })
             .sort((a, b) => b.frequency - a.frequency); // Sort by frequency descending
@@ -172,7 +221,7 @@ export function setupMappingStep(state) {
     }
 
     // Helper function to populate key lists
-    function populateLists() {
+    async function populateLists() {
         const currentState = state.getState();
         console.log('populateLists called', { 
             fetchedData: !!currentState.fetchedData,
@@ -185,7 +234,7 @@ export function setupMappingStep(state) {
         }
         
         // Analyze all keys from the complete dataset
-        const keyAnalysis = extractAndAnalyzeKeys(currentState.fetchedData);
+        const keyAnalysis = await extractAndAnalyzeKeys(currentState.fetchedData);
         console.log('Key analysis:', keyAnalysis);
         
         // Initialize arrays if they don't exist in state
@@ -391,11 +440,15 @@ export function setupMappingStep(state) {
         const keyInfo = document.createElement('div');
         keyInfo.className = 'key-info';
         
-        const sampleValueHtml = formatSampleValue(keyData.sampleValue);
+        const sampleValueHtml = formatSampleValue(keyData.sampleValue, keyData.contextMap || new Map());
+        
+        const keyDisplay = keyData.linkedDataUri 
+            ? `<a href="${keyData.linkedDataUri}" target="_blank" class="clickable-key">${keyData.key}</a>`
+            : keyData.key;
         
         keyInfo.innerHTML = `
             <h4>Key Information</h4>
-            <p><strong>Key:</strong> ${keyData.key}</p>
+            <p><strong>Key:</strong> ${keyDisplay}</p>
             <p><strong>Type:</strong> ${keyData.type || 'unknown'}</p>
             <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
             ${keyData.linkedDataUri ? `<p><strong>Linked Data URI:</strong> <a href="${keyData.linkedDataUri}" target="_blank">${keyData.linkedDataUri}</a></p>` : ''}
@@ -424,14 +477,16 @@ export function setupMappingStep(state) {
     }
     
     // Format sample value for display
-    function formatSampleValue(value) {
+    function formatSampleValue(value, contextMap = new Map()) {
         if (value === null || value === undefined) return 'N/A';
         if (typeof value === 'object') {
             try {
                 const jsonStr = JSON.stringify(value, null, 2);
+                // Make JSON keys clickable by replacing them with links
+                const clickableJsonStr = makeJsonKeysClickable(jsonStr, contextMap);
                 // Create a scrollable container for JSON
                 return `<div class="sample-json-container">
-                    <pre class="sample-json">${jsonStr}</pre>
+                    <pre class="sample-json">${clickableJsonStr}</pre>
                 </div>`;
             } catch (e) {
                 return '[object - cannot stringify]';
@@ -439,6 +494,64 @@ export function setupMappingStep(state) {
         }
         const str = String(value);
         return str.length > 100 ? str.slice(0, 100) + '...' : str;
+    }
+    
+    // Helper function to make JSON keys clickable
+    function makeJsonKeysClickable(jsonStr, contextMap) {
+        // Pattern to match JSON keys (quoted strings followed by colon)
+        return jsonStr.replace(/"([^"]+)"(\s*:)/g, (match, key, colon) => {
+            // Skip system keys and values (not keys)
+            if (key.startsWith('@') || key.match(/^\d+$/)) {
+                return match;
+            }
+            
+            // Generate URI for this key
+            const uri = generateUriForKey(key, contextMap);
+            if (uri) {
+                return `"<a href="${uri}" target="_blank" class="clickable-json-key">${key}</a>"${colon}`;
+            }
+            return match;
+        });
+    }
+    
+    // Helper function to generate URI for a key
+    function generateUriForKey(key, contextMap) {
+        if (key.includes(':')) {
+            const [prefix, localName] = key.split(':', 2);
+            const baseUri = contextMap.get(prefix);
+            if (baseUri) {
+                // Handle different URI patterns
+                if (baseUri.endsWith('/') || baseUri.endsWith('#')) {
+                    return baseUri + localName;
+                } else {
+                    return baseUri + '/' + localName;
+                }
+            }
+        } else {
+            // Check for common prefixes even without explicit context
+            const commonPrefixes = {
+                'schema': 'https://schema.org/',
+                'dc': 'http://purl.org/dc/terms/',
+                'dcterms': 'http://purl.org/dc/terms/',
+                'foaf': 'http://xmlns.com/foaf/0.1/',
+                'skos': 'http://www.w3.org/2004/02/skos/core#'
+            };
+            
+            // Try to match common patterns
+            for (const [prefix, uri] of Object.entries(commonPrefixes)) {
+                if (key.toLowerCase().startsWith(prefix.toLowerCase())) {
+                    const localName = key.substring(prefix.length);
+                    return uri + localName;
+                }
+            }
+            
+            // Check if there's a default namespace
+            const defaultNs = contextMap.get('');
+            if (defaultNs) {
+                return defaultNs + key;
+            }
+        }
+        return null;
     }
     
     // Setup property search functionality

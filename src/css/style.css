@@ -789,6 +789,37 @@ main {
     background: #a8a8a8;
 }
 
+/* Clickable key styling */
+.clickable-key {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px dotted var(--primary-color);
+    transition: all 0.2s ease;
+}
+
+.clickable-key:hover {
+    color: var(--primary-dark);
+    border-bottom-style: solid;
+    background-color: rgba(33, 150, 243, 0.1);
+    padding: 0.1rem 0.2rem;
+    border-radius: 3px;
+}
+
+/* Clickable JSON keys styling */
+.clickable-json-key {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px dotted var(--primary-color);
+    transition: color 0.2s ease;
+}
+
+.clickable-json-key:hover {
+    color: var(--primary-dark);
+    border-bottom-style: solid;
+}
+
 .property-suggestion-item.selected .property-description {
     color: rgba(255, 255, 255, 0.9);
 }
