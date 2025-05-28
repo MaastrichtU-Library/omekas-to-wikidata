@@ -115,7 +115,8 @@ export function setupInputStep(state) {
     // Continue to mapping button
     if (proceedToMappingBtn) {
         proceedToMappingBtn.addEventListener('click', () => {
-            if (!state.fetchedData || !state.selectedExample) {
+            const currentState = state.getState();
+            if (!currentState.fetchedData || !currentState.selectedExample) {
                 alert('Please fetch data first');
                 return;
             }

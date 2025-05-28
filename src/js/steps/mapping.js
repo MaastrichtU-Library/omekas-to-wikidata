@@ -76,9 +76,15 @@ export function setupMappingStep(state) {
         // Extract context information from first item
         if (items.length > 0 && items[0]['@context']) {
             const context = items[0]['@context'];
-            for (const [prefix, uri] of Object.entries(context)) {
-                if (typeof uri === 'string') {
-                    contextMap.set(prefix, uri);
+            console.log('Found @context:', context);
+            
+            // Handle both object and string contexts
+            if (typeof context === 'object') {
+                for (const [prefix, uri] of Object.entries(context)) {
+                    if (typeof uri === 'string') {
+                        contextMap.set(prefix, uri);
+                        console.log(`Context mapping: ${prefix} → ${uri}`);
+                    }
                 }
             }
         }
@@ -90,10 +96,7 @@ export function setupMappingStep(state) {
                     // Skip JSON-LD system keys
                     if (key.startsWith('@')) return;
                     
-                    // Auto-ignore keys starting with 'o:'
-                    if (key.startsWith('o:')) return;
-                    
-                    // Only count top-level keys
+                    // Count all keys including o: keys - we'll categorize them later
                     const count = keyFrequency.get(key) || 0;
                     keyFrequency.set(key, count + 1);
                 });
@@ -119,12 +122,37 @@ export function setupMappingStep(state) {
                     const [prefix, localName] = key.split(':', 2);
                     const baseUri = contextMap.get(prefix);
                     if (baseUri) {
-                        linkedDataUri = baseUri + localName;
+                        // Handle different URI patterns
+                        if (baseUri.endsWith('/') || baseUri.endsWith('#')) {
+                            linkedDataUri = baseUri + localName;
+                        } else {
+                            linkedDataUri = baseUri + '/' + localName;
+                        }
+                        console.log(`Generated URI for ${key}: ${linkedDataUri}`);
                     }
                 } else {
+                    // Check for common prefixes even without explicit context
+                    const commonPrefixes = {
+                        'schema': 'https://schema.org/',
+                        'dc': 'http://purl.org/dc/terms/',
+                        'dcterms': 'http://purl.org/dc/terms/',
+                        'foaf': 'http://xmlns.com/foaf/0.1/',
+                        'skos': 'http://www.w3.org/2004/02/skos/core#'
+                    };
+                    
+                    // Try to match common patterns
+                    for (const [prefix, uri] of Object.entries(commonPrefixes)) {
+                        if (key.toLowerCase().startsWith(prefix.toLowerCase())) {
+                            const localName = key.substring(prefix.length);
+                            linkedDataUri = uri + localName;
+                            console.log(`Generated URI using common prefix for ${key}: ${linkedDataUri}`);
+                            break;
+                        }
+                    }
+                    
                     // Check if there's a default namespace
                     const defaultNs = contextMap.get('');
-                    if (defaultNs) {
+                    if (defaultNs && !linkedDataUri) {
                         linkedDataUri = defaultNs + key;
                     }
                 }
@@ -182,11 +210,19 @@ export function setupMappingStep(state) {
         
         const newKeys = keyAnalysis.filter(keyObj => !processedKeys.has(keyObj.key));
         
-        // Add new keys to non-linked keys
+        // Separate o: keys and regular keys
+        const omekaKeys = newKeys.filter(k => k.key.startsWith('o:'));
+        const regularKeys = newKeys.filter(k => !k.key.startsWith('o:'));
+        
+        // Add o: keys to ignored
+        const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...omekaKeys];
+        state.updateState('mappings.ignoredKeys', currentIgnoredKeys);
+        
+        // Add regular keys to non-linked keys
         const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.filter(k => 
             !keyAnalysis.find(ka => ka.key === (k.key || k))
         );
-        const allNonLinkedKeys = [...currentNonLinkedKeys, ...newKeys];
+        const allNonLinkedKeys = [...currentNonLinkedKeys, ...regularKeys];
         state.updateState('mappings.nonLinkedKeys', allNonLinkedKeys);
         
         // Get final state for UI update
@@ -246,14 +282,23 @@ export function setupMappingStep(state) {
                 keyDisplay.appendChild(frequencyIndicator);
             }
             
+            // Show property info for mapped keys
+            if (type === 'mapped' && keyData.property) {
+                const propertyInfo = document.createElement('span');
+                propertyInfo.className = 'property-info';
+                propertyInfo.textContent = ` → ${keyData.property.id}: ${keyData.property.label}`;
+                keyDisplay.appendChild(propertyInfo);
+            }
+            
             li.appendChild(keyDisplay);
             
-            // Add click handler for non-linked keys to open mapping modal
+            // Add click handler for all keys to open mapping modal
             if (type === 'non-linked') {
                 li.className = 'clickable key-item-clickable-compact';
                 li.addEventListener('click', () => openMappingModal(keyData));
             } else {
-                li.className = 'key-item-display-compact';
+                li.className = 'clickable key-item-clickable-compact';
+                li.addEventListener('click', () => openMappingModal(keyData));
             }
             
             listElement.appendChild(li);
@@ -272,29 +317,32 @@ export function setupMappingStep(state) {
             // Create buttons
             const buttons = [
                 {
-                    text: 'Skip',
-                    type: 'secondary',
-                    keyboardShortcut: 's',
-                    callback: () => {
-                        modalUI.closeModal();
-                        // Move to next unmapped key automatically
-                        moveToNextUnmappedKey();
-                    }
-                },
-                {
                     text: 'Ignore',
                     type: 'secondary',
                     keyboardShortcut: 'i',
                     callback: () => {
                         moveKeyToCategory(keyData, 'ignored');
                         modalUI.closeModal();
-                        moveToNextUnmappedKey();
                     }
                 },
                 {
                     text: 'Confirm',
-                    type: 'primary',
+                    type: 'secondary',
                     keyboardShortcut: 'c',
+                    callback: () => {
+                        const selectedProperty = getSelectedPropertyFromModal();
+                        if (selectedProperty) {
+                            mapKeyToProperty(keyData, selectedProperty);
+                            modalUI.closeModal();
+                        } else {
+                            alert('Please select a Wikidata property first.');
+                        }
+                    }
+                },
+                {
+                    text: 'Confirm and Next',
+                    type: 'primary',
+                    keyboardShortcut: 'n',
                     callback: () => {
                         const selectedProperty = getSelectedPropertyFromModal();
                         if (selectedProperty) {
@@ -358,7 +406,14 @@ export function setupMappingStep(state) {
     // Format sample value for display
     function formatSampleValue(value) {
         if (value === null || value === undefined) return 'N/A';
-        if (typeof value === 'object') return '[object]';
+        if (typeof value === 'object') {
+            try {
+                const jsonStr = JSON.stringify(value, null, 2);
+                return jsonStr.length > 200 ? jsonStr.slice(0, 200) + '...' : jsonStr;
+            } catch (e) {
+                return '[object - cannot stringify]';
+            }
+        }
         const str = String(value);
         return str.length > 100 ? str.slice(0, 100) + '...' : str;
     }

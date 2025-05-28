@@ -811,6 +811,13 @@ main {
     color: var(--success-color);
 }
 
+.property-info {
+    font-size: 0.75rem;
+    color: #666;
+    font-style: italic;
+    margin-left: 0.5rem;
+}
+
 .key-list li {
     padding: 0.3rem 0.5rem;
     border-bottom: 1px solid #eee;

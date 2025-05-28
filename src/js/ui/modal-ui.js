@@ -112,6 +112,11 @@ export function setupModalUI() {
                 closeModal();
             }
             
+            // Don't trigger shortcuts when typing in input fields
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
             // Button shortcuts
             buttons.forEach(button => {
                 if (button.keyboardShortcut && 
