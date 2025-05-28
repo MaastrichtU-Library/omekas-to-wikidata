@@ -652,6 +652,11 @@ export function setupMappingStep(state) {
     
     // Helper function to make JSON keys clickable
     function makeJsonKeysClickable(jsonStr, contextMap) {
+        // Ensure contextMap is a Map
+        if (!contextMap || typeof contextMap.get !== 'function') {
+            contextMap = new Map();
+        }
+        
         // Pattern to match JSON keys (quoted strings followed by colon)
         return jsonStr.replace(/"([^"]+)"(\s*:)/g, (match, key, colon) => {
             // Skip system keys and values (not keys)
@@ -670,6 +675,11 @@ export function setupMappingStep(state) {
     
     // Helper function to generate URI for a key
     function generateUriForKey(key, contextMap) {
+        // Ensure contextMap is a Map
+        if (!contextMap || typeof contextMap.get !== 'function') {
+            contextMap = new Map();
+        }
+        
         if (key.includes(':')) {
             const [prefix, localName] = key.split(':', 2);
             const baseUri = contextMap.get(prefix);
