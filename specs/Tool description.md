@@ -35,6 +35,11 @@ Deze front-end only webgebaseerde tool helpt gebruikers om data vanuit een exter
   * **Non-linked keys**: Nog niet gemapt.
   * **Mapped keys**: Reeds gemapt.
   * **Ignored keys**: Custom keys buiten het LOD-domein.
+* **Load/Save Mapping functionaliteit**:
+  * JSON-bestanden exporteren met huidige mappings
+  * JSON-bestanden importeren voor hergebruik van mappings
+  * Porteerbaar formaat exclusief dataset-specifieke informatie
+  * Bevat property metadata en schema URI's
 * Mapping van keys gebeurt in een **modal** (microtask-stijl):
   * Autosuggest op basis van eerder gemapte keys en Wikidata.
   * Zoekfunctionaliteit met label, description, en link (#API).
