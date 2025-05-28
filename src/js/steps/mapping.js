@@ -502,7 +502,10 @@ export function setupMappingStep(state) {
     
     // Format sample value for display
     function formatSampleValue(value, contextMap = new Map()) {
-        if (value === null || value === undefined) return 'N/A';
+        if (value === null || value === undefined) {
+            return '<pre class="sample-value">N/A</pre>';
+        }
+        
         if (typeof value === 'object') {
             try {
                 // Reset the seen set for each call
@@ -557,20 +560,38 @@ export function setupMappingStep(state) {
                             <pre class="sample-json">${clickableJsonStr}</pre>
                         </div>`;
                     } else if (value && typeof value === 'object') {
-                        const keys = Object.keys(value).slice(0, 3);
-                        const preview = keys.map(k => `"${k}": ...`).join(', ');
-                        const moreText = Object.keys(value).length > 3 ? `, ... (${Object.keys(value).length - 3} more)` : '';
-                        return `<div class="sample-value-fallback">Object: {${preview}${moreText}}</div>`;
+                        // Try to create a partial JSON representation
+                        const partialObject = {};
+                        const keys = Object.keys(value).slice(0, 5);
+                        keys.forEach(key => {
+                            try {
+                                partialObject[key] = value[key];
+                            } catch (e) {
+                                partialObject[key] = '[Error accessing property]';
+                            }
+                        });
+                        if (Object.keys(value).length > 5) {
+                            partialObject['...'] = `(${Object.keys(value).length - 5} more properties)`;
+                        }
+                        
+                        const jsonStr = JSON.stringify(partialObject, null, 2);
+                        const clickableJsonStr = makeJsonKeysClickable(jsonStr, contextMap);
+                        return `<div class="sample-json-container">
+                            <pre class="sample-json">${clickableJsonStr}</pre>
+                        </div>`;
                     } else {
-                        return `<div class="sample-value-fallback">${Object.prototype.toString.call(value)}</div>`;
+                        return `<pre class="sample-value">${Object.prototype.toString.call(value)}</pre>`;
                     }
                 } catch (e2) {
-                    return '<div class="sample-value-fallback">[object - display error]</div>';
+                    return '<pre class="sample-value">[object - display error]</pre>';
                 }
             }
         }
+        
+        // For non-object values, show them in a pre element with proper formatting
         const str = String(value);
-        return str.length > 100 ? str.slice(0, 100) + '...' : str;
+        const displayStr = str.length > 200 ? str.slice(0, 200) + '...' : str;
+        return `<pre class="sample-value">${displayStr}</pre>`;
     }
     
     // Helper function to make JSON keys clickable
