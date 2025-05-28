@@ -315,12 +315,33 @@ export function setupMappingStep(state) {
         
         const newKeys = keyAnalysis.filter(keyObj => !processedKeys.has(keyObj.key));
         
-        // Separate o: keys and regular keys
-        const omekaKeys = newKeys.filter(k => k.key.startsWith('o:'));
-        const regularKeys = newKeys.filter(k => !k.key.startsWith('o:'));
+        // Load ignore settings
+        let ignorePatterns = ['o:'];
+        try {
+            const response = await fetch('/src/config/ignore-keys.json');
+            const settings = await response.json();
+            ignorePatterns = settings.ignoredKeyPatterns || ['o:'];
+        } catch (error) {
+            console.warn('Could not load ignore settings, using defaults:', error);
+        }
         
-        // Add o: keys to ignored
-        const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...omekaKeys];
+        // Function to check if key should be ignored
+        const shouldIgnoreKey = (key) => {
+            return ignorePatterns.some(pattern => {
+                if (pattern.endsWith(':')) {
+                    return key.startsWith(pattern);
+                } else {
+                    return key === pattern;
+                }
+            });
+        };
+        
+        // Separate keys by type - ignored keys and regular keys
+        const ignoredKeys = newKeys.filter(k => shouldIgnoreKey(k.key));
+        const regularKeys = newKeys.filter(k => !shouldIgnoreKey(k.key));
+        
+        // Add ignored keys to ignored list
+        const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...ignoredKeys];
         state.updateState('mappings.ignoredKeys', currentIgnoredKeys);
         
         // Add regular keys to non-linked keys
