@@ -156,56 +156,11 @@ export function setupMappingStep(state) {
         return value;
     }
     
-    // Load ignore settings
-    let ignoreSettings = null;
-    async function loadIgnoreSettings() {
-        if (!ignoreSettings) {
-            try {
-                const response = await fetch('/src/config/ignore-keys.json');
-                ignoreSettings = await response.json();
-            } catch (error) {
-                console.warn('Could not load ignore settings, using defaults:', error);
-                ignoreSettings = {
-                    ignoredKeys: {
-                        patterns: [
-                            { type: "startsWith", value: "o:", description: "Omeka system keys" }
-                        ],
-                        exactMatches: ["@context", "@id", "@type"]
-                    }
-                };
-            }
-        }
-        return ignoreSettings;
-    }
-
-    // Check if a key should be ignored
-    function shouldIgnoreKey(key, settings) {
-        // Check exact matches
-        if (settings.ignoredKeys.exactMatches.includes(key)) {
-            return true;
-        }
-        
-        // Check patterns
-        for (const pattern of settings.ignoredKeys.patterns) {
-            if (pattern.type === "startsWith" && key.startsWith(pattern.value)) {
-                return true;
-            }
-            if (pattern.type === "exact" && key === pattern.value) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
     // Helper function to extract and analyze keys from all items
     async function extractAndAnalyzeKeys(data) {
         const keyFrequency = new Map();
         const contextMap = new Map();
         let items = [];
-        
-        // Load ignore settings
-        const settings = await loadIgnoreSettings();
         
         // Normalize data structure to get array of items
         if (Array.isArray(data)) {
@@ -242,10 +197,10 @@ export function setupMappingStep(state) {
         items.forEach(item => {
             if (typeof item === 'object' && item !== null) {
                 Object.keys(item).forEach(key => {
-                    // Skip ignored keys based on settings
-                    if (shouldIgnoreKey(key, settings)) return;
+                    // Skip JSON-LD system keys
+                    if (key.startsWith('@')) return;
                     
-                    // Count all keys
+                    // Count all keys including o: keys - we'll categorize them later
                     const count = keyFrequency.get(key) || 0;
                     keyFrequency.set(key, count + 1);
                 });
