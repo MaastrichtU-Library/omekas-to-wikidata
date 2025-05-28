@@ -3,26 +3,26 @@
  */
 export function setupInputStep(state) {
     const apiUrlInput = document.getElementById('api-url');
-    const apiKeyInput = document.getElementById('api-key');
-    const paginationInput = document.getElementById('pagination');
+    // Advanced parameters removed for MVP
+    // const apiKeyInput = document.getElementById('api-key');
+    // const paginationInput = document.getElementById('pagination');
     const fetchDataBtn = document.getElementById('fetch-data');
     const loadingIndicator = document.getElementById('loading');
-    const jsonTreeView = document.getElementById('json-tree-view');
-    const rawJsonView = document.getElementById('raw-json');
-    const jsonContent = document.getElementById('json-content');
-    const toggleJsonViewBtn = document.getElementById('toggle-json-view');
+    const dataStatus = document.getElementById('data-status');
+    const viewRawJsonBtn = document.getElementById('view-raw-json');
     const selectExampleBtn = document.getElementById('select-example');
     const proceedToMappingBtn = document.getElementById('proceed-to-mapping');
     
-    // Toggle between tree view and raw JSON view
-    if (toggleJsonViewBtn) {
-        toggleJsonViewBtn.addEventListener('click', () => {
-            jsonTreeView.classList.toggle('hidden');
-            rawJsonView.classList.toggle('hidden');
-            
-            toggleJsonViewBtn.textContent = jsonTreeView.classList.contains('hidden') 
-                ? 'Show Tree View'
-                : 'Show Raw JSON';
+    // Set up raw JSON button to open in new tab
+    if (viewRawJsonBtn) {
+        viewRawJsonBtn.addEventListener('click', () => {
+            if (state.fetchedData) {
+                const jsonBlob = new Blob([JSON.stringify(state.fetchedData, null, 2)], {
+                    type: 'application/json'
+                });
+                const jsonUrl = URL.createObjectURL(jsonBlob);
+                window.open(jsonUrl, '_blank');
+            }
         });
     }
     
@@ -38,8 +38,7 @@ export function setupInputStep(state) {
             try {
                 // Update state
                 state.apiUrl = apiUrl;
-                if (apiKeyInput) state.apiKey = apiKeyInput.value.trim();
-                if (paginationInput) state.pagination = parseInt(paginationInput.value, 10) || 10;
+                // Advanced parameters removed for MVP
                 
                 // Show loading indicator
                 if (loadingIndicator) loadingIndicator.style.display = 'block';
@@ -49,7 +48,10 @@ export function setupInputStep(state) {
                 await simulateFetch();
                 
                 // Update UI
-                displayData(getDummyData());
+                displayData(state.fetchedData);
+                
+                // Show raw JSON button
+                if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'inline-block';
                 
                 // Enable select example button
                 if (selectExampleBtn) selectExampleBtn.disabled = false;
@@ -89,13 +91,21 @@ export function setupInputStep(state) {
     
     // Helper function to display data
     function displayData(data) {
-        if (jsonContent) {
-            jsonContent.textContent = JSON.stringify(data, null, 2);
-        }
-        
-        if (jsonTreeView) {
-            // Simple tree view for wireframe
-            jsonTreeView.innerHTML = '<div class="json-tree-node">JSON Tree Structure (Placeholder)</div>';
+        if (dataStatus) {
+            // Show simple data status instead of complex tree view
+            const itemCount = data.items ? data.items.length : 0;
+            const propertyCount = data.items && data.items[0] ? Object.keys(data.items[0]).length : 0;
+            
+            dataStatus.innerHTML = `
+                <div class="data-summary">
+                    <p><strong>✅ Data loaded successfully</strong></p>
+                    <ul>
+                        <li>Items found: ${itemCount}</li>
+                        <li>Properties per item: ${propertyCount}</li>
+                    </ul>
+                    <p><em>Click "View Raw JSON" to see the full data structure.</em></p>
+                </div>
+            `;
         }
     }
     

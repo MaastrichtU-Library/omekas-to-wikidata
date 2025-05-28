@@ -54,30 +54,17 @@
                         <button id="fetch-data" class="button button--primary primary-button">Fetch Data</button>
                     </div>
                     
-                    <details class="advanced-params">
-                        <summary>Advanced Parameters</summary>
-                        <div class="form-group">
-                            <label for="api-key">API Key (optional):</label>
-                            <input type="text" id="api-key" placeholder="Enter API key if required">
-                        </div>
-                        <div class="form-group">
-                            <label for="pagination">Pagination:</label>
-                            <input type="number" id="pagination" placeholder="Number of items per page" value="10">
-                        </div>
-                    </details>
+                    <!-- Advanced parameters removed for MVP simplicity -->
                     
                     <div id="loading" class="loading">Loading data...</div>
                     
                     <div class="json-viewer json-viewer-container">
                         <div class="json-viewer__header json-viewer-header">
-                            <h3>JSON Preview</h3>
-                            <button id="toggle-json-view" class="button button--secondary toggle-button">Show Raw JSON</button>
+                            <h3>Data Status</h3>
+                            <button id="view-raw-json" class="button button--secondary" style="display: none;">View Raw JSON</button>
                         </div>
-                        <div id="json-tree-view" class="json-viewer__tree-view json-tree-view">
-                            <p class="placeholder">JSON data will appear here</p>
-                        </div>
-                        <div id="raw-json" class="json-viewer__raw raw-json hidden">
-                            <pre><code id="json-content"></code></pre>
+                        <div id="data-status" class="data-status">
+                            <p class="placeholder">Data status will appear here after fetching</p>
                         </div>
                     </div>
                     
@@ -227,14 +214,7 @@
                         <button id="copy-quick-statements" class="button button--secondary secondary-button">Copy to Clipboard</button>
                     </div>
                     
-                    <div class="json-export">
-                        <h3>Save Project Data</h3>
-                        <p>Save your work to continue later. Download the JSON file and import it when you return.</p>
-                        <div class="export-buttons">
-                            <button id="download-json" class="button button--secondary secondary-button">Download Project JSON</button>
-                            <button id="import-json" class="button button--secondary secondary-button">Import Project</button>
-                        </div>
-                    </div>
+                    <!-- JSON export/import removed for MVP simplicity -->
                     
                     <div class="navigation-buttons">
                         <button id="back-to-designer" class="button button--secondary secondary-button">Back to Wikidata Designer</button>
