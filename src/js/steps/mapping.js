@@ -282,6 +282,9 @@ export function setupMappingStep(state) {
         populateKeyList(mappedKeysList, finalState.mappings.mappedKeys, 'mapped');
         populateKeyList(ignoredKeysList, finalState.mappings.ignoredKeys, 'ignored');
         
+        // Update section counts
+        updateSectionCounts(finalState.mappings);
+        
         // Auto-open mapped keys section if there are mapped keys
         if (finalState.mappings.mappedKeys.length > 0) {
             const mappedKeysList = document.getElementById('mapped-keys');
@@ -296,6 +299,29 @@ export function setupMappingStep(state) {
         // Enable continue button if there are mapped keys
         if (proceedToReconciliationBtn) {
             proceedToReconciliationBtn.disabled = !finalState.mappings.mappedKeys.length;
+        }
+    }
+    
+    // Helper function to update section counts in summary headers
+    function updateSectionCounts(mappings) {
+        const totalKeys = mappings.nonLinkedKeys.length + mappings.mappedKeys.length + mappings.ignoredKeys.length;
+        
+        // Update Non-linked Keys section
+        const nonLinkedSection = document.querySelector('.key-sections .section:nth-child(1) summary');
+        if (nonLinkedSection) {
+            nonLinkedSection.textContent = `Non-linked Keys (${mappings.nonLinkedKeys.length}/${totalKeys})`;
+        }
+        
+        // Update Mapped Keys section
+        const mappedSection = document.querySelector('.key-sections .section:nth-child(2) summary');
+        if (mappedSection) {
+            mappedSection.textContent = `Mapped Keys (${mappings.mappedKeys.length}/${totalKeys})`;
+        }
+        
+        // Update Ignored Keys section
+        const ignoredSection = document.querySelector('.key-sections .section:nth-child(3) summary');
+        if (ignoredSection) {
+            ignoredSection.textContent = `Ignored Keys (${mappings.ignoredKeys.length}/${totalKeys})`;
         }
     }
     
