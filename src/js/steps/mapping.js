@@ -14,7 +14,7 @@ export function setupMappingStep(state) {
     // Set default entity schema
     if (entitySchemaInput && !entitySchemaInput.value) {
         entitySchemaInput.value = 'E473';
-        state.entitySchema = 'E473';
+        state.updateState('entitySchema', 'E473');
     }
     
     // Listen for step changes via event system
@@ -52,7 +52,7 @@ export function setupMappingStep(state) {
     // Entity schema input
     if (entitySchemaInput) {
         entitySchemaInput.addEventListener('change', () => {
-            state.entitySchema = entitySchemaInput.value;
+            state.updateState('entitySchema', entitySchemaInput.value);
             state.markChangesUnsaved();
         });
     }
@@ -94,46 +94,60 @@ export function setupMappingStep(state) {
 
     // Helper function to populate key lists
     function populateLists() {
+        const currentState = state.getState();
         console.log('populateLists called', { 
-            fetchedData: !!state.fetchedData, 
-            selectedExample: !!state.selectedExample,
-            selectedExampleKeys: state.selectedExample ? Object.keys(state.selectedExample) : []
+            fetchedData: !!currentState.fetchedData, 
+            selectedExample: !!currentState.selectedExample,
+            selectedExampleKeys: currentState.selectedExample ? Object.keys(currentState.selectedExample) : []
         });
         
-        if (!state.fetchedData || !state.selectedExample) {
+        if (!currentState.fetchedData || !currentState.selectedExample) {
             console.log('No data or selected example available');
             return;
         }
         
         // Extract all keys from the selected example object
-        const extractedKeys = extractKeysFromObject(state.selectedExample);
+        const extractedKeys = extractKeysFromObject(currentState.selectedExample);
         console.log('Extracted keys:', extractedKeys);
         
         // Initialize arrays if they don't exist in state
-        if (!state.mappings.nonLinkedKeys) state.mappings.nonLinkedKeys = [];
-        if (!state.mappings.mappedKeys) state.mappings.mappedKeys = [];
-        if (!state.mappings.ignoredKeys) state.mappings.ignoredKeys = [];
+        if (!currentState.mappings.nonLinkedKeys) {
+            state.updateState('mappings.nonLinkedKeys', []);
+        }
+        if (!currentState.mappings.mappedKeys) {
+            state.updateState('mappings.mappedKeys', []);
+        }
+        if (!currentState.mappings.ignoredKeys) {
+            state.updateState('mappings.ignoredKeys', []);
+        }
+        
+        // Get updated state after initialization
+        const updatedState = state.getState();
         
         // Filter keys that haven't been processed yet
         const processedKeys = new Set([
-            ...state.mappings.mappedKeys.map(k => k.key || k),
-            ...state.mappings.ignoredKeys.map(k => k.key || k)
+            ...updatedState.mappings.mappedKeys.map(k => k.key || k),
+            ...updatedState.mappings.ignoredKeys.map(k => k.key || k)
         ]);
         
         const newKeys = extractedKeys.filter(keyObj => !processedKeys.has(keyObj.key));
         
         // Add new keys to non-linked keys
-        const currentNonLinkedKeys = state.mappings.nonLinkedKeys.map(k => typeof k === 'string' ? { key: k } : k);
-        state.mappings.nonLinkedKeys = [...currentNonLinkedKeys, ...newKeys];
+        const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.map(k => typeof k === 'string' ? { key: k } : k);
+        const allNonLinkedKeys = [...currentNonLinkedKeys, ...newKeys];
+        state.updateState('mappings.nonLinkedKeys', allNonLinkedKeys);
+        
+        // Get final state for UI update
+        const finalState = state.getState();
         
         // Populate the UI lists
-        populateKeyList(nonLinkedKeysList, state.mappings.nonLinkedKeys, 'non-linked');
-        populateKeyList(mappedKeysList, state.mappings.mappedKeys, 'mapped');
-        populateKeyList(ignoredKeysList, state.mappings.ignoredKeys, 'ignored');
+        populateKeyList(nonLinkedKeysList, finalState.mappings.nonLinkedKeys, 'non-linked');
+        populateKeyList(mappedKeysList, finalState.mappings.mappedKeys, 'mapped');
+        populateKeyList(ignoredKeysList, finalState.mappings.ignoredKeys, 'ignored');
         
         // Enable continue button if there are mapped keys
         if (proceedToReconciliationBtn) {
-            proceedToReconciliationBtn.disabled = !state.mappings.mappedKeys.length;
+            proceedToReconciliationBtn.disabled = !finalState.mappings.mappedKeys.length;
         }
     }
     
@@ -356,10 +370,11 @@ export function setupMappingStep(state) {
     // Get autosuggest based on previously mapped keys
     function getAutoSuggestions(query) {
         const suggestions = [];
+        const currentState = state.getState();
         
         // Get previously mapped properties from state
-        if (state.mappings && state.mappings.mappedKeys) {
-            state.mappings.mappedKeys.forEach(mappedKey => {
+        if (currentState.mappings && currentState.mappings.mappedKeys) {
+            currentState.mappings.mappedKeys.forEach(mappedKey => {
                 if (mappedKey.property && 
                     (mappedKey.property.label.toLowerCase().includes(query.toLowerCase()) ||
                      mappedKey.property.id.toLowerCase().includes(query.toLowerCase()))) {
@@ -472,16 +487,20 @@ export function setupMappingStep(state) {
     
     // Move key to a specific category
     function moveKeyToCategory(keyData, category) {
+        const currentState = state.getState();
+        
         // Remove from non-linked keys
-        state.mappings.nonLinkedKeys = state.mappings.nonLinkedKeys.filter(k => {
+        const updatedNonLinkedKeys = currentState.mappings.nonLinkedKeys.filter(k => {
             const keyToCompare = typeof k === 'string' ? k : k.key;
             const targetKey = typeof keyData === 'string' ? keyData : keyData.key;
             return keyToCompare !== targetKey;
         });
+        state.updateState('mappings.nonLinkedKeys', updatedNonLinkedKeys);
         
         // Add to target category
         if (category === 'ignored') {
-            state.mappings.ignoredKeys.push(keyData);
+            const updatedIgnoredKeys = [...currentState.mappings.ignoredKeys, keyData];
+            state.updateState('mappings.ignoredKeys', updatedIgnoredKeys);
         }
         
         // Update UI
@@ -491,12 +510,15 @@ export function setupMappingStep(state) {
     
     // Map key to property
     function mapKeyToProperty(keyData, property) {
+        const currentState = state.getState();
+        
         // Remove from non-linked keys
-        state.mappings.nonLinkedKeys = state.mappings.nonLinkedKeys.filter(k => {
+        const updatedNonLinkedKeys = currentState.mappings.nonLinkedKeys.filter(k => {
             const keyToCompare = typeof k === 'string' ? k : k.key;
             const targetKey = typeof keyData === 'string' ? keyData : keyData.key;
             return keyToCompare !== targetKey;
         });
+        state.updateState('mappings.nonLinkedKeys', updatedNonLinkedKeys);
         
         // Add to mapped keys with property information
         const mappedKey = {
@@ -504,7 +526,8 @@ export function setupMappingStep(state) {
             property: property,
             mappedAt: new Date().toISOString()
         };
-        state.mappings.mappedKeys.push(mappedKey);
+        const updatedMappedKeys = [...currentState.mappings.mappedKeys, mappedKey];
+        state.updateState('mappings.mappedKeys', updatedMappedKeys);
         
         // Update UI
         populateLists();
@@ -513,10 +536,11 @@ export function setupMappingStep(state) {
     
     // Move to next unmapped key
     function moveToNextUnmappedKey() {
-        if (state.mappings.nonLinkedKeys.length > 0) {
+        const currentState = state.getState();
+        if (currentState.mappings.nonLinkedKeys.length > 0) {
             // Small delay to let UI update, then open next key
             setTimeout(() => {
-                const nextKey = state.mappings.nonLinkedKeys[0];
+                const nextKey = currentState.mappings.nonLinkedKeys[0];
                 openMappingModal(nextKey);
             }, 200);
         }

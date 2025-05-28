@@ -42,7 +42,7 @@ export function setupInputStep(state) {
                 }
                 
                 // Update state
-                state.apiUrl = apiUrl;
+                state.updateState('apiUrl', apiUrl);
                 
                 // Show loading indicator
                 if (loadingIndicator) loadingIndicator.style.display = 'block';
@@ -67,7 +67,7 @@ export function setupInputStep(state) {
                 }
                 
                 // Store fetched data
-                state.fetchedData = data;
+                state.updateState('fetchedData', data);
                 console.log('Data loaded and saved:', data);
                 
                 // Automatically select first item as example
@@ -81,13 +81,14 @@ export function setupInputStep(state) {
                 }
                 
                 if (selectedExample) {
-                    state.selectedExample = selectedExample;
+                    state.updateState('selectedExample', selectedExample);
+                    console.log('Selected example saved:', selectedExample);
                     // Mark step 1 as completed
-                    state.updateState('highestCompletedStep', Math.max(state.getState().highestCompletedStep, 1));
+                    state.completeStep(1);
                 }
                 
                 // Update UI
-                displayData(state.fetchedData);
+                displayData(data);
                 
                 // Show raw JSON button
                 if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'inline-block';
