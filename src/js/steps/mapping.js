@@ -449,9 +449,7 @@ export function setupMappingStep(state) {
         keyInfo.innerHTML = `
             <h4>Key Information</h4>
             <p><strong>Key:</strong> ${keyDisplay}</p>
-            <p><strong>Type:</strong> ${keyData.type || 'unknown'}</p>
             <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
-            ${keyData.linkedDataUri ? `<p><strong>Linked Data URI:</strong> <a href="${keyData.linkedDataUri}" target="_blank">${keyData.linkedDataUri}</a></p>` : ''}
             <div><strong>Sample Value:</strong> ${sampleValueHtml}</div>
         `;
         container.appendChild(keyInfo);
@@ -520,14 +518,18 @@ export function setupMappingStep(state) {
                 // Enhanced fallback that shows more useful information
                 try {
                     if (Array.isArray(value)) {
-                        const preview = value.slice(0, 3).map(item => {
-                            if (typeof item === 'object') {
-                                return typeof item === 'object' && item !== null ? '{...}' : String(item);
-                            }
-                            return String(item);
-                        }).join(', ');
-                        const moreText = value.length > 3 ? `, ... (${value.length - 3} more)` : '';
-                        return `<div class="sample-value-fallback">Array[${value.length}]: [${preview}${moreText}]</div>`;
+                        // Try to show full JSON for arrays, but limit to first few items if too large
+                        const maxItems = 3;
+                        const displayArray = value.length > maxItems ? value.slice(0, maxItems) : value;
+                        const truncatedArray = value.length > maxItems ? [...displayArray, '...'] : displayArray;
+                        
+                        const jsonStr = JSON.stringify(truncatedArray, null, 2);
+                        const clickableJsonStr = makeJsonKeysClickable(jsonStr, contextMap);
+                        
+                        return `<div class="sample-json-container">
+                            <div class="array-info">Array with ${value.length} item${value.length !== 1 ? 's' : ''}</div>
+                            <pre class="sample-json">${clickableJsonStr}</pre>
+                        </div>`;
                     } else if (value && typeof value === 'object') {
                         const keys = Object.keys(value).slice(0, 3);
                         const preview = keys.map(k => `"${k}": ...`).join(', ');
@@ -537,7 +539,7 @@ export function setupMappingStep(state) {
                         return `<div class="sample-value-fallback">${Object.prototype.toString.call(value)}</div>`;
                     }
                 } catch (e2) {
-                    return '[object - display error]';
+                    return '<div class="sample-value-fallback">[object - display error]</div>';
                 }
             }
         }
@@ -748,11 +750,28 @@ export function setupMappingStep(state) {
             item.classList.remove('selected');
         });
         
-        // Add selection to clicked item
-        event.target.closest('.property-suggestion-item').classList.add('selected');
+        // Add selection to clicked item if event exists
+        if (typeof event !== 'undefined' && event.target) {
+            const targetItem = event.target.closest('.property-suggestion-item');
+            if (targetItem) {
+                targetItem.classList.add('selected');
+            }
+        }
         
         // Store selected property
         window.currentMappingSelectedProperty = property;
+        
+        // Update search input with selected property label
+        const searchInput = document.getElementById('property-search-input');
+        if (searchInput) {
+            searchInput.value = `${property.id}: ${property.label}`;
+        }
+        
+        // Clear suggestions container
+        const suggestionsContainer = document.getElementById('property-suggestions');
+        if (suggestionsContainer) {
+            suggestionsContainer.innerHTML = '';
+        }
         
         // Show selected property details
         const selectedContainer = document.getElementById('selected-property');
