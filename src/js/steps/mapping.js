@@ -318,9 +318,13 @@ export function setupMappingStep(state) {
         // Load ignore settings
         let ignorePatterns = ['o:'];
         try {
-            const response = await fetch('/src/config/ignore-keys.json');
+            const response = await fetch('./src/config/ignore-keys.json');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             const settings = await response.json();
             ignorePatterns = settings.ignoredKeyPatterns || ['o:'];
+            console.log('Loaded ignore patterns:', ignorePatterns);
         } catch (error) {
             console.warn('Could not load ignore settings, using defaults:', error);
         }
