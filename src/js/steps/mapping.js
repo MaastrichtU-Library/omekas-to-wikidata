@@ -11,21 +11,40 @@ export function setupMappingStep(state) {
     const proceedToReconciliationBtn = document.getElementById('proceed-to-reconciliation');
     const testMappingModelBtn = document.getElementById('test-mapping-model');
     
+    // Set default entity schema
+    if (entitySchemaInput && !entitySchemaInput.value) {
+        entitySchemaInput.value = 'E473';
+        state.entitySchema = 'E473';
+    }
+    
+    // Listen for step changes via event system
+    eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
+        if (data.newStep === 2) {
+            // Small delay to ensure DOM is ready
+            setTimeout(() => populateLists(), 100);
+        }
+    });
+    
     // When we enter this step, populate the lists
     document.addEventListener('DOMContentLoaded', () => {
         // Listen for step changes
         document.querySelectorAll('.step').forEach(step => {
             step.addEventListener('click', () => {
                 if (parseInt(step.dataset.step) === 2) {
-                    populateLists();
+                    setTimeout(() => populateLists(), 100);
                 }
             });
         });
         
         // Also listen for the navigation button
         document.getElementById('proceed-to-mapping')?.addEventListener('click', () => {
-            populateLists();
+            setTimeout(() => populateLists(), 100);
         });
+        
+        // Check if we're already on step 2 and have data
+        if (state.getCurrentStep && state.getCurrentStep() === 2) {
+            setTimeout(() => populateLists(), 100);
+        }
         
         // Event listener for test modal button is now handled in modals.js
     });
@@ -75,10 +94,20 @@ export function setupMappingStep(state) {
 
     // Helper function to populate key lists
     function populateLists() {
-        if (!state.fetchedData || !state.selectedExample) return;
+        console.log('populateLists called', { 
+            fetchedData: !!state.fetchedData, 
+            selectedExample: !!state.selectedExample,
+            selectedExampleKeys: state.selectedExample ? Object.keys(state.selectedExample) : []
+        });
+        
+        if (!state.fetchedData || !state.selectedExample) {
+            console.log('No data or selected example available');
+            return;
+        }
         
         // Extract all keys from the selected example object
         const extractedKeys = extractKeysFromObject(state.selectedExample);
+        console.log('Extracted keys:', extractedKeys);
         
         // Initialize arrays if they don't exist in state
         if (!state.mappings.nonLinkedKeys) state.mappings.nonLinkedKeys = [];
