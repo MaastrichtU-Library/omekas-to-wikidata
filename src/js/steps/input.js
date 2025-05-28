@@ -36,16 +36,39 @@ export function setupInputStep(state) {
             }
             
             try {
+                // Validate URL
+                if (!isValidApiUrl(apiUrl)) {
+                    alert('Please enter a valid Omeka S API URL (e.g., https://example.com/api/items)');
+                    return;
+                }
+                
                 // Update state
                 state.apiUrl = apiUrl;
-                // Advanced parameters removed for MVP
                 
                 // Show loading indicator
                 if (loadingIndicator) loadingIndicator.style.display = 'block';
                 
-                // TODO: Implement actual API fetch
-                // For wireframe, use dummy data
-                await simulateFetch();
+                // Fetch actual data from API
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response is not valid JSON. Please check the API URL.');
+                }
+                
+                const data = await response.json();
+                
+                // Validate JSON structure
+                if (!isValidOmekaResponse(data)) {
+                    throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
+                }
+                
+                // Store fetched data
+                state.fetchedData = data;
                 
                 // Update UI
                 displayData(state.fetchedData);
@@ -58,7 +81,15 @@ export function setupInputStep(state) {
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
-                alert('Error fetching data. Please check the API URL and try again.');
+                const errorMsg = error.message || 'Error fetching data. Please check the API URL and try again.';
+                alert(errorMsg);
+                
+                // Clear any partial data
+                state.fetchedData = null;
+                if (dataStatus) dataStatus.innerHTML = '';
+                if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'none';
+                if (selectExampleBtn) selectExampleBtn.disabled = true;
+                
             } finally {
                 // Hide loading indicator
                 if (loadingIndicator) loadingIndicator.style.display = 'none';
@@ -69,32 +100,100 @@ export function setupInputStep(state) {
     // Select example object
     if (selectExampleBtn) {
         selectExampleBtn.addEventListener('click', () => {
-            // For wireframe, select dummy example
-            state.selectedExample = getDummyData().items[0];
+            if (!state.fetchedData) {
+                alert('Please fetch data first');
+                return;
+            }
+            
+            // Select first item from fetched data
+            let exampleItem = null;
+            if (Array.isArray(state.fetchedData)) {
+                exampleItem = state.fetchedData[0];
+            } else if (state.fetchedData.items && Array.isArray(state.fetchedData.items)) {
+                exampleItem = state.fetchedData.items[0];
+            } else {
+                exampleItem = state.fetchedData;
+            }
+            
+            if (!exampleItem) {
+                alert('No example item found in the fetched data');
+                return;
+            }
+            
+            state.selectedExample = exampleItem;
             
             // Enable proceed button
             if (proceedToMappingBtn) proceedToMappingBtn.disabled = false;
             
-            alert('Example object selected');
+            // Update state to indicate step 1 is complete
+            state.updateState('highestCompletedStep', Math.max(state.getState().highestCompletedStep, 1));
+            
+            alert('Example object selected successfully');
         });
     }
     
-    // Helper function to simulate API fetch delay
-    function simulateFetch() {
-        return new Promise(resolve => {
-            setTimeout(() => {
-                state.fetchedData = getDummyData();
-                resolve();
-            }, 1000);
-        });
+    // Helper function to validate API URL
+    function isValidApiUrl(url) {
+        try {
+            const urlObj = new URL(url);
+            return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    }
+    
+    // Helper function to validate Omeka S API response
+    function isValidOmekaResponse(data) {
+        if (!data) return false;
+        
+        // Check if it's an array (direct items array)
+        if (Array.isArray(data)) {
+            return data.length > 0;
+        }
+        
+        // Check if it's an object with items array
+        if (typeof data === 'object' && data.items && Array.isArray(data.items)) {
+            return data.items.length > 0;
+        }
+        
+        // Check if it's a single object (single item response)
+        if (typeof data === 'object' && data['@type']) {
+            return true;
+        }
+        
+        return false;
     }
     
     // Helper function to display data
     function displayData(data) {
         if (dataStatus) {
-            // Show simple data status instead of complex tree view
-            const itemCount = data.items ? data.items.length : 0;
-            const propertyCount = data.items && data.items[0] ? Object.keys(data.items[0]).length : 0;
+            let itemCount = 0;
+            let propertyCount = 0;
+            let sampleItem = null;
+            
+            // Analyze data structure
+            if (Array.isArray(data)) {
+                itemCount = data.length;
+                sampleItem = data[0];
+            } else if (data.items && Array.isArray(data.items)) {
+                itemCount = data.items.length;
+                sampleItem = data.items[0];
+            } else if (typeof data === 'object') {
+                itemCount = 1;
+                sampleItem = data;
+            }
+            
+            // Count properties in sample item
+            if (sampleItem && typeof sampleItem === 'object') {
+                propertyCount = Object.keys(sampleItem).length;
+            }
+            
+            // Extract some sample properties for preview
+            let sampleProperties = [];
+            if (sampleItem) {
+                const keys = Object.keys(sampleItem);
+                sampleProperties = keys.slice(0, 5); // Show first 5 properties
+            }
             
             dataStatus.innerHTML = `
                 <div class="data-summary">
@@ -102,8 +201,9 @@ export function setupInputStep(state) {
                     <ul>
                         <li>Items found: ${itemCount}</li>
                         <li>Properties per item: ${propertyCount}</li>
+                        ${sampleProperties.length > 0 ? `<li>Sample properties: ${sampleProperties.join(', ')}${propertyCount > 5 ? '...' : ''}</li>` : ''}
                     </ul>
-                    <p><em>Click "View Raw JSON" to see the full data structure.</em></p>
+                    <p><em>Click "Select Example" to proceed, or "View Raw JSON" to see the full structure.</em></p>
                 </div>
             `;
         }
