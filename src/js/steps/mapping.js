@@ -233,6 +233,17 @@ export function setupMappingStep(state) {
         populateKeyList(mappedKeysList, finalState.mappings.mappedKeys, 'mapped');
         populateKeyList(ignoredKeysList, finalState.mappings.ignoredKeys, 'ignored');
         
+        // Auto-open mapped keys section if there are mapped keys
+        if (finalState.mappings.mappedKeys.length > 0) {
+            const mappedKeysList = document.getElementById('mapped-keys');
+            if (mappedKeysList) {
+                const mappedSection = mappedKeysList.closest('details');
+                if (mappedSection) {
+                    mappedSection.open = true;
+                }
+            }
+        }
+        
         // Enable continue button if there are mapped keys
         if (proceedToReconciliationBtn) {
             proceedToReconciliationBtn.disabled = !finalState.mappings.mappedKeys.length;
@@ -274,15 +285,7 @@ export function setupMappingStep(state) {
             keyName.textContent = keyData.key;
             keyDisplay.appendChild(keyName);
             
-            // Show frequency information compactly
-            if (keyData.frequency && keyData.totalItems) {
-                const frequencyIndicator = document.createElement('span');
-                frequencyIndicator.className = 'key-frequency';
-                frequencyIndicator.textContent = `(${keyData.frequency}/${keyData.totalItems})`;
-                keyDisplay.appendChild(frequencyIndicator);
-            }
-            
-            // Show property info for mapped keys
+            // Show property info for mapped keys immediately after key name
             if (type === 'mapped' && keyData.property) {
                 const propertyInfo = document.createElement('span');
                 propertyInfo.className = 'property-info';
@@ -290,18 +293,32 @@ export function setupMappingStep(state) {
                 keyDisplay.appendChild(propertyInfo);
             }
             
+            // Show frequency information at the end
+            if (keyData.frequency && keyData.totalItems) {
+                const frequencyIndicator = document.createElement('span');
+                frequencyIndicator.className = 'key-frequency';
+                frequencyIndicator.textContent = `(${keyData.frequency}/${keyData.totalItems})`;
+                keyDisplay.appendChild(frequencyIndicator);
+            }
+            
             li.appendChild(keyDisplay);
             
             // Add click handler for all keys to open mapping modal
-            if (type === 'non-linked') {
-                li.className = 'clickable key-item-clickable-compact';
-                li.addEventListener('click', () => openMappingModal(keyData));
-            } else {
-                li.className = 'clickable key-item-clickable-compact';
-                li.addEventListener('click', () => openMappingModal(keyData));
-            }
+            li.className = 'clickable key-item-clickable-compact';
+            li.addEventListener('click', () => openMappingModal(keyData));
+            
+            // Add data attribute for animations
+            li.setAttribute('data-key', keyData.key);
             
             listElement.appendChild(li);
+            
+            // Add animation if this is a newly moved item
+            if (keyData.isNewlyMoved) {
+                li.classList.add('newly-moved');
+                setTimeout(() => {
+                    li.classList.remove('newly-moved');
+                }, 2000);
+            }
         });
     }
     
@@ -397,8 +414,8 @@ export function setupMappingStep(state) {
         `;
         container.appendChild(searchSection);
         
-        // Setup search functionality
-        setTimeout(() => setupPropertySearch(), 100);
+        // Setup search functionality and pre-populate if mapped
+        setTimeout(() => setupPropertySearch(keyData), 100);
         
         return container;
     }
@@ -419,13 +436,22 @@ export function setupMappingStep(state) {
     }
     
     // Setup property search functionality
-    function setupPropertySearch() {
+    function setupPropertySearch(keyData) {
         const searchInput = document.getElementById('property-search-input');
         const suggestionsContainer = document.getElementById('property-suggestions');
         let searchTimeout;
         let selectedProperty = null;
         
         if (!searchInput) return;
+        
+        // Pre-populate if this key is already mapped
+        if (keyData && keyData.property) {
+            window.currentMappingSelectedProperty = keyData.property;
+            selectProperty(keyData.property);
+            searchInput.value = keyData.property.label;
+        } else {
+            window.currentMappingSelectedProperty = null;
+        }
         
         searchInput.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
@@ -440,9 +466,6 @@ export function setupMappingStep(state) {
                 searchWikidataProperties(query, suggestionsContainer);
             }, 300);
         });
-        
-        // Store reference to selected property for later access
-        window.currentMappingSelectedProperty = null;
     }
     
     // Search Wikidata properties
@@ -587,19 +610,41 @@ export function setupMappingStep(state) {
     // Move key to a specific category
     function moveKeyToCategory(keyData, category) {
         const currentState = state.getState();
+        const targetKey = typeof keyData === 'string' ? keyData : keyData.key;
         
-        // Remove from non-linked keys
+        // Remove from ALL existing categories first
         const updatedNonLinkedKeys = currentState.mappings.nonLinkedKeys.filter(k => {
             const keyToCompare = typeof k === 'string' ? k : k.key;
-            const targetKey = typeof keyData === 'string' ? keyData : keyData.key;
             return keyToCompare !== targetKey;
         });
-        state.updateState('mappings.nonLinkedKeys', updatedNonLinkedKeys);
         
-        // Add to target category
+        const updatedMappedKeys = currentState.mappings.mappedKeys.filter(k => {
+            const keyToCompare = typeof k === 'string' ? k : k.key;
+            return keyToCompare !== targetKey;
+        });
+        
+        const updatedIgnoredKeys = currentState.mappings.ignoredKeys.filter(k => {
+            const keyToCompare = typeof k === 'string' ? k : k.key;
+            return keyToCompare !== targetKey;
+        });
+        
+        // Update all categories
+        state.updateState('mappings.nonLinkedKeys', updatedNonLinkedKeys);
+        state.updateState('mappings.mappedKeys', updatedMappedKeys);
+        state.updateState('mappings.ignoredKeys', updatedIgnoredKeys);
+        
+        // Add to target category with animation marker
+        const keyDataWithAnimation = { ...keyData, isNewlyMoved: true };
+        
         if (category === 'ignored') {
-            const updatedIgnoredKeys = [...currentState.mappings.ignoredKeys, keyData];
-            state.updateState('mappings.ignoredKeys', updatedIgnoredKeys);
+            const finalIgnoredKeys = [...updatedIgnoredKeys, keyDataWithAnimation];
+            state.updateState('mappings.ignoredKeys', finalIgnoredKeys);
+        } else if (category === 'mapped') {
+            const finalMappedKeys = [...updatedMappedKeys, keyDataWithAnimation];
+            state.updateState('mappings.mappedKeys', finalMappedKeys);
+        } else if (category === 'non-linked') {
+            const finalNonLinkedKeys = [...updatedNonLinkedKeys, keyDataWithAnimation];
+            state.updateState('mappings.nonLinkedKeys', finalNonLinkedKeys);
         }
         
         // Update UI
@@ -609,28 +654,15 @@ export function setupMappingStep(state) {
     
     // Map key to property
     function mapKeyToProperty(keyData, property) {
-        const currentState = state.getState();
-        
-        // Remove from non-linked keys
-        const updatedNonLinkedKeys = currentState.mappings.nonLinkedKeys.filter(k => {
-            const keyToCompare = typeof k === 'string' ? k : k.key;
-            const targetKey = typeof keyData === 'string' ? keyData : keyData.key;
-            return keyToCompare !== targetKey;
-        });
-        state.updateState('mappings.nonLinkedKeys', updatedNonLinkedKeys);
-        
-        // Add to mapped keys with property information
+        // Create enhanced key data with property information
         const mappedKey = {
             ...keyData,
             property: property,
             mappedAt: new Date().toISOString()
         };
-        const updatedMappedKeys = [...currentState.mappings.mappedKeys, mappedKey];
-        state.updateState('mappings.mappedKeys', updatedMappedKeys);
         
-        // Update UI
-        populateLists();
-        state.markChangesUnsaved();
+        // Use moveKeyToCategory to handle the movement properly
+        moveKeyToCategory(mappedKey, 'mapped');
     }
     
     // Move to next unmapped key

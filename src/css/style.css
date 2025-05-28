@@ -829,6 +829,36 @@ main {
     background-color: rgba(33, 150, 243, 0.1);
 }
 
+/* Animation for newly moved keys */
+.key-list li.newly-moved {
+    background: linear-gradient(90deg, 
+        rgba(76, 175, 80, 0.3) 0%, 
+        rgba(76, 175, 80, 0.1) 50%, 
+        transparent 100%);
+    animation: fadeToNormal 2s ease-out forwards;
+}
+
+@keyframes fadeToNormal {
+    0% {
+        background: linear-gradient(90deg, 
+            rgba(76, 175, 80, 0.4) 0%, 
+            rgba(76, 175, 80, 0.2) 50%, 
+            rgba(76, 175, 80, 0.1) 100%);
+        transform: translateX(-3px);
+    }
+    50% {
+        background: linear-gradient(90deg, 
+            rgba(76, 175, 80, 0.2) 0%, 
+            rgba(76, 175, 80, 0.1) 50%, 
+            transparent 100%);
+        transform: translateX(0);
+    }
+    100% {
+        background: transparent;
+        transform: translateX(0);
+    }
+}
+
 /* Legacy styles for backwards compatibility */
 .key-item {
     display: flex;
