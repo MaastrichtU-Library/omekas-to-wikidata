@@ -2,12 +2,6 @@
  * Handles the Input step functionality
  */
 export function setupInputStep(state) {
-    console.log('🚀 Step 1 (Input) initialized');
-    console.log('📋 Initial state:', {
-        currentStep: state.getCurrentStep(),
-        highestCompletedStep: state.getHighestCompletedStep(),
-        hasUnsavedChanges: state.hasUnsavedChanges()
-    });
     const apiUrlInput = document.getElementById('api-url');
     // Advanced parameters removed for MVP
     // const apiKeyInput = document.getElementById('api-key');
@@ -21,16 +15,12 @@ export function setupInputStep(state) {
     // Set up raw JSON button to open in new tab
     if (viewRawJsonBtn) {
         viewRawJsonBtn.addEventListener('click', () => {
-            console.log('📄 Opening raw JSON data in new tab');
             if (state.fetchedData) {
                 const jsonBlob = new Blob([JSON.stringify(state.fetchedData, null, 2)], {
                     type: 'application/json'
                 });
                 const jsonUrl = URL.createObjectURL(jsonBlob);
                 window.open(jsonUrl, '_blank');
-                console.log('✅ Raw JSON tab opened successfully');
-            } else {
-                console.warn('⚠️ No fetched data available to display');
             }
         });
     }
@@ -39,11 +29,7 @@ export function setupInputStep(state) {
     if (fetchDataBtn) {
         fetchDataBtn.addEventListener('click', async () => {
             const apiUrl = apiUrlInput.value.trim();
-            console.log('🌐 Fetch Data button clicked');
-            console.log('📝 API URL:', apiUrl);
-            
             if (!apiUrl) {
-                console.warn('⚠️ No API URL provided');
                 alert('Please enter an API URL');
                 return;
             }
@@ -51,58 +37,37 @@ export function setupInputStep(state) {
             try {
                 // Validate URL
                 if (!isValidApiUrl(apiUrl)) {
-                    console.error('❌ Invalid API URL format:', apiUrl);
                     alert('Please enter a valid Omeka S API URL (e.g., https://example.com/api/items)');
                     return;
                 }
                 
-                console.log('✅ URL validation passed');
-                
                 // Update state
                 state.apiUrl = apiUrl;
-                console.log('💾 API URL saved to state');
                 
                 // Show loading indicator
                 if (loadingIndicator) loadingIndicator.style.display = 'block';
-                console.log('⏳ Loading indicator shown, starting API fetch...');
                 
                 // Fetch actual data from API
                 const response = await fetch(apiUrl);
-                console.log('📡 API response received:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    ok: response.ok
-                });
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
                 }
                 
                 const contentType = response.headers.get('content-type');
-                console.log('📋 Content-Type:', contentType);
-                
                 if (!contentType || !contentType.includes('application/json')) {
                     throw new Error('Response is not valid JSON. Please check the API URL.');
                 }
                 
                 const data = await response.json();
-                console.log('📊 JSON data parsed successfully:', {
-                    type: Array.isArray(data) ? 'array' : typeof data,
-                    hasItems: !!(data.items),
-                    itemCount: Array.isArray(data) ? data.length : (data.items ? data.items.length : 'N/A')
-                });
                 
                 // Validate JSON structure
                 if (!isValidOmekaResponse(data)) {
-                    console.error('❌ Invalid Omeka S response structure');
                     throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
                 }
                 
-                console.log('✅ JSON structure validation passed');
-                
                 // Store fetched data
                 state.fetchedData = data;
-                console.log('💾 Fetched data stored in state');
                 
                 // Automatically select first item as example
                 let selectedExample = null;
@@ -116,41 +81,21 @@ export function setupInputStep(state) {
                 
                 if (selectedExample) {
                     state.selectedExample = selectedExample;
-                    console.log('🎯 Example item automatically selected:', {
-                        hasId: !!(selectedExample['@id'] || selectedExample['o:id']),
-                        hasType: !!(selectedExample['@type']),
-                        propertyCount: Object.keys(selectedExample).length
-                    });
-                    
                     // Mark step 1 as completed
-                    const currentState = state.getState();
-                    const newHighestStep = Math.max(currentState.highestCompletedStep, 1);
-                    state.updateState('highestCompletedStep', newHighestStep);
-                    console.log('🏁 Step 1 marked as completed, highest completed step:', newHighestStep);
+                    state.updateState('highestCompletedStep', Math.max(state.getState().highestCompletedStep, 1));
                 }
                 
                 // Update UI
                 displayData(state.fetchedData);
-                console.log('🎨 UI updated with fetched data');
                 
                 // Show raw JSON button
-                if (viewRawJsonBtn) {
-                    viewRawJsonBtn.style.display = 'inline-block';
-                    console.log('👀 Raw JSON button enabled');
-                }
+                if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'inline-block';
                 
                 // Enable continue to mapping button
-                if (proceedToMappingBtn) {
-                    proceedToMappingBtn.disabled = false;
-                    console.log('▶️ Continue to Mapping button enabled');
-                }
-                
-                console.log('🎉 Data fetch completed successfully!');
+                if (proceedToMappingBtn) proceedToMappingBtn.disabled = false;
                 
             } catch (error) {
-                console.error('❌ Error during data fetch:', error);
-                console.log('🧹 Cleaning up after error...');
-                
+                console.error('Error fetching data:', error);
                 const errorMsg = error.message || 'Error fetching data. Please check the API URL and try again.';
                 alert(errorMsg);
                 
@@ -161,12 +106,9 @@ export function setupInputStep(state) {
                 if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'none';
                 if (proceedToMappingBtn) proceedToMappingBtn.disabled = true;
                 
-                console.log('🔄 State and UI reset after error');
-                
             } finally {
                 // Hide loading indicator
                 if (loadingIndicator) loadingIndicator.style.display = 'none';
-                console.log('⏳ Loading indicator hidden');
             }
         });
     }
@@ -174,23 +116,13 @@ export function setupInputStep(state) {
     // Continue to mapping button
     if (proceedToMappingBtn) {
         proceedToMappingBtn.addEventListener('click', () => {
-            console.log('➡️ Continue to Mapping button clicked');
-            
             if (!state.fetchedData || !state.selectedExample) {
-                console.warn('⚠️ Cannot proceed: missing data or example');
-                console.log('📊 Current state:', {
-                    hasFetchedData: !!state.fetchedData,
-                    hasSelectedExample: !!state.selectedExample
-                });
                 alert('Please fetch data first');
                 return;
             }
             
-            console.log('✅ Validation passed, navigating to Step 2');
-            
             // Navigate to step 2
             state.setCurrentStep(2);
-            console.log('🎯 Navigation to Step 2 completed');
         });
     }
     

@@ -38,42 +38,7 @@ function initializeApp() {
     setupAppEventListeners(state);
     
     // Log initialization status
-    console.log('🚀 Omeka S to Wikidata Mapping Tool initialized');
-    
-    // Make state debugging available globally
-    window.debugState = () => {
-        const currentState = state.getState();
-        console.log('🔍 Current Application State:', {
-            currentStep: state.getCurrentStep(),
-            highestCompletedStep: state.getHighestCompletedStep(),
-            hasUnsavedChanges: state.hasUnsavedChanges(),
-            testMode: state.isTestMode(),
-            apiUrl: currentState.apiUrl,
-            hasFetchedData: !!currentState.fetchedData,
-            hasSelectedExample: !!currentState.selectedExample,
-            mappingsCount: {
-                nonLinked: currentState.mappings.nonLinkedKeys.length,
-                mapped: currentState.mappings.mappedKeys.length,
-                ignored: currentState.mappings.ignoredKeys.length
-            }
-        });
-        console.log('📊 Full state object:', currentState);
-        return currentState;
-    };
-    
-    // Make event logging available globally
-    window.enableEventLogging = () => {
-        Object.values(eventSystem.Events).forEach(event => {
-            eventSystem.subscribe(event, (data) => {
-                console.log(`📡 Event: ${event}`, data);
-            });
-        });
-        console.log('🔊 Event logging enabled for all events');
-    };
-    
-    console.log('🛠️ Debug tools available:');
-    console.log('  - window.debugState() - View current application state');
-    console.log('  - window.enableEventLogging() - Enable logging of all events');
+    console.log('Omeka S to Wikidata Mapping Tool initialized');
 }
 
 /**
