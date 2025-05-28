@@ -58,58 +58,107 @@ export function setupMappingStep(state) {
         });
     }
     
-    // Helper function to extract all keys from nested JSON structure
-    function extractKeysFromObject(obj, prefix = '', maxDepth = 3, currentDepth = 0) {
-        const keys = [];
+    // Helper function to extract and analyze keys from all items
+    function extractAndAnalyzeKeys(data) {
+        const keyFrequency = new Map();
+        const contextMap = new Map();
+        let items = [];
         
-        if (currentDepth >= maxDepth || !obj || typeof obj !== 'object') {
-            return keys;
+        // Normalize data structure to get array of items
+        if (Array.isArray(data)) {
+            items = data;
+        } else if (data.items && Array.isArray(data.items)) {
+            items = data.items;
+        } else if (typeof data === 'object') {
+            items = [data];
         }
         
-        for (const [key, value] of Object.entries(obj)) {
-            // Skip JSON-LD system keys
-            if (key.startsWith('@')) continue;
-            
-            const fullKey = prefix ? `${prefix}.${key}` : key;
-            keys.push({
-                key: fullKey,
-                originalKey: key,
-                type: Array.isArray(value) ? 'array' : typeof value,
-                sampleValue: Array.isArray(value) ? value[0] : value,
-                depth: currentDepth
-            });
-            
-            // Recursively extract keys from nested objects
-            if (value && typeof value === 'object' && !Array.isArray(value)) {
-                keys.push(...extractKeysFromObject(value, fullKey, maxDepth, currentDepth + 1));
-            }
-            
-            // Extract keys from first element of arrays if it's an object
-            if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
-                keys.push(...extractKeysFromObject(value[0], fullKey, maxDepth, currentDepth + 1));
+        // Extract context information from first item
+        if (items.length > 0 && items[0]['@context']) {
+            const context = items[0]['@context'];
+            for (const [prefix, uri] of Object.entries(context)) {
+                if (typeof uri === 'string') {
+                    contextMap.set(prefix, uri);
+                }
             }
         }
         
-        return keys;
+        // Analyze all items to get key frequency
+        items.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+                Object.keys(item).forEach(key => {
+                    // Skip JSON-LD system keys
+                    if (key.startsWith('@')) return;
+                    
+                    // Auto-ignore keys starting with 'o:'
+                    if (key.startsWith('o:')) return;
+                    
+                    // Only count top-level keys
+                    const count = keyFrequency.get(key) || 0;
+                    keyFrequency.set(key, count + 1);
+                });
+            }
+        });
+        
+        // Convert to array and sort by frequency
+        const keyAnalysis = Array.from(keyFrequency.entries())
+            .map(([key, frequency]) => {
+                // Get sample value from first item that has this key
+                let sampleValue = null;
+                let linkedDataUri = null;
+                
+                for (const item of items) {
+                    if (item[key] !== undefined) {
+                        sampleValue = item[key];
+                        break;
+                    }
+                }
+                
+                // Generate linked data URI from context
+                if (key.includes(':')) {
+                    const [prefix, localName] = key.split(':', 2);
+                    const baseUri = contextMap.get(prefix);
+                    if (baseUri) {
+                        linkedDataUri = baseUri + localName;
+                    }
+                } else {
+                    // Check if there's a default namespace
+                    const defaultNs = contextMap.get('');
+                    if (defaultNs) {
+                        linkedDataUri = defaultNs + key;
+                    }
+                }
+                
+                return {
+                    key,
+                    frequency,
+                    totalItems: items.length,
+                    sampleValue,
+                    linkedDataUri,
+                    type: Array.isArray(sampleValue) ? 'array' : typeof sampleValue
+                };
+            })
+            .sort((a, b) => b.frequency - a.frequency); // Sort by frequency descending
+        
+        return keyAnalysis;
     }
 
     // Helper function to populate key lists
     function populateLists() {
         const currentState = state.getState();
         console.log('populateLists called', { 
-            fetchedData: !!currentState.fetchedData, 
-            selectedExample: !!currentState.selectedExample,
-            selectedExampleKeys: currentState.selectedExample ? Object.keys(currentState.selectedExample) : []
+            fetchedData: !!currentState.fetchedData,
+            dataType: Array.isArray(currentState.fetchedData) ? 'array' : typeof currentState.fetchedData
         });
         
-        if (!currentState.fetchedData || !currentState.selectedExample) {
-            console.log('No data or selected example available');
+        if (!currentState.fetchedData) {
+            console.log('No data available');
             return;
         }
         
-        // Extract all keys from the selected example object
-        const extractedKeys = extractKeysFromObject(currentState.selectedExample);
-        console.log('Extracted keys:', extractedKeys);
+        // Analyze all keys from the complete dataset
+        const keyAnalysis = extractAndAnalyzeKeys(currentState.fetchedData);
+        console.log('Key analysis:', keyAnalysis);
         
         // Initialize arrays if they don't exist in state
         if (!currentState.mappings.nonLinkedKeys) {
@@ -131,10 +180,12 @@ export function setupMappingStep(state) {
             ...updatedState.mappings.ignoredKeys.map(k => k.key || k)
         ]);
         
-        const newKeys = extractedKeys.filter(keyObj => !processedKeys.has(keyObj.key));
+        const newKeys = keyAnalysis.filter(keyObj => !processedKeys.has(keyObj.key));
         
         // Add new keys to non-linked keys
-        const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.map(k => typeof k === 'string' ? { key: k } : k);
+        const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.filter(k => 
+            !keyAnalysis.find(ka => ka.key === (k.key || k))
+        );
         const allNonLinkedKeys = [...currentNonLinkedKeys, ...newKeys];
         state.updateState('mappings.nonLinkedKeys', allNonLinkedKeys);
         
@@ -175,44 +226,34 @@ export function setupMappingStep(state) {
             
             // Handle both string keys (legacy) and key objects
             const keyData = typeof keyObj === 'string' 
-                ? { key: keyObj, type: 'unknown', sampleValue: null, depth: 0 }
+                ? { key: keyObj, type: 'unknown', frequency: 1, totalItems: 1 }
                 : keyObj;
             
-            // Create key display with additional information
+            // Create compact key display
             const keyDisplay = document.createElement('div');
-            keyDisplay.className = 'key-item';
+            keyDisplay.className = 'key-item-compact';
             
             const keyName = document.createElement('span');
-            keyName.className = 'key-name';
+            keyName.className = 'key-name-compact';
             keyName.textContent = keyData.key;
             keyDisplay.appendChild(keyName);
             
-            if (keyData.type && keyData.type !== 'unknown') {
-                const typeIndicator = document.createElement('span');
-                typeIndicator.className = 'key-type';
-                typeIndicator.textContent = `[${keyData.type}]`;
-                keyDisplay.appendChild(typeIndicator);
-            }
-            
-            // Show sample value for context
-            if (keyData.sampleValue !== null && keyData.sampleValue !== undefined) {
-                const sampleValue = document.createElement('span');
-                sampleValue.className = 'key-sample';
-                const displayValue = typeof keyData.sampleValue === 'object' 
-                    ? '[object]' 
-                    : String(keyData.sampleValue).slice(0, 30) + (String(keyData.sampleValue).length > 30 ? '...' : '');
-                sampleValue.textContent = `: ${displayValue}`;
-                keyDisplay.appendChild(sampleValue);
+            // Show frequency information compactly
+            if (keyData.frequency && keyData.totalItems) {
+                const frequencyIndicator = document.createElement('span');
+                frequencyIndicator.className = 'key-frequency';
+                frequencyIndicator.textContent = `(${keyData.frequency}/${keyData.totalItems})`;
+                keyDisplay.appendChild(frequencyIndicator);
             }
             
             li.appendChild(keyDisplay);
             
             // Add click handler for non-linked keys to open mapping modal
             if (type === 'non-linked') {
-                li.className = 'clickable key-item-clickable';
+                li.className = 'clickable key-item-clickable-compact';
                 li.addEventListener('click', () => openMappingModal(keyData));
             } else {
-                li.className = 'key-item-display';
+                li.className = 'key-item-display-compact';
             }
             
             listElement.appendChild(li);
@@ -287,7 +328,9 @@ export function setupMappingStep(state) {
         keyInfo.innerHTML = `
             <h4>Key Information</h4>
             <p><strong>Key:</strong> ${keyData.key}</p>
-            <p><strong>Type:</strong> ${keyData.type}</p>
+            <p><strong>Type:</strong> ${keyData.type || 'unknown'}</p>
+            <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
+            ${keyData.linkedDataUri ? `<p><strong>Linked Data URI:</strong> <a href="${keyData.linkedDataUri}" target="_blank">${keyData.linkedDataUri}</a></p>` : ''}
             <p><strong>Sample Value:</strong> ${formatSampleValue(keyData.sampleValue)}</p>
         `;
         container.appendChild(keyInfo);

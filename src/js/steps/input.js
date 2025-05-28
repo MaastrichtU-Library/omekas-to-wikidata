@@ -12,15 +12,12 @@ export function setupInputStep(state) {
     const viewRawJsonBtn = document.getElementById('view-raw-json');
     const proceedToMappingBtn = document.getElementById('proceed-to-mapping');
     
-    // Set up raw JSON button to open in new tab
+    // Set up raw JSON button to open complete API URL
     if (viewRawJsonBtn) {
         viewRawJsonBtn.addEventListener('click', () => {
-            if (state.fetchedData) {
-                const jsonBlob = new Blob([JSON.stringify(state.fetchedData, null, 2)], {
-                    type: 'application/json'
-                });
-                const jsonUrl = URL.createObjectURL(jsonBlob);
-                window.open(jsonUrl, '_blank');
+            const currentState = state.getState();
+            if (currentState.apiUrl) {
+                window.open(currentState.apiUrl, '_blank');
             }
         });
     }

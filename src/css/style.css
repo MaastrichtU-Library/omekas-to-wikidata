@@ -781,7 +781,48 @@ main {
     color: var(--danger-color);
 }
 
-/* Key item display styles */
+/* Key item display styles - compact version */
+.key-item-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.key-item-clickable-compact:hover {
+    background-color: rgba(33, 150, 243, 0.1);
+}
+
+.key-name-compact {
+    font-weight: 500;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.key-frequency {
+    font-size: 0.75rem;
+    color: #666;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    margin-left: auto;
+}
+
+.key-item-display-compact .key-name-compact {
+    color: var(--success-color);
+}
+
+.key-list li {
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.key-list li.clickable:hover {
+    background-color: rgba(33, 150, 243, 0.1);
+}
+
+/* Legacy styles for backwards compatibility */
 .key-item {
     display: flex;
     flex-direction: column;
