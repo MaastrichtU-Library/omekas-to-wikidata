@@ -100,6 +100,62 @@ export function setupMappingStep(state) {
         }
     }
     
+    // Helper function to extract readable sample values from Omeka S structures
+    function extractSampleValue(value) {
+        if (value === null || value === undefined) {
+            return null;
+        }
+        
+        // Handle arrays (common in Omeka S)
+        if (Array.isArray(value)) {
+            if (value.length === 0) return null;
+            
+            // Get the first value for sample
+            const firstValue = value[0];
+            
+            // If it's an object with @value, extract that
+            if (firstValue && typeof firstValue === 'object' && '@value' in firstValue) {
+                return firstValue['@value'];
+            }
+            
+            // If it's an object with meaningful content, try to extract readable parts
+            if (firstValue && typeof firstValue === 'object') {
+                // Look for common value properties
+                const valueProps = ['@value', 'value', 'name', 'title', 'label', 'display_title'];
+                for (const prop of valueProps) {
+                    if (prop in firstValue && firstValue[prop] !== null && firstValue[prop] !== undefined) {
+                        return firstValue[prop];
+                    }
+                }
+                // If no value property found, return the whole object for JSON display
+                return firstValue;
+            }
+            
+            // For primitive values in arrays, return the first one
+            return firstValue;
+        }
+        
+        // Handle objects with @value property
+        if (value && typeof value === 'object' && '@value' in value) {
+            return value['@value'];
+        }
+        
+        // Handle other objects - look for common value properties
+        if (value && typeof value === 'object') {
+            const valueProps = ['@value', 'value', 'name', 'title', 'label', 'display_title'];
+            for (const prop of valueProps) {
+                if (prop in value && value[prop] !== null && value[prop] !== undefined) {
+                    return value[prop];
+                }
+            }
+            // Return the whole object for JSON display
+            return value;
+        }
+        
+        // For primitive values, return as-is
+        return value;
+    }
+    
     // Helper function to extract and analyze keys from all items
     async function extractAndAnalyzeKeys(data) {
         const keyFrequency = new Map();
@@ -160,7 +216,7 @@ export function setupMappingStep(state) {
                 
                 for (const item of items) {
                     if (item[key] !== undefined) {
-                        sampleValue = item[key];
+                        sampleValue = extractSampleValue(item[key]);
                         break;
                     }
                 }
