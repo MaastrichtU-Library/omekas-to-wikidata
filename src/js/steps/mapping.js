@@ -11,6 +11,9 @@ export function setupMappingStep(state) {
     const ignoredKeysList = document.getElementById('ignored-keys');
     const proceedToReconciliationBtn = document.getElementById('proceed-to-reconciliation');
     const testMappingModelBtn = document.getElementById('test-mapping-model');
+    const loadMappingBtn = document.getElementById('load-mapping');
+    const saveMappingBtn = document.getElementById('save-mapping');
+    const loadMappingFileInput = document.getElementById('load-mapping-file');
     
     // Set default entity schema
     if (entitySchemaInput && !entitySchemaInput.value) {
@@ -55,6 +58,42 @@ export function setupMappingStep(state) {
         entitySchemaInput.addEventListener('change', () => {
             state.updateState('entitySchema', entitySchemaInput.value);
             state.markChangesUnsaved();
+        });
+    }
+    
+    // Load mapping functionality
+    if (loadMappingBtn && loadMappingFileInput) {
+        loadMappingBtn.addEventListener('click', () => {
+            loadMappingFileInput.click();
+        });
+        
+        loadMappingFileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const mappingData = JSON.parse(text);
+                await loadMappingFromData(mappingData, state);
+                
+                // Clear the file input for future use
+                event.target.value = '';
+                
+                // Show success message
+                console.log('Mapping loaded successfully');
+                // TODO: Add user notification
+            } catch (error) {
+                console.error('Error loading mapping file:', error);
+                alert('Error loading mapping file. Please check the file format.');
+            }
+        });
+    }
+    
+    // Save mapping functionality
+    if (saveMappingBtn) {
+        saveMappingBtn.addEventListener('click', () => {
+            const mappingData = generateMappingData(state);
+            downloadMappingAsJson(mappingData);
         });
     }
     
@@ -1019,6 +1058,99 @@ export function setupMappingStep(state) {
                 openMappingModal(nextKey);
             }, 200);
         }
+    }
+    
+    // Generate mapping data for saving
+    function generateMappingData(state) {
+        const currentState = state.getState();
+        const mappingData = {
+            version: "1.0",
+            createdAt: new Date().toISOString(),
+            entitySchema: currentState.entitySchema || 'E473',
+            mappings: {
+                mapped: currentState.mappings.mappedKeys.map(key => ({
+                    key: key.key,
+                    linkedDataUri: key.linkedDataUri,
+                    contextMap: key.contextMap ? Object.fromEntries(key.contextMap) : {},
+                    property: key.property ? {
+                        id: key.property.id,
+                        label: key.property.label,
+                        description: key.property.description,
+                        datatype: key.property.datatype
+                    } : null,
+                    mappedAt: key.mappedAt
+                })),
+                ignored: currentState.mappings.ignoredKeys.map(key => ({
+                    key: key.key,
+                    linkedDataUri: key.linkedDataUri,
+                    contextMap: key.contextMap ? Object.fromEntries(key.contextMap) : {}
+                }))
+            }
+        };
+        
+        return mappingData;
+    }
+    
+    // Download mapping data as JSON file
+    function downloadMappingAsJson(mappingData) {
+        const jsonString = JSON.stringify(mappingData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+        const filename = `omeka-wikidata-mapping-${timestamp}.json`;
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('Mapping saved as:', filename);
+    }
+    
+    // Load mapping data from uploaded file
+    async function loadMappingFromData(mappingData, state) {
+        if (!mappingData.version || !mappingData.mappings) {
+            throw new Error('Invalid mapping file format');
+        }
+        
+        // Set entity schema
+        if (mappingData.entitySchema) {
+            const entitySchemaInput = document.getElementById('entity-schema');
+            if (entitySchemaInput) {
+                entitySchemaInput.value = mappingData.entitySchema;
+                state.updateState('entitySchema', mappingData.entitySchema);
+            }
+        }
+        
+        // Convert contextMap objects back to Maps
+        const processKeys = (keys) => {
+            return keys.map(key => ({
+                ...key,
+                contextMap: key.contextMap ? new Map(Object.entries(key.contextMap)) : new Map()
+            }));
+        };
+        
+        // Load mappings
+        const mappedKeys = processKeys(mappingData.mappings.mapped || []);
+        const ignoredKeys = processKeys(mappingData.mappings.ignored || []);
+        
+        // Update state
+        state.updateState('mappings.mappedKeys', mappedKeys);
+        state.updateState('mappings.ignoredKeys', ignoredKeys);
+        state.updateState('mappings.nonLinkedKeys', []); // Clear non-linked keys
+        
+        // Update UI
+        populateLists();
+        
+        console.log('Loaded mapping with:', {
+            mapped: mappedKeys.length,
+            ignored: ignoredKeys.length,
+            entitySchema: mappingData.entitySchema
+        });
     }
     
 }
