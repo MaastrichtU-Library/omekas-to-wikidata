@@ -1,132 +1,80 @@
 /**
  * Handles modal functionality for the application
+ * Provides methods for opening and closing modals with various content
+ * @module modals
  */
+import { eventSystem } from './events.js';
+import { setupModalUI } from './ui/modal-ui.js';
+import { getMappingModalContent, getReconciliationModalContent } from './ui/modal-content.js';
+
 export function setupModals(state) {
-    const modalContainer = document.getElementById('modal-container');
-    const modalTitle = document.getElementById('modal-title');
-    const modalContent = document.getElementById('modal-content');
-    const modalFooter = document.getElementById('modal-footer');
-    const closeModalBtn = document.getElementById('close-modal');
+    // Set up the modal UI component
+    const modalUI = setupModalUI();
     
-    // Simple function to close the modal
-    function closeModal() {
-        if (modalContainer) {
-            // Important: Set the style directly instead of using classList
-            modalContainer.style.display = 'none';
-        }
+    /**
+     * Shows a mapping modal with example data structure
+     */
+    function showMappingModal() {
+        const content = getMappingModalContent();
         
-        // Clear content
-        if (modalTitle) modalTitle.textContent = '';
-        if (modalContent) modalContent.innerHTML = '';
-        if (modalFooter) modalFooter.innerHTML = '';
+        return modalUI.openModal('Mapping Data Preview', content, [
+            { text: 'Close', type: 'secondary', callback: modalUI.closeModal }
+        ]);
     }
     
     /**
-     * Open a modal with the given content
+     * Shows a reconciliation modal with example data structure
      */
-    function openModal(title, content, buttons = [], onClose = null) {
-        // Set title
-        if (modalTitle) {
-            modalTitle.textContent = title;
-        }
+    function showReconciliationModal() {
+        const content = getReconciliationModalContent();
         
-        // Set content
-        if (modalContent) {
-            if (typeof content === 'string') {
-                modalContent.innerHTML = content;
-            } else {
-                modalContent.innerHTML = '';
-                modalContent.appendChild(content);
-            }
-        }
-        
-        // Add buttons
-        if (modalFooter) {
-            modalFooter.innerHTML = '';
-            buttons.forEach(button => {
-                const btn = document.createElement('button');
-                btn.textContent = button.text;
-                btn.className = button.type === 'primary' ? 'primary-button' : 'secondary-button';
-                
-                if (button.keyboardShortcut) {
-                    // Add keyboard shortcut indicator
-                    const shortcutSpan = document.createElement('span');
-                    shortcutSpan.textContent = ` [${button.keyboardShortcut.toUpperCase()}]`;
-                    shortcutSpan.className = 'shortcut-hint';
-                    btn.appendChild(shortcutSpan);
-                }
-                
-                btn.addEventListener('click', button.callback);
-                modalFooter.appendChild(btn);
-            });
-        }
-        
-        // Show modal - important: set style directly
-        if (modalContainer) {
-            modalContainer.style.display = 'flex';
-        }
-        
-        // Setup keyboard shortcuts
-        function handleKeydown(e) {
-            // Close on Escape
-            if (e.key === 'Escape') {
-                handleCloseModal();
-            }
-            
-            // Button shortcuts
-            buttons.forEach(button => {
-                if (button.keyboardShortcut && 
-                    e.key.toLowerCase() === button.keyboardShortcut.toLowerCase() && 
-                    !e.ctrlKey && !e.altKey && !e.metaKey) {
-                    e.preventDefault();
-                    button.callback();
-                }
-            });
-        }
-        
-        document.addEventListener('keydown', handleKeydown);
-        
-        // Close handler
-        function handleCloseModal() {
-            // Hide modal
-            closeModal();
-            
-            // Remove event listener
-            document.removeEventListener('keydown', handleKeydown);
-            
-            // Run callback if provided
-            if (onClose && typeof onClose === 'function') {
-                onClose();
-            }
-        }
-        
-        // Return close function
-        return handleCloseModal;
+        return modalUI.openModal('Reconciliation Data Preview', content, [
+            { text: 'Close', type: 'secondary', callback: modalUI.closeModal }
+        ]);
     }
     
-    // Setup close button
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => {
-            closeModal();
-        });
+    // Set up event listeners for test modal buttons
+    function setupTestButtons() {
+        const testMappingBtn = document.getElementById('test-mapping-model');
+        const testReconciliationBtn = document.getElementById('test-reconciliation-model');
+        
+        if (testMappingBtn) {
+            testMappingBtn.addEventListener('click', showMappingModal);
+        }
+        
+        if (testReconciliationBtn) {
+            testReconciliationBtn.addEventListener('click', showReconciliationModal);
+        }
     }
     
-    // Setup clicking outside modal to close
-    if (modalContainer) {
-        modalContainer.addEventListener('click', (e) => {
-            if (e.target === modalContainer) {
-                closeModal();
-            }
-        });
-    }
+    // Initialize
+    setupTestButtons();
     
-    // Ensure modal is hidden initially by setting the style directly
-    if (modalContainer) {
-        modalContainer.style.display = 'none';
-    }
-    
+    // Return the modal API so it can be used by other modules
     return {
-        openModal,
-        closeModal
+        /**
+         * Opens a modal with the given content
+         * @param {string} title - The title of the modal
+         * @param {string|HTMLElement} content - The content to display in the modal
+         * @param {Array} buttons - Array of button configurations
+         * @param {Function} onClose - Callback to execute when the modal is closed
+         * @returns {Function} Function to close the modal
+         */
+        openModal: modalUI.openModal,
+        
+        /**
+         * Closes the current modal
+         */
+        closeModal: modalUI.closeModal,
+        
+        /**
+         * Shows a mapping modal with example data structure
+         */
+        showMappingModal,
+        
+        /**
+         * Shows a reconciliation modal with example data structure
+         */
+        showReconciliationModal
     };
 }

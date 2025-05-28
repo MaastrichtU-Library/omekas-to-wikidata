@@ -4,8 +4,9 @@
 export function setupExportStep(state) {
     const quickStatementsTextarea = document.getElementById('quick-statements');
     const copyQuickStatementsBtn = document.getElementById('copy-quick-statements');
-    const downloadJsonBtn = document.getElementById('download-json');
-    const importJsonBtn = document.getElementById('import-json');
+    // JSON export/import removed for MVP
+    // const downloadJsonBtn = document.getElementById('download-json');
+    // const importJsonBtn = document.getElementById('import-json');
     
     // Initialize export when entering this step
     document.addEventListener('DOMContentLoaded', () => {
@@ -31,19 +32,7 @@ export function setupExportStep(state) {
         });
     }
     
-    // Download JSON button
-    if (downloadJsonBtn) {
-        downloadJsonBtn.addEventListener('click', () => {
-            downloadJson();
-        });
-    }
-    
-    // Import JSON button
-    if (importJsonBtn) {
-        importJsonBtn.addEventListener('click', () => {
-            importJson();
-        });
-    }
+    // JSON export/import functionality removed for MVP
     
     // Initialize export
     function initializeExport() {
