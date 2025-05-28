@@ -801,18 +801,37 @@ export function setupMappingStep(state) {
         state.updateState('mappings.mappedKeys', updatedMappedKeys);
         state.updateState('mappings.ignoredKeys', updatedIgnoredKeys);
         
-        // Add to target category with animation marker
+        // Clear isNewlyMoved flag from all existing items to prevent old animations
+        const clearAnimationFlag = (items) => items.map(item => {
+            const { isNewlyMoved, ...cleanItem } = item;
+            return cleanItem;
+        });
+        
+        const cleanedNonLinkedKeys = clearAnimationFlag(updatedNonLinkedKeys);
+        const cleanedMappedKeys = clearAnimationFlag(updatedMappedKeys);
+        const cleanedIgnoredKeys = clearAnimationFlag(updatedIgnoredKeys);
+        
+        // Add to target category with animation marker (only for the current item)
         const keyDataWithAnimation = { ...keyData, isNewlyMoved: true };
         
         if (category === 'ignored') {
-            const finalIgnoredKeys = [...updatedIgnoredKeys, keyDataWithAnimation];
+            const finalIgnoredKeys = [...cleanedIgnoredKeys, keyDataWithAnimation];
             state.updateState('mappings.ignoredKeys', finalIgnoredKeys);
+            // Update other categories without animation
+            state.updateState('mappings.nonLinkedKeys', cleanedNonLinkedKeys);
+            state.updateState('mappings.mappedKeys', cleanedMappedKeys);
         } else if (category === 'mapped') {
-            const finalMappedKeys = [...updatedMappedKeys, keyDataWithAnimation];
+            const finalMappedKeys = [...cleanedMappedKeys, keyDataWithAnimation];
             state.updateState('mappings.mappedKeys', finalMappedKeys);
+            // Update other categories without animation
+            state.updateState('mappings.nonLinkedKeys', cleanedNonLinkedKeys);
+            state.updateState('mappings.ignoredKeys', cleanedIgnoredKeys);
         } else if (category === 'non-linked') {
-            const finalNonLinkedKeys = [...updatedNonLinkedKeys, keyDataWithAnimation];
+            const finalNonLinkedKeys = [...cleanedNonLinkedKeys, keyDataWithAnimation];
             state.updateState('mappings.nonLinkedKeys', finalNonLinkedKeys);
+            // Update other categories without animation
+            state.updateState('mappings.mappedKeys', cleanedMappedKeys);
+            state.updateState('mappings.ignoredKeys', cleanedIgnoredKeys);
         }
         
         // Update UI
