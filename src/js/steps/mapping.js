@@ -2,6 +2,7 @@
  * Handles the Mapping step functionality
  * Provides UI for mapping Omeka S fields to Wikidata properties
  */
+import { eventSystem } from '../events.js';
 export function setupMappingStep(state) {
     // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
