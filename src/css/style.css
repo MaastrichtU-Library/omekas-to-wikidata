@@ -404,7 +404,7 @@ main {
 .selection-controls {
     margin-top: 1.5rem;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
 }
 
 /* Step 2: Mapping */
