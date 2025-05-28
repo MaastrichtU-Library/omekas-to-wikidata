@@ -390,13 +390,16 @@ export function setupMappingStep(state) {
         // Key information section
         const keyInfo = document.createElement('div');
         keyInfo.className = 'key-info';
+        
+        const sampleValueHtml = formatSampleValue(keyData.sampleValue);
+        
         keyInfo.innerHTML = `
             <h4>Key Information</h4>
             <p><strong>Key:</strong> ${keyData.key}</p>
             <p><strong>Type:</strong> ${keyData.type || 'unknown'}</p>
             <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
             ${keyData.linkedDataUri ? `<p><strong>Linked Data URI:</strong> <a href="${keyData.linkedDataUri}" target="_blank">${keyData.linkedDataUri}</a></p>` : ''}
-            <p><strong>Sample Value:</strong> ${formatSampleValue(keyData.sampleValue)}</p>
+            <div><strong>Sample Value:</strong> ${sampleValueHtml}</div>
         `;
         container.appendChild(keyInfo);
         
@@ -426,7 +429,10 @@ export function setupMappingStep(state) {
         if (typeof value === 'object') {
             try {
                 const jsonStr = JSON.stringify(value, null, 2);
-                return jsonStr.length > 200 ? jsonStr.slice(0, 200) + '...' : jsonStr;
+                // Create a scrollable container for JSON
+                return `<div class="sample-json-container">
+                    <pre class="sample-json">${jsonStr}</pre>
+                </div>`;
             } catch (e) {
                 return '[object - cannot stringify]';
             }

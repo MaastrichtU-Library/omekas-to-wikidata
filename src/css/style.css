@@ -748,6 +748,47 @@ main {
     line-height: 1.4;
 }
 
+/* Sample JSON display in modal */
+.sample-json-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    margin-top: 0.5rem;
+}
+
+.sample-json {
+    margin: 0;
+    padding: 0.75rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: none;
+    color: #333;
+}
+
+/* Scrollbar styling for sample JSON */
+.sample-json-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sample-json-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.sample-json-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.sample-json-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
 .property-suggestion-item.selected .property-description {
     color: rgba(255, 255, 255, 0.9);
 }
