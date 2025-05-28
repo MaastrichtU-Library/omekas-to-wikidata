@@ -481,14 +481,17 @@ export function setupMappingStep(state) {
         if (value === null || value === undefined) return 'N/A';
         if (typeof value === 'object') {
             try {
+                // Reset the seen set for each call
+                const seenObjects = new WeakSet();
+                
                 // Use a replacer function to handle circular references and non-serializable objects
                 const jsonStr = JSON.stringify(value, (key, val) => {
                     // Handle circular references
                     if (typeof val === 'object' && val !== null) {
-                        if (seen.has(val)) {
+                        if (seenObjects.has(val)) {
                             return '[Circular Reference]';
                         }
-                        seen.add(val);
+                        seenObjects.add(val);
                     }
                     // Handle functions
                     if (typeof val === 'function') {
@@ -501,8 +504,10 @@ export function setupMappingStep(state) {
                     return val;
                 }, 2);
                 
-                // Clear the seen set for next use
-                seen.clear();
+                // Validate that we got a proper JSON string
+                if (!jsonStr || jsonStr === 'undefined' || jsonStr === 'null') {
+                    throw new Error('Invalid JSON result');
+                }
                 
                 // Make JSON keys clickable by replacing them with links
                 const clickableJsonStr = makeJsonKeysClickable(jsonStr, contextMap);
@@ -511,11 +516,26 @@ export function setupMappingStep(state) {
                     <pre class="sample-json">${clickableJsonStr}</pre>
                 </div>`;
             } catch (e) {
-                console.error('JSON stringify error:', e);
-                // Fallback to a safer display method
+                console.error('JSON stringify error:', e, 'Value:', value);
+                // Enhanced fallback that shows more useful information
                 try {
-                    const fallbackStr = Object.prototype.toString.call(value);
-                    return `<div class="sample-value-fallback">${fallbackStr}</div>`;
+                    if (Array.isArray(value)) {
+                        const preview = value.slice(0, 3).map(item => {
+                            if (typeof item === 'object') {
+                                return typeof item === 'object' && item !== null ? '{...}' : String(item);
+                            }
+                            return String(item);
+                        }).join(', ');
+                        const moreText = value.length > 3 ? `, ... (${value.length - 3} more)` : '';
+                        return `<div class="sample-value-fallback">Array[${value.length}]: [${preview}${moreText}]</div>`;
+                    } else if (value && typeof value === 'object') {
+                        const keys = Object.keys(value).slice(0, 3);
+                        const preview = keys.map(k => `"${k}": ...`).join(', ');
+                        const moreText = Object.keys(value).length > 3 ? `, ... (${Object.keys(value).length - 3} more)` : '';
+                        return `<div class="sample-value-fallback">Object: {${preview}${moreText}}</div>`;
+                    } else {
+                        return `<div class="sample-value-fallback">${Object.prototype.toString.call(value)}</div>`;
+                    }
                 } catch (e2) {
                     return '[object - display error]';
                 }
@@ -524,9 +544,6 @@ export function setupMappingStep(state) {
         const str = String(value);
         return str.length > 100 ? str.slice(0, 100) + '...' : str;
     }
-    
-    // WeakSet to track circular references
-    const seen = new WeakSet();
     
     // Helper function to make JSON keys clickable
     function makeJsonKeysClickable(jsonStr, contextMap) {
