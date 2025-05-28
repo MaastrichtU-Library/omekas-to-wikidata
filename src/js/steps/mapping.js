@@ -481,7 +481,29 @@ export function setupMappingStep(state) {
         if (value === null || value === undefined) return 'N/A';
         if (typeof value === 'object') {
             try {
-                const jsonStr = JSON.stringify(value, null, 2);
+                // Use a replacer function to handle circular references and non-serializable objects
+                const jsonStr = JSON.stringify(value, (key, val) => {
+                    // Handle circular references
+                    if (typeof val === 'object' && val !== null) {
+                        if (seen.has(val)) {
+                            return '[Circular Reference]';
+                        }
+                        seen.add(val);
+                    }
+                    // Handle functions
+                    if (typeof val === 'function') {
+                        return '[Function]';
+                    }
+                    // Handle undefined
+                    if (val === undefined) {
+                        return '[Undefined]';
+                    }
+                    return val;
+                }, 2);
+                
+                // Clear the seen set for next use
+                seen.clear();
+                
                 // Make JSON keys clickable by replacing them with links
                 const clickableJsonStr = makeJsonKeysClickable(jsonStr, contextMap);
                 // Create a scrollable container for JSON
@@ -489,12 +511,22 @@ export function setupMappingStep(state) {
                     <pre class="sample-json">${clickableJsonStr}</pre>
                 </div>`;
             } catch (e) {
-                return '[object - cannot stringify]';
+                console.error('JSON stringify error:', e);
+                // Fallback to a safer display method
+                try {
+                    const fallbackStr = Object.prototype.toString.call(value);
+                    return `<div class="sample-value-fallback">${fallbackStr}</div>`;
+                } catch (e2) {
+                    return '[object - display error]';
+                }
             }
         }
         const str = String(value);
         return str.length > 100 ? str.slice(0, 100) + '...' : str;
     }
+    
+    // WeakSet to track circular references
+    const seen = new WeakSet();
     
     // Helper function to make JSON keys clickable
     function makeJsonKeysClickable(jsonStr, contextMap) {
