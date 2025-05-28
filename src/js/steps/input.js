@@ -10,7 +10,6 @@ export function setupInputStep(state) {
     const loadingIndicator = document.getElementById('loading');
     const dataStatus = document.getElementById('data-status');
     const viewRawJsonBtn = document.getElementById('view-raw-json');
-    const selectExampleBtn = document.getElementById('select-example');
     const proceedToMappingBtn = document.getElementById('proceed-to-mapping');
     
     // Set up raw JSON button to open in new tab
@@ -70,14 +69,30 @@ export function setupInputStep(state) {
                 // Store fetched data
                 state.fetchedData = data;
                 
+                // Automatically select first item as example
+                let selectedExample = null;
+                if (Array.isArray(data)) {
+                    selectedExample = data[0];
+                } else if (data.items && Array.isArray(data.items)) {
+                    selectedExample = data.items[0];
+                } else if (typeof data === 'object') {
+                    selectedExample = data;
+                }
+                
+                if (selectedExample) {
+                    state.selectedExample = selectedExample;
+                    // Mark step 1 as completed
+                    state.updateState('highestCompletedStep', Math.max(state.getState().highestCompletedStep, 1));
+                }
+                
                 // Update UI
                 displayData(state.fetchedData);
                 
                 // Show raw JSON button
                 if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'inline-block';
                 
-                // Enable select example button
-                if (selectExampleBtn) selectExampleBtn.disabled = false;
+                // Enable continue to mapping button
+                if (proceedToMappingBtn) proceedToMappingBtn.disabled = false;
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -86,9 +101,10 @@ export function setupInputStep(state) {
                 
                 // Clear any partial data
                 state.fetchedData = null;
+                state.selectedExample = null;
                 if (dataStatus) dataStatus.innerHTML = '';
                 if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'none';
-                if (selectExampleBtn) selectExampleBtn.disabled = true;
+                if (proceedToMappingBtn) proceedToMappingBtn.disabled = true;
                 
             } finally {
                 // Hide loading indicator
@@ -97,38 +113,16 @@ export function setupInputStep(state) {
         });
     }
     
-    // Select example object
-    if (selectExampleBtn) {
-        selectExampleBtn.addEventListener('click', () => {
-            if (!state.fetchedData) {
+    // Continue to mapping button
+    if (proceedToMappingBtn) {
+        proceedToMappingBtn.addEventListener('click', () => {
+            if (!state.fetchedData || !state.selectedExample) {
                 alert('Please fetch data first');
                 return;
             }
             
-            // Select first item from fetched data
-            let exampleItem = null;
-            if (Array.isArray(state.fetchedData)) {
-                exampleItem = state.fetchedData[0];
-            } else if (state.fetchedData.items && Array.isArray(state.fetchedData.items)) {
-                exampleItem = state.fetchedData.items[0];
-            } else {
-                exampleItem = state.fetchedData;
-            }
-            
-            if (!exampleItem) {
-                alert('No example item found in the fetched data');
-                return;
-            }
-            
-            state.selectedExample = exampleItem;
-            
-            // Enable proceed button
-            if (proceedToMappingBtn) proceedToMappingBtn.disabled = false;
-            
-            // Update state to indicate step 1 is complete
-            state.updateState('highestCompletedStep', Math.max(state.getState().highestCompletedStep, 1));
-            
-            alert('Example object selected successfully');
+            // Navigate to step 2
+            state.setCurrentStep(2);
         });
     }
     
@@ -203,7 +197,7 @@ export function setupInputStep(state) {
                         <li>Properties per item: ${propertyCount}</li>
                         ${sampleProperties.length > 0 ? `<li>Sample properties: ${sampleProperties.join(', ')}${propertyCount > 5 ? '...' : ''}</li>` : ''}
                     </ul>
-                    <p><em>Click "Select Example" to proceed, or "View Raw JSON" to see the full structure.</em></p>
+                    <p><em>Click "Continue to Mapping" to proceed, or "View Raw JSON" to see the full structure.</em></p>
                 </div>
             `;
         }
