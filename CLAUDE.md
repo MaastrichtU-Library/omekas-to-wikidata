@@ -8,6 +8,32 @@
   ```
 - Use `git restore` (file) or `git revert` (commit) when the user says "undo"
 - ALWAYS end by commiting the changes you have made!
+### Github Issues
+How to create edit view close open issues and update the JSON with all the issues (".issues/all_issues.json")
+
+Commands:
+```bash
+# Create
+gh issue create --title "Title" --body "Body" --label "bug,documentation" --assignee "daanvr" --milestone "MVP"
+
+
+# Edit  
+gh issue edit NUMBER --title "Edited Title" --body "edited Body" --add-label "documentation" --remove-label "bug" --add-assignee "daanvr" --remove-assignee "daanvr" --milestone "MVP"
+
+# View
+gh issue view NUMBER --json "number,title,body,state,labels,assignees,milestone,author,createdAt,updatedAt,closedAt,url"
+
+# Close and reopen
+gh issue close NUMBER
+gh issue reopen NUMBER
+
+```
+
+Update the json with all the issues:
+```bash
+gh issue list --json number,title,body,state,labels,createdAt,updatedAt,assignees,milestone,author,comments,closedAt,url,closed,stateReason,isPinned --limit 100 > .issues/all_issues.json
+```
+
 
 ## Code Quality Guidelines
 
