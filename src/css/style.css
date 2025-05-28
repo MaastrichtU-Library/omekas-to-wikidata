@@ -436,6 +436,19 @@ main {
     background-color: var(--secondary-color);
     cursor: pointer;
     font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-title {
+    flex: 1;
+}
+
+.section-count {
+    color: #666;
+    font-size: 0.9em;
+    font-weight: 400;
 }
 
 .key-list {

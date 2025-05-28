@@ -309,19 +309,19 @@ export function setupMappingStep(state) {
         // Update Non-linked Keys section
         const nonLinkedSection = document.querySelector('.key-sections .section:nth-child(1) summary');
         if (nonLinkedSection) {
-            nonLinkedSection.textContent = `Non-linked Keys (${mappings.nonLinkedKeys.length}/${totalKeys})`;
+            nonLinkedSection.innerHTML = `<span class="section-title">Non-linked Keys</span><span class="section-count">(${mappings.nonLinkedKeys.length}/${totalKeys})</span>`;
         }
         
         // Update Mapped Keys section
         const mappedSection = document.querySelector('.key-sections .section:nth-child(2) summary');
         if (mappedSection) {
-            mappedSection.textContent = `Mapped Keys (${mappings.mappedKeys.length}/${totalKeys})`;
+            mappedSection.innerHTML = `<span class="section-title">Mapped Keys</span><span class="section-count">(${mappings.mappedKeys.length}/${totalKeys})</span>`;
         }
         
         // Update Ignored Keys section
         const ignoredSection = document.querySelector('.key-sections .section:nth-child(3) summary');
         if (ignoredSection) {
-            ignoredSection.textContent = `Ignored Keys (${mappings.ignoredKeys.length}/${totalKeys})`;
+            ignoredSection.innerHTML = `<span class="section-title">Ignored Keys</span><span class="section-count">(${mappings.ignoredKeys.length}/${totalKeys})</span>`;
         }
     }
     
