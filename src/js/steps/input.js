@@ -68,6 +68,7 @@ export function setupInputStep(state) {
                 
                 // Store fetched data
                 state.fetchedData = data;
+                console.log('Data loaded and saved:', data);
                 
                 // Automatically select first item as example
                 let selectedExample = null;
