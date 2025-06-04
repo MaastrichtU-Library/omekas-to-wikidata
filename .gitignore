@@ -3,4 +3,4 @@
 .env
 *.env
 .issues/
-
+server.log
