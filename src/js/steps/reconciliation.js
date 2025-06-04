@@ -584,12 +584,8 @@ export function setupReconciliationStep(state) {
         valueDiv.appendChild(textSpan);
         valueDiv.appendChild(statusSpan);
         
-        // Add click handler (will be removed later if auto-accepted)
+        // Add click handler 
         const clickHandler = () => {
-            // Check if this cell has been auto-accepted
-            if (valueDiv.dataset.status === 'reconciled') {
-                return; // Don't open modal for reconciled items
-            }
             openReconciliationModal(itemId, property, valueIndex, value);
         };
         
@@ -1365,8 +1361,9 @@ export function setupReconciliationStep(state) {
                     }
                 }
                 
-                // Remove click handler for reconciled/skipped items
-                if (status !== 'pending') {
+                // Keep click handlers for all items (users should be able to edit auto-accepted items)
+                // Only remove for skipped items that are explicitly meant to be skipped
+                if (status === 'skipped') {
                     valueElement.style.cursor = 'default';
                     valueElement.onclick = null;
                 }
