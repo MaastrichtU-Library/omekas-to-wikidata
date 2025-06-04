@@ -96,7 +96,7 @@ export function setupReconciliationStep(state) {
     /**
      * Initialize reconciliation interface based on fetched data and mappings
      */
-    function initializeReconciliation() {
+    async function initializeReconciliation() {
         console.log('🚀 initializeReconciliation() called');
         const currentState = state.getState();
         console.log('🚀 Current state:', currentState);
