@@ -164,7 +164,7 @@ export function setupReconciliationStep(state) {
         
         // Create reconciliation table
         console.log('✅ Creating reconciliation table...');
-        createReconciliationTable(data, mappedKeys);
+        await createReconciliationTable(data, mappedKeys);
         
         // Update state
         console.log('✅ Updating state with reconciliation data...');
@@ -247,7 +247,7 @@ export function setupReconciliationStep(state) {
     /**
      * Create the reconciliation table interface
      */
-    function createReconciliationTable(data, mappedKeys) {
+    async function createReconciliationTable(data, mappedKeys) {
         console.log('🔨 Creating reconciliation table with data:', data.length, 'items and', mappedKeys.length, 'mapped keys');
         console.log('🔨 Property headers element:', propertyHeaders);
         console.log('🔨 Reconciliation rows element:', reconciliationRows);
@@ -326,9 +326,150 @@ export function setupReconciliationStep(state) {
                 reconciliationRows.appendChild(tr);
             });
             console.log('🔨 Added', data.length, 'rows to reconciliation table');
+            
+            // Perform batch auto-acceptance after table is created
+            console.log('🤖 Starting batch auto-acceptance...');
+            await performBatchAutoAcceptance(data, mappedKeys);
+            
         } else {
             console.error('🔨 reconciliationRows element not found!');
         }
+    }
+    
+    /**
+     * Perform batch auto-acceptance for all values in the table
+     */
+    async function performBatchAutoAcceptance(data, mappedKeys) {
+        const batchJobs = [];
+        let autoAcceptedCount = 0;
+        
+        // Collect all values that need checking
+        data.forEach((item, index) => {
+            const itemId = `item-${index}`;
+            mappedKeys.forEach(keyObj => {
+                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                const values = extractPropertyValues(item, keyName);
+                
+                values.forEach((value, valueIndex) => {
+                    batchJobs.push({
+                        itemId,
+                        property: keyName,
+                        valueIndex,
+                        value
+                    });
+                });
+            });
+        });
+        
+        console.log(`🤖 Processing ${batchJobs.length} values for auto-acceptance...`);
+        
+        // Group by property to batch API calls efficiently
+        const batchByProperty = new Map();
+        const dateValues = [];
+        
+        batchJobs.forEach(job => {
+            const propertyType = detectPropertyType(job.property);
+            const inputConfig = getInputFieldConfig(propertyType);
+            
+            // Handle dates immediately (no API call needed)
+            if (propertyType === 'time' || isDateValue(job.value)) {
+                dateValues.push({
+                    ...job,
+                    autoAcceptResult: {
+                        type: 'custom',
+                        value: job.value,
+                        datatype: 'time',
+                        qualifiers: {
+                            autoAccepted: true,
+                            reason: 'date value'
+                        }
+                    }
+                });
+            } 
+            // Group API-requiring properties
+            else if (inputConfig.requiresReconciliation) {
+                if (!batchByProperty.has(job.property)) {
+                    batchByProperty.set(job.property, []);
+                }
+                batchByProperty.get(job.property).push(job);
+            }
+        });
+        
+        // Auto-accept all date values immediately
+        dateValues.forEach(({ itemId, property, valueIndex, autoAcceptResult }) => {
+            markCellAsReconciled({ itemId, property, valueIndex }, autoAcceptResult);
+            autoAcceptedCount++;
+        });
+        
+        // Process API-requiring properties in batches
+        for (const [property, jobs] of batchByProperty.entries()) {
+            console.log(`🤖 Batch processing ${jobs.length} values for property: ${property}`);
+            
+            // Batch reconciliation calls for this property
+            const batchPromises = jobs.map(async (job) => {
+                try {
+                    // Try reconciliation API first
+                    let matches = await tryReconciliationApi(job.value, job.property);
+                    
+                    // If no matches from reconciliation API, try direct search
+                    if (!matches || matches.length === 0) {
+                        matches = await tryDirectWikidataSearch(job.value);
+                    }
+                    
+                    // Check for 100% match
+                    if (matches && matches.length > 0) {
+                        const perfectMatch = matches.find(match => match.score >= 100);
+                        if (perfectMatch) {
+                            return {
+                                ...job,
+                                autoAcceptResult: {
+                                    type: 'wikidata',
+                                    id: perfectMatch.id,
+                                    label: perfectMatch.name,
+                                    description: perfectMatch.description,
+                                    qualifiers: {
+                                        autoAccepted: true,
+                                        reason: '100% reconciliation match',
+                                        score: perfectMatch.score
+                                    }
+                                }
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`🤖 Error checking reconciliation for ${job.value}:`, error);
+                }
+                return null;
+            });
+            
+            // Wait for all reconciliation calls for this property with controlled concurrency
+            const batchSize = 5; // Limit concurrent API calls
+            for (let i = 0; i < batchPromises.length; i += batchSize) {
+                const batch = batchPromises.slice(i, i + batchSize);
+                const results = await Promise.all(batch);
+                
+                // Process successful auto-acceptances
+                results.forEach(result => {
+                    if (result && result.autoAcceptResult) {
+                        markCellAsReconciled(
+                            { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
+                            result.autoAcceptResult
+                        );
+                        autoAcceptedCount++;
+                    }
+                });
+                
+                // Small delay between batches to be respectful to APIs
+                if (i + batchSize < batchPromises.length) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+        }
+        
+        console.log(`🎉 Batch auto-acceptance completed! Auto-accepted ${autoAcceptedCount} values.`);
+        
+        // Update progress display
+        updateProgressDisplay();
     }
     
     /**
@@ -366,17 +507,23 @@ export function setupReconciliationStep(state) {
         valueDiv.appendChild(textSpan);
         valueDiv.appendChild(statusSpan);
         
-        // Add click handler
-        valueDiv.addEventListener('click', () => {
+        // Add click handler (will be removed later if auto-accepted)
+        const clickHandler = () => {
+            // Check if this cell has been auto-accepted
+            if (valueDiv.dataset.status === 'reconciled') {
+                return; // Don't open modal for reconciled items
+            }
             openReconciliationModal(itemId, property, valueIndex, value);
-        });
+        };
+        
+        valueDiv.addEventListener('click', clickHandler);
         
         // Add keyboard support
         valueDiv.setAttribute('tabindex', '0');
         valueDiv.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                openReconciliationModal(itemId, property, valueIndex, value);
+                clickHandler();
             }
         });
         
@@ -432,107 +579,6 @@ export function setupReconciliationStep(state) {
         }
     }
     
-    /**
-     * Check if a value should be auto-accepted based on certain conditions
-     * @param {string} itemId - The item ID
-     * @param {string} property - The property name
-     * @param {number} valueIndex - The value index
-     * @param {string} value - The value to check
-     * @returns {Object|null} Auto-accept result or null if no auto-acceptance
-     */
-    async function checkAutoAcceptConditions(itemId, property, valueIndex, value) {
-        console.log('🤖 Checking auto-accept conditions for:', { property, value });
-        
-        // 1. Check if it's a date property and auto-accept dates
-        const propertyType = detectPropertyType(property);
-        if (propertyType === 'time' || isDateValue(value)) {
-            console.log('🤖 Auto-accepting date value:', value);
-            return {
-                type: 'custom',
-                value: value,
-                datatype: 'time',
-                qualifiers: {
-                    autoAccepted: true,
-                    reason: 'date value'
-                }
-            };
-        }
-        
-        // 2. Check for 100% reconciliation matches
-        const inputConfig = getInputFieldConfig(propertyType);
-        if (inputConfig.requiresReconciliation) {
-            try {
-                console.log('🤖 Checking for 100% reconciliation matches...');
-                
-                // Try reconciliation API first
-                let matches = await tryReconciliationApi(value, property);
-                
-                // If no matches from reconciliation API, try direct search
-                if (!matches || matches.length === 0) {
-                    matches = await tryDirectWikidataSearch(value);
-                }
-                
-                // Check if we have a 100% match
-                if (matches && matches.length > 0) {
-                    const perfectMatch = matches.find(match => match.score >= 100);
-                    if (perfectMatch) {
-                        console.log('🤖 Auto-accepting 100% match:', perfectMatch);
-                        return {
-                            type: 'wikidata',
-                            id: perfectMatch.id,
-                            label: perfectMatch.name,
-                            description: perfectMatch.description,
-                            qualifiers: {
-                                autoAccepted: true,
-                                reason: '100% reconciliation match',
-                                score: perfectMatch.score
-                            }
-                        };
-                    }
-                }
-            } catch (error) {
-                console.warn('🤖 Error checking reconciliation for auto-accept:', error);
-                // Continue to manual reconciliation on error
-            }
-        }
-        
-        return null; // No auto-acceptance conditions met
-    }
-    
-    /**
-     * Show a brief notification for auto-accepted values
-     * @param {string} reason - The reason for auto-acceptance
-     * @param {string} value - The value that was auto-accepted
-     */
-    function showAutoAcceptNotification(reason, value) {
-        // Create a temporary notification element
-        const notification = document.createElement('div');
-        notification.className = 'auto-accept-notification';
-        notification.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-icon">🤖</span>
-                <span class="notification-text">Auto-accepted "${value}" (${reason})</span>
-            </div>
-        `;
-        
-        // Add to page
-        document.body.appendChild(notification);
-        
-        // Show with animation
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
-        
-        // Remove after delay
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
-        }, 2000);
-    }
     
     /**
      * Check if a value appears to be a date
@@ -583,23 +629,6 @@ export function setupReconciliationStep(state) {
      */
     async function openReconciliationModal(itemId, property, valueIndex, value) {
         currentReconciliationCell = { itemId, property, valueIndex, value };
-        
-        // Check for auto-acceptance conditions
-        const autoAcceptResult = await checkAutoAcceptConditions(itemId, property, valueIndex, value);
-        if (autoAcceptResult) {
-            // Show brief notification
-            showAutoAcceptNotification(autoAcceptResult.qualifiers.reason, value);
-            
-            // Auto-accept and proceed to next cell
-            markCellAsReconciled(currentReconciliationCell, autoAcceptResult);
-            currentReconciliationCell = null;
-            
-            // Auto-open next pending cell with a small delay
-            setTimeout(() => {
-                reconcileNextUnprocessedCell();
-            }, 300);
-            return;
-        }
         
         // Create modal content
         const modalContent = createReconciliationModalContent(itemId, property, valueIndex, value);
