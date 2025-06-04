@@ -611,7 +611,7 @@ export function setupReconciliationStep(state) {
                 id: match.id,
                 name: match.name,
                 description: match.description || 'No description available',
-                score: match.score * 100,
+                score: match.score,
                 type: match.type || [],
                 source: 'reconciliation'
             }));
