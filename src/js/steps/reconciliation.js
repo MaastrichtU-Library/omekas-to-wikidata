@@ -5,7 +5,7 @@
  */
 
 import { setupModalUI } from '../ui/modal-ui.js';
-import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes } from '../utils/property-types.js';
+import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes, setupDynamicDatePrecision, standardizeDateInput } from '../utils/property-types.js';
 import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 
@@ -446,6 +446,12 @@ export function setupReconciliationStep(state) {
             currentReconciliationCell = null;
         });
         
+        // Setup dynamic date precision for any date inputs in the modal
+        const modalElement = document.querySelector('.modal-overlay .modal-content');
+        if (modalElement) {
+            setupDynamicDatePrecision(modalElement);
+        }
+        
         // Start automatic reconciliation
         await performAutomaticReconciliation(value, property);
     }
@@ -837,17 +843,28 @@ export function setupReconciliationStep(state) {
                             qualifiers.unit = unitSelect.value;
                         }
                     } else if (dateInput) {
-                        customValue = dateInput.value;
+                        // Standardize the date input and get precision
+                        const standardized = standardizeDateInput(dateInput.value);
+                        customValue = standardized.date;
                         
-                        // Check for precision and calendar qualifiers
+                        // Use detected precision if not manually overridden
                         const precisionSelect = inputContainer.querySelector('.precision-select');
                         const calendarSelect = inputContainer.querySelector('.calendar-select');
                         
                         if (precisionSelect && precisionSelect.value) {
                             qualifiers.precision = precisionSelect.value;
+                        } else if (standardized.precision) {
+                            // Use automatically detected precision
+                            qualifiers.precision = standardized.precision;
                         }
+                        
                         if (calendarSelect && calendarSelect.value) {
                             qualifiers.calendar = calendarSelect.value;
+                        }
+                        
+                        // Store the display value for reference
+                        if (standardized.displayValue) {
+                            qualifiers.displayValue = standardized.displayValue;
                         }
                     } else if (urlInput) {
                         customValue = urlInput.value;
@@ -1207,6 +1224,9 @@ export function setupReconciliationStep(state) {
         // Update the options container
         if (optionsContainer) {
             optionsContainer.innerHTML = newTabsHTML;
+            
+            // Setup dynamic date precision for any new date inputs
+            setupDynamicDatePrecision(optionsContainer);
             
             // If the new type requires reconciliation, start automatic search
             if (inputConfig.requiresReconciliation) {

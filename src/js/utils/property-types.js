@@ -278,10 +278,18 @@ export function createInputHTML(propertyType, value = '', propertyName = '') {
         case 'date':
             html += `
                 <div class="date-input-group">
-                    <input type="date" 
-                           id="${inputId}" 
-                           class="date-input" 
-                           value="${value}">
+                    <div class="date-input-row">
+                        <input type="text" 
+                               id="${inputId}" 
+                               class="date-input flexible-date-input" 
+                               placeholder="Enter date (e.g., 2023, 2023-06, 2023-06-15, 1990s)"
+                               value="${value}"
+                               data-auto-precision="true">
+                        <input type="date" 
+                               class="date-picker-fallback" 
+                               style="display: none;">
+                        <button type="button" class="date-picker-btn">📅</button>
+                    </div>
                     ${config.precision ? `
                         <select class="precision-select">
                             <option value="day">Day precision</option>
@@ -296,6 +304,9 @@ export function createInputHTML(propertyType, value = '', propertyName = '') {
                             <option value="julian">Julian calendar</option>
                         </select>
                     ` : ''}
+                    <div class="date-format-hint">
+                        Supports: Year (2023), Month (2023-06), Day (2023-06-15), Decade (1990s)
+                    </div>
                 </div>
             `;
             break;
@@ -427,4 +438,211 @@ export const COMMON_UNITS = {
 export function getCommonUnits(propertyName) {
     const normalizedProperty = propertyName.toLowerCase().replace(/[^a-z]/g, '');
     return COMMON_UNITS[normalizedProperty] || [];
+}
+
+/**
+ * Detect date precision based on input format
+ * Mimics Wikidata's behavior where precision adapts to the input format
+ * @param {string} dateInput - The date input string
+ * @returns {string} Detected precision ('year', 'month', 'day', 'decade')
+ */
+export function detectDatePrecision(dateInput) {
+    if (!dateInput || dateInput.trim() === '') {
+        return 'day'; // Default precision
+    }
+    
+    const input = dateInput.trim();
+    
+    // Check for decade format (e.g., "1990s", "199x", "199-")
+    if (/^\d{3}[0-9xX\-]s?$/.test(input)) {
+        return 'decade';
+    }
+    
+    // Check for year only (4 digits)
+    if (/^\d{4}$/.test(input)) {
+        return 'year';
+    }
+    
+    // Check for year-month format (YYYY-MM)
+    if (/^\d{4}-\d{1,2}$/.test(input)) {
+        return 'month';
+    }
+    
+    // Check for full date format (YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, etc.)
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(input) || 
+        /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(input) ||
+        /^\d{1,2}-\d{1,2}-\d{4}$/.test(input) ||
+        /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(input)) {
+        return 'day';
+    }
+    
+    // Check for partial year formats (e.g., "early 1990", "late 19th century")
+    if (/\b\d{4}\b/.test(input)) {
+        return 'year';
+    }
+    
+    // Default to day precision for any other format
+    return 'day';
+}
+
+/**
+ * Convert various date input formats to standardized format
+ * @param {string} dateInput - The date input string
+ * @returns {Object} Object containing standardized date and detected precision
+ */
+export function standardizeDateInput(dateInput) {
+    if (!dateInput || dateInput.trim() === '') {
+        return { date: '', precision: 'day' };
+    }
+    
+    const input = dateInput.trim();
+    const precision = detectDatePrecision(input);
+    
+    // Handle decade format
+    if (precision === 'decade') {
+        const decade = input.match(/\d{3}/)[0];
+        return { 
+            date: `${decade}0-01-01`, 
+            precision: 'decade',
+            displayValue: `${decade}0s`
+        };
+    }
+    
+    // Handle year only
+    if (precision === 'year' && /^\d{4}$/.test(input)) {
+        return { 
+            date: `${input}-01-01`, 
+            precision: 'year',
+            displayValue: input
+        };
+    }
+    
+    // Handle year-month format
+    if (precision === 'month') {
+        const parts = input.split('-');
+        const year = parts[0];
+        const month = parts[1].padStart(2, '0');
+        return { 
+            date: `${year}-${month}-01`, 
+            precision: 'month',
+            displayValue: `${year}-${month}`
+        };
+    }
+    
+    // Handle various full date formats
+    if (precision === 'day') {
+        let standardDate = input;
+        
+        // Convert DD/MM/YYYY to YYYY-MM-DD
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(input)) {
+            const [day, month, year] = input.split('/');
+            standardDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        // Convert DD-MM-YYYY to YYYY-MM-DD
+        else if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(input)) {
+            const [day, month, year] = input.split('-');
+            standardDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        // Convert DD.MM.YYYY to YYYY-MM-DD
+        else if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(input)) {
+            const [day, month, year] = input.split('.');
+            standardDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        
+        return { 
+            date: standardDate, 
+            precision: 'day',
+            displayValue: standardDate
+        };
+    }
+    
+    // Fallback
+    return { date: input, precision: 'day', displayValue: input };
+}
+
+/**
+ * Setup dynamic date precision handlers for date inputs
+ * This function should be called after creating date input HTML
+ * @param {HTMLElement} container - Container element with date inputs
+ */
+export function setupDynamicDatePrecision(container) {
+    const dateInputs = container.querySelectorAll('.flexible-date-input[data-auto-precision="true"]');
+    
+    dateInputs.forEach(dateInput => {
+        const precisionSelect = dateInput.closest('.date-input-group').querySelector('.precision-select');
+        const datePicker = dateInput.closest('.date-input-group').querySelector('.date-picker-fallback');
+        const datePickerBtn = dateInput.closest('.date-input-group').querySelector('.date-picker-btn');
+        
+        // Auto-detect precision on input change
+        dateInput.addEventListener('input', function() {
+            const inputValue = this.value;
+            const detectedPrecision = detectDatePrecision(inputValue);
+            
+            if (precisionSelect) {
+                // Update precision select to match detected precision
+                precisionSelect.value = detectedPrecision;
+                
+                // Trigger change event to notify other parts of the application
+                precisionSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            
+            // Update visual feedback
+            updateDateInputFeedback(this, detectedPrecision, inputValue);
+        });
+        
+        // Handle date picker button
+        if (datePickerBtn && datePicker) {
+            datePickerBtn.addEventListener('click', function() {
+                datePicker.style.display = 'block';
+                datePicker.focus();
+                datePicker.click();
+            });
+            
+            datePicker.addEventListener('change', function() {
+                if (this.value) {
+                    dateInput.value = this.value;
+                    dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                this.style.display = 'none';
+            });
+            
+            datePicker.addEventListener('blur', function() {
+                setTimeout(() => {
+                    this.style.display = 'none';
+                }, 200);
+            });
+        }
+        
+        // Initialize precision on page load if there's already a value
+        if (dateInput.value) {
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+}
+
+/**
+ * Update visual feedback for date input based on detected precision
+ * @param {HTMLElement} dateInput - The date input element
+ * @param {string} precision - Detected precision
+ * @param {string} inputValue - Current input value
+ */
+function updateDateInputFeedback(dateInput, precision, inputValue) {
+    const container = dateInput.closest('.date-input-group');
+    const hint = container.querySelector('.date-format-hint');
+    
+    // Remove existing feedback classes
+    dateInput.classList.remove('precision-year', 'precision-month', 'precision-day', 'precision-decade');
+    
+    // Add precision class for styling
+    dateInput.classList.add(`precision-${precision}`);
+    
+    // Update hint text with detected precision
+    if (hint && inputValue.trim()) {
+        const standardized = standardizeDateInput(inputValue);
+        hint.textContent = `Detected: ${precision} precision (${standardized.displayValue || inputValue})`;
+        hint.style.color = '#2e7d32'; // Green color for successful detection
+    } else if (hint) {
+        hint.textContent = 'Supports: Year (2023), Month (2023-06), Day (2023-06-15), Decade (1990s)';
+        hint.style.color = '#666';
+    }
 }
