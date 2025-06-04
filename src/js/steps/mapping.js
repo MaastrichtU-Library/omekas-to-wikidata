@@ -1071,7 +1071,7 @@ export function setupMappingStep(state) {
                 mapped: currentState.mappings.mappedKeys.map(key => ({
                     key: key.key,
                     linkedDataUri: key.linkedDataUri,
-                    contextMap: key.contextMap ? Object.fromEntries(key.contextMap) : {},
+                    contextMap: key.contextMap && key.contextMap instanceof Map ? Object.fromEntries(key.contextMap) : {},
                     property: key.property ? {
                         id: key.property.id,
                         label: key.property.label,
@@ -1083,7 +1083,7 @@ export function setupMappingStep(state) {
                 ignored: currentState.mappings.ignoredKeys.map(key => ({
                     key: key.key,
                     linkedDataUri: key.linkedDataUri,
-                    contextMap: key.contextMap ? Object.fromEntries(key.contextMap) : {}
+                    contextMap: key.contextMap && key.contextMap instanceof Map ? Object.fromEntries(key.contextMap) : {}
                 }))
             }
         };
