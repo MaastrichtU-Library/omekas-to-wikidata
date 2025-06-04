@@ -433,10 +433,173 @@ export function setupReconciliationStep(state) {
     }
     
     /**
+     * Check if a value should be auto-accepted based on certain conditions
+     * @param {string} itemId - The item ID
+     * @param {string} property - The property name
+     * @param {number} valueIndex - The value index
+     * @param {string} value - The value to check
+     * @returns {Object|null} Auto-accept result or null if no auto-acceptance
+     */
+    async function checkAutoAcceptConditions(itemId, property, valueIndex, value) {
+        console.log('🤖 Checking auto-accept conditions for:', { property, value });
+        
+        // 1. Check if it's a date property and auto-accept dates
+        const propertyType = detectPropertyType(property);
+        if (propertyType === 'time' || isDateValue(value)) {
+            console.log('🤖 Auto-accepting date value:', value);
+            return {
+                type: 'custom',
+                value: value,
+                datatype: 'time',
+                qualifiers: {
+                    autoAccepted: true,
+                    reason: 'date value'
+                }
+            };
+        }
+        
+        // 2. Check for 100% reconciliation matches
+        const inputConfig = getInputFieldConfig(propertyType);
+        if (inputConfig.requiresReconciliation) {
+            try {
+                console.log('🤖 Checking for 100% reconciliation matches...');
+                
+                // Try reconciliation API first
+                let matches = await tryReconciliationApi(value, property);
+                
+                // If no matches from reconciliation API, try direct search
+                if (!matches || matches.length === 0) {
+                    matches = await tryDirectWikidataSearch(value);
+                }
+                
+                // Check if we have a 100% match
+                if (matches && matches.length > 0) {
+                    const perfectMatch = matches.find(match => match.score >= 100);
+                    if (perfectMatch) {
+                        console.log('🤖 Auto-accepting 100% match:', perfectMatch);
+                        return {
+                            type: 'wikidata',
+                            id: perfectMatch.id,
+                            label: perfectMatch.name,
+                            description: perfectMatch.description,
+                            qualifiers: {
+                                autoAccepted: true,
+                                reason: '100% reconciliation match',
+                                score: perfectMatch.score
+                            }
+                        };
+                    }
+                }
+            } catch (error) {
+                console.warn('🤖 Error checking reconciliation for auto-accept:', error);
+                // Continue to manual reconciliation on error
+            }
+        }
+        
+        return null; // No auto-acceptance conditions met
+    }
+    
+    /**
+     * Show a brief notification for auto-accepted values
+     * @param {string} reason - The reason for auto-acceptance
+     * @param {string} value - The value that was auto-accepted
+     */
+    function showAutoAcceptNotification(reason, value) {
+        // Create a temporary notification element
+        const notification = document.createElement('div');
+        notification.className = 'auto-accept-notification';
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-icon">🤖</span>
+                <span class="notification-text">Auto-accepted "${value}" (${reason})</span>
+            </div>
+        `;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Show with animation
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        // Remove after delay
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 2000);
+    }
+    
+    /**
+     * Check if a value appears to be a date
+     * @param {string} value - The value to check
+     * @returns {boolean} True if the value appears to be a date
+     */
+    function isDateValue(value) {
+        if (!value || typeof value !== 'string') {
+            return false;
+        }
+        
+        const trimmedValue = value.trim();
+        
+        // Common date patterns
+        const datePatterns = [
+            /^\d{4}$/,                              // Year only (e.g., "2023")
+            /^\d{4}-\d{2}$/,                        // Year-month (e.g., "2023-06") 
+            /^\d{4}-\d{2}-\d{2}$/,                  // ISO date (e.g., "2023-06-15")
+            /^\d{1,2}\/\d{1,2}\/\d{4}$/,           // US format (e.g., "6/15/2023")
+            /^\d{1,2}-\d{1,2}-\d{4}$/,             // Dash format (e.g., "15-6-2023")
+            /^\d{1,2}\.\d{1,2}\.\d{4}$/,           // Dot format (e.g., "15.6.2023")
+            /^\d{4}s$/,                             // Decade (e.g., "1990s")
+            /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}$/i, // "June 15, 2023"
+            /^\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}$/i, // "15 June 2023"
+            /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4}$/i, // "Jun 15, 2023"
+            /^\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/i, // "15 Jun 2023"
+            /^(early|mid|late)\s+\d{4}s?$/i,        // "early 2000s", "mid 1990s"
+            /^c\.\s*\d{4}$/i,                       // "c. 2000" (circa)
+            /^circa\s+\d{4}$/i,                     // "circa 2000"
+            /^\d{4}-\d{4}$/,                        // Date range (e.g., "1990-1995")
+            /^\d{4}\/\d{4}$/,                       // Date range with slash (e.g., "1990/1995")
+        ];
+        
+        // Test against patterns
+        for (const pattern of datePatterns) {
+            if (pattern.test(trimmedValue)) {
+                return true;
+            }
+        }
+        
+        // Try parsing with Date constructor as fallback
+        const parsed = new Date(trimmedValue);
+        return !isNaN(parsed.getTime()) && trimmedValue.length > 3; // Avoid matching single numbers
+    }
+    
+    /**
      * Open reconciliation modal for a specific property value
      */
     async function openReconciliationModal(itemId, property, valueIndex, value) {
         currentReconciliationCell = { itemId, property, valueIndex, value };
+        
+        // Check for auto-acceptance conditions
+        const autoAcceptResult = await checkAutoAcceptConditions(itemId, property, valueIndex, value);
+        if (autoAcceptResult) {
+            // Show brief notification
+            showAutoAcceptNotification(autoAcceptResult.qualifiers.reason, value);
+            
+            // Auto-accept and proceed to next cell
+            markCellAsReconciled(currentReconciliationCell, autoAcceptResult);
+            currentReconciliationCell = null;
+            
+            // Auto-open next pending cell with a small delay
+            setTimeout(() => {
+                reconcileNextUnprocessedCell();
+            }, 300);
+            return;
+        }
         
         // Create modal content
         const modalContent = createReconciliationModalContent(itemId, property, valueIndex, value);
@@ -1062,11 +1225,19 @@ export function setupReconciliationStep(state) {
                 if (statusSpan) {
                     if (status === 'reconciled' && reconciliation) {
                         if (reconciliation.type === 'wikidata') {
-                            statusSpan.innerHTML = `✓ <a href="https://www.wikidata.org/wiki/${reconciliation.id}" target="_blank">${reconciliation.id}</a>`;
+                            const autoAcceptedText = reconciliation.qualifiers?.autoAccepted ? ' (auto)' : '';
+                            statusSpan.innerHTML = `✓ <a href="https://www.wikidata.org/wiki/${reconciliation.id}" target="_blank">${reconciliation.id}</a>${autoAcceptedText}`;
                         } else {
-                            statusSpan.textContent = '✓ Custom value';
+                            const autoAcceptedText = reconciliation.qualifiers?.autoAccepted ? ' (auto)' : '';
+                            statusSpan.textContent = `✓ Custom value${autoAcceptedText}`;
                         }
                         statusSpan.className = 'value-status reconciled';
+                        
+                        // Add auto-accepted styling if applicable
+                        if (reconciliation.qualifiers?.autoAccepted) {
+                            statusSpan.classList.add('auto-accepted');
+                            statusSpan.title = `Auto-accepted: ${reconciliation.qualifiers.reason}`;
+                        }
                     } else if (status === 'skipped') {
                         statusSpan.textContent = 'Skipped';
                         statusSpan.className = 'value-status skipped';
