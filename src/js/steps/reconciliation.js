@@ -416,22 +416,36 @@ export function setupReconciliationStep(state) {
                         matches = await tryDirectWikidataSearch(job.value);
                     }
                     
-                    // Check for 100% match
+                    // Check for matches
                     if (matches && matches.length > 0) {
-                        const perfectMatch = matches.find(match => match.score >= 100);
-                        if (perfectMatch) {
+                        const bestMatch = matches[0]; // First match is usually the best
+                        
+                        // Auto-accept 100% matches
+                        if (bestMatch.score >= 100) {
                             return {
                                 ...job,
                                 autoAcceptResult: {
                                     type: 'wikidata',
-                                    id: perfectMatch.id,
-                                    label: perfectMatch.name,
-                                    description: perfectMatch.description,
+                                    id: bestMatch.id,
+                                    label: bestMatch.name,
+                                    description: bestMatch.description,
                                     qualifiers: {
                                         autoAccepted: true,
                                         reason: '100% reconciliation match',
-                                        score: perfectMatch.score
+                                        score: bestMatch.score
                                     }
+                                }
+                            };
+                        } else {
+                            // Store best match for display (but don't auto-accept)
+                            return {
+                                ...job,
+                                bestMatch: {
+                                    type: 'wikidata',
+                                    id: bestMatch.id,
+                                    label: bestMatch.name,
+                                    description: bestMatch.description,
+                                    score: bestMatch.score
                                 }
                             };
                         }
@@ -448,14 +462,23 @@ export function setupReconciliationStep(state) {
                 const batch = batchPromises.slice(i, i + batchSize);
                 const results = await Promise.all(batch);
                 
-                // Process successful auto-acceptances
+                // Process results
                 results.forEach(result => {
-                    if (result && result.autoAcceptResult) {
-                        markCellAsReconciled(
-                            { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
-                            result.autoAcceptResult
-                        );
-                        autoAcceptedCount++;
+                    if (result) {
+                        if (result.autoAcceptResult) {
+                            // Auto-accept 100% matches
+                            markCellAsReconciled(
+                                { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
+                                result.autoAcceptResult
+                            );
+                            autoAcceptedCount++;
+                        } else if (result.bestMatch) {
+                            // Store best match for display
+                            storeBestMatch(
+                                { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
+                                result.bestMatch
+                            );
+                        }
                     }
                 });
                 
@@ -470,6 +493,60 @@ export function setupReconciliationStep(state) {
         
         // Update progress display
         updateProgressDisplay();
+    }
+    
+    /**
+     * Store the best match for a cell (without auto-accepting)
+     */
+    function storeBestMatch(cellInfo, bestMatch) {
+        const { itemId, property, valueIndex } = cellInfo;
+        
+        // Update data structure to store the best match
+        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
+            const propData = reconciliationData[itemId].properties[property];
+            if (propData.reconciled[valueIndex]) {
+                propData.reconciled[valueIndex].matches = [bestMatch];
+                propData.reconciled[valueIndex].confidence = bestMatch.score;
+            }
+        }
+        
+        // Update UI to show the match percentage
+        updateCellDisplayWithMatch(itemId, property, valueIndex, bestMatch);
+        
+        // Update state
+        state.updateState('reconciliationData', reconciliationData);
+    }
+    
+    /**
+     * Update cell display to show best match percentage
+     */
+    function updateCellDisplayWithMatch(itemId, property, valueIndex, bestMatch) {
+        // Find the cell element
+        const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+        const cell = document.querySelector(cellSelector);
+        
+        if (cell) {
+            const valueElement = cell.querySelector('.property-value') || 
+                               cell.querySelectorAll('.property-value')[valueIndex];
+            
+            if (valueElement) {
+                const statusSpan = valueElement.querySelector('.value-status');
+                if (statusSpan) {
+                    statusSpan.innerHTML = `${bestMatch.score.toFixed(1)}% match: <a href="https://www.wikidata.org/wiki/${bestMatch.id}" target="_blank">${bestMatch.id}</a>`;
+                    statusSpan.className = 'value-status with-match';
+                    statusSpan.title = `Best match: ${bestMatch.label} (${bestMatch.score.toFixed(1)}%)`;
+                }
+                
+                // Add a visual indicator for good matches
+                if (bestMatch.score >= 80) {
+                    valueElement.classList.add('high-confidence-match');
+                } else if (bestMatch.score >= 60) {
+                    valueElement.classList.add('medium-confidence-match');
+                } else {
+                    valueElement.classList.add('low-confidence-match');
+                }
+            }
+        }
     }
     
     /**
@@ -650,8 +727,8 @@ export function setupReconciliationStep(state) {
             }
         }, 100);
         
-        // Start automatic reconciliation
-        await performAutomaticReconciliation(value, property);
+        // Start automatic reconciliation (but use existing matches if available)
+        await performAutomaticReconciliation(value, property, itemId, valueIndex);
     }
     
     /**
@@ -761,7 +838,7 @@ export function setupReconciliationStep(state) {
     /**
      * Perform automatic reconciliation using Wikidata APIs
      */
-    async function performAutomaticReconciliation(value, property) {
+    async function performAutomaticReconciliation(value, property, itemId, valueIndex) {
         // Check if this property type requires reconciliation
         const propertyType = detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
@@ -776,12 +853,27 @@ export function setupReconciliationStep(state) {
         }
         
         try {
-            // Try reconciliation API first
-            let matches = await tryReconciliationApi(value, property);
+            let matches = [];
             
-            // If no good matches, try direct Wikidata search
+            // Check if we already have matches from batch reconciliation
+            if (itemId && valueIndex !== undefined && reconciliationData[itemId]) {
+                const propData = reconciliationData[itemId].properties[property];
+                if (propData && propData.reconciled[valueIndex] && propData.reconciled[valueIndex].matches) {
+                    // Use existing matches from batch reconciliation
+                    matches = propData.reconciled[valueIndex].matches;
+                    console.log('🔄 Using existing matches from batch reconciliation:', matches);
+                }
+            }
+            
+            // If no existing matches, fetch new ones
             if (!matches || matches.length === 0) {
-                matches = await tryDirectWikidataSearch(value);
+                // Try reconciliation API first
+                matches = await tryReconciliationApi(value, property);
+                
+                // If no good matches, try direct Wikidata search
+                if (!matches || matches.length === 0) {
+                    matches = await tryDirectWikidataSearch(value);
+                }
             }
             
             displayAutomaticMatches(matches);

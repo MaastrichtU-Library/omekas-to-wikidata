@@ -1227,6 +1227,37 @@ main {
     opacity: 0.8;
 }
 
+.value-status.with-match {
+    color: #1976d2;
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+
+/* Confidence level indicators */
+.property-value.high-confidence-match {
+    border-left: 3px solid #4caf50;
+}
+
+.property-value.medium-confidence-match {
+    border-left: 3px solid #ff9800;
+}
+
+.property-value.low-confidence-match {
+    border-left: 3px solid #f44336;
+}
+
+.property-value.high-confidence-match .value-status.with-match {
+    color: #2e7d32;
+}
+
+.property-value.medium-confidence-match .value-status.with-match {
+    color: #f57c00;
+}
+
+.property-value.low-confidence-match .value-status.with-match {
+    color: #d32f2f;
+}
+
 
 .value-status a {
     color: inherit;
