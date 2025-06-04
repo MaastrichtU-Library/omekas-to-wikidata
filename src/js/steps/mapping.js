@@ -81,7 +81,7 @@ export function setupMappingStep(state) {
                 
                 // Show success message
                 console.log('Mapping loaded successfully');
-                // TODO: Add user notification
+                alert('Mapping loaded successfully! Restored ' + mappingData.mappings.mapped.length + ' mapped keys and ' + mappingData.mappings.ignored.length + ' ignored keys.');
             } catch (error) {
                 console.error('Error loading mapping file:', error);
                 alert('Error loading mapping file. Please check the file format.');
