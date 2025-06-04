@@ -453,14 +453,17 @@ export function detectDatePrecision(dateInput) {
     
     const input = dateInput.trim();
     
-    // Check for decade format (e.g., "1990s", "199x", "199-")
-    if (/^\d{3}[0-9xX\-]s?$/.test(input)) {
-        return 'decade';
-    }
-    
-    // Check for year only (4 digits)
+    // Check for year only (4 digits) - MUST come before decade check
     if (/^\d{4}$/.test(input)) {
         return 'year';
+    }
+    
+    // Check for decade format (e.g., "1990s", "199x", "199X", "199-")
+    // More specific patterns to avoid matching regular years
+    if (/^\d{3}[0-9][sS]$/.test(input) ||       // 1990s, 1990S
+        /^\d{3}[xX]$/.test(input) ||            // 199x, 199X  
+        /^\d{3}[-_]$/.test(input)) {            // 199-, 199_
+        return 'decade';
     }
     
     // Check for year-month format (YYYY-MM)
