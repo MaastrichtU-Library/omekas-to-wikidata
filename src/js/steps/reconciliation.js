@@ -6,10 +6,24 @@
 
 import { setupModalUI } from '../ui/modal-ui.js';
 import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes } from '../utils/property-types.js';
+import { eventSystem } from '../events.js';
 
 export function setupReconciliationStep(state) {
+    console.log('🔧 Setting up ReconciliationStep module');
+    
     // Initialize modal UI
     const modalUI = setupModalUI();
+    
+    // Listen for STEP_CHANGED events to initialize reconciliation when entering step 3
+    eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
+        console.log('🎯 STEP_CHANGED event received:', data);
+        if (data.newStep === 3) {
+            console.log('🎯 Entering step 3 - calling initializeReconciliation()');
+            setTimeout(() => {
+                initializeReconciliation();
+            }, 100); // Small delay to ensure DOM is updated
+        }
+    });
     
     // Initialize DOM elements
     const propertyHeaders = document.getElementById('property-headers');
@@ -26,19 +40,32 @@ export function setupReconciliationStep(state) {
     
     // Initialize reconciliation data when entering this step
     document.addEventListener('DOMContentLoaded', () => {
+        console.log('🎯 ReconciliationStep: DOM loaded, setting up event listeners');
+        
         // Listen for step changes
         document.querySelectorAll('.step').forEach(step => {
+            console.log(`🎯 Adding click listener to step ${step.dataset.step}`);
             step.addEventListener('click', () => {
-                if (parseInt(step.dataset.step) === 3) {
+                const stepNumber = parseInt(step.dataset.step);
+                console.log(`🎯 Step ${stepNumber} clicked`);
+                if (stepNumber === 3) {
+                    console.log('🎯 Step 3 clicked - calling initializeReconciliation()');
                     initializeReconciliation();
                 }
             });
         });
         
         // Also listen for the navigation button
-        document.getElementById('proceed-to-reconciliation')?.addEventListener('click', () => {
-            initializeReconciliation();
-        });
+        const proceedBtn = document.getElementById('proceed-to-reconciliation');
+        if (proceedBtn) {
+            console.log('🎯 Found proceed-to-reconciliation button, adding listener');
+            proceedBtn.addEventListener('click', () => {
+                console.log('🎯 proceed-to-reconciliation button clicked - calling initializeReconciliation()');
+                initializeReconciliation();
+            });
+        } else {
+            console.warn('🎯 proceed-to-reconciliation button not found!');
+        }
     });
     
     // Reconcile next item button - now processes next unreconciled cell
@@ -52,23 +79,34 @@ export function setupReconciliationStep(state) {
      * Initialize reconciliation interface based on fetched data and mappings
      */
     function initializeReconciliation() {
+        console.log('🚀 initializeReconciliation() called');
         const currentState = state.getState();
+        console.log('🚀 Current state:', currentState);
         
         if (!currentState.mappings || !currentState.mappings.mappedKeys || !currentState.mappings.mappedKeys.length) {
-            console.warn('No mapped keys available for reconciliation');
+            console.warn('❌ No mapped keys available for reconciliation');
+            console.warn('❌ Current mappings:', currentState.mappings);
             return;
         }
         
         if (!currentState.fetchedData) {
-            console.warn('No fetched data available for reconciliation');
+            console.warn('❌ No fetched data available for reconciliation');
+            console.warn('❌ Current fetchedData:', currentState.fetchedData);
             return;
         }
         
+        console.log('✅ Validation passed - proceeding with reconciliation initialization');
+        console.log('✅ Mapped keys:', currentState.mappings.mappedKeys);
+        console.log('✅ Fetched data:', currentState.fetchedData);
+        
         const mappedKeys = currentState.mappings.mappedKeys;
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+        console.log('✅ Data array:', data);
+        console.log('✅ Data length:', data.length);
         
         // Initialize reconciliation progress
         const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
+        console.log('✅ Total reconcilable cells:', totalCells);
         state.updateState('reconciliationProgress', {
             total: totalCells,
             completed: 0,
@@ -106,13 +144,18 @@ export function setupReconciliationStep(state) {
         updateProgressDisplay();
         
         // Create reconciliation table
+        console.log('✅ Creating reconciliation table...');
         createReconciliationTable(data, mappedKeys);
         
         // Update state
+        console.log('✅ Updating state with reconciliation data...');
         state.updateState('reconciliationData', reconciliationData);
         
         // Enable/disable proceed button
+        console.log('✅ Updating proceed button...');
         updateProceedButton();
+        
+        console.log('🎉 Reconciliation initialization completed successfully!');
     }
     
     /**
@@ -163,8 +206,13 @@ export function setupReconciliationStep(state) {
      * Create the reconciliation table interface
      */
     function createReconciliationTable(data, mappedKeys) {
+        console.log('🔨 Creating reconciliation table with data:', data.length, 'items and', mappedKeys.length, 'mapped keys');
+        console.log('🔨 Property headers element:', propertyHeaders);
+        console.log('🔨 Reconciliation rows element:', reconciliationRows);
+        
         // Clear existing content
         if (propertyHeaders) {
+            console.log('🔨 Clearing property headers');
             propertyHeaders.innerHTML = '';
             
             // Add item header
@@ -186,6 +234,7 @@ export function setupReconciliationStep(state) {
         
         // Create item rows
         if (reconciliationRows) {
+            console.log('🔨 Clearing and creating reconciliation rows');
             reconciliationRows.innerHTML = '';
             
             data.forEach((item, index) => {
@@ -234,6 +283,9 @@ export function setupReconciliationStep(state) {
                 
                 reconciliationRows.appendChild(tr);
             });
+            console.log('🔨 Added', data.length, 'rows to reconciliation table');
+        } else {
+            console.error('🔨 reconciliationRows element not found!');
         }
     }
     
