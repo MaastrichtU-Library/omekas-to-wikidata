@@ -49,21 +49,105 @@ export function setupReconciliationStep(state) {
     }
     
     /**
+     * Show a message when no data is available for reconciliation
+     */
+    function showNoDataMessage(message) {
+        if (reconciliationRows) {
+            reconciliationRows.innerHTML = `
+                <tr>
+                    <td colspan="100%" style="text-align: center; padding: 2rem; color: #666; font-style: italic;">
+                        ${message}
+                    </td>
+                </tr>
+            `;
+        }
+        
+        if (reconciliationProgress) {
+            reconciliationProgress.innerHTML = `
+                <div class="no-data-info">
+                    <p style="color: #666; font-style: italic;">${message}</p>
+                </div>
+            `;
+        }
+    }
+    
+    /**
      * Initialize reconciliation interface based on fetched data and mappings
      */
     function initializeReconciliation() {
-        if (!state.mappings || !state.mappings.mappedKeys || !state.mappings.mappedKeys.length) {
-            console.warn('No mapped keys available for reconciliation');
-            return;
+        console.log('Initializing reconciliation with state:', {
+            mappings: state.mappings,
+            fetchedData: state.fetchedData,
+            hasData: !!state.fetchedData,
+            hasMappings: !!(state.mappings && state.mappings.mappedKeys)
+        });
+        
+        // Check if we have required data, or use demo data for testing
+        let mappedKeys = state.mappings?.mappedKeys;
+        let data = state.fetchedData;
+        let isDemoMode = false;
+        
+        // If no real data, provide demo data for testing the interface
+        if (!mappedKeys || mappedKeys.length === 0) {
+            console.warn('No mapped keys available for reconciliation - using demo data');
+            mappedKeys = ['creator', 'publisher', 'title', 'date'];
+            isDemoMode = true;
+            
+            if (!state.mappings) {
+                state.mappings = {};
+            }
+            state.mappings.mappedKeys = mappedKeys;
         }
         
-        if (!state.fetchedData) {
-            console.warn('No fetched data available for reconciliation');
-            return;
+        if (!data) {
+            console.warn('No fetched data available for reconciliation - using demo data');
+            data = [
+                {
+                    'o:title': 'Sample Book 1',
+                    'creator': [{'o:label': 'Jane Smith'}],
+                    'publisher': [{'o:label': 'Academic Press'}],
+                    'title': 'Introduction to Data Science',
+                    'date': '2023'
+                },
+                {
+                    'o:title': 'Sample Article 2', 
+                    'creator': [{'o:label': 'John Doe'}, {'o:label': 'Mary Johnson'}],
+                    'publisher': [{'o:label': 'MIT Press'}],
+                    'title': 'Machine Learning Fundamentals',
+                    'date': '2022-05-15'
+                }
+            ];
+            isDemoMode = true;
         }
         
-        const mappedKeys = state.mappings.mappedKeys;
-        const data = Array.isArray(state.fetchedData) ? state.fetchedData : [state.fetchedData];
+        // Ensure data is in array format
+        data = Array.isArray(data) ? data : [data];
+        
+        // Show demo mode indicator if using test data
+        if (isDemoMode && reconciliationProgress) {
+            // Remove any existing demo indicator
+            const existingIndicator = document.querySelector('.demo-mode-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            const demoIndicator = document.createElement('div');
+            demoIndicator.className = 'demo-mode-indicator';
+            demoIndicator.style.cssText = `
+                background-color: #fff3cd;
+                border: 1px solid #ffeaa7;
+                color: #856404;
+                padding: 0.75rem;
+                border-radius: 4px;
+                margin-bottom: 1rem;
+                font-size: 0.9rem;
+            `;
+            demoIndicator.innerHTML = `
+                <strong>Demo Mode:</strong> Using sample data for demonstration. 
+                Complete Steps 1 and 2 to use your actual data.
+            `;
+            reconciliationProgress.parentNode.insertBefore(demoIndicator, reconciliationProgress);
+        }
         
         // Initialize reconciliation progress
         const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
