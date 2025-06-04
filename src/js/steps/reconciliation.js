@@ -447,10 +447,16 @@ export function setupReconciliationStep(state) {
         });
         
         // Setup dynamic date precision for any date inputs in the modal
-        const modalElement = document.querySelector('.modal-overlay .modal-content');
-        if (modalElement) {
-            setupDynamicDatePrecision(modalElement);
-        }
+        // Use a longer delay to ensure DOM is fully rendered
+        setTimeout(() => {
+            const modalElement = document.querySelector('#modal-content');
+            if (modalElement) {
+                console.log('🔧 Setting up dynamic date precision in modal');
+                setupDynamicDatePrecision(modalElement);
+            } else {
+                console.warn('⚠️ Modal content element not found for date precision setup');
+            }
+        }, 100);
         
         // Start automatic reconciliation
         await performAutomaticReconciliation(value, property);
@@ -1226,7 +1232,10 @@ export function setupReconciliationStep(state) {
             optionsContainer.innerHTML = newTabsHTML;
             
             // Setup dynamic date precision for any new date inputs
-            setupDynamicDatePrecision(optionsContainer);
+            setTimeout(() => {
+                console.log('🔧 Setting up dynamic date precision after type override');
+                setupDynamicDatePrecision(optionsContainer);
+            }, 100);
             
             // If the new type requires reconciliation, start automatic search
             if (inputConfig.requiresReconciliation) {
