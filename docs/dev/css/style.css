@@ -436,6 +436,19 @@ main {
     background-color: var(--secondary-color);
     cursor: pointer;
     font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-title {
+    flex: 1;
+}
+
+.section-count {
+    color: #666;
+    font-size: 0.9em;
+    font-weight: 400;
 }
 
 .key-list {
@@ -748,6 +761,90 @@ main {
     line-height: 1.4;
 }
 
+/* Sample JSON display in modal */
+.sample-json-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    margin-top: 0.5rem;
+}
+
+.sample-json {
+    margin: 0;
+    padding: 0.75rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: none;
+    color: #333;
+}
+
+/* Scrollbar styling for sample JSON */
+.sample-json-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sample-json-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.sample-json-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.sample-json-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Clickable key styling */
+.clickable-key {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px dotted var(--primary-color);
+    transition: all 0.2s ease;
+}
+
+.clickable-key:hover {
+    color: var(--primary-dark);
+    border-bottom-style: solid;
+    background-color: rgba(33, 150, 243, 0.1);
+    padding: 0.1rem 0.2rem;
+    border-radius: 3px;
+}
+
+/* Clickable JSON keys styling */
+.clickable-json-key {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px dotted var(--primary-color);
+    transition: color 0.2s ease;
+}
+
+.clickable-json-key:hover {
+    color: var(--primary-dark);
+    border-bottom-style: solid;
+}
+
+/* Sample value fallback styling */
+.sample-value-fallback {
+    padding: 0.75rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    color: #666;
+    font-style: italic;
+}
+
 .property-suggestion-item.selected .property-description {
     color: rgba(255, 255, 255, 0.9);
 }
@@ -889,6 +986,28 @@ main {
     font-size: 0.9rem;
     color: #888;
     font-style: italic;
+}
+
+/* Mapping Actions Styling */
+.mapping-actions {
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.mapping-file-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.mapping-file-actions .button {
+    min-width: 120px;
+    font-size: 0.9rem;
+    padding: 0.6rem 1rem;
 }
 
 .key-item-display .key-name {
