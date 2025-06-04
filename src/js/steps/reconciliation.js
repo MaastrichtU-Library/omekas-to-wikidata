@@ -4,10 +4,13 @@
  * Implements OpenRefine-style reconciliation interface with modal-based workflow
  */
 
-import { openModal, closeModal } from '../modals.js';
+import { setupModalUI } from '../ui/modal-ui.js';
 import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes } from '../utils/property-types.js';
 
 export function setupReconciliationStep(state) {
+    // Initialize modal UI
+    const modalUI = setupModalUI();
+    
     // Initialize DOM elements
     const propertyHeaders = document.getElementById('property-headers');
     const reconciliationRows = document.getElementById('reconciliation-rows');
@@ -337,11 +340,8 @@ export function setupReconciliationStep(state) {
         const modalContent = createReconciliationModalContent(itemId, property, valueIndex, value);
         
         // Open modal
-        openModal('Reconcile Value', modalContent, {
-            size: 'large',
-            onClose: () => {
-                currentReconciliationCell = null;
-            }
+        modalUI.openModal('Reconcile Value', modalContent, [], () => {
+            currentReconciliationCell = null;
         });
         
         // Start automatic reconciliation
@@ -649,7 +649,7 @@ export function setupReconciliationStep(state) {
     window.skipReconciliation = function() {
         if (currentReconciliationCell) {
             markCellAsSkipped(currentReconciliationCell);
-            closeModal();
+            modalUI.closeModal();
             
             // Auto-open next pending cell
             setTimeout(() => {
@@ -682,7 +682,7 @@ export function setupReconciliationStep(state) {
                     description: selectedMatch.querySelector('.match-description').textContent
                 });
                 
-                closeModal();
+                modalUI.closeModal();
                 setTimeout(() => reconcileNextUnprocessedCell(), 100);
                 return;
             }
@@ -769,7 +769,7 @@ export function setupReconciliationStep(state) {
                         qualifiers: qualifiers
                     });
                     
-                    closeModal();
+                    modalUI.closeModal();
                     setTimeout(() => reconcileNextUnprocessedCell(), 100);
                 } else {
                     alert('Please enter a value or select a match.');
