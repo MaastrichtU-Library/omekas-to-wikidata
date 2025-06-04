@@ -52,26 +52,28 @@ export function setupReconciliationStep(state) {
      * Initialize reconciliation interface based on fetched data and mappings
      */
     function initializeReconciliation() {
-        if (!state.mappings || !state.mappings.mappedKeys || !state.mappings.mappedKeys.length) {
+        const currentState = state.getState();
+        
+        if (!currentState.mappings || !currentState.mappings.mappedKeys || !currentState.mappings.mappedKeys.length) {
             console.warn('No mapped keys available for reconciliation');
             return;
         }
         
-        if (!state.fetchedData) {
+        if (!currentState.fetchedData) {
             console.warn('No fetched data available for reconciliation');
             return;
         }
         
-        const mappedKeys = state.mappings.mappedKeys;
-        const data = Array.isArray(state.fetchedData) ? state.fetchedData : [state.fetchedData];
+        const mappedKeys = currentState.mappings.mappedKeys;
+        const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         
         // Initialize reconciliation progress
         const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
-        state.reconciliationProgress = {
+        state.updateState('reconciliationProgress', {
             total: totalCells,
             completed: 0,
             skipped: 0
-        };
+        });
         
         // Initialize reconciliation data structure
         reconciliationData = {};
@@ -106,7 +108,7 @@ export function setupReconciliationStep(state) {
         createReconciliationTable(data, mappedKeys);
         
         // Update state
-        state.reconciliationData = reconciliationData;
+        state.updateState('reconciliationData', reconciliationData);
         
         // Enable/disable proceed button
         updateProceedButton();
@@ -288,7 +290,8 @@ export function setupReconciliationStep(state) {
      */
     function updateProgressDisplay() {
         if (reconciliationProgress) {
-            const { total, completed, skipped } = state.reconciliationProgress;
+            const currentState = state.getState();
+            const { total, completed, skipped } = currentState.reconciliationProgress;
             const remaining = total - completed - skipped;
             reconciliationProgress.innerHTML = `
                 <div class="progress-stats">
@@ -311,8 +314,9 @@ export function setupReconciliationStep(state) {
      */
     function updateProceedButton() {
         if (proceedToDesignerBtn) {
-            const canProceed = state.reconciliationProgress.completed + state.reconciliationProgress.skipped >= state.reconciliationProgress.total && 
-                              state.reconciliationProgress.total > 0;
+            const currentState = state.getState();
+            const canProceed = currentState.reconciliationProgress.completed + currentState.reconciliationProgress.skipped >= currentState.reconciliationProgress.total && 
+                              currentState.reconciliationProgress.total > 0;
             proceedToDesignerBtn.disabled = !canProceed;
         }
     }
@@ -862,7 +866,8 @@ export function setupReconciliationStep(state) {
         updateCellDisplay(itemId, property, valueIndex, 'reconciled', reconciliation);
         
         // Update progress
-        state.reconciliationProgress.completed++;
+        const currentState = state.getState();
+        state.updateState('reconciliationProgress.completed', currentState.reconciliationProgress.completed + 1);
         updateProgressDisplay();
         
         // Store in context suggestions
@@ -871,7 +876,7 @@ export function setupReconciliationStep(state) {
         }
         
         // Update state
-        state.reconciliationData = reconciliationData;
+        state.updateState('reconciliationData', reconciliationData);
     }
     
     /**
@@ -892,11 +897,12 @@ export function setupReconciliationStep(state) {
         updateCellDisplay(itemId, property, valueIndex, 'skipped');
         
         // Update progress
-        state.reconciliationProgress.skipped++;
+        const currentState = state.getState();
+        state.updateState('reconciliationProgress.skipped', currentState.reconciliationProgress.skipped + 1);
         updateProgressDisplay();
         
         // Update state
-        state.reconciliationData = reconciliationData;
+        state.updateState('reconciliationData', reconciliationData);
     }
     
     /**
