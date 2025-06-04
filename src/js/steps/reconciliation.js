@@ -468,7 +468,24 @@ export function setupReconciliationStep(state) {
                     <p class="property-type-info">
                         <span class="property-type-label">Expected type:</span> 
                         <span class="property-type-value">${inputConfig.description}</span>
+                        <button class="btn small secondary type-override-btn" onclick="showTypeOverride()">Change Type</button>
                     </p>
+                    <div class="type-override-section" style="display: none;">
+                        <h5>Override Property Type</h5>
+                        <p>Choose a different data type for this property:</p>
+                        <select class="type-override-select">
+                            <option value="wikibase-item" ${propertyType === 'wikibase-item' ? 'selected' : ''}>Wikidata Item (Q-ID)</option>
+                            <option value="string" ${propertyType === 'string' ? 'selected' : ''}>Text String</option>
+                            <option value="external-id" ${propertyType === 'external-id' ? 'selected' : ''}>External Identifier</option>
+                            <option value="url" ${propertyType === 'url' ? 'selected' : ''}>URL</option>
+                            <option value="quantity" ${propertyType === 'quantity' ? 'selected' : ''}>Number/Quantity</option>
+                            <option value="time" ${propertyType === 'time' ? 'selected' : ''}>Date/Time</option>
+                            <option value="monolingualtext" ${propertyType === 'monolingualtext' ? 'selected' : ''}>Text with Language</option>
+                            <option value="globe-coordinate" ${propertyType === 'globe-coordinate' ? 'selected' : ''}>Coordinates</option>
+                        </select>
+                        <button class="btn small primary" onclick="applyTypeOverride()">Apply</button>
+                        <button class="btn small secondary" onclick="cancelTypeOverride()">Cancel</button>
+                    </div>
                 </div>
                 
                 <div class="reconciliation-options">
@@ -1094,6 +1111,122 @@ export function setupReconciliationStep(state) {
     window.debugReconciliation = debugReconciliationStep;
     window.loadMockReconciliationData = loadMockDataForTesting;
     window.initializeReconciliationManually = initializeReconciliation;
+    
+    // Type override functions
+    window.showTypeOverride = function() {
+        const overrideSection = document.querySelector('.type-override-section');
+        if (overrideSection) {
+            overrideSection.style.display = 'block';
+        }
+    };
+    
+    window.cancelTypeOverride = function() {
+        const overrideSection = document.querySelector('.type-override-section');
+        if (overrideSection) {
+            overrideSection.style.display = 'none';
+        }
+    };
+    
+    window.applyTypeOverride = function() {
+        const select = document.querySelector('.type-override-select');
+        const overrideSection = document.querySelector('.type-override-section');
+        const optionsContainer = document.querySelector('.reconciliation-options');
+        
+        if (!select || !select.value) return;
+        
+        const newType = select.value;
+        console.log('🔄 Applying type override:', newType);
+        
+        // Get current property and value from the modal context
+        if (!currentReconciliationCell) return;
+        
+        const { property, value } = currentReconciliationCell;
+        
+        // Update the property type info display
+        const typeValueSpan = document.querySelector('.property-type-value');
+        const inputConfig = getInputFieldConfig(newType);
+        if (typeValueSpan) {
+            typeValueSpan.textContent = inputConfig.description;
+        }
+        
+        // Recreate the tabs and content with the new type
+        const newTabsHTML = `
+            <div class="option-tabs">
+                ${inputConfig.requiresReconciliation ? 
+                    '<button class="tab-btn active" data-tab="automatic">Automatic Matches</button>' : 
+                    ''
+                }
+                ${inputConfig.requiresReconciliation ? 
+                    '<button class="tab-btn" data-tab="manual">Manual Search</button>' : 
+                    ''
+                }
+                <button class="tab-btn ${!inputConfig.requiresReconciliation ? 'active' : ''}" data-tab="custom">${inputConfig.requiresReconciliation ? 'Custom Value' : 'Enter Value'}</button>
+            </div>
+            
+            ${inputConfig.requiresReconciliation ? `
+                <div class="tab-content active" id="automatic-tab">
+                    <div class="loading-indicator">
+                        <p>Searching for matches...</p>
+                        <div class="spinner"></div>
+                    </div>
+                    <div class="matches-container" style="display: none;">
+                        <div class="matches-list"></div>
+                    </div>
+                    <div class="no-matches" style="display: none;">
+                        <p>No automatic matches found.</p>
+                        <button class="btn secondary" onclick="switchTab('manual')">Try Manual Search</button>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="manual-tab">
+                    <div class="manual-search">
+                        <div class="search-controls">
+                            <input type="text" class="search-input" placeholder="Search Wikidata..." value="${value}">
+                            <button class="btn primary search-btn">Search</button>
+                        </div>
+                        <div class="search-results"></div>
+                    </div>
+                </div>
+            ` : ''}
+            
+            <div class="tab-content ${!inputConfig.requiresReconciliation ? 'active' : ''}" id="custom-tab">
+                <div class="custom-value">
+                    ${inputConfig.requiresReconciliation ? 
+                        '<p>Enter a custom value if no Wikidata match is appropriate:</p>' : 
+                        '<p>Enter the value for this property:</p>'
+                    }
+                    ${createInputHTML(newType, value, property)}
+                    ${inputConfig.requiresReconciliation ? 
+                        '<p class="note">This will be used as a literal value without Wikidata linking.</p>' : 
+                        ''
+                    }
+                </div>
+            </div>
+        `;
+        
+        // Update the options container
+        if (optionsContainer) {
+            optionsContainer.innerHTML = newTabsHTML;
+            
+            // If the new type requires reconciliation, start automatic search
+            if (inputConfig.requiresReconciliation) {
+                performAutomaticReconciliation(value, property);
+            }
+            
+            // Set up manual search if manual tab exists
+            const manualTab = document.getElementById('manual-tab');
+            if (manualTab) {
+                setTimeout(() => setupManualSearch(), 100);
+            }
+        }
+        
+        // Hide the override section
+        if (overrideSection) {
+            overrideSection.style.display = 'none';
+        }
+        
+        console.log('✅ Type override applied successfully');
+    };
     
     // Return public API if needed
     return {

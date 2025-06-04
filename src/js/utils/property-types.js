@@ -48,6 +48,9 @@ const PROPERTY_PATTERNS = {
     'location': 'wikibase-item',
     'country': 'wikibase-item',
     'city': 'wikibase-item',
+    'license': 'wikibase-item',
+    'rights': 'wikibase-item',
+    'copyright': 'wikibase-item',
     
     // Text properties
     'title': 'string',
