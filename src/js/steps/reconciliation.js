@@ -34,6 +34,15 @@ export function setupReconciliationStep(state) {
     const proceedToDesignerBtn = document.getElementById('proceed-to-designer');
     const testReconciliationModelBtn = document.getElementById('test-reconciliation-model');
     
+    // Debug DOM element initialization
+    console.log('🔧 ReconciliationStep DOM elements initialized:');
+    console.log('  - propertyHeaders:', !!propertyHeaders, propertyHeaders);
+    console.log('  - reconciliationRows:', !!reconciliationRows, reconciliationRows);
+    console.log('  - reconciliationProgress:', !!reconciliationProgress, reconciliationProgress);
+    console.log('  - reconcileNextBtn:', !!reconcileNextBtn, reconcileNextBtn);
+    console.log('  - proceedToDesignerBtn:', !!proceedToDesignerBtn, proceedToDesignerBtn);
+    console.log('  - testReconciliationModelBtn:', !!testReconciliationModelBtn, testReconciliationModelBtn);
+    
     // Reconciliation state management
     let reconciliationData = {};
     let currentReconciliationCell = null;
