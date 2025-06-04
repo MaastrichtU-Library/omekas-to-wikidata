@@ -85,9 +85,10 @@ export function setupReconciliationStep(state) {
             };
             
             // Initialize each mapped property
-            mappedKeys.forEach(key => {
-                const values = extractPropertyValues(item, key);
-                reconciliationData[itemId].properties[key] = {
+            mappedKeys.forEach(keyObj => {
+                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                const values = extractPropertyValues(item, keyName);
+                reconciliationData[itemId].properties[keyName] = {
                     originalValues: values,
                     reconciled: values.map(() => ({
                         status: 'pending', // pending, reconciled, skipped, failed
@@ -120,8 +121,9 @@ export function setupReconciliationStep(state) {
     function calculateTotalReconciliableCells(data, mappedKeys) {
         let total = 0;
         data.forEach(item => {
-            mappedKeys.forEach(key => {
-                const values = extractPropertyValues(item, key);
+            mappedKeys.forEach(keyObj => {
+                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                const values = extractPropertyValues(item, keyName);
                 total += values.length;
             });
         });
@@ -172,11 +174,12 @@ export function setupReconciliationStep(state) {
             propertyHeaders.appendChild(itemHeader);
             
             // Add property headers
-            mappedKeys.forEach(key => {
+            mappedKeys.forEach(keyObj => {
+                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
                 const th = document.createElement('th');
-                th.textContent = key;
+                th.textContent = keyName;
                 th.className = 'property-header';
-                th.dataset.property = key;
+                th.dataset.property = keyName;
                 propertyHeaders.appendChild(th);
             });
         }
@@ -199,8 +202,9 @@ export function setupReconciliationStep(state) {
                 tr.appendChild(itemCell);
                 
                 // Add property cells
-                mappedKeys.forEach(key => {
-                    const values = extractPropertyValues(item, key);
+                mappedKeys.forEach(keyObj => {
+                    const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                    const values = extractPropertyValues(item, keyName);
                     
                     if (values.length === 0) {
                         // Empty cell
@@ -210,17 +214,17 @@ export function setupReconciliationStep(state) {
                         tr.appendChild(td);
                     } else if (values.length === 1) {
                         // Single value cell
-                        const td = createPropertyCell(itemId, key, 0, values[0]);
+                        const td = createPropertyCell(itemId, keyName, 0, values[0]);
                         tr.appendChild(td);
                     } else {
                         // Multiple values cell
                         const td = document.createElement('td');
                         td.className = 'property-cell multi-value-cell';
                         td.dataset.itemId = itemId;
-                        td.dataset.property = key;
+                        td.dataset.property = keyName;
                         
                         values.forEach((value, valueIndex) => {
-                            const valueDiv = createValueElement(itemId, key, valueIndex, value);
+                            const valueDiv = createValueElement(itemId, keyName, valueIndex, value);
                             td.appendChild(valueDiv);
                         });
                         
