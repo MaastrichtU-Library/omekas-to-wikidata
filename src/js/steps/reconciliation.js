@@ -7,6 +7,7 @@
 import { setupModalUI } from '../ui/modal-ui.js';
 import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes } from '../utils/property-types.js';
 import { eventSystem } from '../events.js';
+import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 
 export function setupReconciliationStep(state) {
     console.log('🔧 Setting up ReconciliationStep module');
@@ -75,6 +76,14 @@ export function setupReconciliationStep(state) {
         });
     }
     
+    // Test reconciliation model button for debugging
+    if (testReconciliationModelBtn) {
+        testReconciliationModelBtn.addEventListener('click', () => {
+            console.log('🧪 Test reconciliation button clicked - loading mock data');
+            loadMockDataForTesting();
+        });
+    }
+    
     /**
      * Initialize reconciliation interface based on fetched data and mappings
      */
@@ -97,7 +106,8 @@ export function setupReconciliationStep(state) {
         
         console.log('✅ Validation passed - proceeding with reconciliation initialization');
         console.log('✅ Mapped keys:', currentState.mappings.mappedKeys);
-        console.log('✅ Fetched data:', currentState.fetchedData);
+        console.log('✅ Fetched data type:', typeof currentState.fetchedData);
+        console.log('✅ Fetched data structure:', currentState.fetchedData);
         
         const mappedKeys = currentState.mappings.mappedKeys;
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
@@ -156,6 +166,29 @@ export function setupReconciliationStep(state) {
         updateProceedButton();
         
         console.log('🎉 Reconciliation initialization completed successfully!');
+    }
+    
+    /**
+     * Load mock data for testing purposes
+     */
+    function loadMockDataForTesting() {
+        console.log('🧪 Loading mock data for testing reconciliation...');
+        
+        const mockItems = getMockItemsData();
+        const mockMapping = getMockMappingData();
+        
+        // Update state with mock data
+        state.updateState('fetchedData', mockItems.items);
+        state.updateState('mappings.mappedKeys', mockMapping.mappings.mappedKeys);
+        state.updateState('mappings.nonLinkedKeys', mockMapping.mappings.nonLinkedKeys);
+        state.updateState('mappings.ignoredKeys', mockMapping.mappings.ignoredKeys);
+        
+        console.log('🧪 Mock data loaded, calling initializeReconciliation()');
+        
+        // Initialize reconciliation with mock data
+        setTimeout(() => {
+            initializeReconciliation();
+        }, 100);
     }
     
     /**
@@ -999,4 +1032,64 @@ export function setupReconciliationStep(state) {
             }
         }
     }
+    
+    /**
+     * Debug function to check reconciliation step state
+     * Can be called from browser console: window.debugReconciliation()
+     */
+    function debugReconciliationStep() {
+        console.log('🔍=== RECONCILIATION DEBUG REPORT ===');
+        
+        // Check DOM elements
+        console.log('🔍 DOM Elements:');
+        console.log('  - propertyHeaders:', propertyHeaders);
+        console.log('  - reconciliationRows:', reconciliationRows);
+        console.log('  - reconciliationProgress:', reconciliationProgress);
+        console.log('  - reconcileNextBtn:', reconcileNextBtn);
+        console.log('  - proceedToDesignerBtn:', proceedToDesignerBtn);
+        console.log('  - testReconciliationModelBtn:', testReconciliationModelBtn);
+        
+        // Check state
+        const currentState = state.getState();
+        console.log('🔍 State:');
+        console.log('  - Current step:', currentState.currentStep);
+        console.log('  - Has fetchedData:', !!currentState.fetchedData);
+        console.log('  - fetchedData type:', typeof currentState.fetchedData);
+        console.log('  - fetchedData length:', Array.isArray(currentState.fetchedData) ? currentState.fetchedData.length : 'not array');
+        console.log('  - Has mappings:', !!currentState.mappings);
+        console.log('  - mappedKeys count:', currentState.mappings?.mappedKeys?.length || 0);
+        console.log('  - mappedKeys:', currentState.mappings?.mappedKeys);
+        console.log('  - Test mode:', currentState.testMode);
+        
+        // Check reconciliation data
+        console.log('🔍 Reconciliation Data:');
+        console.log('  - reconciliationData object keys:', Object.keys(reconciliationData));
+        console.log('  - reconciliationData:', reconciliationData);
+        
+        console.log('🔍=== END DEBUG REPORT ===');
+        
+        return {
+            domElements: {
+                propertyHeaders,
+                reconciliationRows,
+                reconciliationProgress,
+                reconcileNextBtn,
+                proceedToDesignerBtn
+            },
+            state: currentState,
+            reconciliationData
+        };
+    }
+    
+    // Expose debug function globally for console access
+    window.debugReconciliation = debugReconciliationStep;
+    window.loadMockReconciliationData = loadMockDataForTesting;
+    window.initializeReconciliationManually = initializeReconciliation;
+    
+    // Return public API if needed
+    return {
+        debugReconciliationStep,
+        loadMockDataForTesting,
+        initializeReconciliation
+    };
 }
