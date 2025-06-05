@@ -437,9 +437,16 @@ export function setupReconciliationStep(state) {
                                 }
                             };
                         } else {
-                            // Store best match for display (but don't auto-accept)
+                            // Store all matches for display (but don't auto-accept)
                             return {
                                 ...job,
+                                allMatches: matches.map(match => ({
+                                    type: 'wikidata',
+                                    id: match.id,
+                                    label: match.name,
+                                    description: match.description,
+                                    score: match.score
+                                })),
                                 bestMatch: {
                                     type: 'wikidata',
                                     id: bestMatch.id,
@@ -472,10 +479,11 @@ export function setupReconciliationStep(state) {
                                 result.autoAcceptResult
                             );
                             autoAcceptedCount++;
-                        } else if (result.bestMatch) {
-                            // Store best match for display
-                            storeBestMatch(
+                        } else if (result.allMatches) {
+                            // Store all matches for display
+                            storeAllMatches(
                                 { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
+                                result.allMatches,
                                 result.bestMatch
                             );
                         }
@@ -496,21 +504,21 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Store the best match for a cell (without auto-accepting)
+     * Store all matches for a cell (without auto-accepting)
      */
-    function storeBestMatch(cellInfo, bestMatch) {
+    function storeAllMatches(cellInfo, allMatches, bestMatch) {
         const { itemId, property, valueIndex } = cellInfo;
         
-        // Update data structure to store the best match
+        // Update data structure to store all matches
         if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
             const propData = reconciliationData[itemId].properties[property];
             if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].matches = [bestMatch];
+                propData.reconciled[valueIndex].matches = allMatches;
                 propData.reconciled[valueIndex].confidence = bestMatch.score;
             }
         }
         
-        // Update UI to show the match percentage
+        // Update UI to show the best match percentage (for table display)
         updateCellDisplayWithMatch(itemId, property, valueIndex, bestMatch);
         
         // Update state
@@ -855,9 +863,9 @@ export function setupReconciliationStep(state) {
             if (itemId && valueIndex !== undefined && reconciliationData[itemId]) {
                 const propData = reconciliationData[itemId].properties[property];
                 if (propData && propData.reconciled[valueIndex] && propData.reconciled[valueIndex].matches) {
-                    // Use existing matches from batch reconciliation
+                    // Use existing matches from batch reconciliation (all matches, not just best)
                     matches = propData.reconciled[valueIndex].matches;
-                    console.log('🔄 Using existing matches from batch reconciliation:', matches);
+                    console.log('🔄 Using existing matches from batch reconciliation:', matches.length, 'matches');
                 }
             }
             
