@@ -107,6 +107,28 @@ Map JSON properties from source data to Wikidata properties using Entity Schema 
 - Option to disable auto-progression for manual control
 - Clear indication of remaining unmapped properties
 
+### Loading Previous Mappings
+
+When loading a mapping file from a previous session:
+
+#### Automatic Dataset Validation
+- **Key validation**: System checks if mapped keys exist in current dataset
+- **Visual indication**: Keys not in current dataset appear grayed out
+- **Status indicators**: Clear labeling of "(not in current dataset)" for non-existent keys
+- **Interaction disabled**: Grayed out keys cannot be edited or modified
+
+#### Dataset Compatibility Behavior
+- **Filtered from reconciliation**: Keys not in current dataset are excluded from Step 3
+- **Preserved in mapping**: Non-existent keys remain in mapping file for future use
+- **Safe reloading**: Mapping files work across different datasets without errors
+- **Clear feedback**: User receives count of keys that don't match current dataset
+
+#### Use Cases
+- **Reusing mappings**: Apply successful mappings to similar collections
+- **Dataset evolution**: Handle cases where source data structure has changed
+- **Collaborative work**: Share mapping configurations between different data sources
+- **Template approach**: Create reusable mapping templates for common data patterns
+
 ### Completion Criteria
 - All discoverable properties either mapped or explicitly ignored
 - Entity Schema required properties have valid mappings

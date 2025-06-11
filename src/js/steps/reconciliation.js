@@ -108,6 +108,14 @@ export function setupReconciliationStep(state) {
             return;
         }
         
+        // Pre-filter check: ensure we have keys that exist in the current dataset
+        const availableMappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
+        if (availableMappedKeys.length === 0) {
+            console.warn('❌ No mapped keys are available in the current dataset for reconciliation');
+            console.warn('❌ All mapped keys are from a different dataset or not present in current data');
+            return;
+        }
+        
         if (!currentState.fetchedData) {
             console.warn('❌ No fetched data available for reconciliation');
             console.warn('❌ Current fetchedData:', currentState.fetchedData);
@@ -119,7 +127,10 @@ export function setupReconciliationStep(state) {
         console.log('✅ Fetched data type:', typeof currentState.fetchedData);
         console.log('✅ Fetched data structure:', currentState.fetchedData);
         
-        const mappedKeys = currentState.mappings.mappedKeys;
+        // Filter out keys that are not in the current dataset
+        const mappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
+        console.log('✅ Filtered mapped keys (excluding not in current dataset):', mappedKeys);
+        
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         console.log('✅ Data array:', data);
         console.log('✅ Data length:', data.length);

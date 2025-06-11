@@ -926,6 +926,32 @@ main {
     background-color: rgba(33, 150, 243, 0.1);
 }
 
+/* Styles for keys not in current dataset */
+.key-item-compact.not-in-current-dataset,
+.key-list li.not-in-current-dataset {
+    opacity: 0.5;
+    filter: grayscale(50%);
+}
+
+.key-list li.not-in-current-dataset.disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.key-list li.not-in-current-dataset:hover {
+    background-color: transparent;
+}
+
+.not-in-dataset-indicator {
+    font-size: 0.75rem;
+    color: #999;
+    background-color: rgba(255, 152, 0, 0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    margin-left: auto;
+    font-style: italic;
+}
+
 /* Animation for newly moved keys */
 .key-list li.newly-moved {
     background: linear-gradient(90deg, 
