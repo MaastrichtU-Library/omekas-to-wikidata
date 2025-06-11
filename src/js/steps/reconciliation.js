@@ -600,11 +600,7 @@ export function setupReconciliationStep(state) {
                     }
                 } else if (status === 'processing') {
                     valueElement.classList.add('processing');
-                    const statusSpan = valueElement.querySelector('.value-status');
-                    if (statusSpan) {
-                        statusSpan.textContent = 'Processing...';
-                        statusSpan.className = 'value-status processing';
-                    }
+                    // Don't change text during processing - the spinner shows activity
                 } else if (status === 'clear') {
                     // Clear queue status and revert to normal
                     const statusSpan = valueElement.querySelector('.value-status');
@@ -629,16 +625,10 @@ export function setupReconciliationStep(state) {
                                cell.querySelectorAll('.property-value')[valueIndex];
             
             if (valueElement) {
-                const statusSpan = valueElement.querySelector('.value-status');
-                if (statusSpan) {
-                    if (isLoading) {
-                        statusSpan.textContent = 'Checking...';
-                        statusSpan.className = 'value-status loading';
-                        valueElement.classList.add('checking');
-                    } else {
-                        statusSpan.className = 'value-status';
-                        valueElement.classList.remove('checking');
-                    }
+                if (isLoading) {
+                    valueElement.classList.add('checking');
+                } else {
+                    valueElement.classList.remove('checking');
                 }
             }
         }
@@ -733,7 +723,7 @@ export function setupReconciliationStep(state) {
         
         const statusSpan = document.createElement('span');
         statusSpan.className = 'value-status';
-        statusSpan.textContent = 'Checking...';
+        statusSpan.textContent = 'Click to reconcile';
         
         valueDiv.appendChild(textSpan);
         valueDiv.appendChild(statusSpan);
