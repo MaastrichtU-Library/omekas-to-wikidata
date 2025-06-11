@@ -373,15 +373,20 @@ export function setupReconciliationStep(state) {
             
             // Handle dates immediately (no API call needed)
             if (propertyType === 'time' || isDateValue(job.value)) {
+                // Standardize the date and detect precision
+                const standardized = standardizeDateInput(job.value);
+                
                 dateValues.push({
                     ...job,
                     autoAcceptResult: {
                         type: 'custom',
-                        value: job.value,
+                        value: standardized.date || job.value,
                         datatype: 'time',
                         qualifiers: {
                             autoAccepted: true,
-                            reason: 'date value'
+                            reason: 'date value',
+                            precision: standardized.precision,
+                            displayValue: standardized.displayValue
                         }
                     }
                 });
@@ -540,12 +545,16 @@ export function setupReconciliationStep(state) {
             if (valueElement) {
                 const statusSpan = valueElement.querySelector('.value-status');
                 if (statusSpan) {
-                    statusSpan.innerHTML = `${bestMatch.score.toFixed(1)}% match: <a href="https://www.wikidata.org/wiki/${bestMatch.id}" target="_blank">${bestMatch.id}</a>`;
+                    // Just show percentage, not the specific match details
+                    statusSpan.textContent = `${bestMatch.score.toFixed(1)}% match`;
                     statusSpan.className = 'value-status with-match';
-                    statusSpan.title = `Best match: ${bestMatch.label} (${bestMatch.score.toFixed(1)}%)`;
+                    
+                    // Ensure we have a label for the tooltip
+                    const matchLabel = bestMatch.label || bestMatch.name || 'Unlabeled item';
+                    statusSpan.title = `Best match: ${matchLabel} (${bestMatch.score.toFixed(1)}%)`;
                 }
                 
-                // Add a visual indicator for good matches
+                // Add a visual indicator for good matches - use orange/yellow for medium confidence
                 if (bestMatch.score >= 80) {
                     valueElement.classList.add('high-confidence-match');
                 } else if (bestMatch.score >= 60) {
@@ -766,7 +775,10 @@ export function setupReconciliationStep(state) {
                             '<button class="tab-btn" data-tab="manual">Manual Search</button>' : 
                             ''
                         }
-                        <button class="tab-btn ${!inputConfig.requiresReconciliation ? 'active' : ''}" data-tab="custom">${inputConfig.requiresReconciliation ? 'Custom Value' : 'Enter Value'}</button>
+                        ${!inputConfig.requiresReconciliation || propertyType !== 'wikibase-item' ? 
+                            `<button class="tab-btn ${!inputConfig.requiresReconciliation ? 'active' : ''}" data-tab="custom">${inputConfig.requiresReconciliation ? 'Custom Value' : 'Enter Value'}</button>` : 
+                            ''
+                        }
                         <button class="tab-btn settings-tab" data-tab="settings">⚙️ Settings</button>
                     </div>
                     
@@ -796,19 +808,21 @@ export function setupReconciliationStep(state) {
                         </div>
                     ` : ''}
                     
-                    <div class="tab-content ${!inputConfig.requiresReconciliation ? 'active' : ''}" id="custom-tab">
-                        <div class="custom-value">
-                            ${inputConfig.requiresReconciliation ? 
-                                '<p>Enter a custom value if no Wikidata match is appropriate:</p>' : 
-                                '<p>Enter the value for this property:</p>'
-                            }
-                            ${customInputHTML}
-                            ${inputConfig.requiresReconciliation ? 
-                                '<p class="note">This will be used as a literal value without Wikidata linking.</p>' : 
-                                ''
-                            }
+                    ${!inputConfig.requiresReconciliation || propertyType !== 'wikibase-item' ? `
+                        <div class="tab-content ${!inputConfig.requiresReconciliation ? 'active' : ''}" id="custom-tab">
+                            <div class="custom-value">
+                                ${inputConfig.requiresReconciliation ? 
+                                    '<p>Enter a custom value if no Wikidata match is appropriate:</p>' : 
+                                    '<p>Enter the value for this property:</p>'
+                                }
+                                ${customInputHTML}
+                                ${inputConfig.requiresReconciliation ? 
+                                    '<p class="note">This will be used as a literal value without Wikidata linking.</p>' : 
+                                    ''
+                                }
+                            </div>
                         </div>
-                    </div>
+                    ` : ''}
                     
                     <div class="tab-content" id="settings-tab">
                         <div class="settings-section">
@@ -1386,14 +1400,37 @@ export function setupReconciliationStep(state) {
                             statusSpan.innerHTML = `✓ <a href="https://www.wikidata.org/wiki/${reconciliation.id}" target="_blank">${reconciliation.id}</a>${autoAcceptedText}`;
                         } else {
                             const autoAcceptedText = reconciliation.qualifiers?.autoAccepted ? ' (auto)' : '';
-                            statusSpan.textContent = `✓ Custom value${autoAcceptedText}`;
+                            let customText = `✓ Custom value${autoAcceptedText}`;
+                            
+                            // Show date precision for date values
+                            if (reconciliation.datatype === 'time' && reconciliation.qualifiers?.precision) {
+                                const precisionLabels = {
+                                    'day': 'Day precision',
+                                    'month': 'Month precision', 
+                                    'year': 'Year precision',
+                                    'decade': 'Decade precision',
+                                    'century': 'Century precision',
+                                    'millennium': 'Millennium precision'
+                                };
+                                const precisionLabel = precisionLabels[reconciliation.qualifiers.precision] || reconciliation.qualifiers.precision;
+                                customText = `✓ Date (${precisionLabel})${autoAcceptedText}`;
+                            }
+                            
+                            statusSpan.textContent = customText;
                         }
                         statusSpan.className = 'value-status reconciled';
                         
                         // Add auto-accepted styling if applicable
                         if (reconciliation.qualifiers?.autoAccepted) {
                             statusSpan.classList.add('auto-accepted');
-                            statusSpan.title = `Auto-accepted: ${reconciliation.qualifiers.reason}`;
+                            let tooltipText = `Auto-accepted: ${reconciliation.qualifiers.reason}`;
+                            
+                            // Add precision info to tooltip for dates
+                            if (reconciliation.datatype === 'time' && reconciliation.qualifiers?.precision) {
+                                tooltipText += ` (${reconciliation.qualifiers.precision} precision)`;
+                            }
+                            
+                            statusSpan.title = tooltipText;
                         }
                     } else if (status === 'skipped') {
                         statusSpan.textContent = 'Skipped';
@@ -1505,7 +1542,10 @@ export function setupReconciliationStep(state) {
                     '<button class="tab-btn" data-tab="manual">Manual Search</button>' : 
                     ''
                 }
-                <button class="tab-btn ${!inputConfig.requiresReconciliation ? 'active' : ''}" data-tab="custom">${inputConfig.requiresReconciliation ? 'Custom Value' : 'Enter Value'}</button>
+                ${!inputConfig.requiresReconciliation || newType !== 'wikibase-item' ? 
+                    `<button class="tab-btn ${!inputConfig.requiresReconciliation ? 'active' : ''}" data-tab="custom">${inputConfig.requiresReconciliation ? 'Custom Value' : 'Enter Value'}</button>` : 
+                    ''
+                }
                 <button class="tab-btn settings-tab" data-tab="settings">⚙️ Settings</button>
             </div>
             
@@ -1535,19 +1575,21 @@ export function setupReconciliationStep(state) {
                 </div>
             ` : ''}
             
-            <div class="tab-content ${!inputConfig.requiresReconciliation ? 'active' : ''}" id="custom-tab">
-                <div class="custom-value">
-                    ${inputConfig.requiresReconciliation ? 
-                        '<p>Enter a custom value if no Wikidata match is appropriate:</p>' : 
-                        '<p>Enter the value for this property:</p>'
-                    }
-                    ${createInputHTML(newType, value, property)}
-                    ${inputConfig.requiresReconciliation ? 
-                        '<p class="note">This will be used as a literal value without Wikidata linking.</p>' : 
-                        ''
-                    }
+            ${!inputConfig.requiresReconciliation || newType !== 'wikibase-item' ? `
+                <div class="tab-content ${!inputConfig.requiresReconciliation ? 'active' : ''}" id="custom-tab">
+                    <div class="custom-value">
+                        ${inputConfig.requiresReconciliation ? 
+                            '<p>Enter a custom value if no Wikidata match is appropriate:</p>' : 
+                            '<p>Enter the value for this property:</p>'
+                        }
+                        ${createInputHTML(newType, value, property)}
+                        ${inputConfig.requiresReconciliation ? 
+                            '<p class="note">This will be used as a literal value without Wikidata linking.</p>' : 
+                            ''
+                        }
+                    </div>
                 </div>
-            </div>
+            ` : ''}
             
             <div class="tab-content" id="settings-tab">
                 <div class="settings-section">
