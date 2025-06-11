@@ -929,8 +929,8 @@ export function setupReconciliationStep(state) {
     async function openReconciliationModal(itemId, property, valueIndex, value) {
         currentReconciliationCell = { itemId, property, valueIndex, value };
         
-        // Create modal content
-        const modalContent = createReconciliationModalContent(itemId, property, valueIndex, value);
+        // Create modal content (now async)
+        const modalContent = await createReconciliationModalContent(itemId, property, valueIndex, value);
         
         // Open modal
         modalUI.openModal('Reconcile Value', modalContent, [], () => {
@@ -957,13 +957,13 @@ export function setupReconciliationStep(state) {
     /**
      * Create modal content for reconciliation with simplified design based on Q&A requirements
      */
-    function createReconciliationModalContent(itemId, property, valueIndex, value) {
+    async function createReconciliationModalContent(itemId, property, valueIndex, value) {
         // Detect property type for dynamic input fields
         const propertyType = detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
         
-        // Get property information for display
-        const propertyInfo = getPropertyDisplayInfo(property);
+        // Get property information for display (now async)
+        const propertyInfo = await getPropertyDisplayInfo(property);
         const originalKeyInfo = getOriginalKeyInfo(itemId, property);
         const itemTitle = reconciliationData[itemId]?.originalData?.['o:title'] || `Item ${itemId.replace('item-', '')}`;
         
@@ -977,6 +977,7 @@ export function setupReconciliationStep(state) {
                     <h4>
                         <a href="${propertyInfo.wikidataUrl}" target="_blank" class="property-link">
                             ${propertyInfo.label} (${propertyInfo.pid})
+                            ${propertyInfo.isMock ? ' <span class="mock-indicator">[estimated]</span>' : ''}
                         </a>
                     </h4>
                     <p class="property-description">${propertyInfo.description}</p>
@@ -1066,17 +1067,82 @@ export function setupReconciliationStep(state) {
     /**
      * Get property display information including Wikidata PID and clickable link
      */
-    function getPropertyDisplayInfo(property) {
-        // For now, create a mock PID and use property name as label
-        // In a real implementation, this would query the mappings or a property database
+    async function getPropertyDisplayInfo(property) {
+        // Try to get real property information from the current mappings state
+        const currentState = state.getState();
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
+        
+        // Check if we have mapping information for this property
+        const mappingInfo = mappedKeys.find(keyObj => 
+            (typeof keyObj === 'string' ? keyObj : keyObj.key) === property
+        );
+        
+        if (mappingInfo && typeof mappingInfo === 'object' && mappingInfo.wikidataProperty) {
+            // We have real Wikidata property information
+            return {
+                label: mappingInfo.propertyLabel || mappingInfo.wikidataProperty.label || property,
+                pid: mappingInfo.wikidataProperty.pid || mappingInfo.wikidataProperty.id,
+                description: mappingInfo.wikidataProperty.description || getPropertyDescription(property),
+                wikidataUrl: `https://www.wikidata.org/wiki/Property:${mappingInfo.wikidataProperty.pid || mappingInfo.wikidataProperty.id}`
+            };
+        }
+        
+        // Fallback: Try to fetch property information from Wikidata API
+        try {
+            const realPropertyInfo = await fetchWikidataPropertyInfo(property);
+            if (realPropertyInfo) {
+                return realPropertyInfo;
+            }
+        } catch (error) {
+            console.warn('Could not fetch Wikidata property info:', error);
+        }
+        
+        // Final fallback: create a mock PID and use property name as label
         const mockPid = generateMockPid(property);
         
         return {
             label: property.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
             pid: mockPid,
             description: getPropertyDescription(property),
-            wikidataUrl: `https://www.wikidata.org/wiki/Property:${mockPid}`
+            wikidataUrl: `https://www.wikidata.org/wiki/Property:${mockPid}`,
+            isMock: true
         };
+    }
+    
+    /**
+     * Fetch real property information from Wikidata
+     */
+    async function fetchWikidataPropertyInfo(propertyKeyword) {
+        try {
+            // Search for properties using the keyword
+            const apiUrl = 'https://www.wikidata.org/w/api.php';
+            const params = new URLSearchParams({
+                action: 'wbsearchentities',
+                search: propertyKeyword,
+                language: 'en',
+                format: 'json',
+                origin: '*',
+                type: 'property',
+                limit: 1
+            });
+            
+            const response = await fetch(`${apiUrl}?${params.toString()}`);
+            if (!response.ok) return null;
+            
+            const data = await response.json();
+            if (data.search && data.search.length > 0) {
+                const prop = data.search[0];
+                return {
+                    label: prop.label || propertyKeyword,
+                    pid: prop.id,
+                    description: prop.description || getPropertyDescription(propertyKeyword),
+                    wikidataUrl: `https://www.wikidata.org/wiki/Property:${prop.id}`
+                };
+            }
+        } catch (error) {
+            console.warn('Error fetching Wikidata property info:', error);
+        }
+        return null;
     }
     
     /**
@@ -1536,14 +1602,17 @@ export function setupReconciliationStep(state) {
         const data = await response.json();
         
         if (data.q1 && data.q1.result) {
-            return data.q1.result.map(match => ({
-                id: match.id,
-                name: match.name,
-                description: match.description || 'No description available',
-                score: match.score,
-                type: match.type || [],
-                source: 'reconciliation'
-            }));
+            return data.q1.result.map(match => {
+                console.log('🔍 Reconciliation API match:', match);
+                return {
+                    id: match.id,
+                    name: match.name || match.label || 'Unnamed item',
+                    description: match.description || match.desc || 'No description available',
+                    score: match.score || 0,
+                    type: match.type || [],
+                    source: 'reconciliation'
+                };
+            });
         }
         
         return [];
@@ -1574,14 +1643,17 @@ export function setupReconciliationStep(state) {
         const data = await response.json();
         
         if (data.search) {
-            return data.search.map(item => ({
-                id: item.id,
-                name: item.label,
-                description: item.description || 'No description available',
-                score: 50, // Approximate score for direct search
-                type: [],
-                source: 'direct'
-            }));
+            return data.search.map(item => {
+                console.log('🔍 Wikidata search item:', item);
+                return {
+                    id: item.id,
+                    name: item.label || item.name || 'Unnamed item',
+                    description: item.description || item.desc || 'No description available',
+                    score: 50, // Approximate score for direct search
+                    type: [],
+                    source: 'direct'
+                };
+            });
         }
         
         return [];

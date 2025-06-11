@@ -1077,16 +1077,16 @@ main {
 
 /* 1. Property Display */
 .property-display {
-    padding: 1rem;
+    padding: 0.75rem;
     background: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid #dee2e6;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .property-display h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.2rem;
+    margin: 0 0 0.25rem 0;
+    font-size: 1.1rem;
 }
 
 .property-link {
@@ -1103,17 +1103,27 @@ main {
 .property-description {
     margin: 0;
     color: #666;
-    font-size: 0.9rem;
-    line-height: 1.4;
+    font-size: 0.85rem;
+    line-height: 1.3;
+}
+
+.mock-indicator {
+    font-size: 0.7rem;
+    color: #ff9800;
+    font-weight: normal;
+    background: rgba(255, 152, 0, 0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    margin-left: 0.25rem;
 }
 
 /* 2. Original Value Display */
 .original-value-display {
-    padding: 1rem;
+    padding: 0.75rem;
     background: #fff3cd;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid #ffeaa7;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .original-key-label {
@@ -1150,9 +1160,9 @@ main {
 
 /* 3. Reconciliation Results */
 .reconciliation-results {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     border: 1px solid #dee2e6;
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -1284,9 +1294,9 @@ main {
 
 /* 4. Manual Search Section */
 .manual-search-section {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     border: 1px solid #dee2e6;
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -1409,11 +1419,11 @@ main {
 /* 5. Action Options */
 .action-options {
     display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
     background: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid #dee2e6;
 }
 
@@ -1439,10 +1449,10 @@ main {
 
 /* 6. Restrictions & Explanations */
 .restrictions-explanation {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
     background: #e3f2fd;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid #90caf9;
 }
 
