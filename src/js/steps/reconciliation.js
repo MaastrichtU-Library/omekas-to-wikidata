@@ -941,10 +941,9 @@ export function setupReconciliationStep(state) {
         setTimeout(() => {
             const modalElement = document.querySelector('#modal-content');
             if (modalElement) {
-                console.log('🔧 Setting up simplified modal functionality');
+                console.log('🔧 Setting up compact modal functionality');
                 setupDynamicDatePrecision(modalElement);
                 setupAutoAdvanceToggle();
-                setupManualSearchKeyboard();
             } else {
                 console.warn('⚠️ Modal content element not found for setup');
             }
@@ -971,30 +970,29 @@ export function setupReconciliationStep(state) {
         const requirementReason = getReconciliationRequirementReason(property);
         
         return `
-            <div class="reconciliation-modal-simplified">
-                <!-- 1. Property Display -->
-                <div class="property-display">
-                    <h4>
+            <div class="reconciliation-modal-compact">
+                <!-- Compact Property Display with Original Value -->
+                <div class="property-section">
+                    <div class="property-header">
                         <a href="${propertyInfo.wikidataUrl}" target="_blank" class="property-link">
                             ${propertyInfo.label} (${propertyInfo.pid})
                             ${propertyInfo.isMock ? ' <span class="mock-indicator">[estimated]</span>' : ''}
                         </a>
-                    </h4>
+                    </div>
                     <p class="property-description">${propertyInfo.description}</p>
-                </div>
-                
-                <!-- 2. Original Value Display -->
-                <div class="original-value-display">
-                    <p class="original-key-label">Original key:</p>
-                    <p class="original-key-value">
-                        <a href="${originalKeyInfo.lodUri}" target="_blank" class="original-key-link">
+                    
+                    <div class="original-info">
+                        <span class="original-label">Original key:</span>
+                        <a href="${originalKeyInfo.lodUri}" target="_blank" class="original-link">
                             ${originalKeyInfo.keyName}
                         </a>
-                    </p>
-                    <p class="original-value"><strong>"${value}"</strong> from ${itemTitle}</p>
+                    </div>
+                    <div class="value-context">
+                        <strong>"${value}"</strong> from ${itemTitle}
+                    </div>
                 </div>
                 
-                <!-- 3. Reconciliation Results -->
+                <!-- Reconciliation Results -->
                 <div class="reconciliation-results">
                     <div class="loading-state">
                         <div class="loading-spinner"></div>
@@ -1003,62 +1001,6 @@ export function setupReconciliationStep(state) {
                     <div class="matches-display" style="display: none;">
                         <!-- Results will be populated here -->
                     </div>
-                </div>
-                
-                <!-- 4. Manual Search (always visible for Wikidata items) -->
-                ${propertyType === 'wikibase-item' ? `
-                    <div class="manual-search-section">
-                        <h5>Manual Search</h5>
-                        <div class="search-controls">
-                            <input type="text" class="manual-search-input" placeholder="Search Wikidata items..." value="${value}">
-                            <button class="btn primary search-btn" onclick="performManualSearch()">Search</button>
-                        </div>
-                        <div class="manual-search-results"></div>
-                    </div>
-                ` : `
-                    <!-- Non-Wikidata property input -->
-                    <div class="custom-input-section">
-                        <h5>Enter ${inputConfig.description}</h5>
-                        <div class="custom-input-container">
-                            ${createInputHTML(propertyType, value, property)}
-                        </div>
-                        <button class="btn primary" onclick="confirmCustomValue()">Confirm Value</button>
-                    </div>
-                `}
-                
-                <!-- 5. Action Options -->
-                <div class="action-options">
-                    <button class="btn secondary ignore-btn" onclick="ignoreReconciliation()">
-                        🚫 Ignore (exclude from export)
-                    </button>
-                    ${propertyType === 'wikibase-item' ? `
-                        <button class="btn secondary create-btn" onclick="createNewWikidataItem()">
-                            ➕ Create new Wikidata item
-                        </button>
-                    ` : ''}
-                </div>
-                
-                <!-- 6. Restrictions & Explanations -->
-                <div class="restrictions-explanation">
-                    <div class="requirement-explanation">
-                        <h6>Why Wikidata item required:</h6>
-                        <p>${requirementReason.explanation}</p>
-                        <div class="investigation-links">
-                            ${requirementReason.links.map(link => `
-                                <a href="${link.url}" target="_blank" class="investigation-link">
-                                    ${link.label}
-                                </a>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Auto-advance setting -->
-                <div class="auto-advance-setting">
-                    <label>
-                        <input type="checkbox" id="auto-advance" ${getAutoAdvanceSetting() ? 'checked' : ''}>
-                        Auto-advance to next reconciliation
-                    </label>
                 </div>
             </div>
         `;
@@ -2107,93 +2049,7 @@ export function setupReconciliationStep(state) {
         displayReconciliationResults(window.allReconciliationMatches, propertyType, currentReconciliationCell.value);
     };
     
-    /**
-     * Perform manual search for Wikidata items
-     */
-    window.performManualSearch = async function() {
-        const searchInput = document.querySelector('.manual-search-input');
-        const resultsContainer = document.querySelector('.manual-search-results');
-        
-        if (!searchInput || !resultsContainer) return;
-        
-        const query = searchInput.value.trim();
-        if (!query) {
-            resultsContainer.innerHTML = '<p class="search-message">Please enter a search term.</p>';
-            return;
-        }
-        
-        resultsContainer.innerHTML = '<div class="loading">Searching...</div>';
-        
-        try {
-            const matches = await tryDirectWikidataSearch(query);
-            
-            if (matches.length > 0) {
-                resultsContainer.innerHTML = `
-                    <div class="manual-search-header">
-                        <h6>Search Results for "${query}"</h6>
-                    </div>
-                    <div class="manual-results-list">
-                        ${matches.map(match => `
-                            <div class="manual-result-item" onclick="selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
-                                <div class="result-content">
-                                    <div class="result-name">${match.name}</div>
-                                    <div class="result-description">${match.description}</div>
-                                    <div class="result-id">
-                                        <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
-                                            ${match.id}
-                                        </a>
-                                    </div>
-                                </div>
-                                <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
-                                    Select
-                                </button>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } else {
-                resultsContainer.innerHTML = '<p class="no-results">No results found for this search term.</p>';
-            }
-        } catch (error) {
-            resultsContainer.innerHTML = `<p class="error">Search error: ${error.message}</p>`;
-        }
-    };
-    
-    /**
-     * Setup keyboard navigation for manual search
-     */
-    function setupManualSearchKeyboard() {
-        const searchInput = document.querySelector('.manual-search-input');
-        if (searchInput) {
-            searchInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    window.performManualSearch();
-                }
-            });
-        }
-    }
-    
-    /**
-     * Ignore reconciliation - exclude from export
-     */
-    window.ignoreReconciliation = function() {
-        if (!currentReconciliationCell) return;
-        
-        console.log('🚫 Ignoring reconciliation for:', currentReconciliationCell);
-        
-        // Mark as ignored/skipped
-        markCellAsSkipped(currentReconciliationCell);
-        
-        modalUI.closeModal();
-        
-        // Auto-advance if enabled
-        if (getAutoAdvanceSetting()) {
-            setTimeout(() => {
-                reconcileNextUnprocessedCell();
-            }, 300);
-        }
-    };
+    // Removed manual search and ignore functions for compact design
     
     // Legacy confirmReconciliation function - now redirects to progressive disclosure functions
     window.confirmReconciliation = function() {
