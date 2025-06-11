@@ -123,48 +123,58 @@ export function setupReconciliationStep(state) {
         console.log('✅ Data array:', data);
         console.log('✅ Data length:', data.length);
         
-        // Initialize reconciliation progress
-        const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
-        console.log('✅ Total reconcilable cells:', totalCells);
-        state.updateState('reconciliationProgress', {
-            total: totalCells,
-            completed: 0,
-            skipped: 0
-        });
-        
-        // Initialize reconciliation data structure
-        reconciliationData = {};
-        data.forEach((item, index) => {
-            const itemId = `item-${index}`;
-            reconciliationData[itemId] = {
-                originalData: item,
-                properties: {}
-            };
+        // Check if we already have reconciliation data from a previous session
+        let isReturningToStep = false;
+        if (currentState.reconciliationData && Object.keys(currentState.reconciliationData).length > 0) {
+            console.log('🔄 Found existing reconciliation data - restoring previous state');
+            reconciliationData = currentState.reconciliationData;
+            isReturningToStep = true;
+        } else {
+            console.log('🆕 No existing reconciliation data - initializing fresh');
             
-            // Initialize each mapped property
-            mappedKeys.forEach(keyObj => {
-                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                const values = extractPropertyValues(item, keyName);
-                reconciliationData[itemId].properties[keyName] = {
-                    originalValues: values,
-                    reconciled: values.map(() => ({
-                        status: 'pending', // pending, reconciled, skipped, failed
-                        matches: [],
-                        selectedMatch: null,
-                        manualValue: null,
-                        qualifiers: {},
-                        confidence: 0
-                    }))
-                };
+            // Initialize reconciliation progress
+            const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
+            console.log('✅ Total reconcilable cells:', totalCells);
+            state.updateState('reconciliationProgress', {
+                total: totalCells,
+                completed: 0,
+                skipped: 0
             });
-        });
+            
+            // Initialize reconciliation data structure
+            reconciliationData = {};
+            data.forEach((item, index) => {
+                const itemId = `item-${index}`;
+                reconciliationData[itemId] = {
+                    originalData: item,
+                    properties: {}
+                };
+                
+                // Initialize each mapped property
+                mappedKeys.forEach(keyObj => {
+                    const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                    const values = extractPropertyValues(item, keyName);
+                    reconciliationData[itemId].properties[keyName] = {
+                        originalValues: values,
+                        reconciled: values.map(() => ({
+                            status: 'pending', // pending, reconciled, skipped, failed
+                            matches: [],
+                            selectedMatch: null,
+                            manualValue: null,
+                            qualifiers: {},
+                            confidence: 0
+                        }))
+                    };
+                });
+            });
+        }
         
         // Update progress display
         updateProgressDisplay();
         
         // Create reconciliation table
         console.log('✅ Creating reconciliation table...');
-        await createReconciliationTable(data, mappedKeys);
+        await createReconciliationTable(data, mappedKeys, isReturningToStep);
         
         // Update state
         console.log('✅ Updating state with reconciliation data...');
@@ -247,8 +257,9 @@ export function setupReconciliationStep(state) {
     /**
      * Create the reconciliation table interface
      */
-    async function createReconciliationTable(data, mappedKeys) {
+    async function createReconciliationTable(data, mappedKeys, isReturningToStep = false) {
         console.log('🔨 Creating reconciliation table with data:', data.length, 'items and', mappedKeys.length, 'mapped keys');
+        console.log('🔨 Is returning to step:', isReturningToStep);
         console.log('🔨 Property headers element:', propertyHeaders);
         console.log('🔨 Reconciliation rows element:', reconciliationRows);
         
@@ -327,9 +338,14 @@ export function setupReconciliationStep(state) {
             });
             console.log('🔨 Added', data.length, 'rows to reconciliation table');
             
-            // Perform batch auto-acceptance after table is created
-            console.log('🤖 Starting batch auto-acceptance...');
-            await performBatchAutoAcceptance(data, mappedKeys);
+            // Only perform batch auto-acceptance for fresh initialization, not when returning to step
+            if (!isReturningToStep) {
+                console.log('🤖 Starting batch auto-acceptance...');
+                await performBatchAutoAcceptance(data, mappedKeys);
+            } else {
+                console.log('🔄 Returning to step - restoring existing reconciliation states');
+                restoreReconciliationDisplay(data, mappedKeys);
+            }
             
         } else {
             console.error('🔨 reconciliationRows element not found!');
@@ -626,7 +642,14 @@ export function setupReconciliationStep(state) {
     function updateProgressDisplay() {
         if (reconciliationProgress) {
             const currentState = state.getState();
-            const { total, completed, skipped } = currentState.reconciliationProgress;
+            
+            // Calculate progress from actual reconciliation data if available
+            let progress = currentState.reconciliationProgress;
+            if (reconciliationData && Object.keys(reconciliationData).length > 0) {
+                progress = calculateCurrentProgress();
+            }
+            
+            const { total, completed, skipped } = progress;
             const remaining = total - completed - skipped;
             reconciliationProgress.innerHTML = `
                 <div class="progress-stats">
@@ -639,9 +662,36 @@ export function setupReconciliationStep(state) {
                     <div class="progress-fill" style="width: ${total > 0 ? ((completed + skipped) / total * 100) : 0}%"></div>
                 </div>
             `;
+            
+            // Update state with current progress
+            state.updateState('reconciliationProgress', progress);
         }
         
         updateProceedButton();
+    }
+    
+    /**
+     * Calculate current progress from reconciliation data
+     */
+    function calculateCurrentProgress() {
+        let total = 0;
+        let completed = 0;
+        let skipped = 0;
+        
+        Object.values(reconciliationData).forEach(itemData => {
+            Object.values(itemData.properties).forEach(propData => {
+                propData.reconciled.forEach(reconciledItem => {
+                    total++;
+                    if (reconciledItem.status === 'reconciled') {
+                        completed++;
+                    } else if (reconciledItem.status === 'skipped') {
+                        skipped++;
+                    }
+                });
+            });
+        });
+        
+        return { total, completed, skipped };
     }
     
     /**
@@ -1059,6 +1109,42 @@ export function setupReconciliationStep(state) {
             <p>Error during reconciliation: ${error.message}</p>
             <button class="btn secondary" onclick="switchTab('manual')">Try Manual Search</button>
         `;
+    }
+    
+    /**
+     * Restore reconciliation display states when returning to the step
+     */
+    function restoreReconciliationDisplay(data, mappedKeys) {
+        console.log('🔄 Restoring reconciliation display states...');
+        
+        data.forEach((item, index) => {
+            const itemId = `item-${index}`;
+            
+            mappedKeys.forEach(keyObj => {
+                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                const propData = reconciliationData[itemId]?.properties[keyName];
+                
+                if (propData && propData.reconciled) {
+                    propData.reconciled.forEach((reconciledItem, valueIndex) => {
+                        const cellInfo = { itemId, property: keyName, valueIndex };
+                        
+                        if (reconciledItem.status === 'reconciled' && reconciledItem.selectedMatch) {
+                            // Restore reconciled state
+                            updateCellDisplay(itemId, keyName, valueIndex, 'reconciled', reconciledItem.selectedMatch);
+                        } else if (reconciledItem.status === 'skipped') {
+                            // Restore skipped state
+                            updateCellDisplay(itemId, keyName, valueIndex, 'skipped');
+                        } else if (reconciledItem.matches && reconciledItem.matches.length > 0) {
+                            // Restore match percentage display for non-reconciled items with matches
+                            const bestMatch = reconciledItem.matches[0];
+                            updateCellDisplayWithMatch(itemId, keyName, valueIndex, bestMatch);
+                        }
+                    });
+                }
+            });
+        });
+        
+        console.log('✅ Reconciliation display states restored');
     }
     
     /**
