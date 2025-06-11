@@ -1889,11 +1889,54 @@ main {
 /* Reconciliation Status Styling */
 .property-value {
     transition: all 0.3s ease;
+    min-height: 1.5em; /* Fixed minimum height to prevent expansion */
+    display: flex;
+    align-items: center;
 }
 
-/* Loading state - subtle, no layout shifts */
 .property-value.checking {
     /* No background change to prevent layout shifts */
+}
+
+/* Queue indicators */
+.property-value.queued {
+    border-left: 2px dotted #2196f3;
+    background-color: #f8fcff;
+}
+
+.property-value.processing {
+    border-left: 2px solid #2196f3;
+    background-color: #e3f2fd;
+}
+
+/* Queue status indicators */
+.value-status.queued {
+    color: #1976d2;
+    font-style: italic;
+}
+
+.value-status.processing {
+    color: #1976d2;
+    font-weight: 500;
+}
+
+/* Progress current activity */
+.progress-current-activity {
+    font-size: 0.85rem;
+    color: #1976d2;
+    text-align: center;
+    margin: 0.5rem 0;
+    padding: 0.25rem;
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.value-status {
+    display: inline-flex;
+    align-items: center;
+    height: 1.2em; /* Fixed height */
+    line-height: 1.2em;
 }
 
 .value-status.loading {
@@ -1905,15 +1948,17 @@ main {
 .value-status.loading::after {
     content: '';
     position: absolute;
-    right: -16px;
+    right: -14px;
     top: 50%;
     transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border: 1px solid #2196f3;
     border-top: 1px solid transparent;
     border-radius: 50%;
     animation: spin 1s linear infinite;
+    /* Ensure it doesn't affect parent height */
+    flex-shrink: 0;
 }
 
 @keyframes spin {

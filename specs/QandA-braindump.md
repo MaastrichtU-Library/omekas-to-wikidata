@@ -37,3 +37,9 @@ The questions address various aspects of the process including workflow behavior
 **Question:** For different property types (P50 for authors vs P131 for locations), should the reconciliation search be filtered to only show entities of the appropriate type (humans vs geographic locations)?
 
 **Answer:** Yes, reconciliation should be property-aware. Values being reconciled should be coherent with the property they're being added to (e.g., humans for author properties, geographic locations for location properties). This filtering should be included in the reconciliation API request to improve result relevance and reduce user confusion.
+
+### 6. Multi-value Reconciliation Handling
+
+**Question:** For properties with multiple values (e.g., multiple authors), should each value get its own reconciliation modal, or should there be a single modal that handles all values for that property at once?
+
+**Answer:** Each value should get its own reconciliation modal - the modal handles only one value at a time. However, the reconciliation table should support displaying multiple values within a single cell for properties that have multiple values.

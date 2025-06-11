@@ -427,9 +427,9 @@ export function setupReconciliationStep(state) {
         for (const [property, jobs] of batchByProperty.entries()) {
             console.log(`🤖 Batch processing ${jobs.length} values for property: ${property}`);
             
-            // Show loading indicators for all jobs in this batch
+            // Mark all jobs as queued first
             jobs.forEach(job => {
-                updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
+                updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'queued');
             });
             
             // Batch reconciliation calls for this property
@@ -495,14 +495,25 @@ export function setupReconciliationStep(state) {
             for (let i = 0; i < batchPromises.length; i += batchSize) {
                 const batchPromiseSlice = batchPromises.slice(i, i + batchSize);
                 const batchJobSlice = jobs.slice(i, i + batchSize);
+                
+                // Mark current batch as processing
+                batchJobSlice.forEach(job => {
+                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'processing');
+                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
+                });
+                
+                // Update progress to show current processing batch
+                updateProgressWithCurrentBatch(property, i, batchJobSlice.length, jobs.length);
+                
                 const results = await Promise.all(batchPromiseSlice);
                 
                 // Process results
                 results.forEach((result, index) => {
                     const job = batchJobSlice[index];
                     
-                    // Always clear loading state first
+                    // Always clear loading and queue state first
                     updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
+                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'clear');
                     
                     if (result) {
                         if (result.autoAcceptResult) {
@@ -538,7 +549,7 @@ export function setupReconciliationStep(state) {
         
         console.log(`🎉 Batch auto-acceptance completed! Auto-accepted ${autoAcceptedCount} values.`);
         
-        // Update progress display
+        // Update progress display (removes current activity indicator)
         updateProgressDisplay();
     }
     
@@ -564,6 +575,48 @@ export function setupReconciliationStep(state) {
         state.updateState('reconciliationData', reconciliationData);
     }
     
+    /**
+     * Update cell queue status
+     */
+    function updateCellQueueStatus(itemId, property, valueIndex, status) {
+        const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+        const cell = document.querySelector(cellSelector);
+        
+        if (cell) {
+            const valueElement = cell.querySelector('.property-value') || 
+                               cell.querySelectorAll('.property-value')[valueIndex];
+            
+            if (valueElement) {
+                // Remove all queue-related classes
+                valueElement.classList.remove('queued', 'processing', 'checking');
+                
+                // Add appropriate class based on status
+                if (status === 'queued') {
+                    valueElement.classList.add('queued');
+                    const statusSpan = valueElement.querySelector('.value-status');
+                    if (statusSpan && statusSpan.textContent === 'Click to reconcile') {
+                        statusSpan.textContent = 'Queued...';
+                        statusSpan.className = 'value-status queued';
+                    }
+                } else if (status === 'processing') {
+                    valueElement.classList.add('processing');
+                    const statusSpan = valueElement.querySelector('.value-status');
+                    if (statusSpan) {
+                        statusSpan.textContent = 'Processing...';
+                        statusSpan.className = 'value-status processing';
+                    }
+                } else if (status === 'clear') {
+                    // Clear queue status and revert to normal
+                    const statusSpan = valueElement.querySelector('.value-status');
+                    if (statusSpan && statusSpan.className.includes('queued')) {
+                        statusSpan.textContent = 'Click to reconcile';
+                        statusSpan.className = 'value-status';
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * Update cell loading state
      */
@@ -704,6 +757,39 @@ export function setupReconciliationStep(state) {
         return valueDiv;
     }
     
+    /**
+     * Update progress with current batch information
+     */
+    function updateProgressWithCurrentBatch(property, batchIndex, batchSize, totalJobs) {
+        if (reconciliationProgress) {
+            const currentState = state.getState();
+            let progress = currentState.reconciliationProgress;
+            if (reconciliationData && Object.keys(reconciliationData).length > 0) {
+                progress = calculateCurrentProgress();
+            }
+            
+            const { total, completed, skipped } = progress;
+            const remaining = total - completed - skipped;
+            const currentBatchStart = batchIndex + 1;
+            const currentBatchEnd = Math.min(batchIndex + batchSize, totalJobs);
+            
+            reconciliationProgress.innerHTML = `
+                <div class="progress-stats">
+                    <span class="stat completed">${completed} completed</span>
+                    <span class="stat skipped">${skipped} skipped</span>
+                    <span class="stat remaining">${remaining} remaining</span>
+                    <span class="stat total">of ${total} total</span>
+                </div>
+                <div class="progress-current-activity">
+                    Processing ${property}: items ${currentBatchStart}-${currentBatchEnd} of ${totalJobs}
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${total > 0 ? ((completed + skipped) / total * 100) : 0}%"></div>
+                </div>
+            `;
+        }
+    }
+
     /**
      * Update progress display
      */
