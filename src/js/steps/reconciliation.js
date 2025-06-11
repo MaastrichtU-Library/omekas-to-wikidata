@@ -497,6 +497,35 @@ export function setupReconciliationStep(state) {
                     }
                 } catch (error) {
                     console.warn(`🤖 Error checking reconciliation for ${job.value}:`, error);
+                    // Update cell to show error state
+                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'error');
+                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
+                    
+                    // Add error information to the cell
+                    const cellId = `${job.itemId}-${job.property}-${job.valueIndex}`;
+                    const cell = document.querySelector(`[data-cell-id="${cellId}"]`);
+                    if (cell) {
+                        cell.classList.add('reconciliation-error');
+                        cell.setAttribute('data-error-message', 'Reconciliation service unavailable');
+                        cell.setAttribute('title', `Error: ${error.message}`);
+                    }
+                    
+                    // Update reconciliation data with error status
+                    if (!reconciliationData[job.itemId]) {
+                        reconciliationData[job.itemId] = { properties: {} };
+                    }
+                    if (!reconciliationData[job.itemId].properties[job.property]) {
+                        reconciliationData[job.itemId].properties[job.property] = { reconciled: [] };
+                    }
+                    if (!reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex]) {
+                        reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {};
+                    }
+                    
+                    reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {
+                        status: 'error',
+                        value: job.value,
+                        error: error.message
+                    };
                 }
                 return null;
             });
@@ -808,12 +837,23 @@ export function setupReconciliationStep(state) {
                 progress = calculateCurrentProgress();
             }
             
-            const { total, completed, skipped } = progress;
-            const remaining = total - completed - skipped;
+            const { total, completed, skipped, errors = 0 } = progress;
+            const remaining = total - completed - skipped - errors;
+            
+            // Check if there are errors to show a warning
+            const errorMessage = errors > 0 ? `
+                <div class="reconciliation-service-warning">
+                    ⚠️ Reconciliation service temporarily unavailable for ${errors} item${errors > 1 ? 's' : ''}. 
+                    You can still proceed manually or try again later.
+                </div>
+            ` : '';
+            
             reconciliationProgress.innerHTML = `
+                ${errorMessage}
                 <div class="progress-stats">
                     <span class="stat completed">${completed} completed</span>
                     <span class="stat skipped">${skipped} skipped</span>
+                    ${errors > 0 ? `<span class="stat errors">${errors} errors</span>` : ''}
                     <span class="stat remaining">${remaining} remaining</span>
                     <span class="stat total">of ${total} total</span>
                 </div>
@@ -836,6 +876,7 @@ export function setupReconciliationStep(state) {
         let total = 0;
         let completed = 0;
         let skipped = 0;
+        let errors = 0;
         
         Object.values(reconciliationData).forEach(itemData => {
             Object.values(itemData.properties).forEach(propData => {
@@ -845,12 +886,14 @@ export function setupReconciliationStep(state) {
                         completed++;
                     } else if (reconciledItem.status === 'skipped') {
                         skipped++;
+                    } else if (reconciledItem.status === 'error') {
+                        errors++;
                     }
                 });
             });
         });
         
-        return { total, completed, skipped };
+        return { total, completed, skipped, errors };
     }
     
     /**
@@ -1536,10 +1579,13 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Try Wikidata Reconciliation API
+     * Try Wikidata Reconciliation API with fallback handling
      */
     async function tryReconciliationApi(value, property) {
-        const reconApiUrl = 'https://wikidata.reconci.link/en/api';
+        // Primary endpoint - wikidata.reconci.link
+        const primaryApiUrl = 'https://wikidata.reconci.link/en/api';
+        // Fallback endpoint - tools.wmflabs.org
+        const fallbackApiUrl = 'https://tools.wmflabs.org/openrefine-wikidata/en/api';
         
         // Get suggested entity types based on property
         const entityTypes = getSuggestedEntityTypes(property);
@@ -1556,20 +1602,64 @@ export function setupReconciliationStep(state) {
         
         const requestBody = "queries=" + encodeURIComponent(JSON.stringify(query.queries));
         
-        const response = await fetch(reconApiUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: requestBody
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Reconciliation API error: ${response.status}`);
+        // Try primary endpoint first
+        try {
+            console.log(`🔍 Trying primary reconciliation API for "${value}"`);
+            const response = await fetch(primaryApiUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: requestBody,
+                mode: 'cors'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Primary API error: ${response.status} ${response.statusText}`);
+            }
+            
+            console.log(`✅ Primary API successful for "${value}"`);
+            const data = await response.json();
+            return parseReconciliationResults(data, value);
+            
+        } catch (primaryError) {
+            console.warn(`⚠️ Primary reconciliation API failed for "${value}":`, primaryError.message);
+            
+            // Try fallback endpoint
+            try {
+                console.log(`🔍 Trying fallback reconciliation API for "${value}"`);
+                const response = await fetch(fallbackApiUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: requestBody,
+                    mode: 'cors'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Fallback API error: ${response.status} ${response.statusText}`);
+                }
+                
+                console.log(`✅ Fallback API successful for "${value}"`);
+                const data = await response.json();
+                return parseReconciliationResults(data, value);
+                
+            } catch (fallbackError) {
+                console.error(`❌ Both reconciliation APIs failed for "${value}"`);
+                console.error('Primary error:', primaryError.message);
+                console.error('Fallback error:', fallbackError.message);
+                
+                // Throw a more informative error
+                throw new Error(`Reconciliation services unavailable. Primary: ${primaryError.message}, Fallback: ${fallbackError.message}`);
+            }
         }
-        
-        const data = await response.json();
-        
+    }
+    
+    /**
+     * Parse reconciliation API results
+     */
+    function parseReconciliationResults(data, value) {
         if (data.q1 && data.q1.result) {
             return data.q1.result.map(match => {
                 console.log('🔍 Reconciliation API match:', match);

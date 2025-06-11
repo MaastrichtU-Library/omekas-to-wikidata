@@ -1819,6 +1819,37 @@ main {
     cursor: not-allowed;
 }
 
+/* Reconciliation Error States */
+.reconciliation-error {
+    background-color: #ffebee !important;
+    border: 1px solid var(--danger-color) !important;
+    position: relative;
+}
+
+.reconciliation-error::after {
+    content: '⚠️';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 12px;
+    color: var(--danger-color);
+}
+
+.reconciliation-service-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.progress-stats .stat.errors {
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
 /* Progressive Disclosure Reconciliation Modal V2 */
 .reconciliation-modal-v2 {
     max-width: 700px;
