@@ -1305,34 +1305,7 @@ main {
     margin-bottom: 1rem;
 }
 
-.tab-btn {
-    padding: 0.75rem 1.5rem;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-    font-weight: 500;
-    color: #666;
-    transition: all 0.2s ease;
-}
-
-.tab-btn.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-}
-
-.tab-btn:hover {
-    background-color: #f8f9fa;
-}
-
-.tab-content {
-    display: none;
-    min-height: 300px;
-}
-
-.tab-content.active {
-    display: block;
-}
+/* Tab-based styles removed - now using progressive disclosure design */
 
 /* Loading and Match Display */
 .loading-indicator {
@@ -1594,6 +1567,472 @@ main {
 .reconciliation-actions .btn.primary:disabled {
     background-color: #ccc;
     cursor: not-allowed;
+}
+
+/* Progressive Disclosure Reconciliation Modal V2 */
+.reconciliation-modal-v2 {
+    max-width: 700px;
+    width: 100%;
+}
+
+.reconciliation-modal-v2 .reconciliation-header {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.reconciliation-modal-v2 .expected-type {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+.primary-recommendations {
+    margin-bottom: 1.5rem;
+}
+
+.loading-state {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.high-confidence-matches {
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid var(--success-color);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.matches-title {
+    color: var(--success-color);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.matches-scroll-container {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scroll-behavior: smooth;
+}
+
+.confidence-match-card {
+    min-width: 280px;
+    max-width: 300px;
+    padding: 1rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.confidence-match-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.confidence-match-card.best-match {
+    border-color: var(--success-color);
+    border-width: 2px;
+}
+
+.match-confidence {
+    color: var(--success-color);
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.confidence-match-card .match-name {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.confidence-match-card .match-description {
+    color: #666;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+    height: 2.6em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.confidence-match-card .match-id {
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.select-match-btn {
+    width: 100%;
+    text-align: center;
+}
+
+.scroll-hint {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #999;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.fallback-options {
+    padding: 1.5rem;
+    background: #fff3cd;
+    border-radius: 8px;
+    border: 1px solid #ffeaa7;
+    margin-bottom: 1rem;
+}
+
+.search-wikidata {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.search-wikidata input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.create-new-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    margin-top: 0.5rem;
+}
+
+.create-new-item:hover {
+    background: #1976d2;
+}
+
+.custom-input-primary {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.non-wikidata-input h5 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.input-actions {
+    margin-top: 1rem;
+    text-align: right;
+}
+
+.progressive-disclosure {
+    margin-bottom: 1rem;
+}
+
+.expand-options {
+    width: 100%;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.expand-options:hover {
+    background: #e9ecef;
+    border-color: var(--primary-color);
+}
+
+.expanded-options {
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    background: white;
+    padding: 1rem;
+}
+
+.option-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.option-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.option-section h5 {
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.manual-search-expanded {
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.search-input-expanded {
+    width: 100%;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.search-btn-expanded {
+    padding: 0.5rem 1rem;
+    background: var(--secondary-color);
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.search-results-expanded {
+    margin-top: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.custom-value-expanded {
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.fallback-search-results {
+    margin-top: 1rem;
+}
+
+.fallback-search-results h6 {
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+}
+
+.fallback-result-item,
+.expanded-result-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    background: white;
+}
+
+.fallback-result-item .result-info,
+.expanded-result-item .result-info {
+    flex: 1;
+    margin-right: 1rem;
+}
+
+.fallback-result-item .result-name,
+.expanded-result-item .result-name {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.fallback-result-item .result-description,
+.expanded-result-item .result-description {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.fallback-result-item .result-id,
+.expanded-result-item .result-id {
+    font-size: 0.8rem;
+    color: #999;
+}
+
+.auto-advance-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.auto-advance-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.auto-advance-toggle input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+/* Reconciliation Status Styling */
+.property-value {
+    transition: all 0.3s ease;
+    min-height: 1.5em; /* Fixed minimum height to prevent expansion */
+    display: flex;
+    align-items: center;
+}
+
+.property-value.checking {
+    /* No background change to prevent layout shifts */
+}
+
+/* Queue indicators */
+.property-value.queued {
+    border-left: 2px dotted #2196f3;
+    background-color: #f8fcff;
+}
+
+.property-value.processing {
+    border-left: 2px solid #2196f3;
+    background-color: #e3f2fd;
+}
+
+/* Queue status indicators */
+.value-status.queued {
+    color: #1976d2;
+    font-style: italic;
+}
+
+.value-status.processing {
+    color: #1976d2;
+    font-weight: 500;
+}
+
+/* Progress current activity */
+.progress-current-activity {
+    font-size: 0.85rem;
+    color: #1976d2;
+    text-align: center;
+    margin: 0.5rem 0;
+    padding: 0.25rem;
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.value-status {
+    display: inline-flex;
+    align-items: center;
+    height: 1.2em; /* Fixed height */
+    line-height: 1.2em;
+}
+
+.value-status.loading {
+    color: #2196f3;
+    font-style: italic;
+    position: relative;
+}
+
+.value-status.loading::after {
+    content: '';
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    border: 1px solid #2196f3;
+    border-top: 1px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    /* Ensure it doesn't affect parent height */
+    flex-shrink: 0;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* High confidence matches - green */
+.property-value.high-confidence-match {
+    background-color: #e8f5e8;
+    border-left: 3px solid #4caf50;
+}
+
+/* Partial matches - yellow */
+.property-value.partial-match {
+    background-color: #fff8e1;
+    border-left: 3px solid #ff9800;
+}
+
+.value-status.with-match {
+    color: #ff9800;
+    font-weight: 500;
+}
+
+/* Low confidence matches - light orange */
+.property-value.low-confidence-match {
+    background-color: #ffeaa7;
+    border-left: 3px solid #fdcb6e;
+}
+
+/* Reconciled items - green */
+.property-value.reconciled {
+    background-color: #e8f5e8;
+    border-left: 3px solid #4caf50;
+}
+
+.value-status.reconciled {
+    color: #4caf50;
+    font-weight: 500;
+}
+
+/* No item status - grayed out */
+.property-value.no-item {
+    background-color: #f5f5f5;
+    border-left: 3px solid #9e9e9e;
+    color: #666;
+    opacity: 0.8;
+}
+
+.value-status.no-item {
+    color: #666;
+    font-weight: 500;
+}
+
+/* Skipped items */
+.value-status.skipped {
+    color: #ff9800;
+    font-style: italic;
+}
+
+/* No matches found */
+.value-status.no-matches {
+    color: #666;
+}
+
+/* No Wikidata Item button */
+.btn.no-item {
+    background-color: #9e9e9e;
+    color: white;
+    border: 1px solid #757575;
+}
+
+.btn.no-item:hover {
+    background-color: #757575;
 }
 
 /* Button Variants */
