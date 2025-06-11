@@ -31,3 +31,9 @@ The questions address various aspects of the process including workflow behavior
 **Question:** When a user clicks "Create new Wikidata item", should this open Wikidata in a new tab and then require the user to manually enter the Q-ID back into the tool, or should there be some integration to detect when they return?
 
 **Answer:** "Create new item" opens Wikidata's item creation page in a new tab. This is a completely manual process - users must create the item on Wikidata themselves and then copy-paste the new QID back into the search field in our tool. If technically feasible, the tool can pre-populate the label field on Wikidata since this value is already available from the Omeka S item.
+
+### 5. Property-Specific Reconciliation Filtering
+
+**Question:** For different property types (P50 for authors vs P131 for locations), should the reconciliation search be filtered to only show entities of the appropriate type (humans vs geographic locations)?
+
+**Answer:** Yes, reconciliation should be property-aware. Values being reconciled should be coherent with the property they're being added to (e.g., humans for author properties, geographic locations for location properties). This filtering should be included in the reconciliation API request to improve result relevance and reduce user confusion.
