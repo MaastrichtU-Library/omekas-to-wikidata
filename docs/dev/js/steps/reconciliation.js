@@ -108,6 +108,14 @@ export function setupReconciliationStep(state) {
             return;
         }
         
+        // Pre-filter check: ensure we have keys that exist in the current dataset
+        const availableMappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
+        if (availableMappedKeys.length === 0) {
+            console.warn('❌ No mapped keys are available in the current dataset for reconciliation');
+            console.warn('❌ All mapped keys are from a different dataset or not present in current data');
+            return;
+        }
+        
         if (!currentState.fetchedData) {
             console.warn('❌ No fetched data available for reconciliation');
             console.warn('❌ Current fetchedData:', currentState.fetchedData);
@@ -119,7 +127,10 @@ export function setupReconciliationStep(state) {
         console.log('✅ Fetched data type:', typeof currentState.fetchedData);
         console.log('✅ Fetched data structure:', currentState.fetchedData);
         
-        const mappedKeys = currentState.mappings.mappedKeys;
+        // Filter out keys that are not in the current dataset
+        const mappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
+        console.log('✅ Filtered mapped keys (excluding not in current dataset):', mappedKeys);
+        
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         console.log('✅ Data array:', data);
         console.log('✅ Data length:', data.length);
@@ -583,8 +594,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 // Remove all queue-related classes
@@ -600,11 +612,7 @@ export function setupReconciliationStep(state) {
                     }
                 } else if (status === 'processing') {
                     valueElement.classList.add('processing');
-                    const statusSpan = valueElement.querySelector('.value-status');
-                    if (statusSpan) {
-                        statusSpan.textContent = 'Processing...';
-                        statusSpan.className = 'value-status processing';
-                    }
+                    // Don't change text during processing - the spinner shows activity
                 } else if (status === 'clear') {
                     // Clear queue status and revert to normal
                     const statusSpan = valueElement.querySelector('.value-status');
@@ -625,20 +633,15 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
-                const statusSpan = valueElement.querySelector('.value-status');
-                if (statusSpan) {
-                    if (isLoading) {
-                        statusSpan.textContent = 'Checking...';
-                        statusSpan.className = 'value-status loading';
-                        valueElement.classList.add('checking');
-                    } else {
-                        statusSpan.className = 'value-status';
-                        valueElement.classList.remove('checking');
-                    }
+                if (isLoading) {
+                    valueElement.classList.add('checking');
+                } else {
+                    valueElement.classList.remove('checking');
                 }
             }
         }
@@ -652,8 +655,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 const statusSpan = valueElement.querySelector('.value-status');
@@ -675,8 +679,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 const statusSpan = valueElement.querySelector('.value-status');
@@ -733,7 +738,7 @@ export function setupReconciliationStep(state) {
         
         const statusSpan = document.createElement('span');
         statusSpan.className = 'value-status';
-        statusSpan.textContent = 'Checking...';
+        statusSpan.textContent = 'Click to reconcile';
         
         valueDiv.appendChild(textSpan);
         valueDiv.appendChild(statusSpan);
@@ -1914,8 +1919,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 valueElement.dataset.status = status;

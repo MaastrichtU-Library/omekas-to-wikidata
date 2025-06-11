@@ -926,6 +926,32 @@ main {
     background-color: rgba(33, 150, 243, 0.1);
 }
 
+/* Styles for keys not in current dataset */
+.key-item-compact.not-in-current-dataset,
+.key-list li.not-in-current-dataset {
+    opacity: 0.5;
+    filter: grayscale(50%);
+}
+
+.key-list li.not-in-current-dataset.disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.key-list li.not-in-current-dataset:hover {
+    background-color: transparent;
+}
+
+.not-in-dataset-indicator {
+    font-size: 0.75rem;
+    color: #999;
+    background-color: rgba(255, 152, 0, 0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    margin-left: auto;
+    font-style: italic;
+}
+
 /* Animation for newly moved keys */
 .key-list li.newly-moved {
     background: linear-gradient(90deg, 
@@ -1889,9 +1915,12 @@ main {
 /* Reconciliation Status Styling */
 .property-value {
     transition: all 0.3s ease;
-    min-height: 1.5em; /* Fixed minimum height to prevent expansion */
+    min-height: 2.5em; /* Accommodate stacked layout */
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.25rem 0.5rem;
+    position: relative;
 }
 
 .property-value.checking {
@@ -1915,8 +1944,24 @@ main {
     font-style: italic;
 }
 
-.value-status.processing {
-    color: #1976d2;
+/* Status color overrides for different states */
+.value-status.reconciled {
+    color: #4caf50;
+    font-weight: 500;
+}
+
+.value-status.with-match {
+    color: #ff9800;
+    font-weight: 500;
+}
+
+.value-status.skipped {
+    color: #ff9800;
+    font-style: italic;
+}
+
+.value-status.no-item {
+    color: #666;
     font-weight: 500;
 }
 
@@ -1932,33 +1977,34 @@ main {
     font-weight: 500;
 }
 
+.value-text {
+    font-weight: 500;
+    margin-bottom: 0.1rem;
+    line-height: 1.2;
+}
+
 .value-status {
-    display: inline-flex;
-    align-items: center;
-    height: 1.2em; /* Fixed height */
-    line-height: 1.2em;
+    font-size: 0.8rem;
+    line-height: 1.1;
+    color: #666;
 }
 
-.value-status.loading {
-    color: #2196f3;
-    font-style: italic;
-    position: relative;
-}
-
-.value-status.loading::after {
+/* Loading indicator - top-right corner */
+.property-value.checking::after {
     content: '';
     position: absolute;
-    right: -14px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
+    top: 0.2rem;
+    right: 0.2rem;
+    width: 8px;
+    height: 8px;
     border: 1px solid #2196f3;
     border-top: 1px solid transparent;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    /* Ensure it doesn't affect parent height */
-    flex-shrink: 0;
+}
+
+.value-status.loading {
+    /* Remove text-based loading styles */
 }
 
 @keyframes spin {
@@ -1978,11 +2024,6 @@ main {
     border-left: 3px solid #ff9800;
 }
 
-.value-status.with-match {
-    color: #ff9800;
-    font-weight: 500;
-}
-
 /* Low confidence matches - light orange */
 .property-value.low-confidence-match {
     background-color: #ffeaa7;
@@ -1993,11 +2034,6 @@ main {
 .property-value.reconciled {
     background-color: #e8f5e8;
     border-left: 3px solid #4caf50;
-}
-
-.value-status.reconciled {
-    color: #4caf50;
-    font-weight: 500;
 }
 
 /* No item status - grayed out */
@@ -2011,12 +2047,6 @@ main {
 .value-status.no-item {
     color: #666;
     font-weight: 500;
-}
-
-/* Skipped items */
-.value-status.skipped {
-    color: #ff9800;
-    font-style: italic;
 }
 
 /* No matches found */

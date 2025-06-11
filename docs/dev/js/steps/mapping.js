@@ -476,6 +476,12 @@ export function setupMappingStep(state) {
             const keyDisplay = document.createElement('div');
             keyDisplay.className = 'key-item-compact';
             
+            // Add grayed-out class if key is not in current dataset
+            if (keyData.notInCurrentDataset) {
+                keyDisplay.classList.add('not-in-current-dataset');
+                li.classList.add('not-in-current-dataset');
+            }
+            
             const keyName = document.createElement('span');
             keyName.className = 'key-name-compact';
             keyName.textContent = keyData.key;
@@ -495,13 +501,24 @@ export function setupMappingStep(state) {
                 frequencyIndicator.className = 'key-frequency';
                 frequencyIndicator.textContent = `(${keyData.frequency}/${keyData.totalItems})`;
                 keyDisplay.appendChild(frequencyIndicator);
+            } else if (keyData.notInCurrentDataset) {
+                // Show indicator for keys not in current dataset
+                const notInDatasetIndicator = document.createElement('span');
+                notInDatasetIndicator.className = 'not-in-dataset-indicator';
+                notInDatasetIndicator.textContent = '(not in current dataset)';
+                keyDisplay.appendChild(notInDatasetIndicator);
             }
             
             li.appendChild(keyDisplay);
             
-            // Add click handler for all keys to open mapping modal
+            // Add click handler for all keys to open mapping modal (but disabled for grayed out keys)
             li.className = 'clickable key-item-clickable-compact';
-            li.addEventListener('click', () => openMappingModal(keyData));
+            if (!keyData.notInCurrentDataset) {
+                li.addEventListener('click', () => openMappingModal(keyData));
+            } else {
+                li.classList.add('disabled');
+                li.title = 'This key is not present in the current dataset';
+            }
             
             // Add data attribute for animations
             li.setAttribute('data-key', keyData.key);
@@ -1127,11 +1144,29 @@ export function setupMappingStep(state) {
             }
         }
         
-        // Convert contextMap objects back to Maps
+        // Get current dataset to check which keys exist
+        const currentState = state.getState();
+        const currentDataKeys = new Set();
+        
+        if (currentState.fetchedData) {
+            const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+            items.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    Object.keys(item).forEach(key => {
+                        if (!key.startsWith('@')) {
+                            currentDataKeys.add(key);
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Convert contextMap objects back to Maps and check if keys exist in current dataset
         const processKeys = (keys) => {
             return keys.map(key => ({
                 ...key,
-                contextMap: key.contextMap ? new Map(Object.entries(key.contextMap)) : new Map()
+                contextMap: key.contextMap ? new Map(Object.entries(key.contextMap)) : new Map(),
+                notInCurrentDataset: !currentDataKeys.has(key.key) // Mark keys not in current dataset
             }));
         };
         
@@ -1150,7 +1185,8 @@ export function setupMappingStep(state) {
         console.log('Loaded mapping with:', {
             mapped: mappedKeys.length,
             ignored: ignoredKeys.length,
-            entitySchema: mappingData.entitySchema
+            entitySchema: mappingData.entitySchema,
+            keysNotInCurrentDataset: mappedKeys.filter(k => k.notInCurrentDataset).length + ignoredKeys.filter(k => k.notInCurrentDataset).length
         });
     }
     
