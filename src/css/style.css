@@ -1305,34 +1305,7 @@ main {
     margin-bottom: 1rem;
 }
 
-.tab-btn {
-    padding: 0.75rem 1.5rem;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-    font-weight: 500;
-    color: #666;
-    transition: all 0.2s ease;
-}
-
-.tab-btn.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-}
-
-.tab-btn:hover {
-    background-color: #f8f9fa;
-}
-
-.tab-content {
-    display: none;
-    min-height: 300px;
-}
-
-.tab-content.active {
-    display: block;
-}
+/* Tab-based styles removed - now using progressive disclosure design */
 
 /* Loading and Match Display */
 .loading-indicator {

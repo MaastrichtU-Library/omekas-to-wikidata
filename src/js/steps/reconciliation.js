@@ -785,7 +785,6 @@ export function setupReconciliationStep(state) {
             if (modalElement) {
                 console.log('🔧 Setting up modal functionality');
                 setupDynamicDatePrecision(modalElement);
-                setupTabEventListeners();
                 setupAutoAdvanceToggle();
             } else {
                 console.warn('⚠️ Modal content element not found for setup');
@@ -1308,26 +1307,7 @@ export function setupReconciliationStep(state) {
         console.log('✅ Reconciliation display states restored');
     }
     
-    /**
-     * Setup event listeners for tab buttons in the modal
-     */
-    function setupTabEventListeners() {
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        
-        tabButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                const tabName = this.getAttribute('data-tab');
-                
-                if (tabName) {
-                    console.log('🔄 Switching to tab:', tabName);
-                    switchTab(tabName);
-                }
-            });
-        });
-        
-        console.log('✅ Tab event listeners setup for', tabButtons.length, 'buttons');
-    }
+    // Tab functionality removed - now using progressive disclosure design
     
     // Global functions for new progressive disclosure modal interactions
     window.toggleMoreOptions = function() {
@@ -1543,20 +1523,7 @@ export function setupReconciliationStep(state) {
         }
     }
     
-    // Global functions for modal interactions (attached to window for onclick handlers)
-    window.switchTab = function(tabName) {
-        // Switch tab logic
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        document.getElementById(`${tabName}-tab`).classList.add('active');
-        
-        // If switching to manual tab, set up search
-        if (tabName === 'manual') {
-            setupManualSearch();
-        }
-    };
+    // Tab functionality removed - progressive disclosure design handles this
     
     window.selectMatch = function(matchId) {
         // Mark match as selected
@@ -1592,126 +1559,25 @@ export function setupReconciliationStep(state) {
         }
     };
     
+    // Legacy confirmReconciliation function - now redirects to progressive disclosure functions
     window.confirmReconciliation = function() {
+        // In progressive disclosure design, use specific functions instead:
+        // - selectMatchAndAdvance() for Wikidata matches
+        // - confirmCustomValue() for custom inputs
+        // This function is kept for backward compatibility but should not be used
+        console.warn('confirmReconciliation() is deprecated - use selectMatchAndAdvance() or confirmCustomValue() instead');
+        
         if (currentReconciliationCell) {
-            const { property } = currentReconciliationCell;
-            const propertyType = detectPropertyType(property);
+            // Try to find selected match first
             const selectedMatch = document.querySelector('.match-item.selected');
-            
-            // Handle Wikidata entity selection
             if (selectedMatch) {
                 const matchId = selectedMatch.dataset.matchId;
-                markCellAsReconciled(currentReconciliationCell, {
-                    type: 'wikidata',
-                    id: matchId,
-                    label: selectedMatch.querySelector('.match-name').textContent,
-                    description: selectedMatch.querySelector('.match-description').textContent
-                });
-                
-                modalUI.closeModal();
-                setTimeout(() => reconcileNextUnprocessedCell(), 100);
+                window.selectMatchAndAdvance(matchId);
                 return;
             }
             
-            // Handle custom value input from dynamic fields
-            if (document.getElementById('custom-tab').classList.contains('active')) {
-                const inputContainer = document.querySelector('.dynamic-input-container');
-                let customValue = null;
-                let qualifiers = {};
-                
-                // Extract value based on input type
-                if (inputContainer) {
-                    const textInput = inputContainer.querySelector('.text-input, .qid-input');
-                    const numberInput = inputContainer.querySelector('.number-input');
-                    const dateInput = inputContainer.querySelector('.date-input');
-                    const urlInput = inputContainer.querySelector('.url-input');
-                    const coordinatesInput = inputContainer.querySelector('.coordinates-input');
-                    
-                    if (textInput) {
-                        customValue = textInput.value;
-                        
-                        // Check for language qualifier
-                        const languageSelect = inputContainer.querySelector('.language-select');
-                        if (languageSelect && languageSelect.value) {
-                            qualifiers.language = languageSelect.value;
-                        }
-                    } else if (numberInput) {
-                        customValue = numberInput.value;
-                        
-                        // Check for unit qualifier
-                        const unitSelect = inputContainer.querySelector('.unit-select');
-                        if (unitSelect && unitSelect.value) {
-                            qualifiers.unit = unitSelect.value;
-                        }
-                    } else if (dateInput) {
-                        // Standardize the date input and get precision
-                        const standardized = standardizeDateInput(dateInput.value);
-                        customValue = standardized.date;
-                        
-                        // Use detected precision if not manually overridden
-                        const precisionSelect = inputContainer.querySelector('.precision-select');
-                        const calendarSelect = inputContainer.querySelector('.calendar-select');
-                        
-                        if (precisionSelect && precisionSelect.value) {
-                            qualifiers.precision = precisionSelect.value;
-                        } else if (standardized.precision) {
-                            // Use automatically detected precision
-                            qualifiers.precision = standardized.precision;
-                        }
-                        
-                        if (calendarSelect && calendarSelect.value) {
-                            qualifiers.calendar = calendarSelect.value;
-                        }
-                        
-                        // Store the display value for reference
-                        if (standardized.displayValue) {
-                            qualifiers.displayValue = standardized.displayValue;
-                        }
-                    } else if (urlInput) {
-                        customValue = urlInput.value;
-                    } else if (coordinatesInput) {
-                        customValue = coordinatesInput.value;
-                    }
-                }
-                
-                // Fallback to old custom input for backward compatibility
-                if (!customValue) {
-                    const customInput = document.querySelector('.custom-input');
-                    if (customInput) {
-                        customValue = customInput.value;
-                    }
-                }
-                
-                // Validate the input
-                if (customValue) {
-                    const validation = validateInput(customValue, propertyType);
-                    
-                    if (!validation.isValid) {
-                        // Show validation error
-                        const validationMessage = document.querySelector('.validation-message');
-                        if (validationMessage) {
-                            validationMessage.textContent = validation.message;
-                            validationMessage.style.display = 'block';
-                            validationMessage.style.color = 'red';
-                        } else {
-                            alert(validation.message);
-                        }
-                        return;
-                    }
-                    
-                    markCellAsReconciled(currentReconciliationCell, {
-                        type: 'custom',
-                        value: customValue,
-                        datatype: propertyType,
-                        qualifiers: qualifiers
-                    });
-                    
-                    modalUI.closeModal();
-                    setTimeout(() => reconcileNextUnprocessedCell(), 100);
-                } else {
-                    alert('Please enter a value or select a match.');
-                }
-            }
+            // Fall back to custom value confirmation
+            window.confirmCustomValue();
         }
     };
     
@@ -1962,7 +1828,7 @@ export function setupReconciliationStep(state) {
     window.loadMockReconciliationData = loadMockDataForTesting;
     window.initializeReconciliationManually = initializeReconciliation;
     
-    // Type override function
+    // Type override function for progressive disclosure design
     window.applyTypeOverride = function() {
         const select = document.querySelector('.type-override-select');
         
@@ -1978,129 +1844,82 @@ export function setupReconciliationStep(state) {
         if (!currentReconciliationCell) return;
         
         const { property, value } = currentReconciliationCell;
-        
-        // Update the property type info display
-        const typeValueSpan = document.querySelector('.property-type-value');
         const inputConfig = getInputFieldConfig(newType);
-        if (typeValueSpan) {
-            typeValueSpan.textContent = inputConfig.description;
+        
+        // Helper function for user-friendly type names
+        const getUserFriendlyTypeName = (type) => {
+            const typeNames = {
+                'wikibase-item': 'Wikidata item',
+                'string': 'Text string',
+                'external-id': 'External identifier',
+                'url': 'URL',
+                'quantity': 'Number',
+                'time': 'Date/Time',
+                'monolingualtext': 'Text with language',
+                'globe-coordinate': 'Coordinates'
+            };
+            return typeNames[type] || type;
+        };
+        
+        // Update the expected type display in header
+        const expectedTypeElement = document.querySelector('.expected-type');
+        if (expectedTypeElement) {
+            expectedTypeElement.textContent = `Expected: ${getUserFriendlyTypeName(newType)}`;
         }
         
-        // Update the settings tab description
-        const settingsDescription = document.querySelector('#settings-tab p strong');
-        if (settingsDescription) {
-            settingsDescription.textContent = inputConfig.description;
-        }
-        
-        // Recreate the tabs and content with the new type
-        const newTabsHTML = `
-            <div class="option-tabs">
-                ${inputConfig.requiresReconciliation ? 
-                    '<button class="tab-btn active" data-tab="automatic">Automatic Matches</button>' : 
-                    ''
-                }
-                ${inputConfig.requiresReconciliation ? 
-                    '<button class="tab-btn" data-tab="manual">Manual Search</button>' : 
-                    ''
-                }
-                ${!inputConfig.requiresReconciliation || newType !== 'wikibase-item' ? 
-                    `<button class="tab-btn ${!inputConfig.requiresReconciliation ? 'active' : ''}" data-tab="custom">${inputConfig.requiresReconciliation ? 'Custom Value' : 'Enter Value'}</button>` : 
-                    ''
-                }
-                <button class="tab-btn settings-tab" data-tab="settings">⚙️ Settings</button>
-            </div>
-            
-            ${inputConfig.requiresReconciliation ? `
-                <div class="tab-content active" id="automatic-tab">
-                    <div class="loading-indicator">
-                        <p>Searching for matches...</p>
-                        <div class="spinner"></div>
-                    </div>
-                    <div class="matches-container" style="display: none;">
-                        <div class="matches-list"></div>
-                    </div>
-                    <div class="no-matches" style="display: none;">
-                        <p>No automatic matches found.</p>
-                        <button class="btn secondary" onclick="switchTab('manual')">Try Manual Search</button>
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="manual-tab">
-                    <div class="manual-search">
-                        <div class="search-controls">
+        // Update primary recommendations section based on new type
+        const primaryRecommendations = document.querySelector('.primary-recommendations');
+        if (primaryRecommendations) {
+            if (newType === 'wikibase-item') {
+                // For Wikidata items, show reconciliation interface
+                primaryRecommendations.innerHTML = `
+                    <div class="loading-state">Finding matches...</div>
+                    <div class="high-confidence-matches" style="display: none;"></div>
+                    <div class="fallback-options" style="display: none;">
+                        <div class="search-wikidata">
                             <input type="text" class="search-input" placeholder="Search Wikidata..." value="${value}">
                             <button class="btn primary search-btn">Search</button>
                         </div>
-                        <div class="search-results"></div>
+                        <button class="btn create-new-item" onclick="createNewWikidataItem()">
+                            ➕ Create New Wikidata Item
+                        </button>
                     </div>
-                </div>
-            ` : ''}
-            
-            ${!inputConfig.requiresReconciliation || newType !== 'wikibase-item' ? `
-                <div class="tab-content ${!inputConfig.requiresReconciliation ? 'active' : ''}" id="custom-tab">
-                    <div class="custom-value">
-                        ${inputConfig.requiresReconciliation ? 
-                            '<p>Enter a custom value if no Wikidata match is appropriate:</p>' : 
-                            '<p>Enter the value for this property:</p>'
-                        }
-                        ${createInputHTML(newType, value, property)}
-                        ${inputConfig.requiresReconciliation ? 
-                            '<p class="note">This will be used as a literal value without Wikidata linking.</p>' : 
-                            ''
-                        }
-                    </div>
-                </div>
-            ` : ''}
-            
-            <div class="tab-content" id="settings-tab">
-                <div class="settings-section">
-                    <h5>Property Type Settings</h5>
-                    <p>Current property type: <strong>${inputConfig.description}</strong></p>
-                    <p>If this seems incorrect, you can override the property type:</p>
-                    
-                    <div class="type-override-controls">
-                        <label for="type-override-select">Choose property type:</label>
-                        <select class="type-override-select" id="type-override-select">
-                            <option value="wikibase-item" ${newType === 'wikibase-item' ? 'selected' : ''}>Wikidata Item (Q-ID)</option>
-                            <option value="string" ${newType === 'string' ? 'selected' : ''}>Text String</option>
-                            <option value="external-id" ${newType === 'external-id' ? 'selected' : ''}>External Identifier</option>
-                            <option value="url" ${newType === 'url' ? 'selected' : ''}>URL</option>
-                            <option value="quantity" ${newType === 'quantity' ? 'selected' : ''}>Number/Quantity</option>
-                            <option value="time" ${newType === 'time' ? 'selected' : ''}>Date/Time</option>
-                            <option value="monolingualtext" ${newType === 'monolingualtext' ? 'selected' : ''}>Text with Language</option>
-                            <option value="globe-coordinate" ${newType === 'globe-coordinate' ? 'selected' : ''}>Coordinates</option>
-                        </select>
-                        <button class="btn small primary apply-type-btn" onclick="applyTypeOverride()">Apply Type Change</button>
-                    </div>
-                    
-                    <div class="settings-note">
-                        <p><strong>Note:</strong> Changing the property type will update the input fields and reconciliation options to match the new type.</p>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Update the options container
-        const optionsContainer = document.querySelector('.reconciliation-options');
-        if (optionsContainer) {
-            optionsContainer.innerHTML = newTabsHTML;
-            
-            // Re-setup tab event listeners for the new buttons
-            setTimeout(() => {
-                setupTabEventListeners();
-                setupDynamicDatePrecision(optionsContainer);
+                `;
                 
-                // Switch to the first appropriate tab after type change
-                if (inputConfig.requiresReconciliation) {
-                    switchTab('automatic');
-                    performAutomaticReconciliation(value, property);
-                } else {
-                    switchTab('custom');
-                }
-            }, 100);
+                // Re-perform reconciliation with new type
+                setTimeout(async () => {
+                    await performAutomaticReconciliation(value, property);
+                    setupManualSearchInFallback();
+                }, 100);
+            } else {
+                // For non-Wikidata properties, show custom input directly
+                const customInputHTML = createInputHTML(newType, value, property);
+                primaryRecommendations.innerHTML = `
+                    <div class="non-wikidata-input">
+                        <h5>Enter ${inputConfig.description}</h5>
+                        <div class="custom-input-container">
+                            ${customInputHTML}
+                        </div>
+                        <div class="input-actions">
+                            <button class="btn primary" onclick="confirmCustomValue()">Confirm Value</button>
+                        </div>
+                    </div>
+                `;
+                
+                // Setup dynamic date precision if needed
+                setTimeout(() => {
+                    setupDynamicDatePrecision(primaryRecommendations);
+                }, 100);
+            }
         }
         
-        console.log('✅ Type override applied successfully');
+        // Update the type description in expanded options
+        const typeSettingsDesc = document.querySelector('.option-section p strong');
+        if (typeSettingsDesc) {
+            typeSettingsDesc.textContent = getUserFriendlyTypeName(newType);
+        }
+        
+        console.log('✅ Type override applied successfully with progressive disclosure');
     };
     
     // Return public API if needed
