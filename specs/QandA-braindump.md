@@ -24,4 +24,4 @@ The questions address various aspects of the process including workflow behavior
 
 **Question:** What exactly needs to be completed in each step before a user can proceed to the next? For example, does every mappable property need to be either mapped or explicitly ignored before proceeding to reconciliation?
 
-**Answer:** For each field that requires reconciliation, users must choose one of three options: 1) Select an existing Wikidata item (QID), 2) Leave the field empty (original text will remain in the overview), or 3) Mark as "Ignore" (will not be included in export). When no suitable existing item is found, users must decide between leaving the field empty or creating a new Wikidata item first, then reconciling to the newly created QID.
+**Answer:** For each field that requires reconciliation to a Wikidata item, users must choose one of three options: 1) Select an existing Wikidata item (QID) for direct reconciliation, 2) Create a new Wikidata item first and then reconcile to the newly created QID, or 3) Mark as "Ignore" (field will not be included in export).
