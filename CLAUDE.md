@@ -31,7 +31,7 @@ gh issue reopen NUMBER
 
 Update the json with all the issues:
 ```bash
-gh issue list --json number,title,body,state,labels,createdAt,updatedAt,assignees,milestone,author,comments,closedAt,url,closed,stateReason,isPinned --limit 100 > .issues/all_issues.json
+gh issue list --state all --json number,title,body,state,labels,createdAt,updatedAt,assignees,milestone,author,comments,closedAt,url,closed,stateReason,isPinned --limit 100 > .issues/all_issues.json
 ```
 
 
