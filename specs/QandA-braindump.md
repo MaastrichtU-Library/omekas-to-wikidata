@@ -67,3 +67,15 @@ The questions address various aspects of the process including workflow behavior
 **Question:** For the MVP, should every statement require a source citation, or can some statements be exported without sources initially?
 
 **Answer:** Export with source citations is required for the MVP. Every statement should include proper source citations when exported.
+
+### 11. Reconciliation Modal Design and Layout
+
+**Question:** How should the reconciliation modal be structured and what elements should it contain?
+
+**Answer:** The modal should be simplified with the following structure:
+1. **Property Display**: Show the Wikidata property label with PID in brackets (e.g., "author (P50)"), followed by the property description underneath. The property should be clickable/linked.
+2. **Original Value**: Display the original key name from Omeka S, which should be clickable and link to the linked open data URI.
+3. **Reconciliation Results**: Display the search results from the reconciliation API.
+4. **Manual Search**: If no results satisfy or are found, provide a manual search field for general Wikidata items.
+5. **Action Options**: Include standard options like "Ignore" and "Create new item".
+6. **Restrictions**: When the system requires a Wikidata item, users should not be able to change the value to anything other than a Wikidata item. Include a small explanation of why it requires a Wikidata item (either because the Entity Schema dictates it or the property requires it), with links to the property or Entity Schema for user investigation.
