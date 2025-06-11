@@ -49,3 +49,9 @@ The questions address various aspects of the process including workflow behavior
 **Question:** If a user has reconciled 50% of their data and needs to stop, what's the expected workflow for resuming? Should they be able to export a partial state and reload it later?
 
 **Answer:** Yes, users should be able to save their progress as a JSON file to their computer at any point and resume exactly where they left off in a later session. This functionality is not included in the minimum viable product but is a planned feature for future development.
+
+### 8. QuickStatements Validation
+
+**Question:** Should the tool validate the generated QuickStatements syntax before allowing export, or is it acceptable to generate potentially invalid syntax that users need to fix manually?
+
+**Answer:** QuickStatements syntax must be perfect and validated. Invalid syntax should never be presented to users. Validation should occur per item - if one item creates an error, it can be skipped from the export with clear notification to the user. For syntax errors, provide easy feedback mechanism such as one-click GitHub issue creation so users can report problems to developers.
