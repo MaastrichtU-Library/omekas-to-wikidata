@@ -25,3 +25,9 @@ The questions address various aspects of the process including workflow behavior
 **Question:** What exactly needs to be completed in each step before a user can proceed to the next? For example, does every mappable property need to be either mapped or explicitly ignored before proceeding to reconciliation?
 
 **Answer:** For each field that requires reconciliation to a Wikidata item, users must choose one of three options: 1) Select an existing Wikidata item (QID) for direct reconciliation, 2) Create a new Wikidata item first and then reconcile to the newly created QID, or 3) Mark as "Ignore" (field will not be included in export).
+
+### 4. Entity Creation Workflow
+
+**Question:** When a user clicks "Create new Wikidata item", should this open Wikidata in a new tab and then require the user to manually enter the Q-ID back into the tool, or should there be some integration to detect when they return?
+
+**Answer:** "Create new item" opens Wikidata's item creation page in a new tab. This is a completely manual process - users must create the item on Wikidata themselves and then copy-paste the new QID back into the search field in our tool. If technically feasible, the tool can pre-populate the label field on Wikidata since this value is already available from the Omeka S item.
