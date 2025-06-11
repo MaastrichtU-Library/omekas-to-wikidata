@@ -55,3 +55,9 @@ The questions address various aspects of the process including workflow behavior
 **Question:** Should the tool validate the generated QuickStatements syntax before allowing export, or is it acceptable to generate potentially invalid syntax that users need to fix manually?
 
 **Answer:** QuickStatements syntax must be perfect and validated. Invalid syntax should never be presented to users. Validation should occur per item - if one item creates an error, it can be skipped from the export with clear notification to the user. For syntax errors, provide easy feedback mechanism such as one-click GitHub issue creation so users can report problems to developers.
+
+### 9. Entity Schema Selection
+
+**Question:** Should users be able to select multiple Entity Schemas if their collection contains different types of items (e.g., books and artworks), or is the assumption one schema per workflow session?
+
+**Answer:** Entity Schema selection should be available in the Mappings tab. Multiple schemas can be coherent and should be supported, allowing users to work with collections containing different types of items that require different schema templates.
