@@ -941,9 +941,10 @@ export function setupReconciliationStep(state) {
         setTimeout(() => {
             const modalElement = document.querySelector('#modal-content');
             if (modalElement) {
-                console.log('🔧 Setting up modal functionality');
+                console.log('🔧 Setting up simplified modal functionality');
                 setupDynamicDatePrecision(modalElement);
                 setupAutoAdvanceToggle();
+                setupManualSearchKeyboard();
             } else {
                 console.warn('⚠️ Modal content element not found for setup');
             }
@@ -954,117 +955,244 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Create modal content for reconciliation with progressive disclosure design
+     * Create modal content for reconciliation with simplified design based on Q&A requirements
      */
     function createReconciliationModalContent(itemId, property, valueIndex, value) {
         // Detect property type for dynamic input fields
         const propertyType = detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
-        const customInputHTML = createInputHTML(propertyType, value, property);
         
-        // Get friendly type name
-        function getUserFriendlyTypeName(type) {
-            const typeNames = {
-                'wikibase-item': 'Wikidata item',
-                'string': 'Text string',
-                'external-id': 'External identifier',
-                'url': 'URL',
-                'quantity': 'Number',
-                'time': 'Date/Time',
-                'monolingualtext': 'Text with language',
-                'globe-coordinate': 'Coordinates'
-            };
-            return typeNames[type] || type;
-        }
-        
+        // Get property information for display
+        const propertyInfo = getPropertyDisplayInfo(property);
+        const originalKeyInfo = getOriginalKeyInfo(itemId, property);
         const itemTitle = reconciliationData[itemId]?.originalData?.['o:title'] || `Item ${itemId.replace('item-', '')}`;
         
+        // Determine why Wikidata item is required (Entity Schema vs property constraint)
+        const requirementReason = getReconciliationRequirementReason(property);
+        
         return `
-            <div class="reconciliation-modal-v2">
-                <div class="reconciliation-header">
-                    <h4>Reconcile: ${property}</h4>
-                    <p class="original-value">Value: <strong>"${value}"</strong></p>
-                    <p class="item-context">From: ${itemTitle}</p>
-                    <p class="expected-type">Expected: ${getUserFriendlyTypeName(propertyType)}</p>
+            <div class="reconciliation-modal-simplified">
+                <!-- 1. Property Display -->
+                <div class="property-display">
+                    <h4>
+                        <a href="${propertyInfo.wikidataUrl}" target="_blank" class="property-link">
+                            ${propertyInfo.label} (${propertyInfo.pid})
+                        </a>
+                    </h4>
+                    <p class="property-description">${propertyInfo.description}</p>
                 </div>
                 
-                <div class="primary-recommendations">
-                    <div class="loading-state">Finding matches...</div>
-                    <div class="high-confidence-matches" style="display: none;"></div>
-                    <div class="fallback-options" style="display: none;">
-                        ${propertyType === 'wikibase-item' ? `
-                            <div class="search-wikidata">
-                                <input type="text" class="search-input" placeholder="Search Wikidata..." value="${value}">
-                                <button class="btn primary search-btn">Search</button>
-                            </div>
-                            <button class="btn create-new-item" onclick="createNewWikidataItem()">
-                                ➕ Create New Wikidata Item
-                            </button>
-                        ` : `
-                            <div class="custom-input-primary">
-                                ${customInputHTML}
-                            </div>
-                        `}
+                <!-- 2. Original Value Display -->
+                <div class="original-value-display">
+                    <p class="original-key-label">Original key:</p>
+                    <p class="original-key-value">
+                        <a href="${originalKeyInfo.lodUri}" target="_blank" class="original-key-link">
+                            ${originalKeyInfo.keyName}
+                        </a>
+                    </p>
+                    <p class="original-value"><strong>"${value}"</strong> from ${itemTitle}</p>
+                </div>
+                
+                <!-- 3. Reconciliation Results -->
+                <div class="reconciliation-results">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Finding matches...</p>
+                    </div>
+                    <div class="matches-display" style="display: none;">
+                        <!-- Results will be populated here -->
                     </div>
                 </div>
                 
-                <div class="progressive-disclosure">
-                    <button class="expand-options" onclick="toggleMoreOptions()">
-                        ▼ More Options
+                <!-- 4. Manual Search (always visible for Wikidata items) -->
+                ${propertyType === 'wikibase-item' ? `
+                    <div class="manual-search-section">
+                        <h5>Manual Search</h5>
+                        <div class="search-controls">
+                            <input type="text" class="manual-search-input" placeholder="Search Wikidata items..." value="${value}">
+                            <button class="btn primary search-btn" onclick="performManualSearch()">Search</button>
+                        </div>
+                        <div class="manual-search-results"></div>
+                    </div>
+                ` : `
+                    <!-- Non-Wikidata property input -->
+                    <div class="custom-input-section">
+                        <h5>Enter ${inputConfig.description}</h5>
+                        <div class="custom-input-container">
+                            ${createInputHTML(propertyType, value, property)}
+                        </div>
+                        <button class="btn primary" onclick="confirmCustomValue()">Confirm Value</button>
+                    </div>
+                `}
+                
+                <!-- 5. Action Options -->
+                <div class="action-options">
+                    <button class="btn secondary ignore-btn" onclick="ignoreReconciliation()">
+                        🚫 Ignore (exclude from export)
                     </button>
-                    <div class="expanded-options" style="display: none;">
-                        ${propertyType === 'wikibase-item' ? `
-                            <div class="option-section">
-                                <h5>Manual Search</h5>
-                                <div class="manual-search-expanded">
-                                    <input type="text" class="search-input-expanded" placeholder="Search Wikidata..." value="${value}">
-                                    <button class="btn secondary search-btn-expanded">Search</button>
-                                    <div class="search-results-expanded"></div>
-                                </div>
-                            </div>
-                            <div class="option-section">
-                                <h5>Custom Value</h5>
-                                <div class="custom-value-expanded">
-                                    <p>Enter a custom value if no Wikidata match is appropriate:</p>
-                                    ${customInputHTML}
-                                    <p class="note">This will be used as a literal value without Wikidata linking.</p>
-                                </div>
-                            </div>
-                        ` : ''}
-                        <div class="option-section">
-                            <h5>Property Type Settings</h5>
-                            <p>Current property type: <strong>${getUserFriendlyTypeName(propertyType)}</strong></p>
-                            <p>If this seems incorrect, you can override the property type:</p>
-                            <div class="type-override-controls">
-                                <label for="type-override-select">Choose property type:</label>
-                                <select class="type-override-select" id="type-override-select">
-                                    <option value="wikibase-item" ${propertyType === 'wikibase-item' ? 'selected' : ''}>Wikidata item</option>
-                                    <option value="string" ${propertyType === 'string' ? 'selected' : ''}>Text string</option>
-                                    <option value="external-id" ${propertyType === 'external-id' ? 'selected' : ''}>External identifier</option>
-                                    <option value="url" ${propertyType === 'url' ? 'selected' : ''}>URL</option>
-                                    <option value="quantity" ${propertyType === 'quantity' ? 'selected' : ''}>Number</option>
-                                    <option value="time" ${propertyType === 'time' ? 'selected' : ''}>Date/Time</option>
-                                    <option value="monolingualtext" ${propertyType === 'monolingualtext' ? 'selected' : ''}>Text with language</option>
-                                    <option value="globe-coordinate" ${propertyType === 'globe-coordinate' ? 'selected' : ''}>Coordinates</option>
-                                </select>
-                                <button class="btn small primary apply-type-btn" onclick="applyTypeOverride()">Apply Type Change</button>
-                            </div>
+                    ${propertyType === 'wikibase-item' ? `
+                        <button class="btn secondary create-btn" onclick="createNewWikidataItem()">
+                            ➕ Create new Wikidata item
+                        </button>
+                    ` : ''}
+                </div>
+                
+                <!-- 6. Restrictions & Explanations -->
+                <div class="restrictions-explanation">
+                    <div class="requirement-explanation">
+                        <h6>Why Wikidata item required:</h6>
+                        <p>${requirementReason.explanation}</p>
+                        <div class="investigation-links">
+                            ${requirementReason.links.map(link => `
+                                <a href="${link.url}" target="_blank" class="investigation-link">
+                                    ${link.label}
+                                </a>
+                            `).join('')}
                         </div>
                     </div>
                 </div>
                 
-                <div class="reconciliation-actions">
-                    <button class="btn secondary" onclick="skipReconciliation()">Skip for Later</button>
-                    <button class="btn no-item" onclick="markAsNoWikidataItem()">No Wikidata Item</button>
-                    <div class="auto-advance-toggle">
-                        <label>
-                            <input type="checkbox" id="auto-advance" ${getAutoAdvanceSetting() ? 'checked' : ''}>
-                            Auto-advance to next
-                        </label>
-                    </div>
+                <!-- Auto-advance setting -->
+                <div class="auto-advance-setting">
+                    <label>
+                        <input type="checkbox" id="auto-advance" ${getAutoAdvanceSetting() ? 'checked' : ''}>
+                        Auto-advance to next reconciliation
+                    </label>
                 </div>
             </div>
         `;
+    }
+    
+    /**
+     * Get property display information including Wikidata PID and clickable link
+     */
+    function getPropertyDisplayInfo(property) {
+        // For now, create a mock PID and use property name as label
+        // In a real implementation, this would query the mappings or a property database
+        const mockPid = generateMockPid(property);
+        
+        return {
+            label: property.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            pid: mockPid,
+            description: getPropertyDescription(property),
+            wikidataUrl: `https://www.wikidata.org/wiki/Property:${mockPid}`
+        };
+    }
+    
+    /**
+     * Generate a mock PID for demonstration (in real implementation, this would come from mappings)
+     */
+    function generateMockPid(property) {
+        // Create a deterministic but realistic-looking PID based on property name
+        const hash = property.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0);
+        const pidNumber = Math.abs(hash) % 9000 + 1000; // Generate P1000-P9999
+        return `P${pidNumber}`;
+    }
+    
+    /**
+     * Get property description based on common property patterns
+     */
+    function getPropertyDescription(property) {
+        const descriptions = {
+            'author': 'creator of a creative work or other object',
+            'creator': 'maker of this creative work or other object',
+            'title': 'published name of a work',
+            'date': 'point in time',
+            'subject': 'primary topic of a work',
+            'publisher': 'organization or person responsible for publishing',
+            'language': 'language of work or name',
+            'format': 'file format, physical medium, or dimensions',
+            'identifier': 'identifier for this item',
+            'rights': 'copyright and other rights information',
+            'coverage': 'spatial or temporal topic of the resource',
+            'description': 'textual description of the entity',
+            'contributor': 'person or organization that contributed to the subject',
+            'relation': 'related resource',
+            'source': 'work from which this work is derived',
+            'type': 'nature or genre of the resource'
+        };
+        
+        // Try to match property name to description
+        for (const [key, desc] of Object.entries(descriptions)) {
+            if (property.toLowerCase().includes(key)) {
+                return desc;
+            }
+        }
+        
+        return `Property describing ${property.replace(/[_-]/g, ' ')}`;
+    }
+    
+    /**
+     * Get original key information including LOD URI
+     */
+    function getOriginalKeyInfo(itemId, property) {
+        // Get the original key name from the source data
+        const originalData = reconciliationData[itemId]?.originalData;
+        
+        // Try to find the most specific LOD URI for this key
+        let lodUri = generateLodUri(property, originalData);
+        
+        return {
+            keyName: property,
+            lodUri: lodUri
+        };
+    }
+    
+    /**
+     * Generate a LOD URI for the original key
+     */
+    function generateLodUri(property, originalData) {
+        // Try to extract URI from the original data structure
+        if (originalData && originalData[property]) {
+            const value = originalData[property];
+            
+            // Check if it's an Omeka S structure with URI
+            if (Array.isArray(value) && value[0] && value[0]['@id']) {
+                return value[0]['@id'];
+            } else if (typeof value === 'object' && value['@id']) {
+                return value['@id'];
+            }
+        }
+        
+        // Fallback: create a generic ontology URI
+        return `http://purl.org/dc/terms/${property}`;
+    }
+    
+    /**
+     * Determine why Wikidata item is required for this reconciliation
+     */
+    function getReconciliationRequirementReason(property) {
+        // Check if requirement comes from Entity Schema vs property constraint
+        const currentState = state.getState();
+        const entitySchemas = currentState.mappings?.entitySchemas || [];
+        
+        let reason = {
+            explanation: "This property requires a Wikidata item to maintain linked data integrity.",
+            links: []
+        };
+        
+        // Check if this property is part of an Entity Schema
+        if (entitySchemas.length > 0) {
+            reason.explanation = "This property is required by the selected Entity Schema to be a Wikidata item.";
+            reason.links.push(
+                ...entitySchemas.map(schema => ({
+                    label: `Entity Schema: ${schema.label || schema.id}`,
+                    url: `https://www.wikidata.org/wiki/EntitySchema:${schema.id}`
+                }))
+            );
+        }
+        
+        // Add property-specific investigation link
+        const propertyInfo = getPropertyDisplayInfo(property);
+        reason.links.push({
+            label: `Property: ${propertyInfo.label} (${propertyInfo.pid})`,
+            url: propertyInfo.wikidataUrl
+        });
+        
+        return reason;
     }
     
     /**
@@ -1075,36 +1203,97 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Display smart recommendations based on match confidence
+     * Display reconciliation results with new confidence logic from Q&A requirements
      */
-    async function displaySmartRecommendations(matches, propertyType, value) {
+    async function displayReconciliationResults(matches, propertyType, value) {
         const loadingState = document.querySelector('.loading-state');
-        const highConfidenceContainer = document.querySelector('.high-confidence-matches');
-        const fallbackContainer = document.querySelector('.fallback-options');
+        const matchesDisplay = document.querySelector('.matches-display');
         
         if (loadingState) {
             loadingState.style.display = 'none';
         }
         
+        if (!matchesDisplay) return;
+        
+        // Handle non-Wikidata properties
         if (propertyType !== 'wikibase-item') {
-            // Non-Wikidata properties: show custom input directly
-            showCustomInputInterface(propertyType, value);
+            matchesDisplay.innerHTML = '<p>Non-Wikidata property - use manual input section below.</p>';
+            matchesDisplay.style.display = 'block';
             return;
         }
         
-        const highConfidenceMatches = matches?.filter(m => m.score >= 80) || [];
+        if (!matches || matches.length === 0) {
+            matchesDisplay.innerHTML = '<p class="no-matches">No automatic matches found. Try manual search below.</p>';
+            matchesDisplay.style.display = 'block';
+            return;
+        }
+        
+        // New confidence logic from Q&A requirements:
+        // - Show ALL suggestions with 80%+ confidence if multiple matches exist at that level
+        // - If no suggestions above 80%, display the top 3 best matches
+        
+        const highConfidenceMatches = matches.filter(m => m.score >= 80);
+        let displayMatches = [];
         
         if (highConfidenceMatches.length > 0) {
-            displayHighConfidenceMatches(highConfidenceMatches);
-            if (highConfidenceContainer) {
-                highConfidenceContainer.style.display = 'block';
-            }
+            // Show ALL matches above 80%
+            displayMatches = highConfidenceMatches;
         } else {
-            displayFallbackOptions(value, matches);
-            if (fallbackContainer) {
-                fallbackContainer.style.display = 'block';
-            }
+            // Show top 3 best matches
+            displayMatches = matches.slice(0, 3);
         }
+        
+        matchesDisplay.innerHTML = `
+            <div class="matches-header">
+                <h5>Reconciliation Suggestions</h5>
+                ${highConfidenceMatches.length > 0 ? 
+                    `<p class="confidence-note">All matches above 80% confidence:</p>` : 
+                    `<p class="confidence-note">Top ${displayMatches.length} matches (no high-confidence matches found):</p>`
+                }
+            </div>
+            <div class="matches-list">
+                ${displayMatches.map((match, index) => `
+                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                        <div class="match-score">${match.score.toFixed(1)}%</div>
+                        <div class="match-content">
+                            <div class="match-name">${match.name}</div>
+                            <div class="match-description">${match.description}</div>
+                            <div class="match-id">
+                                <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
+                                    ${match.id}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="match-select">
+                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                                Select
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            ${matches.length > displayMatches.length ? `
+                <div class="view-all-matches">
+                    <button class="btn secondary" onclick="showAllMatches()">
+                        View all ${matches.length} matches
+                    </button>
+                </div>
+            ` : ''}
+        `;
+        
+        matchesDisplay.style.display = 'block';
+        
+        // Store all matches for "View all" functionality
+        window.allReconciliationMatches = matches;
+    }
+    
+    /**
+     * Escape HTML to prevent XSS in match data
+     */
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     /**
@@ -1273,8 +1462,37 @@ export function setupReconciliationStep(state) {
                 }
             }
             
-            // Display results using new progressive disclosure logic
-            await displaySmartRecommendations(matches, propertyType, value);
+            // Check for 100% confidence auto-selection (Q&A requirement)
+            if (matches && matches.length > 0 && matches[0].score >= 100) {
+                console.log('🎯 Auto-selecting 100% confidence match:', matches[0]);
+                
+                // Auto-select 100% confidence match
+                const perfectMatch = matches[0];
+                markCellAsReconciled(currentReconciliationCell, {
+                    type: 'wikidata',
+                    id: perfectMatch.id,
+                    label: perfectMatch.name,
+                    description: perfectMatch.description,
+                    qualifiers: {
+                        autoAccepted: true,
+                        reason: '100% confidence match',
+                        score: perfectMatch.score
+                    }
+                });
+                
+                modalUI.closeModal();
+                
+                // Auto-advance if enabled
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+                return;
+            }
+            
+            // Display results using new simplified display logic
+            await displayReconciliationResults(matches, propertyType, value);
             
         } catch (error) {
             console.error('Error during automatic reconciliation:', error);
@@ -1732,6 +1950,176 @@ export function setupReconciliationStep(state) {
         if (value) {
             const url = `https://www.wikidata.org/wiki/Special:NewItem?label=${encodeURIComponent(value)}`;
             window.open(url, '_blank');
+        }
+    };
+    
+    // ============================================================================
+    // New Global Functions for Simplified Modal Interface
+    // ============================================================================
+    
+    /**
+     * Select a match from reconciliation results
+     */
+    window.selectMatch = function(matchId, matchName, matchDescription) {
+        if (!currentReconciliationCell) return;
+        
+        console.log('🎯 Selecting match:', matchId, matchName);
+        
+        // Mark as reconciled
+        markCellAsReconciled(currentReconciliationCell, {
+            type: 'wikidata',
+            id: matchId,
+            label: matchName,
+            description: matchDescription
+        });
+        
+        modalUI.closeModal();
+        
+        // Auto-advance if enabled
+        if (getAutoAdvanceSetting()) {
+            setTimeout(() => {
+                reconcileNextUnprocessedCell();
+            }, 300);
+        }
+    };
+    
+    /**
+     * Show all matches when user clicks "View all matches"
+     */
+    window.showAllMatches = function() {
+        const matchesDisplay = document.querySelector('.matches-display');
+        if (!matchesDisplay || !window.allReconciliationMatches) return;
+        
+        const allMatches = window.allReconciliationMatches;
+        
+        matchesDisplay.innerHTML = `
+            <div class="matches-header">
+                <h5>All Reconciliation Matches</h5>
+                <p class="confidence-note">Showing all ${allMatches.length} matches:</p>
+                <button class="btn small secondary" onclick="showTopMatches()">Show top matches only</button>
+            </div>
+            <div class="matches-list">
+                ${allMatches.map((match, index) => `
+                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                        <div class="match-score">${match.score.toFixed(1)}%</div>
+                        <div class="match-content">
+                            <div class="match-name">${match.name}</div>
+                            <div class="match-description">${match.description}</div>
+                            <div class="match-id">
+                                <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
+                                    ${match.id}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="match-select">
+                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                                Select
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    };
+    
+    /**
+     * Return to showing only top matches
+     */
+    window.showTopMatches = function() {
+        if (!currentReconciliationCell || !window.allReconciliationMatches) return;
+        
+        const { property } = currentReconciliationCell;
+        const propertyType = detectPropertyType(property);
+        
+        // Re-display with original logic
+        displayReconciliationResults(window.allReconciliationMatches, propertyType, currentReconciliationCell.value);
+    };
+    
+    /**
+     * Perform manual search for Wikidata items
+     */
+    window.performManualSearch = async function() {
+        const searchInput = document.querySelector('.manual-search-input');
+        const resultsContainer = document.querySelector('.manual-search-results');
+        
+        if (!searchInput || !resultsContainer) return;
+        
+        const query = searchInput.value.trim();
+        if (!query) {
+            resultsContainer.innerHTML = '<p class="search-message">Please enter a search term.</p>';
+            return;
+        }
+        
+        resultsContainer.innerHTML = '<div class="loading">Searching...</div>';
+        
+        try {
+            const matches = await tryDirectWikidataSearch(query);
+            
+            if (matches.length > 0) {
+                resultsContainer.innerHTML = `
+                    <div class="manual-search-header">
+                        <h6>Search Results for "${query}"</h6>
+                    </div>
+                    <div class="manual-results-list">
+                        ${matches.map(match => `
+                            <div class="manual-result-item" onclick="selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                                <div class="result-content">
+                                    <div class="result-name">${match.name}</div>
+                                    <div class="result-description">${match.description}</div>
+                                    <div class="result-id">
+                                        <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
+                                            ${match.id}
+                                        </a>
+                                    </div>
+                                </div>
+                                <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                                    Select
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                resultsContainer.innerHTML = '<p class="no-results">No results found for this search term.</p>';
+            }
+        } catch (error) {
+            resultsContainer.innerHTML = `<p class="error">Search error: ${error.message}</p>`;
+        }
+    };
+    
+    /**
+     * Setup keyboard navigation for manual search
+     */
+    function setupManualSearchKeyboard() {
+        const searchInput = document.querySelector('.manual-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    window.performManualSearch();
+                }
+            });
+        }
+    }
+    
+    /**
+     * Ignore reconciliation - exclude from export
+     */
+    window.ignoreReconciliation = function() {
+        if (!currentReconciliationCell) return;
+        
+        console.log('🚫 Ignoring reconciliation for:', currentReconciliationCell);
+        
+        // Mark as ignored/skipped
+        markCellAsSkipped(currentReconciliationCell);
+        
+        modalUI.closeModal();
+        
+        // Auto-advance if enabled
+        if (getAutoAdvanceSetting()) {
+            setTimeout(() => {
+                reconcileNextUnprocessedCell();
+            }, 300);
         }
     };
     
