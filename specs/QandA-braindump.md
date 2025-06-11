@@ -43,3 +43,9 @@ The questions address various aspects of the process including workflow behavior
 **Question:** For properties with multiple values (e.g., multiple authors), should each value get its own reconciliation modal, or should there be a single modal that handles all values for that property at once?
 
 **Answer:** Each value should get its own reconciliation modal - the modal handles only one value at a time. However, the reconciliation table should support displaying multiple values within a single cell for properties that have multiple values.
+
+### 7. Partial Progress and Session Management
+
+**Question:** If a user has reconciled 50% of their data and needs to stop, what's the expected workflow for resuming? Should they be able to export a partial state and reload it later?
+
+**Answer:** Yes, users should be able to save their progress as a JSON file to their computer at any point and resume exactly where they left off in a later session. This functionality is not included in the minimum viable product but is a planned feature for future development.
