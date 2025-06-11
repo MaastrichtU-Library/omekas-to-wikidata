@@ -429,6 +429,9 @@ export function setupReconciliationStep(state) {
             
             // Batch reconciliation calls for this property
             const batchPromises = jobs.map(async (job) => {
+                // Show loading indicator for this specific value
+                updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
+                
                 try {
                     // Try reconciliation API first
                     let matches = await tryReconciliationApi(job.value, job.property);
@@ -508,6 +511,16 @@ export function setupReconciliationStep(state) {
                                 result.allMatches,
                                 result.bestMatch
                             );
+                        } else {
+                            // No matches found - clear loading and set to pending
+                            updateCellLoadingState(result.itemId, result.property, result.valueIndex, false);
+                            updateCellDisplayAsNoMatches(result.itemId, result.property, result.valueIndex);
+                        }
+                    } else {
+                        // Result was null - clear loading and set to pending
+                        if (result) {
+                            updateCellLoadingState(result.itemId, result.property, result.valueIndex, false);
+                            updateCellDisplayAsNoMatches(result.itemId, result.property, result.valueIndex);
                         }
                     }
                 });
@@ -548,6 +561,55 @@ export function setupReconciliationStep(state) {
     }
     
     /**
+     * Update cell loading state
+     */
+    function updateCellLoadingState(itemId, property, valueIndex, isLoading) {
+        const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+        const cell = document.querySelector(cellSelector);
+        
+        if (cell) {
+            const valueElement = cell.querySelector('.property-value') || 
+                               cell.querySelectorAll('.property-value')[valueIndex];
+            
+            if (valueElement) {
+                const statusSpan = valueElement.querySelector('.value-status');
+                if (statusSpan) {
+                    if (isLoading) {
+                        statusSpan.textContent = 'Checking...';
+                        statusSpan.className = 'value-status loading';
+                        valueElement.classList.add('checking');
+                    } else {
+                        statusSpan.className = 'value-status';
+                        valueElement.classList.remove('checking');
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Update cell display when no matches are found
+     */
+    function updateCellDisplayAsNoMatches(itemId, property, valueIndex) {
+        const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+        const cell = document.querySelector(cellSelector);
+        
+        if (cell) {
+            const valueElement = cell.querySelector('.property-value') || 
+                               cell.querySelectorAll('.property-value')[valueIndex];
+            
+            if (valueElement) {
+                const statusSpan = valueElement.querySelector('.value-status');
+                if (statusSpan) {
+                    statusSpan.textContent = 'Click to reconcile';
+                    statusSpan.className = 'value-status no-matches';
+                    valueElement.classList.remove('checking');
+                }
+            }
+        }
+    }
+
+    /**
      * Update cell display to show best match percentage
      */
     function updateCellDisplayWithMatch(itemId, property, valueIndex, bestMatch) {
@@ -571,11 +633,12 @@ export function setupReconciliationStep(state) {
                     statusSpan.title = `Best match: ${matchLabel} (${bestMatch.score.toFixed(1)}%)`;
                 }
                 
-                // Add a visual indicator for good matches - use orange/yellow for medium confidence
-                if (bestMatch.score >= 80) {
+                // Add a visual indicator for good matches - use yellow for partial matches
+                valueElement.classList.remove('checking'); // Remove loading state
+                if (bestMatch.score >= 85) {
                     valueElement.classList.add('high-confidence-match');
-                } else if (bestMatch.score >= 60) {
-                    valueElement.classList.add('medium-confidence-match');
+                } else if (bestMatch.score >= 50) {
+                    valueElement.classList.add('partial-match'); // Yellow for partial matches
                 } else {
                     valueElement.classList.add('low-confidence-match');
                 }
@@ -613,7 +676,7 @@ export function setupReconciliationStep(state) {
         
         const statusSpan = document.createElement('span');
         statusSpan.className = 'value-status';
-        statusSpan.textContent = 'Click to reconcile';
+        statusSpan.textContent = 'Checking...';
         
         valueDiv.appendChild(textSpan);
         valueDiv.appendChild(statusSpan);
@@ -683,7 +746,7 @@ export function setupReconciliationStep(state) {
             Object.values(itemData.properties).forEach(propData => {
                 propData.reconciled.forEach(reconciledItem => {
                     total++;
-                    if (reconciledItem.status === 'reconciled') {
+                    if (reconciledItem.status === 'reconciled' || reconciledItem.status === 'no-item') {
                         completed++;
                     } else if (reconciledItem.status === 'skipped') {
                         skipped++;
@@ -897,6 +960,7 @@ export function setupReconciliationStep(state) {
                 
                 <div class="reconciliation-actions">
                     <button class="btn secondary" onclick="skipReconciliation()">Skip for Later</button>
+                    <button class="btn no-item" onclick="markAsNoWikidataItem()">No Wikidata Item</button>
                     <div class="auto-advance-toggle">
                         <label>
                             <input type="checkbox" id="auto-advance" ${getAutoAdvanceSetting() ? 'checked' : ''}>
@@ -1294,6 +1358,9 @@ export function setupReconciliationStep(state) {
                         } else if (reconciledItem.status === 'skipped') {
                             // Restore skipped state
                             updateCellDisplay(itemId, keyName, valueIndex, 'skipped');
+                        } else if (reconciledItem.status === 'no-item') {
+                            // Restore no-item state
+                            updateCellDisplay(itemId, keyName, valueIndex, 'no-item');
                         } else if (reconciledItem.matches && reconciledItem.matches.length > 0) {
                             // Restore match percentage display for non-reconciled items with matches
                             const bestMatch = reconciledItem.matches[0];
@@ -1551,6 +1618,20 @@ export function setupReconciliationStep(state) {
         }
     };
     
+    window.markAsNoWikidataItem = function() {
+        if (currentReconciliationCell) {
+            markCellAsNoItem(currentReconciliationCell);
+            modalUI.closeModal();
+            
+            // Auto-advance if enabled
+            if (getAutoAdvanceSetting()) {
+                setTimeout(() => {
+                    reconcileNextUnprocessedCell();
+                }, 300);
+            }
+        }
+    };
+    
     window.createNewWikidataItem = function() {
         const value = currentReconciliationCell?.value;
         if (value) {
@@ -1705,6 +1786,36 @@ export function setupReconciliationStep(state) {
     }
     
     /**
+     * Mark a cell as having no Wikidata item
+     */
+    function markCellAsNoItem(cellInfo) {
+        const { itemId, property, valueIndex } = cellInfo;
+        
+        // Update data structure
+        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
+            const propData = reconciliationData[itemId].properties[property];
+            if (propData.reconciled[valueIndex]) {
+                propData.reconciled[valueIndex].status = 'no-item';
+                propData.reconciled[valueIndex].selectedMatch = {
+                    type: 'no-item',
+                    reason: 'No appropriate Wikidata item exists'
+                };
+            }
+        }
+        
+        // Update UI
+        updateCellDisplay(itemId, property, valueIndex, 'no-item');
+        
+        // Update progress (count as completed since it's a decision)
+        const currentState = state.getState();
+        state.updateState('reconciliationProgress.completed', currentState.reconciliationProgress.completed + 1);
+        updateProgressDisplay();
+        
+        // Update state
+        state.updateState('reconciliationData', reconciliationData);
+    }
+    
+    /**
      * Update cell display based on reconciliation status
      */
     function updateCellDisplay(itemId, property, valueIndex, status, reconciliation = null) {
@@ -1762,12 +1873,27 @@ export function setupReconciliationStep(state) {
                     } else if (status === 'skipped') {
                         statusSpan.textContent = 'Skipped';
                         statusSpan.className = 'value-status skipped';
+                    } else if (status === 'no-item') {
+                        statusSpan.textContent = '✕ No item';
+                        statusSpan.className = 'value-status no-item';
+                        statusSpan.title = 'Marked as having no appropriate Wikidata item';
                     }
                 }
                 
-                // Keep click handlers for all items (users should be able to edit auto-accepted items)
-                // Only remove for skipped items that are explicitly meant to be skipped
-                if (status === 'skipped') {
+                // Remove all status classes and add the current one
+                valueElement.classList.remove('high-confidence-match', 'partial-match', 'low-confidence-match', 'checking');
+                
+                if (status === 'reconciled') {
+                    // Turn green when reconciled manually or automatically
+                    valueElement.classList.add('reconciled');
+                } else if (status === 'no-item') {
+                    // Gray out items with no Wikidata item
+                    valueElement.classList.add('no-item');
+                }
+                
+                // Keep click handlers for all items except no-item (users should be able to edit auto-accepted items)
+                // Only remove for no-item status that shouldn't be changed
+                if (status === 'no-item') {
                     valueElement.style.cursor = 'default';
                     valueElement.onclick = null;
                 }
