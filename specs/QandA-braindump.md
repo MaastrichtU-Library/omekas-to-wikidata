@@ -61,3 +61,9 @@ The questions address various aspects of the process including workflow behavior
 **Question:** Should users be able to select multiple Entity Schemas if their collection contains different types of items (e.g., books and artworks), or is the assumption one schema per workflow session?
 
 **Answer:** Entity Schema selection should be available in the Mappings tab. Multiple schemas can be coherent and should be supported, allowing users to work with collections containing different types of items that require different schema templates.
+
+### 10. Source Citation Requirements
+
+**Question:** For the MVP, should every statement require a source citation, or can some statements be exported without sources initially?
+
+**Answer:** Export with source citations is required for the MVP. Every statement should include proper source citations when exported.
