@@ -55,7 +55,13 @@ export function setupState() {
      * @returns {Object} Deep copy of the current state
      */
     function getState() {
-        return JSON.parse(JSON.stringify(state));
+        const stateCopy = JSON.parse(JSON.stringify(state));
+        console.log('📝 State requested. Current state summary:');
+        console.log('  - Current step:', stateCopy.currentStep);
+        console.log('  - Has fetchedData:', !!stateCopy.fetchedData);
+        console.log('  - Mapped keys count:', stateCopy.mappings?.mappedKeys?.length || 0);
+        console.log('  - Test mode:', stateCopy.testMode);
+        return stateCopy;
     }
     
     /**
@@ -146,6 +152,8 @@ export function setupState() {
         
         const oldStep = state.currentStep;
         state.currentStep = step;
+        
+        console.log(`🔄 Step changed from ${oldStep} to ${step}`);
         
         // Notify listeners of the step change
         eventSystem.publish(eventSystem.Events.STEP_CHANGED, {

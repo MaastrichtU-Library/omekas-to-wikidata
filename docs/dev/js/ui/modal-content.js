@@ -45,31 +45,78 @@ export function getReconciliationModalContent() {
     return `
         <div class="reconciliation-model-preview">
             <div class="model-explanation">
-                <h4>Reconciliation Data Structure</h4>
-                <p>This is a preview of the internal reconciliation data structure that would be used to match Omeka S values to Wikidata entities.</p>
+                <h4>Reconciliation Functionality Overview</h4>
+                <p>The reconciliation step allows you to match Omeka S data values with existing Wikidata entities using an OpenRefine-style interface.</p>
+                
+                <div class="feature-list">
+                    <h5>Key Features:</h5>
+                    <ul>
+                        <li><strong>Interactive Table:</strong> Items displayed as rows, properties as columns</li>
+                        <li><strong>Modal-based Workflow:</strong> Click any cell to open focused reconciliation modal</li>
+                        <li><strong>Automatic Matching:</strong> Uses Wikidata Reconciliation API for intelligent suggestions</li>
+                        <li><strong>Manual Search:</strong> Direct search of Wikidata when automatic matching fails</li>
+                        <li><strong>Multiple Values:</strong> Support for properties with multiple values (e.g., multiple authors)</li>
+                        <li><strong>Progress Tracking:</strong> Visual progress indicator and statistics</li>
+                        <li><strong>Skip for Later:</strong> Temporarily skip difficult reconciliations</li>
+                        <li><strong>Create New Items:</strong> Links to create new Wikidata items when no match exists</li>
+                    </ul>
+                </div>
+                
+                <div class="workflow-explanation">
+                    <h5>Reconciliation Process:</h5>
+                    <ol>
+                        <li>Click on any property value in the table</li>
+                        <li>Review automatic matches from Wikidata Reconciliation API</li>
+                        <li>Use manual search if automatic matches aren't satisfactory</li>
+                        <li>Select the best match or enter a custom value</li>
+                        <li>Confirm selection to mark the cell as reconciled</li>
+                        <li>Continue until all values are reconciled or skipped</li>
+                    </ol>
+                </div>
+                
                 <pre class="model-schema">
 {
   "reconciliationProgress": {
-    "total": 10,           // Total number of items to reconcile
-    "completed": 3         // Number of completed reconciliations
+    "total": 25,           // Total number of values to reconcile
+    "completed": 18,       // Number of completed reconciliations
+    "skipped": 2           // Number of skipped reconciliations
   },
-  "reconciliationData": [
-    {
-      "id": "item1",
+  "reconciliationData": {
+    "item-0": {
+      "originalData": { /* Full Omeka S item data */ },
       "properties": {
         "creator": {
-          "original": "Leonardo da Vinci",
-          "reconciled": {
-            "id": "Q762",
-            "label": "Leonardo da Vinci",
-            "description": "Italian Renaissance polymath",
-            "score": 0.98,
-            "match": true
-          }
+          "originalValues": ["Leonardo da Vinci"],
+          "reconciled": [{
+            "status": "reconciled",
+            "selectedMatch": {
+              "type": "wikidata",
+              "id": "Q762",
+              "label": "Leonardo da Vinci",
+              "description": "Italian Renaissance polymath"
+            },
+            "confidence": 95
+          }]
+        },
+        "publisher": {
+          "originalValues": ["Penguin Books", "Random House"],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "wikidata",
+                "id": "Q1757116",
+                "label": "Penguin Books"
+              }
+            },
+            {
+              "status": "skipped"
+            }
+          ]
         }
       }
     }
-  ]
+  }
 }
                 </pre>
             </div>

@@ -3,6 +3,7 @@
  * Provides UI for mapping Omeka S fields to Wikidata properties
  */
 import { eventSystem } from '../events.js';
+import { showMessage } from '../ui/components.js';
 export function setupMappingStep(state) {
     // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
@@ -81,10 +82,10 @@ export function setupMappingStep(state) {
                 
                 // Show success message
                 console.log('Mapping loaded successfully');
-                alert('Mapping loaded successfully! Restored ' + mappingData.mappings.mapped.length + ' mapped keys and ' + mappingData.mappings.ignored.length + ' ignored keys.');
+                showMessage('Mapping loaded successfully! Restored ' + mappingData.mappings.mapped.length + ' mapped keys and ' + mappingData.mappings.ignored.length + ' ignored keys.', 'success', 5000);
             } catch (error) {
                 console.error('Error loading mapping file:', error);
-                alert('Error loading mapping file. Please check the file format.');
+                showMessage('Error loading mapping file. Please check the file format.', 'error', 5000);
             }
         });
     }
@@ -547,7 +548,7 @@ export function setupMappingStep(state) {
                             mapKeyToProperty(keyData, selectedProperty);
                             modalUI.closeModal();
                         } else {
-                            alert('Please select a Wikidata property first.');
+                            showMessage('Please select a Wikidata property first.', 'warning', 3000);
                         }
                     }
                 },
@@ -562,7 +563,7 @@ export function setupMappingStep(state) {
                             modalUI.closeModal();
                             moveToNextUnmappedKey();
                         } else {
-                            alert('Please select a Wikidata property first.');
+                            showMessage('Please select a Wikidata property first.', 'warning', 3000);
                         }
                     }
                 }
