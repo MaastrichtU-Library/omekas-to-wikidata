@@ -1891,25 +1891,27 @@ main {
     transition: all 0.3s ease;
 }
 
-/* Loading state */
+/* Loading state - subtle, no layout shifts */
 .property-value.checking {
-    background-color: #f0f8ff;
-    border-left: 3px solid #2196f3;
+    /* No background change to prevent layout shifts */
 }
 
 .value-status.loading {
     color: #2196f3;
     font-style: italic;
+    position: relative;
 }
 
 .value-status.loading::after {
     content: '';
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    margin-left: 4px;
-    border: 2px solid #2196f3;
-    border-top: 2px solid transparent;
+    position: absolute;
+    right: -16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border: 1px solid #2196f3;
+    border-top: 1px solid transparent;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }

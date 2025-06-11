@@ -427,11 +427,13 @@ export function setupReconciliationStep(state) {
         for (const [property, jobs] of batchByProperty.entries()) {
             console.log(`🤖 Batch processing ${jobs.length} values for property: ${property}`);
             
-            // Batch reconciliation calls for this property
-            const batchPromises = jobs.map(async (job) => {
-                // Show loading indicator for this specific value
+            // Show loading indicators for all jobs in this batch
+            jobs.forEach(job => {
                 updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
-                
+            });
+            
+            // Batch reconciliation calls for this property
+            const batchPromises = jobs.map(async (job) => {                
                 try {
                     // Try reconciliation API first
                     let matches = await tryReconciliationApi(job.value, job.property);
@@ -491,11 +493,17 @@ export function setupReconciliationStep(state) {
             // Wait for all reconciliation calls for this property with controlled concurrency
             const batchSize = 5; // Limit concurrent API calls
             for (let i = 0; i < batchPromises.length; i += batchSize) {
-                const batch = batchPromises.slice(i, i + batchSize);
-                const results = await Promise.all(batch);
+                const batchPromiseSlice = batchPromises.slice(i, i + batchSize);
+                const batchJobSlice = jobs.slice(i, i + batchSize);
+                const results = await Promise.all(batchPromiseSlice);
                 
                 // Process results
-                results.forEach(result => {
+                results.forEach((result, index) => {
+                    const job = batchJobSlice[index];
+                    
+                    // Always clear loading state first
+                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
+                    
                     if (result) {
                         if (result.autoAcceptResult) {
                             // Auto-accept 100% matches
@@ -512,22 +520,18 @@ export function setupReconciliationStep(state) {
                                 result.bestMatch
                             );
                         } else {
-                            // No matches found - clear loading and set to pending
-                            updateCellLoadingState(result.itemId, result.property, result.valueIndex, false);
-                            updateCellDisplayAsNoMatches(result.itemId, result.property, result.valueIndex);
+                            // No matches found - set to pending
+                            updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
                         }
                     } else {
-                        // Result was null - clear loading and set to pending
-                        if (result) {
-                            updateCellLoadingState(result.itemId, result.property, result.valueIndex, false);
-                            updateCellDisplayAsNoMatches(result.itemId, result.property, result.valueIndex);
-                        }
+                        // Result was null - set to pending
+                        updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
                     }
                 });
                 
                 // Small delay between batches to be respectful to APIs
                 if (i + batchSize < batchPromises.length) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, 50)); // Reduced delay
                 }
             }
         }
