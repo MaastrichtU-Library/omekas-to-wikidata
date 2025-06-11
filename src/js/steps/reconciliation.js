@@ -1251,6 +1251,18 @@ export function setupReconciliationStep(state) {
             displayMatches = matches.slice(0, 3);
         }
         
+        // Debug logging to identify undefined labels
+        console.log('🔍 Debug: displayMatches in reconciliation modal:', displayMatches);
+        displayMatches.forEach((match, index) => {
+            console.log(`🔍 Debug: Match ${index}:`, {
+                id: match.id,
+                name: match.name,
+                description: match.description,
+                score: match.score,
+                rawMatch: match
+            });
+        });
+
         matchesDisplay.innerHTML = `
             <div class="matches-header">
                 <h5>Reconciliation Suggestions</h5>
@@ -1260,12 +1272,19 @@ export function setupReconciliationStep(state) {
                 }
             </div>
             <div class="matches-list">
-                ${displayMatches.map((match, index) => `
-                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                ${displayMatches.map((match, index) => {
+                    // Ensure we have fallback values for undefined labels
+                    const matchName = match.name || match.label || 'Unnamed item';
+                    const matchDescription = match.description || match.desc || 'No description available';
+                    const safeMatchName = escapeHtml(matchName);
+                    const safeMatchDescription = escapeHtml(matchDescription);
+                    
+                    return `
+                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
                         <div class="match-score">${match.score.toFixed(1)}%</div>
                         <div class="match-content">
-                            <div class="match-name">${match.name}</div>
-                            <div class="match-description">${match.description}</div>
+                            <div class="match-name">${matchName}</div>
+                            <div class="match-description">${matchDescription}</div>
                             <div class="match-id">
                                 <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
                                     ${match.id}
@@ -1273,12 +1292,13 @@ export function setupReconciliationStep(state) {
                             </div>
                         </div>
                         <div class="match-select">
-                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
                                 Select
                             </button>
                         </div>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
             ${matches.length > displayMatches.length ? `
                 <div class="view-all-matches">
@@ -1299,8 +1319,11 @@ export function setupReconciliationStep(state) {
      * Escape HTML to prevent XSS in match data
      */
     function escapeHtml(text) {
+        if (text === undefined || text === null) {
+            return '';
+        }
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = String(text);
         return div.innerHTML;
     }
     
@@ -1314,11 +1337,14 @@ export function setupReconciliationStep(state) {
         container.innerHTML = `
             <h5 class="matches-title">High Confidence Matches (≥80%)</h5>
             <div class="matches-scroll-container">
-                ${matches.map((match, index) => `
+                ${matches.map((match, index) => {
+                    const matchName = match.name || match.label || 'Unnamed item';
+                    const matchDescription = match.description || match.desc || 'No description available';
+                    return `
                     <div class="confidence-match-card ${index === 0 ? 'best-match' : ''}" data-match-id="${match.id}">
                         <div class="match-confidence">${match.score.toFixed(1)}% confidence</div>
-                        <div class="match-name">${match.name}</div>
-                        <div class="match-description">${match.description}</div>
+                        <div class="match-name">${matchName}</div>
+                        <div class="match-description">${matchDescription}</div>
                         <div class="match-id">
                             <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank">${match.id}</a>
                         </div>
@@ -1326,7 +1352,8 @@ export function setupReconciliationStep(state) {
                             ${index === 0 ? '🎯 Select Best Match' : 'Select'}
                         </button>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
             <p class="scroll-hint">← Scroll for more high-confidence matches →</p>
         `;
@@ -2013,12 +2040,18 @@ export function setupReconciliationStep(state) {
                 <button class="btn small secondary" onclick="showTopMatches()">Show top matches only</button>
             </div>
             <div class="matches-list">
-                ${allMatches.map((match, index) => `
-                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                ${allMatches.map((match, index) => {
+                    const matchName = match.name || match.label || 'Unnamed item';
+                    const matchDescription = match.description || match.desc || 'No description available';
+                    const safeMatchName = escapeHtml(matchName);
+                    const safeMatchDescription = escapeHtml(matchDescription);
+                    
+                    return `
+                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
                         <div class="match-score">${match.score.toFixed(1)}%</div>
                         <div class="match-content">
-                            <div class="match-name">${match.name}</div>
-                            <div class="match-description">${match.description}</div>
+                            <div class="match-name">${matchName}</div>
+                            <div class="match-description">${matchDescription}</div>
                             <div class="match-id">
                                 <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
                                     ${match.id}
@@ -2026,12 +2059,13 @@ export function setupReconciliationStep(state) {
                             </div>
                         </div>
                         <div class="match-select">
-                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${escapeHtml(match.name)}', '${escapeHtml(match.description)}')">
+                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
                                 Select
                             </button>
                         </div>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
     };
