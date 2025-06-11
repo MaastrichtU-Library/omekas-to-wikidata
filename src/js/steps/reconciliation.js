@@ -594,8 +594,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 // Remove all queue-related classes
@@ -632,8 +633,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 if (isLoading) {
@@ -653,8 +655,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 const statusSpan = valueElement.querySelector('.value-status');
@@ -676,8 +679,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 const statusSpan = valueElement.querySelector('.value-status');
@@ -1915,8 +1919,9 @@ export function setupReconciliationStep(state) {
         const cell = document.querySelector(cellSelector);
         
         if (cell) {
-            const valueElement = cell.querySelector('.property-value') || 
-                               cell.querySelectorAll('.property-value')[valueIndex];
+            // For multiple values, always use indexed selection; for single values, use the first element
+            const allValueElements = cell.querySelectorAll('.property-value');
+            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
             
             if (valueElement) {
                 valueElement.dataset.status = status;
