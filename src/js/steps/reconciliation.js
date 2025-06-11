@@ -719,15 +719,15 @@ export function setupReconciliationStep(state) {
             currentReconciliationCell = null;
         });
         
-        // Setup dynamic date precision for any date inputs in the modal
-        // Use a longer delay to ensure DOM is fully rendered
+        // Setup modal after DOM is rendered
         setTimeout(() => {
             const modalElement = document.querySelector('#modal-content');
             if (modalElement) {
-                console.log('🔧 Setting up dynamic date precision in modal');
+                console.log('🔧 Setting up modal functionality');
                 setupDynamicDatePrecision(modalElement);
+                setupTabEventListeners();
             } else {
-                console.warn('⚠️ Modal content element not found for date precision setup');
+                console.warn('⚠️ Modal content element not found for setup');
             }
         }, 100);
         
@@ -753,24 +753,7 @@ export function setupReconciliationStep(state) {
                     <p class="property-type-info">
                         <span class="property-type-label">Expected type:</span> 
                         <span class="property-type-value">${inputConfig.description}</span>
-                        <button class="btn small secondary type-override-btn" onclick="showTypeOverride()">Change Type</button>
                     </p>
-                    <div class="type-override-section" style="display: none;">
-                        <h5>Override Property Type</h5>
-                        <p>Choose a different data type for this property:</p>
-                        <select class="type-override-select">
-                            <option value="wikibase-item" ${propertyType === 'wikibase-item' ? 'selected' : ''}>Wikidata Item (Q-ID)</option>
-                            <option value="string" ${propertyType === 'string' ? 'selected' : ''}>Text String</option>
-                            <option value="external-id" ${propertyType === 'external-id' ? 'selected' : ''}>External Identifier</option>
-                            <option value="url" ${propertyType === 'url' ? 'selected' : ''}>URL</option>
-                            <option value="quantity" ${propertyType === 'quantity' ? 'selected' : ''}>Number/Quantity</option>
-                            <option value="time" ${propertyType === 'time' ? 'selected' : ''}>Date/Time</option>
-                            <option value="monolingualtext" ${propertyType === 'monolingualtext' ? 'selected' : ''}>Text with Language</option>
-                            <option value="globe-coordinate" ${propertyType === 'globe-coordinate' ? 'selected' : ''}>Coordinates</option>
-                        </select>
-                        <button class="btn small primary" onclick="applyTypeOverride()">Apply</button>
-                        <button class="btn small secondary" onclick="cancelTypeOverride()">Cancel</button>
-                    </div>
                 </div>
                 
                 <div class="reconciliation-options">
@@ -784,6 +767,7 @@ export function setupReconciliationStep(state) {
                             ''
                         }
                         <button class="tab-btn ${!inputConfig.requiresReconciliation ? 'active' : ''}" data-tab="custom">${inputConfig.requiresReconciliation ? 'Custom Value' : 'Enter Value'}</button>
+                        <button class="tab-btn settings-tab" data-tab="settings">⚙️ Settings</button>
                     </div>
                     
                     ${inputConfig.requiresReconciliation ? `
@@ -823,6 +807,33 @@ export function setupReconciliationStep(state) {
                                 '<p class="note">This will be used as a literal value without Wikidata linking.</p>' : 
                                 ''
                             }
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="settings-tab">
+                        <div class="settings-section">
+                            <h5>Property Type Settings</h5>
+                            <p>Current property type: <strong>${inputConfig.description}</strong></p>
+                            <p>If this seems incorrect, you can override the property type:</p>
+                            
+                            <div class="type-override-controls">
+                                <label for="type-override-select">Choose property type:</label>
+                                <select class="type-override-select" id="type-override-select">
+                                    <option value="wikibase-item" ${propertyType === 'wikibase-item' ? 'selected' : ''}>Wikidata Item (Q-ID)</option>
+                                    <option value="string" ${propertyType === 'string' ? 'selected' : ''}>Text String</option>
+                                    <option value="external-id" ${propertyType === 'external-id' ? 'selected' : ''}>External Identifier</option>
+                                    <option value="url" ${propertyType === 'url' ? 'selected' : ''}>URL</option>
+                                    <option value="quantity" ${propertyType === 'quantity' ? 'selected' : ''}>Number/Quantity</option>
+                                    <option value="time" ${propertyType === 'time' ? 'selected' : ''}>Date/Time</option>
+                                    <option value="monolingualtext" ${propertyType === 'monolingualtext' ? 'selected' : ''}>Text with Language</option>
+                                    <option value="globe-coordinate" ${propertyType === 'globe-coordinate' ? 'selected' : ''}>Coordinates</option>
+                                </select>
+                                <button class="btn small primary apply-type-btn" onclick="applyTypeOverride()">Apply Type Change</button>
+                            </div>
+                            
+                            <div class="settings-note">
+                                <p><strong>Note:</strong> Changing the property type will update the input fields and reconciliation options to match the new type.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1034,6 +1045,27 @@ export function setupReconciliationStep(state) {
             <p>Error during reconciliation: ${error.message}</p>
             <button class="btn secondary" onclick="switchTab('manual')">Try Manual Search</button>
         `;
+    }
+    
+    /**
+     * Setup event listeners for tab buttons in the modal
+     */
+    function setupTabEventListeners() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabName = this.getAttribute('data-tab');
+                
+                if (tabName) {
+                    console.log('🔄 Switching to tab:', tabName);
+                    switchTab(tabName);
+                }
+            });
+        });
+        
+        console.log('✅ Tab event listeners setup for', tabButtons.length, 'buttons');
     }
     
     // Global functions for modal interactions (attached to window for onclick handlers)
@@ -1432,27 +1464,14 @@ export function setupReconciliationStep(state) {
     window.loadMockReconciliationData = loadMockDataForTesting;
     window.initializeReconciliationManually = initializeReconciliation;
     
-    // Type override functions
-    window.showTypeOverride = function() {
-        const overrideSection = document.querySelector('.type-override-section');
-        if (overrideSection) {
-            overrideSection.style.display = 'block';
-        }
-    };
-    
-    window.cancelTypeOverride = function() {
-        const overrideSection = document.querySelector('.type-override-section');
-        if (overrideSection) {
-            overrideSection.style.display = 'none';
-        }
-    };
-    
+    // Type override function
     window.applyTypeOverride = function() {
         const select = document.querySelector('.type-override-select');
-        const overrideSection = document.querySelector('.type-override-section');
-        const optionsContainer = document.querySelector('.reconciliation-options');
         
-        if (!select || !select.value) return;
+        if (!select || !select.value) {
+            alert('Please select a property type.');
+            return;
+        }
         
         const newType = select.value;
         console.log('🔄 Applying type override:', newType);
@@ -1469,6 +1488,12 @@ export function setupReconciliationStep(state) {
             typeValueSpan.textContent = inputConfig.description;
         }
         
+        // Update the settings tab description
+        const settingsDescription = document.querySelector('#settings-tab p strong');
+        if (settingsDescription) {
+            settingsDescription.textContent = inputConfig.description;
+        }
+        
         // Recreate the tabs and content with the new type
         const newTabsHTML = `
             <div class="option-tabs">
@@ -1481,6 +1506,7 @@ export function setupReconciliationStep(state) {
                     ''
                 }
                 <button class="tab-btn ${!inputConfig.requiresReconciliation ? 'active' : ''}" data-tab="custom">${inputConfig.requiresReconciliation ? 'Custom Value' : 'Enter Value'}</button>
+                <button class="tab-btn settings-tab" data-tab="settings">⚙️ Settings</button>
             </div>
             
             ${inputConfig.requiresReconciliation ? `
@@ -1522,33 +1548,53 @@ export function setupReconciliationStep(state) {
                     }
                 </div>
             </div>
+            
+            <div class="tab-content" id="settings-tab">
+                <div class="settings-section">
+                    <h5>Property Type Settings</h5>
+                    <p>Current property type: <strong>${inputConfig.description}</strong></p>
+                    <p>If this seems incorrect, you can override the property type:</p>
+                    
+                    <div class="type-override-controls">
+                        <label for="type-override-select">Choose property type:</label>
+                        <select class="type-override-select" id="type-override-select">
+                            <option value="wikibase-item" ${newType === 'wikibase-item' ? 'selected' : ''}>Wikidata Item (Q-ID)</option>
+                            <option value="string" ${newType === 'string' ? 'selected' : ''}>Text String</option>
+                            <option value="external-id" ${newType === 'external-id' ? 'selected' : ''}>External Identifier</option>
+                            <option value="url" ${newType === 'url' ? 'selected' : ''}>URL</option>
+                            <option value="quantity" ${newType === 'quantity' ? 'selected' : ''}>Number/Quantity</option>
+                            <option value="time" ${newType === 'time' ? 'selected' : ''}>Date/Time</option>
+                            <option value="monolingualtext" ${newType === 'monolingualtext' ? 'selected' : ''}>Text with Language</option>
+                            <option value="globe-coordinate" ${newType === 'globe-coordinate' ? 'selected' : ''}>Coordinates</option>
+                        </select>
+                        <button class="btn small primary apply-type-btn" onclick="applyTypeOverride()">Apply Type Change</button>
+                    </div>
+                    
+                    <div class="settings-note">
+                        <p><strong>Note:</strong> Changing the property type will update the input fields and reconciliation options to match the new type.</p>
+                    </div>
+                </div>
+            </div>
         `;
         
         // Update the options container
+        const optionsContainer = document.querySelector('.reconciliation-options');
         if (optionsContainer) {
             optionsContainer.innerHTML = newTabsHTML;
             
-            // Setup dynamic date precision for any new date inputs
+            // Re-setup tab event listeners for the new buttons
             setTimeout(() => {
-                console.log('🔧 Setting up dynamic date precision after type override');
+                setupTabEventListeners();
                 setupDynamicDatePrecision(optionsContainer);
+                
+                // Switch to the first appropriate tab after type change
+                if (inputConfig.requiresReconciliation) {
+                    switchTab('automatic');
+                    performAutomaticReconciliation(value, property);
+                } else {
+                    switchTab('custom');
+                }
             }, 100);
-            
-            // If the new type requires reconciliation, start automatic search
-            if (inputConfig.requiresReconciliation) {
-                performAutomaticReconciliation(value, property);
-            }
-            
-            // Set up manual search if manual tab exists
-            const manualTab = document.getElementById('manual-tab');
-            if (manualTab) {
-                setTimeout(() => setupManualSearch(), 100);
-            }
-        }
-        
-        // Hide the override section
-        if (overrideSection) {
-            overrideSection.style.display = 'none';
         }
         
         console.log('✅ Type override applied successfully');
