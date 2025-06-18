@@ -1289,8 +1289,15 @@ export function setupReconciliationStep(state) {
         
         // Handle non-Wikidata properties
         if (propertyType !== 'wikibase-item') {
-            matchesDisplay.innerHTML = '<p>Non-Wikidata property - use manual input section below.</p>';
-            matchesDisplay.style.display = 'block';
+            if (propertyType === 'time' || isDateValue(value)) {
+                // For date properties, show date input interface directly
+                matchesDisplay.innerHTML = '<p>Date/time property - use the date input below.</p>';
+                matchesDisplay.style.display = 'block';
+                showCustomInputInterface(propertyType, value);
+            } else {
+                matchesDisplay.innerHTML = '<p>Non-Wikidata property - use manual input section below.</p>';
+                matchesDisplay.style.display = 'block';
+            }
             return;
         }
         
@@ -1474,6 +1481,19 @@ export function setupReconciliationStep(state) {
                 </div>
             </div>
         `;
+        
+        // Show the container
+        container.style.display = 'block';
+        
+        // Setup date precision for date inputs
+        if (propertyType === 'time') {
+            setTimeout(() => {
+                const dateInput = container.querySelector('.flexible-date-input');
+                if (dateInput) {
+                    setupDynamicDatePrecision(dateInput);
+                }
+            }, 100);
+        }
     }
     
     /**
@@ -1548,6 +1568,13 @@ export function setupReconciliationStep(state) {
         // Check if this property type requires reconciliation
         const propertyType = detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
+        
+        // For date properties, skip reconciliation and show date input directly
+        if (propertyType === 'time' || isDateValue(value)) {
+            console.log('🕒 Date property detected, showing date input interface');
+            displayReconciliationResults([], propertyType, value);
+            return;
+        }
         
         try {
             let matches = [];
