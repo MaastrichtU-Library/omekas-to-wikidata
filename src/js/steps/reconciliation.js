@@ -1039,15 +1039,17 @@ export function setupReconciliationStep(state) {
                     <div class="primary-recommendations" style="display: none;">
                         <!-- Primary recommendations will be populated here -->
                     </div>
-                    <div class="fallback-options" style="display: none;">
-                        <div class="search-wikidata">
-                            <input type="text" class="search-input" placeholder="Search Wikidata..." value="">
-                            <button class="btn primary search-btn">Search</button>
-                        </div>
-                        <button class="btn create-new-item" onclick="createNewWikidataItem()">
-                            ➕ Create New Wikidata Item
-                        </button>
+                </div>
+                
+                <!-- Fallback Options (Manual Search) -->
+                <div class="fallback-options" style="display: none;">
+                    <div class="search-wikidata">
+                        <input type="text" class="search-input" placeholder="Search Wikidata..." value="">
+                        <button class="btn primary search-btn">Search</button>
                     </div>
+                    <button class="btn create-new-item" onclick="createNewWikidataItem()">
+                        ➕ Create New Wikidata Item
+                    </button>
                 </div>
             </div>
         `;
@@ -1066,13 +1068,15 @@ export function setupReconciliationStep(state) {
             (typeof keyObj === 'string' ? keyObj : keyObj.key) === property
         );
         
-        if (mappingInfo && typeof mappingInfo === 'object' && mappingInfo.wikidataProperty) {
+        if (mappingInfo && typeof mappingInfo === 'object' && mappingInfo.property) {
             // We have real Wikidata property information
+            const wikidataProperty = mappingInfo.property;
             return {
-                label: mappingInfo.propertyLabel || mappingInfo.wikidataProperty.label || property,
-                pid: mappingInfo.wikidataProperty.pid || mappingInfo.wikidataProperty.id,
-                description: mappingInfo.wikidataProperty.description || getPropertyDescription(property),
-                wikidataUrl: `https://www.wikidata.org/wiki/Property:${mappingInfo.wikidataProperty.pid || mappingInfo.wikidataProperty.id}`
+                label: wikidataProperty.label || property,
+                pid: wikidataProperty.id,
+                description: wikidataProperty.description || getPropertyDescription(property),
+                wikidataUrl: `https://www.wikidata.org/wiki/Property:${wikidataProperty.id}`,
+                isMock: false
             };
         }
         
@@ -1187,8 +1191,21 @@ export function setupReconciliationStep(state) {
         // Get the original key name from the source data
         const originalData = reconciliationData[itemId]?.originalData;
         
-        // Try to find the most specific LOD URI for this key
-        let lodUri = generateLodUri(property, originalData);
+        // Try to get the correct linked data URI from mapping information
+        const currentState = state.getState();
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
+        const mappingInfo = mappedKeys.find(keyObj => 
+            (typeof keyObj === 'string' ? keyObj : keyObj.key) === property
+        );
+        
+        let lodUri;
+        if (mappingInfo && mappingInfo.linkedDataUri) {
+            // Use the correct linked data URI from the mapping
+            lodUri = mappingInfo.linkedDataUri;
+        } else {
+            // Fallback: try to extract from original data or generate generic URI
+            lodUri = generateLodUri(property, originalData);
+        }
         
         return {
             keyName: property,
