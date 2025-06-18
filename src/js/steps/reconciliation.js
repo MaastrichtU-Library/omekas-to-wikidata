@@ -761,24 +761,71 @@ export function setupReconciliationStep(state) {
         valueDiv.className = 'property-value';
         valueDiv.dataset.status = 'pending';
         
-        const textSpan = document.createElement('span');
-        textSpan.className = 'value-text';
-        textSpan.textContent = value || 'Empty value';
+        // Check if this is a date property
+        const propertyType = detectPropertyType(property);
+        const isDate = propertyType === 'time' || isDateValue(value);
         
-        const statusSpan = document.createElement('span');
-        statusSpan.className = 'value-status';
-        statusSpan.textContent = 'Click to reconcile';
-        
-        valueDiv.appendChild(textSpan);
-        valueDiv.appendChild(statusSpan);
-        
-        // Add click handler 
-        const clickHandler = () => {
-            openReconciliationModal(itemId, property, valueIndex, value);
-        };
-        
-        valueDiv.addEventListener('click', clickHandler);
-        
+        if (isDate) {
+            // Create date input field instead of reconciliation interface
+            valueDiv.classList.add('date-property');
+            
+            const inputConfig = getInputFieldConfig('time');
+            const dateInputHTML = createInputHTML('time', value);
+            valueDiv.innerHTML = dateInputHTML;
+            
+            // Setup date precision detection
+            const dateInput = valueDiv.querySelector('.flexible-date-input');
+            if (dateInput) {
+                setupDynamicDatePrecision(dateInput);
+                
+                // Auto-accept the date value when changed
+                dateInput.addEventListener('input', () => {
+                    const standardized = standardizeDateInput(dateInput.value);
+                    markCellAsReconciled(
+                        { itemId, property, valueIndex },
+                        {
+                            type: 'custom',
+                            value: standardized.date || dateInput.value,
+                            datatype: 'time',
+                            qualifiers: {
+                                autoAccepted: true,
+                                reason: 'date value',
+                                precision: standardized.precision,
+                                displayValue: standardized.displayValue
+                            }
+                        }
+                    );
+                });
+            }
+            
+            valueDiv.dataset.status = 'date-input';
+        } else {
+            // Create reconciliation interface for non-date properties
+            const textSpan = document.createElement('span');
+            textSpan.className = 'value-text';
+            textSpan.textContent = value || 'Empty value';
+            
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'value-status';
+            statusSpan.textContent = 'Click to reconcile';
+            
+            valueDiv.appendChild(textSpan);
+            valueDiv.appendChild(statusSpan);
+            
+            // Add click handler 
+            const clickHandler = () => {
+                // Check if this cell is already processed
+                if (valueDiv.dataset.status === 'reconciled' || 
+                    valueDiv.dataset.status === 'skipped' || 
+                    valueDiv.dataset.status === 'no-item') {
+                    console.log('🔧 Cell already processed, not opening modal');
+                    return;
+                }
+                openReconciliationModal(itemId, property, valueIndex, value);
+            };
+            
+            valueDiv.addEventListener('click', clickHandler);
+        }
         
         return valueDiv;
     }
@@ -962,6 +1009,7 @@ export function setupReconciliationStep(state) {
      * Open reconciliation modal for a specific property value
      */
     async function openReconciliationModal(itemId, property, valueIndex, value) {
+        console.log('🔧 Opening reconciliation modal for:', { itemId, property, valueIndex, value });
         currentReconciliationCell = { itemId, property, valueIndex, value };
         
         // Create modal content (now async)
