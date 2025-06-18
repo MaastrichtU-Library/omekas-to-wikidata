@@ -1280,7 +1280,7 @@ main {
 }
 
 .no-matches {
-    padding: 2rem;
+    padding: 0.5rem;
     text-align: center;
     color: #666;
     font-style: italic;
@@ -1667,7 +1667,7 @@ main {
 
 .no-matches {
     text-align: center;
-    padding: 2rem;
+    padding: 0.5rem;
     color: #666;
 }
 
