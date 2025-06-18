@@ -497,6 +497,35 @@ export function setupReconciliationStep(state) {
                     }
                 } catch (error) {
                     console.warn(`🤖 Error checking reconciliation for ${job.value}:`, error);
+                    // Update cell to show error state
+                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'error');
+                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
+                    
+                    // Add error information to the cell
+                    const cellId = `${job.itemId}-${job.property}-${job.valueIndex}`;
+                    const cell = document.querySelector(`[data-cell-id="${cellId}"]`);
+                    if (cell) {
+                        cell.classList.add('reconciliation-error');
+                        cell.setAttribute('data-error-message', 'Reconciliation service unavailable');
+                        cell.setAttribute('title', `Error: ${error.message}`);
+                    }
+                    
+                    // Update reconciliation data with error status
+                    if (!reconciliationData[job.itemId]) {
+                        reconciliationData[job.itemId] = { properties: {} };
+                    }
+                    if (!reconciliationData[job.itemId].properties[job.property]) {
+                        reconciliationData[job.itemId].properties[job.property] = { reconciled: [] };
+                    }
+                    if (!reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex]) {
+                        reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {};
+                    }
+                    
+                    reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {
+                        status: 'error',
+                        value: job.value,
+                        error: error.message
+                    };
                 }
                 return null;
             });
@@ -808,12 +837,23 @@ export function setupReconciliationStep(state) {
                 progress = calculateCurrentProgress();
             }
             
-            const { total, completed, skipped } = progress;
-            const remaining = total - completed - skipped;
+            const { total, completed, skipped, errors = 0 } = progress;
+            const remaining = total - completed - skipped - errors;
+            
+            // Check if there are errors to show a warning
+            const errorMessage = errors > 0 ? `
+                <div class="reconciliation-service-warning">
+                    ⚠️ Reconciliation service temporarily unavailable for ${errors} item${errors > 1 ? 's' : ''}. 
+                    You can still proceed manually or try again later.
+                </div>
+            ` : '';
+            
             reconciliationProgress.innerHTML = `
+                ${errorMessage}
                 <div class="progress-stats">
                     <span class="stat completed">${completed} completed</span>
                     <span class="stat skipped">${skipped} skipped</span>
+                    ${errors > 0 ? `<span class="stat errors">${errors} errors</span>` : ''}
                     <span class="stat remaining">${remaining} remaining</span>
                     <span class="stat total">of ${total} total</span>
                 </div>
@@ -836,6 +876,7 @@ export function setupReconciliationStep(state) {
         let total = 0;
         let completed = 0;
         let skipped = 0;
+        let errors = 0;
         
         Object.values(reconciliationData).forEach(itemData => {
             Object.values(itemData.properties).forEach(propData => {
@@ -845,12 +886,14 @@ export function setupReconciliationStep(state) {
                         completed++;
                     } else if (reconciledItem.status === 'skipped') {
                         skipped++;
+                    } else if (reconciledItem.status === 'error') {
+                        errors++;
                     }
                 });
             });
         });
         
-        return { total, completed, skipped };
+        return { total, completed, skipped, errors };
     }
     
     /**
@@ -929,8 +972,8 @@ export function setupReconciliationStep(state) {
     async function openReconciliationModal(itemId, property, valueIndex, value) {
         currentReconciliationCell = { itemId, property, valueIndex, value };
         
-        // Create modal content
-        const modalContent = createReconciliationModalContent(itemId, property, valueIndex, value);
+        // Create modal content (now async)
+        const modalContent = await createReconciliationModalContent(itemId, property, valueIndex, value);
         
         // Open modal
         modalUI.openModal('Reconcile Value', modalContent, [], () => {
@@ -941,7 +984,7 @@ export function setupReconciliationStep(state) {
         setTimeout(() => {
             const modalElement = document.querySelector('#modal-content');
             if (modalElement) {
-                console.log('🔧 Setting up modal functionality');
+                console.log('🔧 Setting up compact modal functionality');
                 setupDynamicDatePrecision(modalElement);
                 setupAutoAdvanceToggle();
             } else {
@@ -954,117 +997,253 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Create modal content for reconciliation with progressive disclosure design
+     * Create modal content for reconciliation with simplified design based on Q&A requirements
      */
-    function createReconciliationModalContent(itemId, property, valueIndex, value) {
+    async function createReconciliationModalContent(itemId, property, valueIndex, value) {
         // Detect property type for dynamic input fields
         const propertyType = detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
-        const customInputHTML = createInputHTML(propertyType, value, property);
         
-        // Get friendly type name
-        function getUserFriendlyTypeName(type) {
-            const typeNames = {
-                'wikibase-item': 'Wikidata item',
-                'string': 'Text string',
-                'external-id': 'External identifier',
-                'url': 'URL',
-                'quantity': 'Number',
-                'time': 'Date/Time',
-                'monolingualtext': 'Text with language',
-                'globe-coordinate': 'Coordinates'
-            };
-            return typeNames[type] || type;
-        }
-        
+        // Get property information for display (now async)
+        const propertyInfo = await getPropertyDisplayInfo(property);
+        const originalKeyInfo = getOriginalKeyInfo(itemId, property);
         const itemTitle = reconciliationData[itemId]?.originalData?.['o:title'] || `Item ${itemId.replace('item-', '')}`;
         
+        // Determine why Wikidata item is required (Entity Schema vs property constraint)
+        const requirementReason = getReconciliationRequirementReason(property);
+        
         return `
-            <div class="reconciliation-modal-v2">
-                <div class="reconciliation-header">
-                    <h4>Reconcile: ${property}</h4>
-                    <p class="original-value">Value: <strong>"${value}"</strong></p>
-                    <p class="item-context">From: ${itemTitle}</p>
-                    <p class="expected-type">Expected: ${getUserFriendlyTypeName(propertyType)}</p>
-                </div>
-                
-                <div class="primary-recommendations">
-                    <div class="loading-state">Finding matches...</div>
-                    <div class="high-confidence-matches" style="display: none;"></div>
-                    <div class="fallback-options" style="display: none;">
-                        ${propertyType === 'wikibase-item' ? `
-                            <div class="search-wikidata">
-                                <input type="text" class="search-input" placeholder="Search Wikidata..." value="${value}">
-                                <button class="btn primary search-btn">Search</button>
-                            </div>
-                            <button class="btn create-new-item" onclick="createNewWikidataItem()">
-                                ➕ Create New Wikidata Item
-                            </button>
-                        ` : `
-                            <div class="custom-input-primary">
-                                ${customInputHTML}
-                            </div>
-                        `}
+            <div class="reconciliation-modal-compact">
+                <!-- Compact Property Display with Original Value -->
+                <div class="property-section">
+                    <div class="property-header">
+                        <a href="${propertyInfo.wikidataUrl}" target="_blank" class="property-link">
+                            ${propertyInfo.label} (${propertyInfo.pid})
+                            ${propertyInfo.isMock ? ' <span class="mock-indicator">[estimated]</span>' : ''}
+                        </a>
+                    </div>
+                    <p class="property-description">${propertyInfo.description}</p>
+                    
+                    <div class="original-info">
+                        <span class="original-label">Original key:</span>
+                        <a href="${originalKeyInfo.lodUri}" target="_blank" class="original-link">
+                            ${originalKeyInfo.keyName}
+                        </a>
+                    </div>
+                    <div class="value-context">
+                        <strong>"${value}"</strong> from ${itemTitle}
                     </div>
                 </div>
                 
-                <div class="progressive-disclosure">
-                    <button class="expand-options" onclick="toggleMoreOptions()">
-                        ▼ More Options
-                    </button>
-                    <div class="expanded-options" style="display: none;">
-                        ${propertyType === 'wikibase-item' ? `
-                            <div class="option-section">
-                                <h5>Manual Search</h5>
-                                <div class="manual-search-expanded">
-                                    <input type="text" class="search-input-expanded" placeholder="Search Wikidata..." value="${value}">
-                                    <button class="btn secondary search-btn-expanded">Search</button>
-                                    <div class="search-results-expanded"></div>
-                                </div>
-                            </div>
-                            <div class="option-section">
-                                <h5>Custom Value</h5>
-                                <div class="custom-value-expanded">
-                                    <p>Enter a custom value if no Wikidata match is appropriate:</p>
-                                    ${customInputHTML}
-                                    <p class="note">This will be used as a literal value without Wikidata linking.</p>
-                                </div>
-                            </div>
-                        ` : ''}
-                        <div class="option-section">
-                            <h5>Property Type Settings</h5>
-                            <p>Current property type: <strong>${getUserFriendlyTypeName(propertyType)}</strong></p>
-                            <p>If this seems incorrect, you can override the property type:</p>
-                            <div class="type-override-controls">
-                                <label for="type-override-select">Choose property type:</label>
-                                <select class="type-override-select" id="type-override-select">
-                                    <option value="wikibase-item" ${propertyType === 'wikibase-item' ? 'selected' : ''}>Wikidata item</option>
-                                    <option value="string" ${propertyType === 'string' ? 'selected' : ''}>Text string</option>
-                                    <option value="external-id" ${propertyType === 'external-id' ? 'selected' : ''}>External identifier</option>
-                                    <option value="url" ${propertyType === 'url' ? 'selected' : ''}>URL</option>
-                                    <option value="quantity" ${propertyType === 'quantity' ? 'selected' : ''}>Number</option>
-                                    <option value="time" ${propertyType === 'time' ? 'selected' : ''}>Date/Time</option>
-                                    <option value="monolingualtext" ${propertyType === 'monolingualtext' ? 'selected' : ''}>Text with language</option>
-                                    <option value="globe-coordinate" ${propertyType === 'globe-coordinate' ? 'selected' : ''}>Coordinates</option>
-                                </select>
-                                <button class="btn small primary apply-type-btn" onclick="applyTypeOverride()">Apply Type Change</button>
-                            </div>
-                        </div>
+                <!-- Reconciliation Results -->
+                <div class="reconciliation-results">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Finding matches...</p>
                     </div>
-                </div>
-                
-                <div class="reconciliation-actions">
-                    <button class="btn secondary" onclick="skipReconciliation()">Skip for Later</button>
-                    <button class="btn no-item" onclick="markAsNoWikidataItem()">No Wikidata Item</button>
-                    <div class="auto-advance-toggle">
-                        <label>
-                            <input type="checkbox" id="auto-advance" ${getAutoAdvanceSetting() ? 'checked' : ''}>
-                            Auto-advance to next
-                        </label>
+                    <div class="matches-display" style="display: none;">
+                        <!-- Results will be populated here -->
                     </div>
                 </div>
             </div>
         `;
+    }
+    
+    /**
+     * Get property display information including Wikidata PID and clickable link
+     */
+    async function getPropertyDisplayInfo(property) {
+        // Try to get real property information from the current mappings state
+        const currentState = state.getState();
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
+        
+        // Check if we have mapping information for this property
+        const mappingInfo = mappedKeys.find(keyObj => 
+            (typeof keyObj === 'string' ? keyObj : keyObj.key) === property
+        );
+        
+        if (mappingInfo && typeof mappingInfo === 'object' && mappingInfo.wikidataProperty) {
+            // We have real Wikidata property information
+            return {
+                label: mappingInfo.propertyLabel || mappingInfo.wikidataProperty.label || property,
+                pid: mappingInfo.wikidataProperty.pid || mappingInfo.wikidataProperty.id,
+                description: mappingInfo.wikidataProperty.description || getPropertyDescription(property),
+                wikidataUrl: `https://www.wikidata.org/wiki/Property:${mappingInfo.wikidataProperty.pid || mappingInfo.wikidataProperty.id}`
+            };
+        }
+        
+        // Fallback: Try to fetch property information from Wikidata API
+        try {
+            const realPropertyInfo = await fetchWikidataPropertyInfo(property);
+            if (realPropertyInfo) {
+                return realPropertyInfo;
+            }
+        } catch (error) {
+            console.warn('Could not fetch Wikidata property info:', error);
+        }
+        
+        // Final fallback: create a mock PID and use property name as label
+        const mockPid = generateMockPid(property);
+        
+        return {
+            label: property.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            pid: mockPid,
+            description: getPropertyDescription(property),
+            wikidataUrl: `https://www.wikidata.org/wiki/Property:${mockPid}`,
+            isMock: true
+        };
+    }
+    
+    /**
+     * Fetch real property information from Wikidata
+     */
+    async function fetchWikidataPropertyInfo(propertyKeyword) {
+        try {
+            // Search for properties using the keyword
+            const apiUrl = 'https://www.wikidata.org/w/api.php';
+            const params = new URLSearchParams({
+                action: 'wbsearchentities',
+                search: propertyKeyword,
+                language: 'en',
+                format: 'json',
+                origin: '*',
+                type: 'property',
+                limit: 1
+            });
+            
+            const response = await fetch(`${apiUrl}?${params.toString()}`);
+            if (!response.ok) return null;
+            
+            const data = await response.json();
+            if (data.search && data.search.length > 0) {
+                const prop = data.search[0];
+                return {
+                    label: prop.label || propertyKeyword,
+                    pid: prop.id,
+                    description: prop.description || getPropertyDescription(propertyKeyword),
+                    wikidataUrl: `https://www.wikidata.org/wiki/Property:${prop.id}`
+                };
+            }
+        } catch (error) {
+            console.warn('Error fetching Wikidata property info:', error);
+        }
+        return null;
+    }
+    
+    /**
+     * Generate a mock PID for demonstration (in real implementation, this would come from mappings)
+     */
+    function generateMockPid(property) {
+        // Create a deterministic but realistic-looking PID based on property name
+        const hash = property.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0);
+        const pidNumber = Math.abs(hash) % 9000 + 1000; // Generate P1000-P9999
+        return `P${pidNumber}`;
+    }
+    
+    /**
+     * Get property description based on common property patterns
+     */
+    function getPropertyDescription(property) {
+        const descriptions = {
+            'author': 'creator of a creative work or other object',
+            'creator': 'maker of this creative work or other object',
+            'title': 'published name of a work',
+            'date': 'point in time',
+            'subject': 'primary topic of a work',
+            'publisher': 'organization or person responsible for publishing',
+            'language': 'language of work or name',
+            'format': 'file format, physical medium, or dimensions',
+            'identifier': 'identifier for this item',
+            'rights': 'copyright and other rights information',
+            'coverage': 'spatial or temporal topic of the resource',
+            'description': 'textual description of the entity',
+            'contributor': 'person or organization that contributed to the subject',
+            'relation': 'related resource',
+            'source': 'work from which this work is derived',
+            'type': 'nature or genre of the resource'
+        };
+        
+        // Try to match property name to description
+        for (const [key, desc] of Object.entries(descriptions)) {
+            if (property.toLowerCase().includes(key)) {
+                return desc;
+            }
+        }
+        
+        return `Property describing ${property.replace(/[_-]/g, ' ')}`;
+    }
+    
+    /**
+     * Get original key information including LOD URI
+     */
+    function getOriginalKeyInfo(itemId, property) {
+        // Get the original key name from the source data
+        const originalData = reconciliationData[itemId]?.originalData;
+        
+        // Try to find the most specific LOD URI for this key
+        let lodUri = generateLodUri(property, originalData);
+        
+        return {
+            keyName: property,
+            lodUri: lodUri
+        };
+    }
+    
+    /**
+     * Generate a LOD URI for the original key
+     */
+    function generateLodUri(property, originalData) {
+        // Try to extract URI from the original data structure
+        if (originalData && originalData[property]) {
+            const value = originalData[property];
+            
+            // Check if it's an Omeka S structure with URI
+            if (Array.isArray(value) && value[0] && value[0]['@id']) {
+                return value[0]['@id'];
+            } else if (typeof value === 'object' && value['@id']) {
+                return value['@id'];
+            }
+        }
+        
+        // Fallback: create a generic ontology URI
+        return `http://purl.org/dc/terms/${property}`;
+    }
+    
+    /**
+     * Determine why Wikidata item is required for this reconciliation
+     */
+    function getReconciliationRequirementReason(property) {
+        // Check if requirement comes from Entity Schema vs property constraint
+        const currentState = state.getState();
+        const entitySchemas = currentState.mappings?.entitySchemas || [];
+        
+        let reason = {
+            explanation: "This property requires a Wikidata item to maintain linked data integrity.",
+            links: []
+        };
+        
+        // Check if this property is part of an Entity Schema
+        if (entitySchemas.length > 0) {
+            reason.explanation = "This property is required by the selected Entity Schema to be a Wikidata item.";
+            reason.links.push(
+                ...entitySchemas.map(schema => ({
+                    label: `Entity Schema: ${schema.label || schema.id}`,
+                    url: `https://www.wikidata.org/wiki/EntitySchema:${schema.id}`
+                }))
+            );
+        }
+        
+        // Add property-specific investigation link
+        const propertyInfo = getPropertyDisplayInfo(property);
+        reason.links.push({
+            label: `Property: ${propertyInfo.label} (${propertyInfo.pid})`,
+            url: propertyInfo.wikidataUrl
+        });
+        
+        return reason;
     }
     
     /**
@@ -1075,36 +1254,120 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Display smart recommendations based on match confidence
+     * Display reconciliation results with new confidence logic from Q&A requirements
      */
-    async function displaySmartRecommendations(matches, propertyType, value) {
+    async function displayReconciliationResults(matches, propertyType, value) {
         const loadingState = document.querySelector('.loading-state');
-        const highConfidenceContainer = document.querySelector('.high-confidence-matches');
-        const fallbackContainer = document.querySelector('.fallback-options');
+        const matchesDisplay = document.querySelector('.matches-display');
         
         if (loadingState) {
             loadingState.style.display = 'none';
         }
         
+        if (!matchesDisplay) return;
+        
+        // Handle non-Wikidata properties
         if (propertyType !== 'wikibase-item') {
-            // Non-Wikidata properties: show custom input directly
-            showCustomInputInterface(propertyType, value);
+            matchesDisplay.innerHTML = '<p>Non-Wikidata property - use manual input section below.</p>';
+            matchesDisplay.style.display = 'block';
             return;
         }
         
-        const highConfidenceMatches = matches?.filter(m => m.score >= 80) || [];
+        if (!matches || matches.length === 0) {
+            matchesDisplay.innerHTML = '<p class="no-matches">No automatic matches found. Try manual search below.</p>';
+            matchesDisplay.style.display = 'block';
+            return;
+        }
+        
+        // New confidence logic from Q&A requirements:
+        // - Show ALL suggestions with 80%+ confidence if multiple matches exist at that level
+        // - If no suggestions above 80%, display the top 3 best matches
+        
+        const highConfidenceMatches = matches.filter(m => m.score >= 80);
+        let displayMatches = [];
         
         if (highConfidenceMatches.length > 0) {
-            displayHighConfidenceMatches(highConfidenceMatches);
-            if (highConfidenceContainer) {
-                highConfidenceContainer.style.display = 'block';
-            }
+            // Show ALL matches above 80%
+            displayMatches = highConfidenceMatches;
         } else {
-            displayFallbackOptions(value, matches);
-            if (fallbackContainer) {
-                fallbackContainer.style.display = 'block';
-            }
+            // Show top 3 best matches
+            displayMatches = matches.slice(0, 3);
         }
+        
+        // Debug logging to identify undefined labels
+        console.log('🔍 Debug: displayMatches in reconciliation modal:', displayMatches);
+        displayMatches.forEach((match, index) => {
+            console.log(`🔍 Debug: Match ${index}:`, {
+                id: match.id,
+                name: match.name,
+                description: match.description,
+                score: match.score,
+                rawMatch: match
+            });
+        });
+
+        matchesDisplay.innerHTML = `
+            <div class="matches-header">
+                <h5>Reconciliation Suggestions</h5>
+                ${highConfidenceMatches.length > 0 ? 
+                    `<p class="confidence-note">All matches above 80% confidence:</p>` : 
+                    `<p class="confidence-note">Top ${displayMatches.length} matches (no high-confidence matches found):</p>`
+                }
+            </div>
+            <div class="matches-list">
+                ${displayMatches.map((match, index) => {
+                    // Ensure we have fallback values for undefined labels
+                    const matchName = match.name || match.label || 'Unnamed item';
+                    const matchDescription = match.description || match.desc || 'No description available';
+                    const safeMatchName = escapeHtml(matchName);
+                    const safeMatchDescription = escapeHtml(matchDescription);
+                    
+                    return `
+                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
+                        <div class="match-score">${match.score.toFixed(1)}%</div>
+                        <div class="match-content">
+                            <div class="match-name">${matchName}</div>
+                            <div class="match-description">${matchDescription}</div>
+                            <div class="match-id">
+                                <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
+                                    ${match.id}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="match-select">
+                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
+                                Select
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+            ${matches.length > displayMatches.length ? `
+                <div class="view-all-matches">
+                    <button class="btn secondary" onclick="showAllMatches()">
+                        View all ${matches.length} matches
+                    </button>
+                </div>
+            ` : ''}
+        `;
+        
+        matchesDisplay.style.display = 'block';
+        
+        // Store all matches for "View all" functionality
+        window.allReconciliationMatches = matches;
+    }
+    
+    /**
+     * Escape HTML to prevent XSS in match data
+     */
+    function escapeHtml(text) {
+        if (text === undefined || text === null) {
+            return '';
+        }
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
     }
     
     /**
@@ -1117,11 +1380,14 @@ export function setupReconciliationStep(state) {
         container.innerHTML = `
             <h5 class="matches-title">High Confidence Matches (≥80%)</h5>
             <div class="matches-scroll-container">
-                ${matches.map((match, index) => `
+                ${matches.map((match, index) => {
+                    const matchName = match.name || match.label || 'Unnamed item';
+                    const matchDescription = match.description || match.desc || 'No description available';
+                    return `
                     <div class="confidence-match-card ${index === 0 ? 'best-match' : ''}" data-match-id="${match.id}">
                         <div class="match-confidence">${match.score.toFixed(1)}% confidence</div>
-                        <div class="match-name">${match.name}</div>
-                        <div class="match-description">${match.description}</div>
+                        <div class="match-name">${matchName}</div>
+                        <div class="match-description">${matchDescription}</div>
                         <div class="match-id">
                             <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank">${match.id}</a>
                         </div>
@@ -1129,7 +1395,8 @@ export function setupReconciliationStep(state) {
                             ${index === 0 ? '🎯 Select Best Match' : 'Select'}
                         </button>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
             <p class="scroll-hint">← Scroll for more high-confidence matches →</p>
         `;
@@ -1273,8 +1540,37 @@ export function setupReconciliationStep(state) {
                 }
             }
             
-            // Display results using new progressive disclosure logic
-            await displaySmartRecommendations(matches, propertyType, value);
+            // Check for 100% confidence auto-selection (Q&A requirement)
+            if (matches && matches.length > 0 && matches[0].score >= 100) {
+                console.log('🎯 Auto-selecting 100% confidence match:', matches[0]);
+                
+                // Auto-select 100% confidence match
+                const perfectMatch = matches[0];
+                markCellAsReconciled(currentReconciliationCell, {
+                    type: 'wikidata',
+                    id: perfectMatch.id,
+                    label: perfectMatch.name,
+                    description: perfectMatch.description,
+                    qualifiers: {
+                        autoAccepted: true,
+                        reason: '100% confidence match',
+                        score: perfectMatch.score
+                    }
+                });
+                
+                modalUI.closeModal();
+                
+                // Auto-advance if enabled
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+                return;
+            }
+            
+            // Display results using new simplified display logic
+            await displayReconciliationResults(matches, propertyType, value);
             
         } catch (error) {
             console.error('Error during automatic reconciliation:', error);
@@ -1283,10 +1579,13 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Try Wikidata Reconciliation API
+     * Try Wikidata Reconciliation API with fallback handling
      */
     async function tryReconciliationApi(value, property) {
-        const reconApiUrl = 'https://wikidata.reconci.link/en/api';
+        // Primary endpoint - wikidata.reconci.link
+        const primaryApiUrl = 'https://wikidata.reconci.link/en/api';
+        // Fallback endpoint - tools.wmflabs.org
+        const fallbackApiUrl = 'https://tools.wmflabs.org/openrefine-wikidata/en/api';
         
         // Get suggested entity types based on property
         const entityTypes = getSuggestedEntityTypes(property);
@@ -1303,29 +1602,76 @@ export function setupReconciliationStep(state) {
         
         const requestBody = "queries=" + encodeURIComponent(JSON.stringify(query.queries));
         
-        const response = await fetch(reconApiUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: requestBody
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Reconciliation API error: ${response.status}`);
+        // Try primary endpoint first
+        try {
+            console.log(`🔍 Trying primary reconciliation API for "${value}"`);
+            const response = await fetch(primaryApiUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: requestBody,
+                mode: 'cors'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Primary API error: ${response.status} ${response.statusText}`);
+            }
+            
+            console.log(`✅ Primary API successful for "${value}"`);
+            const data = await response.json();
+            return parseReconciliationResults(data, value);
+            
+        } catch (primaryError) {
+            console.warn(`⚠️ Primary reconciliation API failed for "${value}":`, primaryError.message);
+            
+            // Try fallback endpoint
+            try {
+                console.log(`🔍 Trying fallback reconciliation API for "${value}"`);
+                const response = await fetch(fallbackApiUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: requestBody,
+                    mode: 'cors'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Fallback API error: ${response.status} ${response.statusText}`);
+                }
+                
+                console.log(`✅ Fallback API successful for "${value}"`);
+                const data = await response.json();
+                return parseReconciliationResults(data, value);
+                
+            } catch (fallbackError) {
+                console.error(`❌ Both reconciliation APIs failed for "${value}"`);
+                console.error('Primary error:', primaryError.message);
+                console.error('Fallback error:', fallbackError.message);
+                
+                // Throw a more informative error
+                throw new Error(`Reconciliation services unavailable. Primary: ${primaryError.message}, Fallback: ${fallbackError.message}`);
+            }
         }
-        
-        const data = await response.json();
-        
+    }
+    
+    /**
+     * Parse reconciliation API results
+     */
+    function parseReconciliationResults(data, value) {
         if (data.q1 && data.q1.result) {
-            return data.q1.result.map(match => ({
-                id: match.id,
-                name: match.name,
-                description: match.description || 'No description available',
-                score: match.score,
-                type: match.type || [],
-                source: 'reconciliation'
-            }));
+            return data.q1.result.map(match => {
+                console.log('🔍 Reconciliation API match:', match);
+                return {
+                    id: match.id,
+                    name: match.name || match.label || 'Unnamed item',
+                    description: match.description || match.desc || 'No description available',
+                    score: match.score || 0,
+                    type: match.type || [],
+                    source: 'reconciliation'
+                };
+            });
         }
         
         return [];
@@ -1356,14 +1702,17 @@ export function setupReconciliationStep(state) {
         const data = await response.json();
         
         if (data.search) {
-            return data.search.map(item => ({
-                id: item.id,
-                name: item.label,
-                description: item.description || 'No description available',
-                score: 50, // Approximate score for direct search
-                type: [],
-                source: 'direct'
-            }));
+            return data.search.map(item => {
+                console.log('🔍 Wikidata search item:', item);
+                return {
+                    id: item.id,
+                    name: item.label || item.name || 'Unnamed item',
+                    description: item.description || item.desc || 'No description available',
+                    score: 50, // Approximate score for direct search
+                    type: [],
+                    source: 'direct'
+                };
+            });
         }
         
         return [];
@@ -1734,6 +2083,97 @@ export function setupReconciliationStep(state) {
             window.open(url, '_blank');
         }
     };
+    
+    // ============================================================================
+    // New Global Functions for Simplified Modal Interface
+    // ============================================================================
+    
+    /**
+     * Select a match from reconciliation results
+     */
+    window.selectMatch = function(matchId, matchName, matchDescription) {
+        if (!currentReconciliationCell) return;
+        
+        console.log('🎯 Selecting match:', matchId, matchName);
+        
+        // Mark as reconciled
+        markCellAsReconciled(currentReconciliationCell, {
+            type: 'wikidata',
+            id: matchId,
+            label: matchName,
+            description: matchDescription
+        });
+        
+        modalUI.closeModal();
+        
+        // Auto-advance if enabled
+        if (getAutoAdvanceSetting()) {
+            setTimeout(() => {
+                reconcileNextUnprocessedCell();
+            }, 300);
+        }
+    };
+    
+    /**
+     * Show all matches when user clicks "View all matches"
+     */
+    window.showAllMatches = function() {
+        const matchesDisplay = document.querySelector('.matches-display');
+        if (!matchesDisplay || !window.allReconciliationMatches) return;
+        
+        const allMatches = window.allReconciliationMatches;
+        
+        matchesDisplay.innerHTML = `
+            <div class="matches-header">
+                <h5>All Reconciliation Matches</h5>
+                <p class="confidence-note">Showing all ${allMatches.length} matches:</p>
+                <button class="btn small secondary" onclick="showTopMatches()">Show top matches only</button>
+            </div>
+            <div class="matches-list">
+                ${allMatches.map((match, index) => {
+                    const matchName = match.name || match.label || 'Unnamed item';
+                    const matchDescription = match.description || match.desc || 'No description available';
+                    const safeMatchName = escapeHtml(matchName);
+                    const safeMatchDescription = escapeHtml(matchDescription);
+                    
+                    return `
+                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
+                        <div class="match-score">${match.score.toFixed(1)}%</div>
+                        <div class="match-content">
+                            <div class="match-name">${matchName}</div>
+                            <div class="match-description">${matchDescription}</div>
+                            <div class="match-id">
+                                <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
+                                    ${match.id}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="match-select">
+                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
+                                Select
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    };
+    
+    /**
+     * Return to showing only top matches
+     */
+    window.showTopMatches = function() {
+        if (!currentReconciliationCell || !window.allReconciliationMatches) return;
+        
+        const { property } = currentReconciliationCell;
+        const propertyType = detectPropertyType(property);
+        
+        // Re-display with original logic
+        displayReconciliationResults(window.allReconciliationMatches, propertyType, currentReconciliationCell.value);
+    };
+    
+    // Removed manual search and ignore functions for compact design
     
     // Legacy confirmReconciliation function - now redirects to progressive disclosure functions
     window.confirmReconciliation = function() {

@@ -1065,7 +1065,231 @@ main {
 }
 
 /* =============================================================================
-   Reconciliation Interface
+   Reconciliation Interface - Simplified Modal Design (Q&A Requirements)
+   ============================================================================= */
+
+/* Compact Reconciliation Modal */
+.reconciliation-modal-compact {
+    max-width: 600px;
+    width: 100%;
+    font-family: inherit;
+}
+
+/* Property Section - Compact Design */
+.property-section {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 1rem;
+}
+
+.property-header {
+    margin-bottom: 0.5rem;
+}
+
+.property-header .property-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.property-header .property-link:hover {
+    text-decoration: underline;
+    color: #1976d2;
+}
+
+.property-description {
+    margin: 0 0 0.75rem 0;
+    color: #666;
+    font-size: 0.85rem;
+    line-height: 1.3;
+}
+
+.mock-indicator {
+    font-size: 0.7rem;
+    color: #ff9800;
+    font-weight: normal;
+    background: rgba(255, 152, 0, 0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    margin-left: 0.25rem;
+}
+
+.original-info {
+    background: #fff3cd;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    border: 1px solid #ffeaa7;
+}
+
+.original-label {
+    font-size: 0.8rem;
+    color: #666;
+    margin-right: 0.5rem;
+}
+
+.original-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    font-family: monospace;
+    background: rgba(33, 150, 243, 0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    font-size: 0.85rem;
+}
+
+.original-link:hover {
+    text-decoration: underline;
+    background: rgba(33, 150, 243, 0.2);
+}
+
+.value-context {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* 3. Reconciliation Results */
+.reconciliation-results {
+    margin-bottom: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    color: #666;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #e0e0e0;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+.matches-display {
+    background: white;
+}
+
+.matches-header {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.matches-header h5 {
+    margin: 0 0 0.5rem 0;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.confidence-note {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.matches-list {
+    padding: 1rem;
+}
+
+.match-item-simplified {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.match-item-simplified:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.15);
+    transform: translateY(-1px);
+}
+
+.match-item-simplified:last-child {
+    margin-bottom: 0;
+}
+
+.match-score {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 60px;
+    text-align: center;
+    margin-right: 1rem;
+}
+
+.match-content {
+    flex: 1;
+    margin-right: 1rem;
+}
+
+.match-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+}
+
+.match-description {
+    color: #666;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
+}
+
+.match-id a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+.match-id a:hover {
+    text-decoration: underline;
+}
+
+.match-select .btn {
+    min-width: 80px;
+}
+
+.view-all-matches {
+    padding: 1rem;
+    text-align: center;
+    border-top: 1px solid #eee;
+    background: #f8f9fa;
+}
+
+.no-matches {
+    padding: 2rem;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* Compact Reconciliation Modal Only - Removed unused sections */
+
+/* =============================================================================
+   Legacy Reconciliation Interface (Maintained for compatibility)
    ============================================================================= */
 
 /* Progress Display */
@@ -1593,6 +1817,37 @@ main {
 .reconciliation-actions .btn.primary:disabled {
     background-color: #ccc;
     cursor: not-allowed;
+}
+
+/* Reconciliation Error States */
+.reconciliation-error {
+    background-color: #ffebee !important;
+    border: 1px solid var(--danger-color) !important;
+    position: relative;
+}
+
+.reconciliation-error::after {
+    content: '⚠️';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 12px;
+    color: var(--danger-color);
+}
+
+.reconciliation-service-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.progress-stats .stat.errors {
+    color: var(--danger-color);
+    font-weight: 600;
 }
 
 /* Progressive Disclosure Reconciliation Modal V2 */
