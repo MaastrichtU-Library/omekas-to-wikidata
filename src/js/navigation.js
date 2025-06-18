@@ -111,17 +111,6 @@ export function setupNavigation(state) {
                 
                 lastClickTime = currentTime;
                 
-                // Toggle test mode with Control+Click or Command+Click on any step
-                if (event.ctrlKey || event.metaKey) {
-                    toggleTestMode();
-                    return;
-                }
-                
-                // Alternative: Toggle test mode with double-click on any step
-                if (isDoubleClick) {
-                    toggleTestMode();
-                    return;
-                }
                 
                 // Normal navigation behavior
                 if (testMode) {
@@ -200,24 +189,6 @@ export function setupNavigation(state) {
             });
         }
     
-        // Add keyboard navigation (arrow keys)
-        document.addEventListener('keydown', (event) => {
-            const currentStep = state.getCurrentStep();
-            
-            if (event.key === 'ArrowRight' && currentStep < 5) {
-                // In test mode, allow navigation to any step with arrow keys
-                if (testMode) {
-                    navigateToStep(currentStep + 1);
-                } else {
-                    // Normal behavior: Check if we can proceed to the next step
-                    if (currentStep <= state.getHighestCompletedStep()) {
-                        navigateToStep(currentStep + 1);
-                    }
-                }
-            } else if (event.key === 'ArrowLeft' && currentStep > 1) {
-                navigateToStep(currentStep - 1);
-            }
-        });
         
         // Subscribe to state events that affect navigation
         eventSystem.subscribe(eventSystem.Events.UI_TEST_MODE_CHANGED, (data) => {

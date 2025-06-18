@@ -65,8 +65,7 @@ export function createButton(text, options = {}) {
         type = 'secondary', 
         onClick, 
         disabled = false,
-        id = null,
-        keyboardShortcut = null
+        id = null
     } = options;
     
     const buttonClasses = type === 'primary' 
@@ -75,12 +74,7 @@ export function createButton(text, options = {}) {
             ? 'button button--test test-button'
             : 'button button--secondary secondary-button';
     
-    const buttonContent = keyboardShortcut
-        ? [
-            text,
-            createElement('span', { className: 'shortcut-hint' }, ` [${keyboardShortcut.toUpperCase()}]`)
-        ]
-        : text;
+    const buttonContent = text;
     
     return createElement('button', {
         className: buttonClasses,

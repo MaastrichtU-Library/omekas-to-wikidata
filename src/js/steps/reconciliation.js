@@ -779,14 +779,6 @@ export function setupReconciliationStep(state) {
         
         valueDiv.addEventListener('click', clickHandler);
         
-        // Add keyboard support
-        valueDiv.setAttribute('tabindex', '0');
-        valueDiv.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                clickHandler();
-            }
-        });
         
         return valueDiv;
     }
@@ -1489,11 +1481,6 @@ export function setupReconciliationStep(state) {
             };
             
             searchBtn.onclick = performSearch;
-            searchInput.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    performSearch();
-                }
-            };
         }
     }
     
@@ -2042,11 +2029,6 @@ export function setupReconciliationStep(state) {
             };
             
             searchBtn.onclick = performSearch;
-            searchInput.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    performSearch();
-                }
-            };
         }
     }
     
@@ -2267,11 +2249,6 @@ export function setupReconciliationStep(state) {
         };
         
         searchBtn.onclick = performSearch;
-        searchInput.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        };
     }
     
     window.selectManualMatch = function(matchId) {
