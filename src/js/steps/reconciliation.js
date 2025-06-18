@@ -571,11 +571,13 @@ export function setupReconciliationStep(state) {
                                 result.bestMatch
                             );
                         } else {
-                            // No matches found - set to pending
+                            // No matches found - store empty matches array and set to pending
+                            storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
                             updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
                         }
                     } else {
-                        // Result was null - set to pending
+                        // Result was null - store empty matches array and set to pending
+                        storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
                         updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
                     }
                 });
@@ -610,6 +612,26 @@ export function setupReconciliationStep(state) {
         
         // Update UI to show the best match percentage (for table display)
         updateCellDisplayWithMatch(itemId, property, valueIndex, bestMatch);
+        
+        // Update state
+        state.updateState('reconciliationData', reconciliationData);
+    }
+
+    /**
+     * Store empty matches when no reconciliation results found
+     * This ensures the system knows reconciliation was attempted
+     */
+    function storeEmptyMatches(cellInfo) {
+        const { itemId, property, valueIndex } = cellInfo;
+        
+        // Update data structure to store empty matches array
+        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
+            const propData = reconciliationData[itemId].properties[property];
+            if (propData.reconciled[valueIndex]) {
+                propData.reconciled[valueIndex].matches = [];
+                propData.reconciled[valueIndex].confidence = 0;
+            }
+        }
         
         // Update state
         state.updateState('reconciliationData', reconciliationData);
@@ -1578,19 +1600,27 @@ export function setupReconciliationStep(state) {
         
         try {
             let matches = [];
+            let hasBeenReconciled = false;
             
-            // Check if we already have matches from batch reconciliation
+            // Check if we already have reconciliation data from batch reconciliation
             if (itemId && valueIndex !== undefined && reconciliationData[itemId]) {
                 const propData = reconciliationData[itemId].properties[property];
-                if (propData && propData.reconciled[valueIndex] && propData.reconciled[valueIndex].matches) {
-                    // Use existing matches from batch reconciliation (all matches, not just best)
-                    matches = propData.reconciled[valueIndex].matches;
-                    console.log('🔄 Using existing matches from batch reconciliation:', matches.length, 'matches');
+                if (propData && propData.reconciled[valueIndex]) {
+                    const reconciledData = propData.reconciled[valueIndex];
+                    
+                    // Check if reconciliation has been attempted (regardless of results)
+                    if (reconciledData.matches !== undefined) {
+                        hasBeenReconciled = true;
+                        matches = reconciledData.matches || [];
+                        console.log('🔄 Using existing reconciliation data:', matches.length, 'matches');
+                    }
                 }
             }
             
-            // If no existing matches, fetch new ones
-            if (!matches || matches.length === 0) {
+            // Only fetch new matches if reconciliation has never been attempted
+            if (!hasBeenReconciled) {
+                console.log('🔍 Performing first-time reconciliation for:', value);
+                
                 // Try reconciliation API first
                 matches = await tryReconciliationApi(value, property);
                 
@@ -1598,6 +1628,17 @@ export function setupReconciliationStep(state) {
                 if (!matches || matches.length === 0) {
                     matches = await tryDirectWikidataSearch(value);
                 }
+                
+                // Store matches (even if empty) to track that reconciliation was attempted
+                if (itemId && valueIndex !== undefined) {
+                    if (matches && matches.length > 0) {
+                        storeAllMatches({ itemId, property, valueIndex }, matches, matches[0]);
+                    } else {
+                        storeEmptyMatches({ itemId, property, valueIndex });
+                    }
+                }
+            } else {
+                console.log('⏭️ Skipping reconciliation - already attempted for this value');
             }
             
             // Check for 100% confidence auto-selection (Q&A requirement)
