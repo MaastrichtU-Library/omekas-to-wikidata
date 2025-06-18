@@ -1044,6 +1044,18 @@ export function setupReconciliationStep(state) {
                     <div class="matches-display" style="display: none;">
                         <!-- Results will be populated here -->
                     </div>
+                    <div class="primary-recommendations" style="display: none;">
+                        <!-- Primary recommendations will be populated here -->
+                    </div>
+                    <div class="fallback-options" style="display: none;">
+                        <div class="search-wikidata">
+                            <input type="text" class="search-input" placeholder="Search Wikidata..." value="">
+                            <button class="btn primary search-btn">Search</button>
+                        </div>
+                        <button class="btn create-new-item" onclick="createNewWikidataItem()">
+                            ➕ Create New Wikidata Item
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -1276,6 +1288,9 @@ export function setupReconciliationStep(state) {
         if (!matches || matches.length === 0) {
             matchesDisplay.innerHTML = '<p class="no-matches">No automatic matches found. Try manual search below.</p>';
             matchesDisplay.style.display = 'block';
+            
+            // Show fallback options for manual search
+            displayFallbackOptions(value, []);
             return;
         }
         
@@ -1354,6 +1369,11 @@ export function setupReconciliationStep(state) {
         
         matchesDisplay.style.display = 'block';
         
+        // Show fallback options if there are no high-confidence matches
+        if (highConfidenceMatches.length === 0) {
+            displayFallbackOptions(value, matches);
+        }
+        
         // Store all matches for "View all" functionality
         window.allReconciliationMatches = matches;
     }
@@ -1408,6 +1428,15 @@ export function setupReconciliationStep(state) {
     function displayFallbackOptions(value, matches) {
         const container = document.querySelector('.fallback-options');
         if (!container) return;
+        
+        // Show the fallback options container
+        container.style.display = 'block';
+        
+        // Populate the search input with the original value
+        const searchInput = container.querySelector('.search-input');
+        if (searchInput) {
+            searchInput.value = value || '';
+        }
         
         // Setup manual search functionality
         setTimeout(() => {
