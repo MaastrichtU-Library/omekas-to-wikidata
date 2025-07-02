@@ -163,6 +163,92 @@
             <!-- Step 4: Wikidata Designer -->
             <section id="step4" class="step-content">
                 <h2>Step 4: Wikidata Designer</h2>
+                <div class="designer-container">
+                    <!-- Item Selector -->
+                    <div class="item-selector-container">
+                        <label for="example-item-selector">View Item:</label>
+                        <select id="example-item-selector" class="item-selector">
+                            <option value="multi-item">Multi Item (All Properties)</option>
+                            <!-- Dynamically populated with actual items -->
+                        </select>
+                    </div>
+                    
+                    <!-- References Section -->
+                    <div class="references-section">
+                        <h3>References</h3>
+                        <p class="section-description">References will be added to all statements. Each reference includes the URL (P854) and retrieved date (P813).</p>
+                        
+                        <div class="references-list" id="references-list">
+                            <div class="placeholder">No references added yet. References will be auto-detected from sameAs and ARK identifiers.</div>
+                        </div>
+                        
+                        <div class="references-actions">
+                            <button id="auto-detect-references" class="button button--primary">Auto-detect References</button>
+                            <button id="search-reference" class="button button--secondary">Search in API Data</button>
+                            <button id="add-reference" class="button button--secondary">Add Manual Reference</button>
+                        </div>
+                        
+                        <div class="reference-warning" id="reference-warning" style="display: none;">
+                            <span class="warning-icon">⚠️</span>
+                            <span class="warning-text">No automatic references found. Please add a source manually.</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Item Designer Section -->
+                    <div class="item-designer-section">
+                        <h3>Item Designer</h3>
+                        
+                        <!-- Wikidata-like item header -->
+                        <div class="wikidata-item-header">
+                            <div class="item-label-group">
+                                <label for="item-label">Label:</label>
+                                <input type="text" id="item-label" class="item-label-input" placeholder="Item label (from property mapping)">
+                            </div>
+                            <div class="item-description-group">
+                                <label for="item-description">Description:</label>
+                                <input type="text" id="item-description" class="item-description-input" placeholder="Item description (from property mapping)">
+                            </div>
+                        </div>
+                        
+                        <!-- Statements section -->
+                        <div class="statements-section">
+                            <h4>Statements</h4>
+                            <div class="properties-list" id="properties-list">
+                                <div class="placeholder">Properties will appear here after reconciliation</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Unavailable properties (shown when specific item selected) -->
+                        <div class="unavailable-properties" id="unavailable-properties" style="display: none;">
+                            <h4>Unavailable Properties for This Item</h4>
+                            <div class="unavailable-list" id="unavailable-list">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview Section -->
+                    <div class="preview-section">
+                        <h3>Preview</h3>
+                        <div class="preview-container" id="designer-preview">
+                            <pre class="preview-content">Preview will appear here</pre>
+                        </div>
+                    </div>
+                    
+                    <!-- Unresolved Issues Section -->
+                    <div class="issues-section">
+                        <h3>Unresolved Issues</h3>
+                        <div class="issues-list" id="issues-list">
+                            <div class="placeholder">No issues detected</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <div class="navigation-buttons">
+                        <button id="back-to-reconciliation" class="button button--secondary">Back to Reconciliation</button>
+                        <button id="proceed-to-export" class="button button--primary" disabled>Continue to Export</button>
+                    </div>
+                </div>
             </section>
 
             <!-- Step 5: Export -->
