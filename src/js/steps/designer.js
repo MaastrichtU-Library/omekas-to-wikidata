@@ -654,7 +654,86 @@ export function setupDesignerStep(state) {
         const searchTerm = prompt('Search for IDs or URLs in the API data:', '');
         if (!searchTerm) return;
         
-        showMessage('Reference search functionality will be implemented in Phase 2', 'info');
+        const fetchedData = state.getState().fetchedData || [];
+        const currentReferences = state.getState().references || [];
+        const foundRefs = new Set();
+        
+        // Search through all items and properties
+        fetchedData.forEach(item => {
+            Object.entries(item).forEach(([key, value]) => {
+                // Handle different value types
+                const searchValues = [];
+                
+                if (Array.isArray(value)) {
+                    value.forEach(v => {
+                        if (typeof v === 'object' && v !== null) {
+                            if (v['@id']) searchValues.push(v['@id']);
+                            if (v['@value']) searchValues.push(v['@value']);
+                            if (v['o:label']) searchValues.push(v['o:label']);
+                        } else if (typeof v === 'string') {
+                            searchValues.push(v);
+                        }
+                    });
+                } else if (typeof value === 'object' && value !== null) {
+                    if (value['@id']) searchValues.push(value['@id']);
+                    if (value['@value']) searchValues.push(value['@value']);
+                    if (value['o:label']) searchValues.push(value['o:label']);
+                } else if (typeof value === 'string') {
+                    searchValues.push(value);
+                }
+                
+                // Check if any value contains the search term
+                searchValues.forEach(searchValue => {
+                    if (searchValue && searchValue.toString().toLowerCase().includes(searchTerm.toLowerCase())) {
+                        // Extract URLs from the value
+                        const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/g;
+                        const urls = searchValue.toString().match(urlRegex);
+                        
+                        if (urls) {
+                            urls.forEach(url => {
+                                foundRefs.add({
+                                    url: url,
+                                    type: `Found in ${key}`,
+                                    autoDetected: false,
+                                    enabled: true,
+                                    source: `Item: ${item['o:title'] || 'Untitled'}`
+                                });
+                            });
+                        }
+                        
+                        // Also check if the whole value is a URL
+                        if (searchValue.toString().startsWith('http')) {
+                            foundRefs.add({
+                                url: searchValue.toString(),
+                                type: `Found in ${key}`,
+                                autoDetected: false,
+                                enabled: true,
+                                source: `Item: ${item['o:title'] || 'Untitled'}`
+                            });
+                        }
+                    }
+                });
+            });
+        });
+        
+        // Add found references that aren't already in the list
+        let addedCount = 0;
+        foundRefs.forEach(ref => {
+            const exists = currentReferences.some(r => r.url === ref.url);
+            if (!exists) {
+                currentReferences.push(ref);
+                addedCount++;
+            }
+        });
+        
+        if (addedCount > 0) {
+            state.updateState('references', currentReferences);
+            displayReferences();
+            updateProceedButton();
+            showMessage(`Found ${addedCount} new reference${addedCount > 1 ? 's' : ''} containing "${searchTerm}"`, 'success');
+        } else {
+            showMessage(`No new references found containing "${searchTerm}"`, 'info');
+        }
     }
     
     // Add manual reference
@@ -696,7 +775,254 @@ export function setupDesignerStep(state) {
     
     // Edit property value
     function editPropertyValue(mapping) {
-        showMessage('Property editing modal will be implemented in Phase 3', 'info');
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const reconciliationData = currentState.reconciliationData || {};
+        const exampleItemSelector = document.getElementById('example-item-selector');
+        const selectedValue = exampleItemSelector?.value;
+        
+        // Create modal for editing
+        const modal = createElement('div', {
+            className: 'modal-overlay active'
+        });
+        
+        const modalContent = createElement('div', {
+            className: 'modal property-edit-modal'
+        });
+        
+        const modalHeader = createElement('div', {
+            className: 'modal-header'
+        });
+        
+        const modalTitle = createElement('h3', {}, `Edit Property: ${mapping.property.label}`);
+        
+        const closeBtn = createButton('×', {
+            className: 'modal-close',
+            onClick: () => modal.remove()
+        });
+        
+        modalHeader.appendChild(modalTitle);
+        modalHeader.appendChild(closeBtn);
+        
+        const modalBody = createElement('div', {
+            className: 'modal-body'
+        });
+        
+        // Get all values for this property
+        const propertyValues = [];
+        
+        if (selectedValue === 'multi-item') {
+            // Get values from all items
+            fetchedData.forEach((item, index) => {
+                const itemKey = `item-${index}`;
+                const value = item[mapping.key];
+                const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+                
+                if (value !== undefined && value !== null) {
+                    propertyValues.push({
+                        itemIndex: index,
+                        itemKey: itemKey,
+                        itemTitle: item['o:title'] || `Item ${index + 1}`,
+                        originalValue: value,
+                        reconciled: reconciledData
+                    });
+                }
+            });
+        } else {
+            // Get value from selected item
+            const itemIndex = parseInt(selectedValue);
+            const item = fetchedData[itemIndex];
+            const itemKey = `item-${itemIndex}`;
+            const value = item[mapping.key];
+            const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+            
+            if (value !== undefined && value !== null) {
+                propertyValues.push({
+                    itemIndex: itemIndex,
+                    itemKey: itemKey,
+                    itemTitle: item['o:title'] || `Item ${itemIndex + 1}`,
+                    originalValue: value,
+                    reconciled: reconciledData
+                });
+            }
+        }
+        
+        // Display property values
+        const valuesContainer = createElement('div', {
+            className: 'property-values-container'
+        });
+        
+        propertyValues.forEach((pv, index) => {
+            const valueItem = createElement('div', {
+                className: 'property-value-item'
+            });
+            
+            const itemLabel = createElement('div', {
+                className: 'item-label'
+            }, pv.itemTitle);
+            
+            const originalValue = createElement('div', {
+                className: 'original-value'
+            }, `Original: ${Array.isArray(pv.originalValue) ? pv.originalValue[0]['@value'] || pv.originalValue[0] : pv.originalValue}`);
+            
+            const currentValue = createElement('div', {
+                className: 'current-value'
+            });
+            
+            if (pv.reconciled?.selectedMatch) {
+                const match = pv.reconciled.selectedMatch;
+                if (match.type === 'wikidata') {
+                    currentValue.textContent = `Current: ${match.label} (${match.id})`;
+                } else {
+                    currentValue.textContent = `Current: ${match.value}`;
+                }
+                currentValue.classList.add('reconciled');
+            } else {
+                currentValue.textContent = 'Not reconciled';
+                currentValue.classList.add('not-reconciled');
+            }
+            
+            const editBtn = createButton('Edit', {
+                className: 'edit-value-btn',
+                onClick: () => editSingleValue(pv, mapping)
+            });
+            
+            valueItem.appendChild(itemLabel);
+            valueItem.appendChild(originalValue);
+            valueItem.appendChild(currentValue);
+            valueItem.appendChild(editBtn);
+            
+            valuesContainer.appendChild(valueItem);
+        });
+        
+        modalBody.appendChild(valuesContainer);
+        
+        // Add universal update option if multi-item
+        if (selectedValue === 'multi-item' && propertyValues.length > 1) {
+            const universalSection = createElement('div', {
+                className: 'universal-update-section'
+            });
+            
+            const universalTitle = createElement('h4', {}, 'Universal Update');
+            const universalDesc = createElement('p', {}, 'Apply the same value to all items with this property');
+            
+            const universalBtn = createButton('Set Universal Value', {
+                className: 'button--primary',
+                onClick: () => setUniversalValue(mapping, propertyValues)
+            });
+            
+            universalSection.appendChild(universalTitle);
+            universalSection.appendChild(universalDesc);
+            universalSection.appendChild(universalBtn);
+            
+            modalBody.appendChild(universalSection);
+        }
+        
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(modalBody);
+        modal.appendChild(modalContent);
+        
+        document.body.appendChild(modal);
+    }
+    
+    // Edit single property value
+    function editSingleValue(propertyValue, mapping) {
+        const newValue = prompt(`Enter new value for ${mapping.property.label}:`, 
+            propertyValue.reconciled?.selectedMatch?.label || 
+            propertyValue.reconciled?.selectedMatch?.value || 
+            (Array.isArray(propertyValue.originalValue) ? propertyValue.originalValue[0]['@value'] || propertyValue.originalValue[0] : propertyValue.originalValue)
+        );
+        
+        if (newValue === null) return;
+        
+        // Update reconciliation data
+        const reconciliationData = state.getState().reconciliationData || {};
+        
+        if (!reconciliationData[propertyValue.itemKey]) {
+            reconciliationData[propertyValue.itemKey] = { 
+                originalData: state.getState().fetchedData[propertyValue.itemIndex],
+                properties: {} 
+            };
+        }
+        
+        if (!reconciliationData[propertyValue.itemKey].properties[mapping.key]) {
+            reconciliationData[propertyValue.itemKey].properties[mapping.key] = { 
+                originalValues: [propertyValue.originalValue],
+                reconciled: [] 
+            };
+        }
+        
+        reconciliationData[propertyValue.itemKey].properties[mapping.key].reconciled[0] = {
+            status: 'reconciled',
+            selectedMatch: {
+                type: 'custom',
+                value: newValue,
+                datatype: 'string'
+            },
+            confidence: 100
+        };
+        
+        state.updateState('reconciliationData', reconciliationData);
+        
+        // Refresh displays
+        displayProperties();
+        updatePreview();
+        
+        // Close modal
+        document.querySelector('.modal-overlay')?.remove();
+        
+        showMessage(`Updated ${mapping.property.label} for ${propertyValue.itemTitle}`, 'success');
+    }
+    
+    // Set universal value for all items
+    function setUniversalValue(mapping, propertyValues) {
+        const universalValue = prompt(`Enter universal value for ${mapping.property.label} (will apply to all ${propertyValues.length} items):`);
+        
+        if (universalValue === null) return;
+        
+        // Update reconciliation data for all items
+        const reconciliationData = state.getState().reconciliationData || {};
+        
+        propertyValues.forEach(pv => {
+            if (!reconciliationData[pv.itemKey]) {
+                reconciliationData[pv.itemKey] = { 
+                    originalData: state.getState().fetchedData[pv.itemIndex],
+                    properties: {} 
+                };
+            }
+            
+            if (!reconciliationData[pv.itemKey].properties[mapping.key]) {
+                reconciliationData[pv.itemKey].properties[mapping.key] = { 
+                    originalValues: [pv.originalValue],
+                    reconciled: [] 
+                };
+            }
+            
+            reconciliationData[pv.itemKey].properties[mapping.key].reconciled[0] = {
+                status: 'reconciled',
+                selectedMatch: {
+                    type: 'custom',
+                    value: universalValue,
+                    datatype: 'string'
+                },
+                confidence: 100
+            };
+        });
+        
+        state.updateState('reconciliationData', reconciliationData);
+        
+        // Update reconciliation progress
+        state.updateState('reconciliationProgress.completed', 
+            state.getState().reconciliationProgress.completed + propertyValues.length);
+        
+        // Refresh displays
+        displayProperties();
+        updatePreview();
+        
+        // Close modal
+        document.querySelector('.modal-overlay')?.remove();
+        
+        showMessage(`Updated ${mapping.property.label} for ${propertyValues.length} items`, 'success');
     }
     
     // Check for issues

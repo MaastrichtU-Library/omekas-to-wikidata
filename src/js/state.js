@@ -8,6 +8,10 @@
 import { eventSystem } from './events.js';
 
 export function setupState() {
+    // Storage key for persistence
+    const STORAGE_KEY = 'omekaToWikidataState';
+    const STORAGE_VERSION = '1.0';
+    
     // Initial state
     const initialState = {
         currentStep: 1,
@@ -47,8 +51,47 @@ export function setupState() {
         exportTimestamp: null
     };
     
-    // Create a deep copy of the initial state to work with
-    let state = JSON.parse(JSON.stringify(initialState));
+    // Load state from localStorage if available
+    let state = loadPersistedState() || JSON.parse(JSON.stringify(initialState));
+    
+    /**
+     * Load persisted state from localStorage
+     * @returns {Object|null} Loaded state or null if not found/invalid
+     */
+    function loadPersistedState() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.version === STORAGE_VERSION) {
+                    console.log('✅ Loaded persisted state from localStorage');
+                    // Don't persist the current step on load - always start at step 1
+                    parsed.state.currentStep = 1;
+                    return parsed.state;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load persisted state:', error);
+        }
+        return null;
+    }
+    
+    /**
+     * Save current state to localStorage
+     */
+    function persistState() {
+        try {
+            const toStore = {
+                version: STORAGE_VERSION,
+                timestamp: new Date().toISOString(),
+                state: state
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+            console.log('💾 State persisted to localStorage');
+        } catch (error) {
+            console.error('Failed to persist state:', error);
+        }
+    }
     
     /**
      * Returns a deep copy of the current state
@@ -101,6 +144,9 @@ export function setupState() {
             oldValue,
             newValue: value
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -127,6 +173,9 @@ export function setupState() {
         const oldState = JSON.parse(JSON.stringify(state));
         state = JSON.parse(JSON.stringify(initialState));
         state.hasUnsavedChanges = false;
+        
+        // Clear persisted state as well
+        clearPersistedState();
         
         // Notify listeners of the state reset
         eventSystem.publish(eventSystem.Events.STATE_RESET, {
@@ -516,6 +565,18 @@ export function setupState() {
         });
     }
     
+    /**
+     * Clear persisted state from localStorage
+     */
+    function clearPersistedState() {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+            console.log('🗑️ Cleared persisted state from localStorage');
+        } catch (error) {
+            console.error('Failed to clear persisted state:', error);
+        }
+    }
+    
     // API for state management
     return {
         getState,
@@ -544,6 +605,9 @@ export function setupState() {
         incrementReconciliationSkipped,
         setReconciliationProgress,
         // Utility methods
-        loadMockData
+        loadMockData,
+        // Persistence methods
+        clearPersistedState,
+        persistState
     };
 }

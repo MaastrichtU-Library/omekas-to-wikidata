@@ -2246,6 +2246,69 @@ main {
     /* Remove text-based loading styles */
 }
 
+/* Property Edit Modal */
+.property-edit-modal {
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.property-values-container {
+    margin-bottom: 2rem;
+}
+
+.property-value-item {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #fafafa;
+}
+
+.property-value-item .item-label {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.property-value-item .original-value {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 0.5rem;
+}
+
+.property-value-item .current-value {
+    margin-bottom: 0.5rem;
+}
+
+.property-value-item .current-value.reconciled {
+    color: var(--success-color);
+}
+
+.property-value-item .current-value.not-reconciled {
+    color: var(--warning-color);
+}
+
+.edit-value-btn {
+    padding: 4px 12px;
+    font-size: 0.9em;
+}
+
+.universal-update-section {
+    border-top: 2px solid var(--border-color);
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.universal-update-section h4 {
+    margin-bottom: 0.5rem;
+}
+
+.universal-update-section p {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
