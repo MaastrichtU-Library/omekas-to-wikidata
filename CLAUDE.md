@@ -7,6 +7,7 @@
   git add "<file1> <file2> ..." && git commit -m "<concise message>"
   ```
 - Use `git restore` (file) or `git revert` (commit) when the user says "undo"
+- When making changes make sure to keep the documentation up to date.
 - ALWAYS end by commiting the changes you have made!
 ### Github Issues
 How to create edit view close open issues and update the JSON with all the issues (".issues/all_issues.json")
