@@ -1,6 +1,8 @@
 /**
  * Handles the Input step functionality
  */
+import { eventSystem } from '../events.js';
+
 export function setupInputStep(state) {
     const apiUrlInput = document.getElementById('api-url');
     // Advanced parameters removed for MVP
@@ -245,4 +247,50 @@ export function setupInputStep(state) {
             ]
         };
     }
+    
+    // Helper function to update UI when data is available
+    function updateUIFromState() {
+        const currentState = state.getState();
+        
+        // Update API URL input if it exists in state
+        if (currentState.apiUrl && apiUrlInput) {
+            apiUrlInput.value = currentState.apiUrl;
+        }
+        
+        // Update data status if there's fetched data
+        if (currentState.fetchedData) {
+            displayData(currentState.fetchedData);
+            
+            // Show view raw JSON button
+            if (viewRawJsonBtn) {
+                viewRawJsonBtn.style.display = 'inline-block';
+            }
+            
+            // Enable proceed button if data is valid
+            if (proceedToMappingBtn) {
+                proceedToMappingBtn.disabled = false;
+            }
+        }
+    }
+    
+    // Listen for state changes (when session is restored or project loaded)
+    eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (data) => {
+        if (data.restored) {
+            // When state is restored, update the UI
+            console.log('📥 Input step: State restored, updating UI');
+            updateUIFromState();
+        }
+    });
+    
+    // Listen for step changes to update UI when navigating to step 1
+    eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
+        if (data.newStep === 1) {
+            // When entering step 1, refresh the UI state
+            console.log('📥 Input step: Entered step 1, updating UI');
+            setTimeout(() => updateUIFromState(), 100); // Small delay to ensure DOM is ready
+        }
+    });
+    
+    // Initialize UI from current state on setup
+    updateUIFromState();
 }
