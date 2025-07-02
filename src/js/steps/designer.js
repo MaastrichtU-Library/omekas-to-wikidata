@@ -10,6 +10,8 @@ export function setupDesignerStep(state) {
     
     // Get DOM elements with correct IDs
     const exampleItemSelector = document.getElementById('example-item-selector');
+    const itemLabelSelector = document.getElementById('item-label-selector');
+    const itemLabelPreview = document.getElementById('item-label');
     const referencesList = document.getElementById('references-list');
     const propertiesList = document.getElementById('properties-list');
     const unavailableProperties = document.getElementById('unavailable-properties');
@@ -20,6 +22,8 @@ export function setupDesignerStep(state) {
     
     console.log('Designer - DOM elements found:', {
         exampleItemSelector: !!exampleItemSelector,
+        itemLabelSelector: !!itemLabelSelector,
+        itemLabelPreview: !!itemLabelPreview,
         referencesList: !!referencesList,
         propertiesList: !!propertiesList,
         unavailableProperties: !!unavailableProperties,
@@ -66,6 +70,10 @@ export function setupDesignerStep(state) {
     // Event listeners
     if (exampleItemSelector) {
         exampleItemSelector.addEventListener('change', handleItemSelection);
+    }
+    
+    if (itemLabelSelector) {
+        itemLabelSelector.addEventListener('change', handleLabelSelection);
     }
     
     if (autoDetectReferencesBtn) {
@@ -138,6 +146,8 @@ export function setupDesignerStep(state) {
         // Populate components
         console.log('Designer - Calling populateItemSelector()');
         populateItemSelector();
+        console.log('Designer - Calling populateLabelSelector()');
+        populateLabelSelector();
         console.log('Designer - Calling displayReferences()');
         displayReferences();
         console.log('Designer - Calling displayProperties()');
@@ -184,6 +194,111 @@ export function setupDesignerStep(state) {
         exampleItemSelector.value = 'multi-item';
     }
     
+    // Populate the label selector dropdown
+    function populateLabelSelector() {
+        if (!itemLabelSelector) {
+            console.error('Designer - itemLabelSelector not found!');
+            return;
+        }
+        
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData;
+        
+        // Clear existing options except the first one
+        while (itemLabelSelector.options.length > 1) {
+            itemLabelSelector.remove(1);
+        }
+        
+        if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
+            // Get all unique keys from the fetched data
+            const allKeys = new Set();
+            fetchedData.forEach(item => {
+                Object.keys(item).forEach(key => {
+                    // Skip technical keys and add user-friendly ones
+                    if (!key.startsWith('@') && !key.startsWith('o:') || 
+                        key === 'o:title' || key === 'o:id') {
+                        allKeys.add(key);
+                    }
+                });
+            });
+            
+            // Sort keys and add to selector
+            Array.from(allKeys).sort().forEach(key => {
+                const option = createElement('option', {
+                    value: key
+                }, key);
+                itemLabelSelector.appendChild(option);
+            });
+            
+            // Try to auto-select a reasonable default (title-like fields)
+            const preferredKeys = ['o:title', 'dcterms:title', 'rdfs:label', 'schema:name', 'title'];
+            for (const preferredKey of preferredKeys) {
+                if (allKeys.has(preferredKey)) {
+                    itemLabelSelector.value = preferredKey;
+                    handleLabelSelection(); // Update preview
+                    break;
+                }
+            }
+        }
+    }
+    
+    // Handle label selection change
+    function handleLabelSelection() {
+        if (!itemLabelSelector || !itemLabelPreview) return;
+        
+        const selectedKey = itemLabelSelector.value;
+        if (!selectedKey) {
+            itemLabelPreview.value = '';
+            return;
+        }
+        
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData;
+        const exampleItemSelector = document.getElementById('example-item-selector');
+        const selectedItemValue = exampleItemSelector?.value;
+        
+        if (selectedItemValue === 'multi-item') {
+            // For multi-item view, show first available value
+            for (const item of fetchedData) {
+                if (item[selectedKey] !== undefined && item[selectedKey] !== null) {
+                    let displayValue = item[selectedKey];
+                    // Handle complex values
+                    if (Array.isArray(displayValue)) {
+                        displayValue = displayValue[0];
+                    }
+                    if (typeof displayValue === 'object' && displayValue !== null) {
+                        displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
+                    }
+                    itemLabelPreview.value = `Example: ${displayValue}`;
+                    break;
+                }
+            }
+        } else {
+            // For specific item view
+            const itemIndex = parseInt(selectedItemValue);
+            const selectedItem = fetchedData[itemIndex];
+            if (selectedItem && selectedItem[selectedKey] !== undefined && selectedItem[selectedKey] !== null) {
+                let displayValue = selectedItem[selectedKey];
+                // Handle complex values
+                if (Array.isArray(displayValue)) {
+                    displayValue = displayValue[0];
+                }
+                if (typeof displayValue === 'object' && displayValue !== null) {
+                    displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
+                }
+                itemLabelPreview.value = displayValue;
+            } else {
+                itemLabelPreview.value = 'No value for this item';
+            }
+        }
+        
+        // Store the selected label key in state
+        state.updateState('designerData.labelKey', selectedKey);
+        
+        // Update preview
+        updatePreview();
+    }
+    
     // Handle item selection change
     function handleItemSelection() {
         const exampleItemSelector = document.getElementById('example-item-selector');
@@ -203,6 +318,8 @@ export function setupDesignerStep(state) {
             displayPropertiesForItem(selectedValue);
         }
         
+        // Update label preview for the new selection
+        handleLabelSelection();
         updatePreview();
     }
     
@@ -432,26 +549,29 @@ export function setupDesignerStep(state) {
             }
             
             const propertyItem = createElement('div', {
-                className: 'property-item'
+                className: 'wikidata-statement'
             });
             
-            const propertyIdBadge = createElement('div', {
-                className: 'property-id-badge'
-            }, mapping.property.id);
-            
-            const propertyContent = createElement('div', {
-                className: 'property-content'
+            // Property label column (left side)
+            const propertyLabelSection = createElement('div', {
+                className: 'statement-property'
             });
             
-            const propertyLabelRow = createElement('div', {
-                className: 'property-label-row'
-            });
-            
-            const propertyLabelText = createElement('div', {
-                className: 'property-label-text'
+            const propertyLabel = createElement('div', {
+                className: 'property-label'
             }, mapping.property.label);
             
-            propertyLabelRow.appendChild(propertyLabelText);
+            const propertyIdBadge = createElement('div', {
+                className: 'property-id'
+            }, mapping.property.id);
+            
+            propertyLabelSection.appendChild(propertyLabel);
+            propertyLabelSection.appendChild(propertyIdBadge);
+            
+            // Property value column (right side)
+            const propertyValueSection = createElement('div', {
+                className: 'statement-value'
+            });
             
             // Get reconciled value
             let exampleValue = 'No value';
@@ -518,81 +638,60 @@ export function setupDesignerStep(state) {
                 }
             }
             
-            const isReconciled = reconciledDisplay && reconciledDisplay.includes('✓');
-            const propertyExample = createElement('div', {
-                className: `property-example ${isReconciled ? 'reconciled' : 'not-reconciled'}`
+            // Create the main value display
+            const statementMainValue = createElement('div', {
+                className: 'statement-main-value'
             }, reconciledDisplay || `Original: ${exampleValue}`);
             
-            // Calculate statistics including reconciliation
+            // Calculate statistics for value count
             let itemsWithProperty = 0;
-            let itemsReconciled = 0;
             
             if (specificItem) {
-                const itemIndex = fetchedData.indexOf(specificItem);
-                const itemKey = `item-${itemIndex}`;
                 itemsWithProperty = specificItem[mapping.key] ? 1 : 0;
-                const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
-                itemsReconciled = reconciledData?.selectedMatch ? 1 : 0;
             } else {
-                // Count items with property and reconciliation status
-                fetchedData.forEach((item, index) => {
+                // Count items with property
+                fetchedData.forEach((item) => {
                     if (item[mapping.key] !== undefined && item[mapping.key] !== null) {
                         itemsWithProperty++;
-                        const itemKey = `item-${index}`;
-                        const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
-                        if (reconciledData?.selectedMatch) {
-                            itemsReconciled++;
-                        }
                     }
                 });
             }
             
-            let statsClass = 'property-stats';
-            let statsText = '';
+            // Create value count indicator
+            const valueCount = createElement('div', {
+                className: 'statement-value-count'
+            }, specificItem ? 
+                (itemsWithProperty > 0 ? '1 value' : 'No value') : 
+                (itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : 'No items have this property')
+            );
             
-            if (specificItem) {
-                if (itemsWithProperty > 0) {
-                    statsText = '1 data point';
-                } else {
-                    statsText = 'No value';
-                }
-            } else {
-                // Multi-item view
-                if (itemsWithProperty > 0) {
-                    statsText = `${itemsWithProperty} data point${itemsWithProperty === 1 ? '' : 's'}`;
-                } else {
-                    statsText = 'No items have this property';
-                }
-            }
+            propertyValueSection.appendChild(statementMainValue);
+            propertyValueSection.appendChild(valueCount);
             
-            const propertyStats = createElement('div', {
-                className: statsClass
-            }, statsText);
-            
-            propertyContent.appendChild(propertyLabelRow);
-            propertyContent.appendChild(propertyExample);
-            propertyContent.appendChild(propertyStats);
-            
-            const propertyActions = createElement('div', {
-                className: 'property-actions'
+            // Create actions section
+            const statementActions = createElement('div', {
+                className: 'statement-actions'
             });
             
             const addRefBtn = createButton('+ Reference', {
-                className: 'add-reference-btn',
+                className: 'wikidata-btn wikidata-btn--reference',
                 onClick: () => addReferenceToProperty(mapping.property.id)
             });
             
             const editBtn = createButton('Edit', {
-                className: 'edit-property-btn',
+                className: 'wikidata-btn wikidata-btn--edit',
                 onClick: () => editPropertyValue(mapping)
             });
             
-            propertyActions.appendChild(addRefBtn);
-            propertyActions.appendChild(editBtn);
+            statementActions.appendChild(addRefBtn);
+            statementActions.appendChild(editBtn);
             
-            propertyItem.appendChild(propertyIdBadge);
-            propertyItem.appendChild(propertyContent);
-            propertyItem.appendChild(propertyActions);
+            // Add actions to value section
+            propertyValueSection.appendChild(statementActions);
+            
+            // Assemble the complete statement
+            propertyItem.appendChild(propertyLabelSection);
+            propertyItem.appendChild(propertyValueSection);
             
             propertiesList.appendChild(propertyItem);
         });
