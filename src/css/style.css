@@ -218,6 +218,132 @@ header {
     font-size: 1rem;
 }
 
+/* Project modal styling */
+.modal-content-save-project,
+.modal-content-load-project {
+    padding: 1rem;
+}
+
+.project-summary {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.project-summary h4 {
+    margin-bottom: 0.75rem;
+    color: #333;
+}
+
+.summary-list {
+    list-style: none;
+    padding: 0;
+}
+
+.summary-list li {
+    padding: 0.25rem 0;
+    color: #666;
+}
+
+.filename-section {
+    margin-bottom: 1rem;
+}
+
+.filename-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.filename-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.load-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.warning-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.warning-text {
+    margin: 0;
+    color: #856404;
+}
+
+.file-upload-section {
+    margin-bottom: 1rem;
+}
+
+.file-upload-area {
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #fafafa;
+}
+
+.file-upload-area:hover {
+    border-color: var(--primary-color);
+    background-color: #f0f8ff;
+}
+
+.file-upload-area.drag-over {
+    border-color: var(--primary-color);
+    background-color: #e3f2fd;
+}
+
+.upload-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #666;
+}
+
+.upload-text {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.project-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.project-preview h4 {
+    margin-bottom: 0.75rem;
+    color: #333;
+}
+
+.preview-content p {
+    margin: 0.25rem 0;
+    color: #666;
+}
+
+.preview-content .error {
+    color: var(--danger-color);
+}
+
 /* Test Mode Indicator */
 .test-mode-active {
     color: var(--success-color);

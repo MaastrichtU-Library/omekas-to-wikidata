@@ -1235,9 +1235,48 @@ export function setupDesignerStep(state) {
         const exampleItemSelector = document.getElementById('example-item-selector');
         const selectedItemValue = exampleItemSelector?.value;
         
+        // Get label information
+        const labelKey = currentState.designerData?.labelKey;
+        let itemLabel = '';
+        
+        if (labelKey && fetchedData.length > 0) {
+            if (selectedItemValue === 'multi-item') {
+                // For multi-item view, show first available label
+                for (const item of fetchedData) {
+                    if (item[labelKey] !== undefined && item[labelKey] !== null) {
+                        let displayValue = item[labelKey];
+                        if (Array.isArray(displayValue)) {
+                            displayValue = displayValue[0];
+                        }
+                        if (typeof displayValue === 'object' && displayValue !== null) {
+                            displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
+                        }
+                        itemLabel = `Example: ${displayValue}`;
+                        break;
+                    }
+                }
+            } else {
+                // For specific item
+                const itemIndex = parseInt(selectedItemValue);
+                const selectedItem = fetchedData[itemIndex];
+                if (selectedItem && selectedItem[labelKey] !== undefined && selectedItem[labelKey] !== null) {
+                    let displayValue = selectedItem[labelKey];
+                    if (Array.isArray(displayValue)) {
+                        displayValue = displayValue[0];
+                    }
+                    if (typeof displayValue === 'object' && displayValue !== null) {
+                        displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
+                    }
+                    itemLabel = displayValue;
+                }
+            }
+        }
+        
         // Generate preview content
         const previewData = {
             item: selectedItemValue === 'multi-item' ? 'Multi-item view' : `Item ${selectedItemValue}`,
+            label: itemLabel || 'No label selected',
+            labelSource: labelKey || 'No label source selected',
             references: references.filter(r => r.enabled).map(r => ({
                 P854: r.url,
                 P813: new Date().toISOString().split('T')[0]
