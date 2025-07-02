@@ -69,6 +69,7 @@ gh issue list --state all --json number,title,body,state,labels,createdAt,update
 ### UI Component Creation
 - **ALWAYS use the component factory system** from `src/js/ui/components.js`
 - **NEVER use `document.createElement()` directly** - use standardized factory functions instead
+- **Integration Status:** 100% integrated across all core application files (as of 2025-07-02)
 - **Available factory functions:**
   - `createElement(tag, attrs, content)` - Base element creation with attributes and content
   - `createButton(text, options)` - Standardized buttons with consistent styling
@@ -79,6 +80,14 @@ gh issue list --state all --json number,title,body,state,labels,createdAt,update
   - `createDownloadLink(href, filename, options)` - Download anchors with cleanup
   - `showMessage(message, type, duration)` - Toast notifications
 - **Import pattern:** `import { createElement, createButton } from '../ui/components.js';`
+- **Usage examples:**
+  ```javascript
+  // Instead of: const div = document.createElement('div');
+  const div = createElement('div', { className: 'my-class' }, 'content');
+  
+  // Instead of: const th = document.createElement('th');
+  const th = createElement('th', { className: 'header' }, 'Header Text');
+  ```
 - **Benefits:** Consistent styling, centralized behavior, easier maintenance, better testing
 
 ## Testing
