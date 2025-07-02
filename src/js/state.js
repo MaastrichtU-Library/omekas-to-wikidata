@@ -51,8 +51,43 @@ export function setupState() {
         exportTimestamp: null
     };
     
-    // Load state from localStorage if available
-    let state = loadPersistedState() || JSON.parse(JSON.stringify(initialState));
+    // Check for persisted state but don't load automatically
+    let state = JSON.parse(JSON.stringify(initialState));
+    
+    // Check if there's a saved session to offer restoration
+    checkAndOfferRestore();
+    
+    /**
+     * Check for saved session and offer to restore
+     */
+    function checkAndOfferRestore() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.version === STORAGE_VERSION) {
+                    // Format the timestamp for display
+                    const savedDate = new Date(parsed.timestamp);
+                    const dateStr = savedDate.toLocaleDateString();
+                    const timeStr = savedDate.toLocaleTimeString();
+                    
+                    // Check if there's meaningful data to restore
+                    const hasData = parsed.state.fetchedData || 
+                                  (parsed.state.mappings && parsed.state.mappings.mappedKeys && parsed.state.mappings.mappedKeys.length > 0) ||
+                                  parsed.state.reconciliationData;
+                    
+                    if (hasData) {
+                        // Use custom modal for the restore prompt
+                        setTimeout(() => {
+                            showRestoreModal(dateStr, timeStr, parsed.state);
+                        }, 500); // Small delay to ensure DOM is ready
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to check persisted state:', error);
+        }
+    }
     
     /**
      * Load persisted state from localStorage
@@ -74,6 +109,95 @@ export function setupState() {
             console.error('Failed to load persisted state:', error);
         }
         return null;
+    }
+    
+    /**
+     * Show the restore session modal
+     */
+    function showRestoreModal(dateStr, timeStr, savedState) {
+        const modal = document.getElementById('restore-session-modal');
+        const dateEl = document.getElementById('session-date');
+        const timeEl = document.getElementById('session-time');
+        const summaryEl = document.getElementById('session-summary');
+        const restoreBtn = document.getElementById('restore-session-btn');
+        const freshBtn = document.getElementById('start-fresh-btn');
+        
+        if (!modal || !dateEl || !timeEl) return;
+        
+        // Set date and time
+        dateEl.textContent = dateStr;
+        timeEl.textContent = timeStr;
+        
+        // Create summary of saved data
+        const summary = [];
+        if (savedState.fetchedData) {
+            const itemCount = Array.isArray(savedState.fetchedData) ? savedState.fetchedData.length : 1;
+            summary.push(`• ${itemCount} item${itemCount > 1 ? 's' : ''} loaded from API`);
+        }
+        if (savedState.mappings && savedState.mappings.mappedKeys && savedState.mappings.mappedKeys.length > 0) {
+            summary.push(`• ${savedState.mappings.mappedKeys.length} properties mapped`);
+        }
+        if (savedState.reconciliationData && Object.keys(savedState.reconciliationData).length > 0) {
+            const reconciledCount = Object.keys(savedState.reconciliationData).length;
+            summary.push(`• ${reconciledCount} item${reconciledCount > 1 ? 's' : ''} with reconciliation data`);
+        }
+        if (savedState.references && savedState.references.length > 0) {
+            summary.push(`• ${savedState.references.length} reference${savedState.references.length > 1 ? 's' : ''} configured`);
+        }
+        
+        summaryEl.innerHTML = summary.length > 0 ? 
+            '<h4>Session includes:</h4>' + summary.join('<br>') : 
+            '';
+        
+        // Show modal
+        modal.style.display = 'flex';
+        
+        // Handle button clicks
+        const handleRestore = () => {
+            modal.style.display = 'none';
+            restorePersistedState();
+            cleanup();
+        };
+        
+        const handleFresh = () => {
+            modal.style.display = 'none';
+            console.log('User chose to start fresh');
+            clearPersistedState();
+            cleanup();
+        };
+        
+        const cleanup = () => {
+            restoreBtn.removeEventListener('click', handleRestore);
+            freshBtn.removeEventListener('click', handleFresh);
+        };
+        
+        restoreBtn.addEventListener('click', handleRestore);
+        freshBtn.addEventListener('click', handleFresh);
+    }
+    
+    /**
+     * Restore the persisted state
+     */
+    function restorePersistedState() {
+        const loadedState = loadPersistedState();
+        if (loadedState) {
+            state = loadedState;
+            
+            // Notify all modules that state has been restored
+            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                path: 'entire-state',
+                oldValue: null,
+                newValue: state,
+                restored: true
+            });
+            
+            // Show success message using the showMessage function if available
+            setTimeout(() => {
+                if (window.showMessage) {
+                    window.showMessage('Previous session restored successfully', 'success');
+                }
+            }, 1000);
+        }
     }
     
     /**
