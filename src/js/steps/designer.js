@@ -1037,21 +1037,36 @@ export function setupDesignerStep(state) {
                 onClick: () => selectProperty(prop, resultsContainer)
             });
             
-            const propId = createElement('span', {
-                className: 'prop-id'
+            // Create compact format: "label (P123) description"
+            const propLink = createElement('a', {
+                href: `https://www.wikidata.org/wiki/Property:${prop.id}`,
+                target: '_blank',
+                className: 'prop-id-link',
+                onClick: (e) => e.stopPropagation() // Prevent modal selection when clicking link
             }, prop.id);
             
-            const propLabel = createElement('span', {
+            const compactText = createElement('span', {
+                className: 'prop-compact'
+            });
+            
+            const labelSpan = createElement('span', {
                 className: 'prop-label'
             }, prop.label);
             
-            const propDesc = createElement('span', {
+            const bracketOpen = createElement('span', {}, ' (');
+            const bracketClose = createElement('span', {}, ') ');
+            
+            const descSpan = createElement('span', {
                 className: 'prop-description'
             }, prop.description);
             
-            resultItem.appendChild(propId);
-            resultItem.appendChild(propLabel);
-            resultItem.appendChild(propDesc);
+            compactText.appendChild(labelSpan);
+            compactText.appendChild(bracketOpen);
+            compactText.appendChild(propLink);
+            compactText.appendChild(bracketClose);
+            compactText.appendChild(descSpan);
+            
+            resultItem.appendChild(compactText);
             
             resultsContainer.appendChild(resultItem);
         });
