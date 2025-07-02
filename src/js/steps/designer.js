@@ -75,8 +75,8 @@ export function setupDesignerStep(state) {
         
         // Debug logging to understand the state
         console.log('Designer - Current state:', currentState);
-        console.log('Designer - API data type:', typeof currentState.apiData);
-        console.log('Designer - API data:', currentState.apiData);
+        console.log('Designer - API data type:', typeof currentState.fetchedData);
+        console.log('Designer - API data:', currentState.fetchedData);
         console.log('Designer - Reconciliation data:', currentState.reconciliationData);
         
         // Check if we have completed reconciliation
@@ -112,7 +112,7 @@ export function setupDesignerStep(state) {
         if (!exampleItemSelector) return;
         
         const currentState = state.getState();
-        const apiData = currentState.apiData;
+        const fetchedData = currentState.fetchedData;
         
         // Clear existing options except the first one
         while (exampleItemSelector.options.length > 1) {
@@ -120,8 +120,8 @@ export function setupDesignerStep(state) {
         }
         
         // Add actual items from API data
-        if (apiData && Array.isArray(apiData)) {
-            apiData.forEach((item, index) => {
+        if (fetchedData && Array.isArray(fetchedData)) {
+            fetchedData.forEach((item, index) => {
                 const title = item['o:title'] || item['dcterms:title'] || `Item ${index + 1}`;
                 const option = createElement('option', {
                     value: item['o:id'] || index
@@ -153,7 +153,7 @@ export function setupDesignerStep(state) {
     // Display properties for a specific item
     function displayPropertiesForItem(itemId) {
         const currentState = state.getState();
-        const apiData = currentState.apiData;
+        const fetchedData = currentState.fetchedData;
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const reconciliationData = currentState.reconciliationData || {};
         
@@ -161,8 +161,8 @@ export function setupDesignerStep(state) {
         console.log('Designer - Reconciliation data for this item:', reconciliationData[itemId]);
         
         // Find the selected item
-        const selectedItem = apiData.find(item => 
-            (item['o:id'] || apiData.indexOf(item)).toString() === itemId.toString()
+        const selectedItem = fetchedData.find(item => 
+            (item['o:id'] || fetchedData.indexOf(item)).toString() === itemId.toString()
         );
         
         if (!selectedItem) return;
@@ -202,12 +202,12 @@ export function setupDesignerStep(state) {
     
     // Find an item that has a specific property
     function findItemWithProperty(key) {
-        const apiData = state.getState().apiData;
+        const fetchedData = state.getState().fetchedData;
         
-        for (let item of apiData) {
+        for (let item of fetchedData) {
             if (item[key] !== undefined && item[key] !== null) {
                 // Select this item in the dropdown
-                const itemId = item['o:id'] || apiData.indexOf(item);
+                const itemId = item['o:id'] || fetchedData.indexOf(item);
                 exampleItemSelector.value = itemId.toString();
                 handleItemSelection();
                 break;
@@ -288,7 +288,7 @@ export function setupDesignerStep(state) {
         const currentState = state.getState();
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const reconciliationData = currentState.reconciliationData || {};
-        const apiData = currentState.apiData || [];
+        const fetchedData = currentState.fetchedData || [];
         
         // Debug log to check if we have reconciliation data
         console.log('Designer - Reconciliation data available:', Object.keys(reconciliationData).length > 0);
@@ -311,7 +311,7 @@ export function setupDesignerStep(state) {
             return;
         }
         
-        const apiData = state.getState().apiData || [];
+        const fetchedData = state.getState().fetchedData || [];
         
         mappedKeys.forEach(mapping => {
             const propertyItem = createElement('div', {
@@ -342,7 +342,7 @@ export function setupDesignerStep(state) {
             
             if (specificItem) {
                 // For specific item view
-                const itemId = specificItem['o:id'] || apiData.indexOf(specificItem);
+                const itemId = specificItem['o:id'] || fetchedData.indexOf(specificItem);
                 const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
                 
                 if (reconciledData?.selectedMatch) {
@@ -361,8 +361,8 @@ export function setupDesignerStep(state) {
             } else {
                 // For multi-item view, find first reconciled value
                 let foundReconciled = false;
-                for (let item of apiData) {
-                    const itemId = item['o:id'] || apiData.indexOf(item);
+                for (let item of fetchedData) {
+                    const itemId = item['o:id'] || fetchedData.indexOf(item);
                     const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
                     
                     if (reconciledData?.selectedMatch) {
@@ -381,7 +381,7 @@ export function setupDesignerStep(state) {
                 
                 // If no reconciled values found, show original
                 if (!foundReconciled) {
-                    for (let item of apiData) {
+                    for (let item of fetchedData) {
                         if (item[mapping.key]) {
                             exampleValue = `Original: ${item[mapping.key]}`;
                             reconciledDisplay = '⚠️ No items reconciled yet';
@@ -401,16 +401,16 @@ export function setupDesignerStep(state) {
             let itemsReconciled = 0;
             
             if (specificItem) {
-                const itemId = specificItem['o:id'] || apiData.indexOf(specificItem);
+                const itemId = specificItem['o:id'] || fetchedData.indexOf(specificItem);
                 itemsWithProperty = specificItem[mapping.key] ? 1 : 0;
                 const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
                 itemsReconciled = reconciledData?.selectedMatch ? 1 : 0;
             } else {
                 // Count items with property and reconciliation status
-                apiData.forEach(item => {
+                fetchedData.forEach(item => {
                     if (item[mapping.key] !== undefined && item[mapping.key] !== null) {
                         itemsWithProperty++;
-                        const itemId = item['o:id'] || apiData.indexOf(item);
+                        const itemId = item['o:id'] || fetchedData.indexOf(item);
                         const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
                         if (reconciledData?.selectedMatch) {
                             itemsReconciled++;
@@ -483,12 +483,12 @@ export function setupDesignerStep(state) {
     
     // Auto-detect references
     function autoDetectReferences(showNotification = true) {
-        const apiData = state.getState().apiData || [];
+        const fetchedData = state.getState().fetchedData || [];
         const currentReferences = state.getState().references || [];
         const detectedRefs = new Set();
         
         // Search for sameAs and ARK identifiers
-        apiData.forEach(item => {
+        fetchedData.forEach(item => {
             // Check for sameAs
             if (item['schema:sameAs']) {
                 const sameAsValues = Array.isArray(item['schema:sameAs']) ? 
@@ -604,7 +604,7 @@ export function setupDesignerStep(state) {
         const issues = [];
         const currentState = state.getState();
         const references = currentState.references || [];
-        const apiData = currentState.apiData || [];
+        const fetchedData = currentState.fetchedData || [];
         
         // Check for items without references
         if (references.filter(r => r.enabled).length === 0) {
@@ -616,7 +616,7 @@ export function setupDesignerStep(state) {
         }
         
         // Check for items without labels
-        const itemsWithoutLabels = apiData.filter(item => 
+        const itemsWithoutLabels = fetchedData.filter(item => 
             !item['o:title'] && !item['dcterms:title'] && !item['rdfs:label']
         );
         
@@ -674,7 +674,7 @@ export function setupDesignerStep(state) {
         const references = currentState.references || [];
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const reconciliationData = currentState.reconciliationData || {};
-        const apiData = currentState.apiData || [];
+        const fetchedData = currentState.fetchedData || [];
         const selectedItemValue = exampleItemSelector?.value;
         
         // Generate preview content
@@ -697,8 +697,8 @@ export function setupDesignerStep(state) {
             
             if (selectedItemValue === 'multi-item') {
                 // Show all reconciled values across items
-                apiData.forEach(item => {
-                    const itemId = item['o:id'] || apiData.indexOf(item);
+                fetchedData.forEach(item => {
+                    const itemId = item['o:id'] || fetchedData.indexOf(item);
                     const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
                     
                     if (reconciledData?.selectedMatch) {
@@ -719,12 +719,12 @@ export function setupDesignerStep(state) {
                 });
             } else {
                 // Show values for specific item
-                const selectedItem = apiData.find(item => 
-                    (item['o:id'] || apiData.indexOf(item)).toString() === selectedItemValue
+                const selectedItem = fetchedData.find(item => 
+                    (item['o:id'] || fetchedData.indexOf(item)).toString() === selectedItemValue
                 );
                 
                 if (selectedItem) {
-                    const itemId = selectedItem['o:id'] || apiData.indexOf(selectedItem);
+                    const itemId = selectedItem['o:id'] || fetchedData.indexOf(selectedItem);
                     const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
                     
                     if (reconciledData?.selectedMatch) {
