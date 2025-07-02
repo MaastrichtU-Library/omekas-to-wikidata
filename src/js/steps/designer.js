@@ -6,6 +6,7 @@ import { eventSystem } from '../events.js';
 
 export function setupDesignerStep(state) {
     console.log('🎨 Designer - setupDesignerStep called');
+    console.log('🎨 Designer - Module loaded and function executing');
     
     // Get DOM elements with correct IDs
     const exampleItemSelector = document.getElementById('example-item-selector');
@@ -50,10 +51,11 @@ export function setupDesignerStep(state) {
     });
     
     // Listen for step change events
+    console.log('🎨 Designer - Subscribing to STEP_CHANGED events');
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
-        console.log('Designer - STEP_CHANGED event received:', data);
+        console.log('🎨 Designer - STEP_CHANGED event received:', data);
         if (data.newStep === 4) {
-            console.log('Designer - Initializing designer for step 4');
+            console.log('🎨 Designer - Initializing designer for step 4');
             // Small delay to ensure DOM is ready
             setTimeout(() => {
                 initializeDesigner();
