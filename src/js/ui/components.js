@@ -170,6 +170,133 @@ export function updateElementContent(element, content) {
 }
 
 /**
+ * Create an input element with standardized attributes
+ * @param {string} type - Input type (text, file, email, etc.)
+ * @param {Object} options - Input options including placeholder, value, onChange, etc.
+ * @returns {HTMLInputElement} The created input element
+ */
+export function createInput(type = 'text', options = {}) {
+    const {
+        placeholder = '',
+        value = '',
+        onChange = null,
+        accept = null,
+        multiple = false,
+        required = false,
+        id = null,
+        className = '',
+        name = null
+    } = options;
+
+    const attrs = {
+        type: type,
+        placeholder: placeholder,
+        value: value,
+        id: id,
+        name: name,
+        className: className,
+        required: required
+    };
+
+    if (accept && type === 'file') {
+        attrs.accept = accept;
+    }
+
+    if (multiple && type === 'file') {
+        attrs.multiple = multiple;
+    }
+
+    if (onChange) {
+        attrs.onChange = onChange;
+    }
+
+    return createElement('input', attrs);
+}
+
+/**
+ * Create a modal container with standardized structure
+ * @param {Object} options - Modal options including content, className, etc.
+ * @returns {HTMLDivElement} The created modal container
+ */
+export function createModal(options = {}) {
+    const {
+        className = 'modal',
+        content = null,
+        overlay = true,
+        closeOnOverlayClick = true
+    } = options;
+
+    const modal = createElement('div', {
+        className: className
+    });
+
+    if (overlay) {
+        const modalOverlay = createElement('div', {
+            className: 'modal-overlay',
+            onClick: closeOnOverlayClick ? () => modal.remove() : null
+        });
+
+        const modalContent = createElement('div', {
+            className: 'modal-content',
+            onClick: (e) => e.stopPropagation()
+        }, content);
+
+        modalOverlay.appendChild(modalContent);
+        modal.appendChild(modalOverlay);
+    } else {
+        modal.appendChild(content);
+    }
+
+    return modal;
+}
+
+/**
+ * Create a file input element with standardized behavior
+ * @param {Object} options - File input options
+ * @returns {HTMLInputElement} The created file input element
+ */
+export function createFileInput(options = {}) {
+    const {
+        accept = '*/*',
+        multiple = false,
+        onChange = null,
+        id = null,
+        className = 'file-input',
+        hidden = false
+    } = options;
+
+    return createInput('file', {
+        accept: accept,
+        multiple: multiple,
+        onChange: onChange,
+        id: id,
+        className: hidden ? `${className} hidden` : className
+    });
+}
+
+/**
+ * Create an anchor element for downloads
+ * @param {string} href - The download URL or data URL
+ * @param {string} filename - The filename for download
+ * @param {Object} options - Additional options
+ * @returns {HTMLAnchorElement} The created anchor element
+ */
+export function createDownloadLink(href, filename, options = {}) {
+    const {
+        text = filename,
+        className = 'download-link',
+        onClick = null
+    } = options;
+
+    return createElement('a', {
+        href: href,
+        download: filename,
+        className: className,
+        onClick: onClick
+    }, text);
+}
+
+/**
  * Show a simple alert/toast message
  * @param {string} message - Message to display
  * @param {string} type - Message type (info, success, warning, error)

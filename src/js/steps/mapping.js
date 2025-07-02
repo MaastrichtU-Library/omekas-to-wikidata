@@ -3,7 +3,7 @@
  * Provides UI for mapping Omeka S fields to Wikidata properties
  */
 import { eventSystem } from '../events.js';
-import { showMessage } from '../ui/components.js';
+import { showMessage, createElement, createListItem, createDownloadLink } from '../ui/components.js';
 export function setupMappingStep(state) {
     // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
@@ -453,75 +453,70 @@ export function setupMappingStep(state) {
         listElement.innerHTML = '';
         
         if (!keys.length) {
-            const placeholder = document.createElement('li');
-            placeholder.className = 'placeholder';
-            placeholder.textContent = type === 'non-linked'
+            const placeholderText = type === 'non-linked'
                 ? 'All keys have been processed'
                 : type === 'mapped'
                     ? 'No mapped keys yet'
                     : 'No ignored keys';
+            const placeholder = createListItem(placeholderText, { isPlaceholder: true });
             listElement.appendChild(placeholder);
             return;
         }
         
         keys.forEach(keyObj => {
-            const li = document.createElement('li');
-            
             // Handle both string keys (legacy) and key objects
             const keyData = typeof keyObj === 'string' 
                 ? { key: keyObj, type: 'unknown', frequency: 1, totalItems: 1 }
                 : keyObj;
             
             // Create compact key display
-            const keyDisplay = document.createElement('div');
-            keyDisplay.className = 'key-item-compact';
+            const keyDisplay = createElement('div', {
+                className: keyData.notInCurrentDataset 
+                    ? 'key-item-compact not-in-current-dataset'
+                    : 'key-item-compact'
+            });
             
-            // Add grayed-out class if key is not in current dataset
-            if (keyData.notInCurrentDataset) {
-                keyDisplay.classList.add('not-in-current-dataset');
-                li.classList.add('not-in-current-dataset');
-            }
-            
-            const keyName = document.createElement('span');
-            keyName.className = 'key-name-compact';
-            keyName.textContent = keyData.key;
+            const keyName = createElement('span', {
+                className: 'key-name-compact'
+            }, keyData.key);
             keyDisplay.appendChild(keyName);
             
             // Show property info for mapped keys immediately after key name
             if (type === 'mapped' && keyData.property) {
-                const propertyInfo = document.createElement('span');
-                propertyInfo.className = 'property-info';
-                propertyInfo.textContent = ` → ${keyData.property.id}: ${keyData.property.label}`;
+                const propertyInfo = createElement('span', {
+                    className: 'property-info'
+                }, ` → ${keyData.property.id}: ${keyData.property.label}`);
                 keyDisplay.appendChild(propertyInfo);
             }
             
             // Show frequency information at the end
             if (keyData.frequency && keyData.totalItems) {
-                const frequencyIndicator = document.createElement('span');
-                frequencyIndicator.className = 'key-frequency';
-                frequencyIndicator.textContent = `(${keyData.frequency}/${keyData.totalItems})`;
+                const frequencyIndicator = createElement('span', {
+                    className: 'key-frequency'
+                }, `(${keyData.frequency}/${keyData.totalItems})`);
                 keyDisplay.appendChild(frequencyIndicator);
             } else if (keyData.notInCurrentDataset) {
                 // Show indicator for keys not in current dataset
-                const notInDatasetIndicator = document.createElement('span');
-                notInDatasetIndicator.className = 'not-in-dataset-indicator';
-                notInDatasetIndicator.textContent = '(not in current dataset)';
+                const notInDatasetIndicator = createElement('span', {
+                    className: 'not-in-dataset-indicator'
+                }, '(not in current dataset)');
                 keyDisplay.appendChild(notInDatasetIndicator);
             }
             
-            li.appendChild(keyDisplay);
+            // Create list item with appropriate options
+            const liOptions = {
+                className: keyData.notInCurrentDataset 
+                    ? 'clickable key-item-clickable-compact not-in-current-dataset disabled'
+                    : 'clickable key-item-clickable-compact',
+                onClick: !keyData.notInCurrentDataset ? () => openMappingModal(keyData) : null,
+                dataset: { key: keyData.key }
+            };
             
-            // Add click handler for all keys to open mapping modal (but disabled for grayed out keys)
-            li.className = 'clickable key-item-clickable-compact';
-            if (!keyData.notInCurrentDataset) {
-                li.addEventListener('click', () => openMappingModal(keyData));
-            } else {
-                li.classList.add('disabled');
-                li.title = 'This key is not present in the current dataset';
+            if (keyData.notInCurrentDataset) {
+                liOptions.title = 'This key is not present in the current dataset';
             }
             
-            // Add data attribute for animations
-            li.setAttribute('data-key', keyData.key);
+            const li = createListItem(keyDisplay, liOptions);
             
             listElement.appendChild(li);
             
@@ -597,12 +592,14 @@ export function setupMappingStep(state) {
     
     // Create the content for the mapping modal
     function createMappingModalContent(keyData) {
-        const container = document.createElement('div');
-        container.className = 'mapping-modal-content';
+        const container = createElement('div', {
+            className: 'mapping-modal-content'
+        });
         
         // Key information section
-        const keyInfo = document.createElement('div');
-        keyInfo.className = 'key-info';
+        const keyInfo = createElement('div', {
+            className: 'key-info'
+        });
         
         const sampleValueHtml = formatSampleValue(keyData.sampleValue, keyData.contextMap || new Map());
         
@@ -619,8 +616,9 @@ export function setupMappingStep(state) {
         container.appendChild(keyInfo);
         
         // Property search section
-        const searchSection = document.createElement('div');
-        searchSection.className = 'property-search';
+        const searchSection = createElement('div', {
+            className: 'property-search'
+        });
         searchSection.innerHTML = `
             <h4>Search Wikidata Properties</h4>
             <input type="text" id="property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
@@ -882,8 +880,9 @@ export function setupMappingStep(state) {
         
         // Show autosuggest results first
         if (autoSuggestions.length > 0) {
-            const autoSection = document.createElement('div');
-            autoSection.className = 'suggestion-section';
+            const autoSection = createElement('div', {
+                className: 'suggestion-section'
+            });
             autoSection.innerHTML = '<h5>Previously Used</h5>';
             
             autoSuggestions.forEach(property => {
@@ -896,8 +895,9 @@ export function setupMappingStep(state) {
         
         // Show Wikidata results
         if (wikidataResults.length > 0) {
-            const wikidataSection = document.createElement('div');
-            wikidataSection.className = 'suggestion-section';
+            const wikidataSection = createElement('div', {
+                className: 'suggestion-section'
+            });
             wikidataSection.innerHTML = '<h5>Wikidata Properties</h5>';
             
             wikidataResults.forEach(property => {
@@ -920,8 +920,10 @@ export function setupMappingStep(state) {
     
     // Create a property suggestion item
     function createPropertySuggestionItem(property, isPrevious) {
-        const item = document.createElement('div');
-        item.className = `property-suggestion-item ${isPrevious ? 'previous' : ''}`;
+        const item = createElement('div', {
+            className: `property-suggestion-item ${isPrevious ? 'previous' : ''}`,
+            onClick: () => selectProperty(property)
+        });
         
         item.innerHTML = `
             <div class="property-main">
@@ -930,10 +932,6 @@ export function setupMappingStep(state) {
             </div>
             <div class="property-description">${property.description}</div>
         `;
-        
-        item.addEventListener('click', () => {
-            selectProperty(property);
-        });
         
         return item;
     }
@@ -1118,13 +1116,16 @@ export function setupMappingStep(state) {
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
         const filename = `omeka-wikidata-mapping-${timestamp}.json`;
         
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const downloadLink = createDownloadLink(url, filename, {
+            onClick: () => {
+                // Clean up the URL after download
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            }
+        });
+        
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
         
         console.log('Mapping saved as:', filename);
     }

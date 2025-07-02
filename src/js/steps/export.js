@@ -1,6 +1,7 @@
 /**
  * Handles the Export step functionality
  */
+import { createDownloadLink, createFileInput } from '../ui/components.js';
 export function setupExportStep(state) {
     const quickStatementsTextarea = document.getElementById('quick-statements');
     const copyQuickStatementsBtn = document.getElementById('copy-quick-statements');
@@ -78,18 +79,19 @@ export function setupExportStep(state) {
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         
-        // Create download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `wikidata-mapping-${new Date().toISOString().slice(0, 10)}.json`;
-        document.body.appendChild(a);
-        a.click();
+        const filename = `wikidata-mapping-${new Date().toISOString().slice(0, 10)}.json`;
         
-        // Cleanup
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 0);
+        // Create download link
+        const downloadLink = createDownloadLink(url, filename, {
+            onClick: () => {
+                // Cleanup after download
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            }
+        });
+        
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
         
         // Mark changes as saved
         state.markChangesSaved();
@@ -98,38 +100,37 @@ export function setupExportStep(state) {
     // Import JSON
     function importJson() {
         // For wireframe, use a file input
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'application/json';
-        
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const jsonData = e.target.result;
-                    const success = state.importState(jsonData);
-                    
-                    if (success) {
-                        alert('Project imported successfully');
+        const fileInput = createFileInput({
+            accept: 'application/json',
+            onChange: (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const jsonData = e.target.result;
+                        const success = state.importState(jsonData);
                         
-                        // Navigate to the step stored in the imported state
-                        const currentStep = state.getCurrentStep();
-                        document.querySelector(`.step[data-step="${currentStep}"]`)?.click();
-                        
-                        // Re-generate QuickStatements
-                        generateQuickStatements();
-                    } else {
-                        alert('Error importing project: Invalid JSON format');
+                        if (success) {
+                            alert('Project imported successfully');
+                            
+                            // Navigate to the step stored in the imported state
+                            const currentStep = state.getCurrentStep();
+                            document.querySelector(`.step[data-step="${currentStep}"]`)?.click();
+                            
+                            // Re-generate QuickStatements
+                            generateQuickStatements();
+                        } else {
+                            alert('Error importing project: Invalid JSON format');
+                        }
+                    } catch (error) {
+                        console.error('Error importing project:', error);
+                        alert('Error importing project: ' + error.message);
                     }
-                } catch (error) {
-                    console.error('Error importing project:', error);
-                    alert('Error importing project: ' + error.message);
-                }
-            };
-            reader.readAsText(file);
+                };
+                reader.readAsText(file);
+            }
         });
         
         fileInput.click();

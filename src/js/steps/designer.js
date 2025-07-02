@@ -1,6 +1,7 @@
 /**
  * Handles the Wikidata Designer step functionality
  */
+import { createElement } from '../ui/components.js';
 export function setupDesignerStep(state) {
     const referenceList = document.getElementById('reference-list');
     const addReferenceBtn = document.getElementById('add-reference');
@@ -70,17 +71,17 @@ export function setupDesignerStep(state) {
         referenceList.innerHTML = '';
         
         if (!state.references || !state.references.length) {
-            const placeholder = document.createElement('p');
-            placeholder.className = 'placeholder';
-            placeholder.textContent = 'Add at least one reference before continuing';
+            const placeholder = createElement('p', {
+                className: 'placeholder'
+            }, 'Add at least one reference before continuing');
             referenceList.appendChild(placeholder);
             return;
         }
         
         state.references.forEach((ref, index) => {
-            const refItem = document.createElement('div');
-            refItem.className = 'reference-item';
-            refItem.textContent = `Reference ${index + 1}: ${ref.type} - ${ref.value}`;
+            const refItem = createElement('div', {
+                className: 'reference-item'
+            }, `Reference ${index + 1}: ${ref.type} - ${ref.value}`);
             referenceList.appendChild(refItem);
         });
     }
@@ -119,15 +120,15 @@ export function setupDesignerStep(state) {
         exampleItemSelect.innerHTML = '';
         
         // Add default empty option
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = 'Select an item for preview';
+        const defaultOption = createElement('option', {
+            value: ''
+        }, 'Select an item for preview');
         exampleItemSelect.appendChild(defaultOption);
         
         // Add example item
-        const exampleOption = document.createElement('option');
-        exampleOption.value = '1';
-        exampleOption.textContent = 'Example Item';
+        const exampleOption = createElement('option', {
+            value: '1'
+        }, 'Example Item');
         exampleItemSelect.appendChild(exampleOption);
     }
     
@@ -138,32 +139,27 @@ export function setupDesignerStep(state) {
         propertyList.innerHTML = '';
         
         if (!state.mappings || !state.mappings.mappedKeys || !state.mappings.mappedKeys.length) {
-            const placeholder = document.createElement('p');
-            placeholder.className = 'placeholder';
-            placeholder.textContent = 'No properties available. Complete the mapping and reconciliation steps first.';
+            const placeholder = createElement('p', {
+                className: 'placeholder'
+            }, 'No properties available. Complete the mapping and reconciliation steps first.');
             propertyList.appendChild(placeholder);
             return;
         }
         
         // Create property items for each mapped key
         state.mappings.mappedKeys.forEach(key => {
-            const propertyItem = document.createElement('div');
-            propertyItem.className = 'property-item';
+            const propertyHeader = createElement('div', {
+                className: 'property-header'
+            }, key);
             
-            const propertyHeader = document.createElement('div');
-            propertyHeader.className = 'property-header';
-            propertyHeader.textContent = key;
-            propertyItem.appendChild(propertyHeader);
+            const propertyContent = createElement('div', {
+                className: 'property-content'
+            }, 'Property Value: Placeholder');
             
-            const propertyContent = document.createElement('div');
-            propertyContent.className = 'property-content';
-            propertyContent.textContent = 'Property Value: Placeholder';
-            propertyItem.appendChild(propertyContent);
-            
-            // Add click handler to edit property
-            propertyItem.addEventListener('click', () => {
-                editProperty(key, propertyItem);
-            });
+            const propertyItem = createElement('div', {
+                className: 'property-item',
+                onClick: () => editProperty(key, propertyItem)
+            }, [propertyHeader, propertyContent]);
             
             propertyList.appendChild(propertyItem);
         });
@@ -213,28 +209,28 @@ export function setupDesignerStep(state) {
         previewContainer.innerHTML = '';
         
         if (!state.designerData || !state.designerData.length) {
-            const placeholder = document.createElement('p');
-            placeholder.className = 'placeholder';
-            placeholder.textContent = 'Configure properties to see preview';
+            const placeholder = createElement('p', {
+                className: 'placeholder'
+            }, 'Configure properties to see preview');
             previewContainer.appendChild(placeholder);
             return;
         }
         
         // Create preview content
-        const previewTitle = document.createElement('h4');
-        previewTitle.textContent = 'Example Item (Q12345)';
+        const previewTitle = createElement('h4', {}, 'Example Item (Q12345)');
         previewContainer.appendChild(previewTitle);
         
-        const previewDescription = document.createElement('p');
-        previewDescription.textContent = 'Example item description';
+        const previewDescription = createElement('p', {}, 'Example item description');
         previewContainer.appendChild(previewDescription);
         
-        const statementsList = document.createElement('ul');
-        statementsList.className = 'statements-list';
+        const statementsList = createElement('ul', {
+            className: 'statements-list'
+        });
         
         state.designerData.forEach(data => {
-            const statementItem = document.createElement('li');
-            statementItem.className = 'statement-item';
+            const statementItem = createElement('li', {
+                className: 'statement-item'
+            });
             statementItem.innerHTML = `<strong>${data.property}:</strong> ${data.value}`;
             statementsList.appendChild(statementItem);
         });
