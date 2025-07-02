@@ -2996,6 +2996,18 @@ main {
     padding-bottom: 0.5rem;
 }
 
+/* Statements header */
+.statements-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.statements-header h4 {
+    margin: 0;
+}
+
 /* Wikidata-style statements container */
 .properties-list {
     background-color: white;
@@ -3101,6 +3113,76 @@ main {
 
 .wikidata-btn--edit {
     color: #0645ad;
+}
+
+/* New Statement Modal */
+.new-statement-modal {
+    width: 500px;
+    max-width: 90vw;
+}
+
+.property-search-section,
+.value-section {
+    margin-bottom: 1.5rem;
+}
+
+.property-search-section label,
+.value-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.property-search-input,
+.value-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    font-size: 0.875rem;
+}
+
+.property-search-results {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #eaecf0;
+    border-top: none;
+    background-color: white;
+}
+
+.property-result-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid #eaecf0;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.property-result-item:hover {
+    background-color: #f8f9fa;
+}
+
+.property-result-item:last-child {
+    border-bottom: none;
+}
+
+.prop-id {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #72777d;
+    font-weight: bold;
+}
+
+.prop-label {
+    font-weight: 500;
+    color: #222;
+}
+
+.prop-description {
+    font-size: 0.75rem;
+    color: #72777d;
 }
 
 

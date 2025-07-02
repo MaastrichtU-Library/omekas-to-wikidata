@@ -34,6 +34,7 @@ export function setupDesignerStep(state) {
     const autoDetectReferencesBtn = document.getElementById('auto-detect-references');
     const searchReferenceBtn = document.getElementById('search-reference');
     const addReferenceBtn = document.getElementById('add-reference');
+    const addNewStatementBtn = document.getElementById('add-new-statement');
     const proceedToExportBtn = document.getElementById('proceed-to-export');
     const backToReconciliationBtn = document.getElementById('back-to-reconciliation');
     
@@ -86,6 +87,10 @@ export function setupDesignerStep(state) {
     
     if (addReferenceBtn) {
         addReferenceBtn.addEventListener('click', addManualReference);
+    }
+    
+    if (addNewStatementBtn) {
+        addNewStatementBtn.addEventListener('click', showNewStatementModal);
     }
     
     if (backToReconciliationBtn) {
@@ -901,7 +906,219 @@ export function setupDesignerStep(state) {
         showMessage('Property-specific reference management will be implemented in Phase 2', 'info');
     }
     
-    // Edit property value
+    // Show new statement modal
+    function showNewStatementModal() {
+        // Create modal for adding new statement
+        const modal = createElement('div', {
+            className: 'modal-overlay active'
+        });
+        
+        const modalContent = createElement('div', {
+            className: 'modal new-statement-modal'
+        });
+        
+        const modalHeader = createElement('div', {
+            className: 'modal-header'
+        });
+        
+        const modalTitle = createElement('h3', {}, 'Add New Statement');
+        
+        const closeBtn = createButton('×', {
+            className: 'modal-close',
+            onClick: () => modal.remove()
+        });
+        
+        modalHeader.appendChild(modalTitle);
+        modalHeader.appendChild(closeBtn);
+        
+        const modalBody = createElement('div', {
+            className: 'modal-body'
+        });
+        
+        // Property search section
+        const propertySection = createElement('div', {
+            className: 'property-search-section'
+        });
+        
+        const propertyLabel = createElement('label', {}, 'Property:');
+        const propertyInput = createElement('input', {
+            type: 'text',
+            className: 'property-search-input',
+            placeholder: 'Search for a property (e.g., "instance of", "P31")'
+        });
+        
+        const propertyResults = createElement('div', {
+            className: 'property-search-results'
+        });
+        
+        propertySection.appendChild(propertyLabel);
+        propertySection.appendChild(propertyInput);
+        propertySection.appendChild(propertyResults);
+        
+        // Value section
+        const valueSection = createElement('div', {
+            className: 'value-section'
+        });
+        
+        const valueLabel = createElement('label', {}, 'Value:');
+        const valueInput = createElement('input', {
+            type: 'text',
+            className: 'value-input',
+            placeholder: 'Enter value for all items'
+        });
+        
+        valueSection.appendChild(valueLabel);
+        valueSection.appendChild(valueInput);
+        
+        // Add button
+        const addButton = createButton('Add Statement', {
+            className: 'button--primary',
+            onClick: () => addNewStatement(propertyInput.value, valueInput.value, modal)
+        });
+        
+        modalBody.appendChild(propertySection);
+        modalBody.appendChild(valueSection);
+        modalBody.appendChild(addButton);
+        
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(modalBody);
+        modal.appendChild(modalContent);
+        
+        document.body.appendChild(modal);
+        
+        // Add property search functionality
+        propertyInput.addEventListener('input', () => searchProperties(propertyInput.value, propertyResults));
+        
+        // Focus the property input
+        propertyInput.focus();
+    }
+    
+    // Search for properties
+    function searchProperties(query, resultsContainer) {
+        resultsContainer.innerHTML = '';
+        
+        if (!query || query.length < 2) return;
+        
+        // Simple property search - in a real implementation, this would search Wikidata
+        const commonProperties = [
+            { id: 'P31', label: 'instance of', description: 'that class of which this subject is a particular example and member' },
+            { id: 'P17', label: 'country', description: 'sovereign state of this item' },
+            { id: 'P106', label: 'occupation', description: 'occupation of a person' },
+            { id: 'P569', label: 'date of birth', description: 'date on which the subject was born' },
+            { id: 'P570', label: 'date of death', description: 'date on which the subject died' },
+            { id: 'P19', label: 'place of birth', description: 'most specific known birth location' },
+            { id: 'P20', label: 'place of death', description: 'most specific known death location' },
+            { id: 'P27', label: 'country of citizenship', description: 'the object is a country that recognizes the subject as its citizen' }
+        ];
+        
+        const filteredProperties = commonProperties.filter(prop => 
+            prop.label.toLowerCase().includes(query.toLowerCase()) ||
+            prop.id.toLowerCase().includes(query.toLowerCase()) ||
+            prop.description.toLowerCase().includes(query.toLowerCase())
+        );
+        
+        filteredProperties.forEach(prop => {
+            const resultItem = createElement('div', {
+                className: 'property-result-item',
+                onClick: () => selectProperty(prop, resultsContainer)
+            });
+            
+            const propId = createElement('span', {
+                className: 'prop-id'
+            }, prop.id);
+            
+            const propLabel = createElement('span', {
+                className: 'prop-label'
+            }, prop.label);
+            
+            const propDesc = createElement('span', {
+                className: 'prop-description'
+            }, prop.description);
+            
+            resultItem.appendChild(propId);
+            resultItem.appendChild(propLabel);
+            resultItem.appendChild(propDesc);
+            
+            resultsContainer.appendChild(resultItem);
+        });
+    }
+    
+    // Select a property
+    function selectProperty(property, resultsContainer) {
+        const propertyInput = document.querySelector('.property-search-input');
+        propertyInput.value = `${property.label} (${property.id})`;
+        propertyInput.dataset.selectedId = property.id;
+        propertyInput.dataset.selectedLabel = property.label;
+        resultsContainer.innerHTML = '';
+    }
+    
+    // Add new statement
+    function addNewStatement(propertyText, value, modal) {
+        const propertyInput = document.querySelector('.property-search-input');
+        const selectedId = propertyInput.dataset.selectedId;
+        const selectedLabel = propertyInput.dataset.selectedLabel;
+        
+        if (!selectedId || !value.trim()) {
+            showMessage('Please select a property and enter a value', 'error');
+            return;
+        }
+        
+        // Add the new statement to all items
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const reconciliationData = { ...currentState.reconciliationData } || {};
+        
+        // Create a new mapping for this property
+        const newMapping = {
+            key: `custom_${selectedId}`,
+            property: {
+                id: selectedId,
+                label: selectedLabel
+            }
+        };
+        
+        // Add to mapped keys
+        const mappedKeys = [...(currentState.mappings?.mappedKeys || [])];
+        mappedKeys.push(newMapping);
+        
+        // Add reconciled values for all items
+        fetchedData.forEach((item, index) => {
+            const itemKey = `item-${index}`;
+            
+            if (!reconciliationData[itemKey]) {
+                reconciliationData[itemKey] = { properties: {} };
+            }
+            
+            if (!reconciliationData[itemKey].properties) {
+                reconciliationData[itemKey].properties = {};
+            }
+            
+            reconciliationData[itemKey].properties[newMapping.key] = {
+                reconciled: [{
+                    status: 'reconciled',
+                    selectedMatch: {
+                        type: 'custom',
+                        value: value.trim(),
+                        datatype: 'string'
+                    },
+                    confidence: 100
+                }]
+            };
+        });
+        
+        // Update state
+        state.updateState('mappings.mappedKeys', mappedKeys);
+        state.updateState('reconciliationData', reconciliationData);
+        
+        // Refresh display
+        displayProperties();
+        updatePreview();
+        
+        // Close modal
+        modal.remove();
+        
+        showMessage(`Added "${selectedLabel}" statement to all ${fetchedData.length} items`, 'success');
+    }
     
     // Check for issues
     function checkForIssues() {
