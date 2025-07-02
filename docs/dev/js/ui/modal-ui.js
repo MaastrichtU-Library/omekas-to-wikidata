@@ -4,7 +4,7 @@
  * @module ui/modal-ui
  */
 import { eventSystem } from '../events.js';
-import { createElement } from './components.js';
+import { createElement, createButton } from './components.js';
 
 export function setupModalUI() {
     // Core modal elements
@@ -70,14 +70,10 @@ export function setupModalUI() {
         if (modalFooter) {
             modalFooter.innerHTML = '';
             buttons.forEach(button => {
-                const btn = createElement('button', {
-                    className: button.type === 'primary' 
-                        ? 'button button--primary primary-button' 
-                        : 'button button--secondary secondary-button',
+                const btn = createButton(button.text, {
+                    type: button.type || 'secondary',
                     onClick: button.callback
                 });
-                
-                btn.textContent = button.text;
                 
                 modalFooter.appendChild(btn);
             });

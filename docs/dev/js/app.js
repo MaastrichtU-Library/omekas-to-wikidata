@@ -22,6 +22,7 @@ import { setupModals } from './modals.js';
 function initializeApp() {
     // Initialize state management
     const state = setupState();
+    window.debugState = state;
     
     // Initialize core modules
     const navigation = setupNavigation(state);
@@ -72,3 +73,5 @@ function setupAppEventListeners(state) {
 
 // Initialize when the DOM is ready
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+

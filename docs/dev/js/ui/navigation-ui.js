@@ -173,6 +173,15 @@ export function setupNavigationUI() {
         eventSystem.subscribe(eventSystem.Events.VALIDATION_FAILED, (data) => {
             updateButtonState(data.step, false);
         });
+        
+        // Listen for state restoration to update UI accordingly
+        eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (data) => {
+            if (data.restored) {
+                // When state is restored, update the UI to reflect the current step
+                console.log('🎯 Navigation UI: State restored, updating UI');
+                updateStepUI(data.newValue.currentStep);
+            }
+        });
     }
     
     // Initialize

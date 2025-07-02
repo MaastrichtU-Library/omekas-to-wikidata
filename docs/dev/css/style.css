@@ -174,9 +174,174 @@ input, select, textarea {
     border-left: 4px solid var(--warning-color);
 }
 
+.info {
+    background-color: #e3f2fd;
+    color: var(--primary-color);
+    padding: 8px 16px;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--primary-color);
+}
+
 /* Header */
 header {
     margin-bottom: 2rem;
+}
+
+/* Header toolbar styling */
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.header-main {
+    flex: 1;
+}
+
+.header-toolbar {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.toolbar-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.toolbar-button .button-icon {
+    font-size: 1rem;
+}
+
+/* Project modal styling */
+.modal-content-save-project,
+.modal-content-load-project {
+    padding: 1rem;
+}
+
+.project-summary {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.project-summary h4 {
+    margin-bottom: 0.75rem;
+    color: #333;
+}
+
+.summary-list {
+    list-style: none;
+    padding: 0;
+}
+
+.summary-list li {
+    padding: 0.25rem 0;
+    color: #666;
+}
+
+.filename-section {
+    margin-bottom: 1rem;
+}
+
+.filename-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.filename-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.load-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.warning-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.warning-text {
+    margin: 0;
+    color: #856404;
+}
+
+.file-upload-section {
+    margin-bottom: 1rem;
+}
+
+.file-upload-area {
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #fafafa;
+}
+
+.file-upload-area:hover {
+    border-color: var(--primary-color);
+    background-color: #f0f8ff;
+}
+
+.file-upload-area.drag-over {
+    border-color: var(--primary-color);
+    background-color: #e3f2fd;
+}
+
+.upload-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #666;
+}
+
+.upload-text {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.project-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.project-preview h4 {
+    margin-bottom: 0.75rem;
+    color: #333;
+}
+
+.preview-content p {
+    margin: 0.25rem 0;
+    color: #666;
+}
+
+.preview-content .error {
+    color: var(--danger-color);
 }
 
 /* Test Mode Indicator */
@@ -2246,6 +2411,113 @@ main {
     /* Remove text-based loading styles */
 }
 
+/* Property Edit Modal */
+.property-edit-modal {
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.property-values-container {
+    margin-bottom: 2rem;
+}
+
+.property-value-item {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #fafafa;
+}
+
+.property-value-item .item-label {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.property-value-item .original-value {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 0.5rem;
+}
+
+.property-value-item .current-value {
+    margin-bottom: 0.5rem;
+}
+
+.property-value-item .current-value.reconciled {
+    color: var(--success-color);
+}
+
+.property-value-item .current-value.not-reconciled {
+    color: var(--warning-color);
+}
+
+.edit-value-btn {
+    padding: 4px 12px;
+    font-size: 0.9em;
+}
+
+.universal-update-section {
+    border-top: 2px solid var(--border-color);
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.universal-update-section h4 {
+    margin-bottom: 0.5rem;
+}
+
+.universal-update-section p {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+/* Session Restore Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.restore-session-modal {
+    max-width: 500px;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-actions {
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.session-summary {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.session-summary h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -2511,4 +2783,941 @@ main {
     flex-shrink: 0;
     margin: 0;
     align-self: stretch;
+}
+
+/* Step 4: Wikidata Designer Styles */
+.designer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Item Selector */
+.item-selector-container {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.item-selector-container label {
+    font-weight: 600;
+    margin-right: 1rem;
+    color: #333;
+}
+
+.item-selector {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: white;
+    font-size: 1rem;
+    min-width: 300px;
+    cursor: pointer;
+}
+
+/* References Section */
+.references-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.references-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+}
+
+.section-description {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.references-list {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    min-height: 80px;
+}
+
+.reference-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.reference-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.reference-item.auto-detected {
+    border-left: 3px solid var(--success-color);
+}
+
+.reference-info {
+    flex: 1;
+}
+
+.reference-url {
+    font-weight: 500;
+    color: var(--primary-color);
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.reference-url:hover {
+    text-decoration: underline;
+}
+
+.reference-type {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+.reference-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reference-toggle label {
+    font-size: 0.85rem;
+    color: #666;
+    cursor: pointer;
+}
+
+.references-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.reference-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+.warning-icon {
+    font-size: 1.1rem;
+}
+
+.warning-text {
+    color: #856404;
+    font-size: 0.9rem;
+}
+
+/* Item Designer Section */
+.item-designer-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.item-designer-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+/* Wikidata-like item header */
+.wikidata-item-header {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e0e0e0;
+}
+
+.item-label-group,
+.item-description-group {
+    margin-bottom: 1rem;
+}
+
+.item-label-group:last-child,
+.item-description-group:last-child {
+    margin-bottom: 0;
+}
+
+.item-label-group label,
+.item-description-group label {
+    display: block;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.item-label-input,
+.item-description-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.item-label-input:focus,
+.item-description-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+/* Statements section */
+.statements-section h4 {
+    color: #333;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.5rem;
+}
+
+/* Add statement container */
+.add-statement-container {
+    margin-top: 1rem;
+    text-align: right;
+}
+
+/* Wikidata-style statements container */
+.properties-list {
+    background-color: white;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    padding: 0;
+}
+
+/* Individual Wikidata statement */
+.wikidata-statement {
+    display: flex;
+    border-bottom: 1px solid #eaecf0;
+    min-height: 3rem;
+}
+
+.wikidata-statement:last-child {
+    border-bottom: none;
+}
+
+.wikidata-statement:hover {
+    background-color: #f8f9fa;
+}
+
+/* Property label section (left column) - compact design */
+.statement-property {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    border-right: 1px solid #eaecf0;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.property-header-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    line-height: 1.3;
+}
+
+.property-label {
+    font-size: 0.875rem;
+    color: #222;
+    font-weight: normal;
+    margin-right: 0.25rem;
+}
+
+.property-id-link {
+    font-size: 0.75rem;
+    color: #0645ad;
+    font-family: monospace;
+    font-weight: bold;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.property-id-link:hover {
+    text-decoration: underline;
+    color: #0b0080;
+}
+
+/* Legacy property-id for backwards compatibility */
+.property-id {
+    font-size: 0.75rem;
+    color: #72777d;
+    font-family: monospace;
+    font-weight: normal;
+}
+
+/* Property value section (right column) - compact design */
+.statement-value {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Statement main value - compact row layout */
+.statement-main-value {
+    flex: 1;
+    font-size: 0.875rem;
+    color: #222;
+    line-height: 1.4;
+}
+
+.value-display-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.value-qid-link {
+    color: #0645ad;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.value-qid-link:hover {
+    text-decoration: underline;
+}
+
+.value-qid-badge {
+    color: #0645ad;
+    text-decoration: none;
+    font-family: monospace;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.value-qid-badge:hover {
+    text-decoration: underline;
+}
+
+.value-label {
+    font-weight: 500;
+    color: #222;
+}
+
+.example-text {
+    color: #72777d;
+    font-style: italic;
+}
+
+.value-count-link {
+    color: #0645ad;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.value-count-link:hover {
+    text-decoration: underline;
+}
+
+/* Legacy statement value count for backwards compatibility */
+.statement-value-count {
+    font-size: 0.75rem;
+    color: #72777d;
+    margin-bottom: 0.5rem;
+}
+
+/* Statement actions - aligned to the right */
+.statement-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Wikidata-style buttons */
+.wikidata-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border: 1px solid #a2a9b1;
+    background-color: #f8f9fa;
+    color: #0645ad;
+    border-radius: 2px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.1s ease;
+}
+
+.wikidata-btn:hover {
+    background-color: #ffffff;
+    border-color: #72777d;
+}
+
+.wikidata-btn--reference {
+    color: #00af89;
+}
+
+.wikidata-btn--edit {
+    color: #0645ad;
+}
+
+/* Values Modal Styles */
+.values-modal-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.value-modal-item {
+    padding: 1rem;
+    border-bottom: 1px solid #eaecf0;
+    margin-bottom: 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.value-modal-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.value-item-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.value-content {
+    color: #222;
+    line-height: 1.4;
+}
+
+.value-link {
+    color: #0645ad;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.value-link:hover {
+    text-decoration: underline;
+}
+
+.no-values-message {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 2rem;
+}
+
+/* New Statement Modal */
+.new-statement-modal {
+    width: 500px;
+    max-width: 90vw;
+}
+
+.values-modal {
+    width: 600px;
+    max-width: 90vw;
+}
+
+.property-search-section,
+.value-section {
+    margin-bottom: 1.5rem;
+}
+
+.property-search-section {
+    position: relative;
+}
+
+.property-search-section label,
+.value-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.property-search-input,
+.value-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    font-size: 0.875rem;
+}
+
+.property-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #eaecf0;
+    border-top: none;
+    background-color: white;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.property-search-results:not(:empty) {
+    display: block;
+}
+
+.property-result-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid #eaecf0;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.property-result-item:hover {
+    background-color: #f8f9fa;
+}
+
+.property-result-item:last-child {
+    border-bottom: none;
+}
+
+.prop-compact {
+    display: inline;
+    word-wrap: break-word;
+}
+
+.prop-label {
+    font-weight: bold;
+    color: #222;
+}
+
+.prop-id-link {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #0645ad;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.prop-id-link:hover {
+    text-decoration: underline;
+}
+
+.prop-description {
+    color: #72777d;
+}
+
+/* Legacy classes for backwards compatibility */
+.prop-id {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #72777d;
+    font-weight: bold;
+}
+
+
+
+/* Unavailable properties */
+.unavailable-properties {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    border: 1px dashed #999;
+}
+
+.unavailable-properties h4 {
+    color: #666;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.unavailable-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.unavailable-property {
+    padding: 0.4rem 0.8rem;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.unavailable-property:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background-color: #f0f8ff;
+}
+
+/* Preview Section */
+.preview-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.preview-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.preview-container {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.preview-content {
+    margin: 0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #333;
+}
+
+/* Issues Section */
+.issues-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #fff8f8;
+    border: 1px solid var(--danger-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.issues-section h3 {
+    color: var(--danger-color);
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.issues-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.issue-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: white;
+    border: 1px solid #ffcdd2;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.issue-icon {
+    color: var(--danger-color);
+    font-size: 1.1rem;
+}
+
+.issue-text {
+    flex: 1;
+    color: #666;
+}
+
+.issue-action {
+    padding: 0.3rem 0.6rem;
+    background-color: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.issue-action:hover {
+    background-color: #c62828;
+}
+
+/* Placeholder styling */
+.designer-container .placeholder {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 2rem;
+}
+
+/* Modal Container Styles */
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 600px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8f9fa;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.close-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.modal-content {
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    background-color: #f8f9fa;
+}
+
+/* Reference Search Modal Styles */
+.reference-search-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.search-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.search-input-section label {
+    font-weight: 500;
+    color: #333;
+}
+
+.reference-search-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.reference-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.search-results-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.results-header {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.reference-search-results {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.search-placeholder {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 2rem;
+}
+
+.no-search-results {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 1.5rem;
+}
+
+.results-count {
+    padding: 0.75rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.reference-search-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: white;
+    transition: background-color 0.2s;
+}
+
+.reference-search-result:hover {
+    background-color: #f8f9fa;
+}
+
+.reference-search-result:last-child {
+    border-bottom: none;
+}
+
+.reference-search-result.already-added {
+    background-color: #e8f5e8;
+    border-left: 3px solid var(--success-color);
+}
+
+.reference-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.reference-info .reference-url {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    word-break: break-all;
+    font-size: 0.9rem;
+}
+
+.reference-info .reference-url:hover {
+    text-decoration: underline;
+}
+
+.reference-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.reference-type {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.reference-context {
+    font-size: 0.8rem;
+    color: #888;
+    font-style: italic;
+}
+
+.reference-actions {
+    display: flex;
+    align-items: center;
+    margin-left: 1rem;
+    flex-shrink: 0;
+}
+
+.reference-added-label {
+    color: var(--success-color);
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Scrollbar styling for search results */
+.reference-search-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.reference-search-results::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.reference-search-results::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.reference-search-results::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }

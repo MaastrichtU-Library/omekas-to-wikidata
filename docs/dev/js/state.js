@@ -8,6 +8,10 @@
 import { eventSystem } from './events.js';
 
 export function setupState() {
+    // Storage key for persistence
+    const STORAGE_KEY = 'omekaToWikidataState';
+    const STORAGE_VERSION = '1.0';
+    
     // Initial state
     const initialState = {
         currentStep: 1,
@@ -47,8 +51,179 @@ export function setupState() {
         exportTimestamp: null
     };
     
-    // Create a deep copy of the initial state to work with
+    // Check for persisted state but don't load automatically
     let state = JSON.parse(JSON.stringify(initialState));
+    
+    // Check if there's a saved session to offer restoration
+    checkAndOfferRestore();
+    
+    /**
+     * Check for saved session and offer to restore
+     */
+    function checkAndOfferRestore() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.version === STORAGE_VERSION) {
+                    // Format the timestamp for display
+                    const savedDate = new Date(parsed.timestamp);
+                    const dateStr = savedDate.toLocaleDateString();
+                    const timeStr = savedDate.toLocaleTimeString();
+                    
+                    // Check if there's meaningful data to restore
+                    const hasData = parsed.state.fetchedData || 
+                                  (parsed.state.mappings && parsed.state.mappings.mappedKeys && parsed.state.mappings.mappedKeys.length > 0) ||
+                                  parsed.state.reconciliationData;
+                    
+                    if (hasData) {
+                        // Use custom modal for the restore prompt
+                        setTimeout(() => {
+                            showRestoreModal(dateStr, timeStr, parsed.state);
+                        }, 500); // Small delay to ensure DOM is ready
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to check persisted state:', error);
+        }
+    }
+    
+    /**
+     * Load persisted state from localStorage
+     * @returns {Object|null} Loaded state or null if not found/invalid
+     */
+    function loadPersistedState() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.version === STORAGE_VERSION) {
+                    console.log('✅ Loaded persisted state from localStorage');
+                    // Preserve the last opened step from saved state
+                    return parsed.state;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load persisted state:', error);
+        }
+        return null;
+    }
+    
+    /**
+     * Show the restore session modal
+     */
+    function showRestoreModal(dateStr, timeStr, savedState) {
+        const modal = document.getElementById('restore-session-modal');
+        const dateEl = document.getElementById('session-date');
+        const timeEl = document.getElementById('session-time');
+        const summaryEl = document.getElementById('session-summary');
+        const restoreBtn = document.getElementById('restore-session-btn');
+        const freshBtn = document.getElementById('start-fresh-btn');
+        
+        if (!modal || !dateEl || !timeEl) return;
+        
+        // Set date and time
+        dateEl.textContent = dateStr;
+        timeEl.textContent = timeStr;
+        
+        // Create summary of saved data
+        const summary = [];
+        if (savedState.fetchedData) {
+            const itemCount = Array.isArray(savedState.fetchedData) ? savedState.fetchedData.length : 1;
+            summary.push(`• ${itemCount} item${itemCount > 1 ? 's' : ''} loaded from API`);
+        }
+        if (savedState.mappings && savedState.mappings.mappedKeys && savedState.mappings.mappedKeys.length > 0) {
+            summary.push(`• ${savedState.mappings.mappedKeys.length} properties mapped`);
+        }
+        if (savedState.reconciliationData && Object.keys(savedState.reconciliationData).length > 0) {
+            const reconciledCount = Object.keys(savedState.reconciliationData).length;
+            summary.push(`• ${reconciledCount} item${reconciledCount > 1 ? 's' : ''} with reconciliation data`);
+        }
+        if (savedState.references && savedState.references.length > 0) {
+            summary.push(`• ${savedState.references.length} reference${savedState.references.length > 1 ? 's' : ''} configured`);
+        }
+        
+        summaryEl.innerHTML = summary.length > 0 ? 
+            '<h4>Session includes:</h4>' + summary.join('<br>') : 
+            '';
+        
+        // Show modal
+        modal.style.display = 'flex';
+        
+        // Handle button clicks
+        const handleRestore = () => {
+            modal.style.display = 'none';
+            restorePersistedState();
+            cleanup();
+        };
+        
+        const handleFresh = () => {
+            modal.style.display = 'none';
+            console.log('User chose to start fresh');
+            clearPersistedState();
+            cleanup();
+        };
+        
+        const cleanup = () => {
+            restoreBtn.removeEventListener('click', handleRestore);
+            freshBtn.removeEventListener('click', handleFresh);
+        };
+        
+        restoreBtn.addEventListener('click', handleRestore);
+        freshBtn.addEventListener('click', handleFresh);
+    }
+    
+    /**
+     * Restore the persisted state
+     */
+    function restorePersistedState() {
+        const loadedState = loadPersistedState();
+        if (loadedState) {
+            const previousStep = state.currentStep;
+            state = loadedState;
+            
+            console.log(`🔄 Session restored - returning to step ${state.currentStep}`);
+            
+            // Notify all modules that state has been restored
+            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                path: 'entire-state',
+                oldValue: null,
+                newValue: state,
+                restored: true
+            });
+            
+            // Trigger step change event to initialize the current step properly
+            eventSystem.publish(eventSystem.Events.STEP_CHANGED, {
+                oldStep: 1,
+                newStep: state.currentStep
+            });
+            
+            // Show success message using the showMessage function if available
+            setTimeout(() => {
+                if (window.showMessage) {
+                    window.showMessage(`Previous session restored - returned to step ${state.currentStep}`, 'success');
+                }
+            }, 1000);
+        }
+    }
+    
+    /**
+     * Save current state to localStorage
+     */
+    function persistState() {
+        try {
+            const toStore = {
+                version: STORAGE_VERSION,
+                timestamp: new Date().toISOString(),
+                state: state
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+            console.log('💾 State persisted to localStorage');
+        } catch (error) {
+            console.error('Failed to persist state:', error);
+        }
+    }
     
     /**
      * Returns a deep copy of the current state
@@ -101,6 +276,9 @@ export function setupState() {
             oldValue,
             newValue: value
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -127,6 +305,9 @@ export function setupState() {
         const oldState = JSON.parse(JSON.stringify(state));
         state = JSON.parse(JSON.stringify(initialState));
         state.hasUnsavedChanges = false;
+        
+        // Clear persisted state as well
+        clearPersistedState();
         
         // Notify listeners of the state reset
         eventSystem.publish(eventSystem.Events.STATE_RESET, {
@@ -325,6 +506,209 @@ export function setupState() {
         });
     }
     
+    /**
+     * Updates all mapping categories atomically in a single operation
+     * @param {Array} nonLinked - Array of non-linked keys
+     * @param {Array} mapped - Array of mapped keys  
+     * @param {Array} ignored - Array of ignored keys
+     */
+    function updateMappings(nonLinked, mapped, ignored) {
+        const oldMappings = JSON.parse(JSON.stringify(state.mappings));
+        
+        state.mappings.nonLinkedKeys = nonLinked || [];
+        state.mappings.mappedKeys = mapped || [];
+        state.mappings.ignoredKeys = ignored || [];
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the mapping update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'mappings',
+            oldValue: oldMappings,
+            newValue: JSON.parse(JSON.stringify(state.mappings))
+        });
+    }
+    
+    /**
+     * Adds items to a specific mapping category
+     * @param {string} category - The category ('nonLinkedKeys', 'mappedKeys', or 'ignoredKeys')
+     * @param {Array|string} items - Items to add (can be array or single item)
+     */
+    function addToMappingCategory(category, items) {
+        if (!['nonLinkedKeys', 'mappedKeys', 'ignoredKeys'].includes(category)) {
+            console.error(`Invalid mapping category: ${category}`);
+            return;
+        }
+        
+        ensureMappingArrays();
+        
+        const itemsArray = Array.isArray(items) ? items : [items];
+        const oldValue = [...state.mappings[category]];
+        
+        // Add items that aren't already present
+        itemsArray.forEach(item => {
+            if (!state.mappings[category].includes(item)) {
+                state.mappings[category].push(item);
+            }
+        });
+        
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the category update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.${category}`,
+            oldValue,
+            newValue: [...state.mappings[category]]
+        });
+    }
+    
+    /**
+     * Removes items from a specific mapping category
+     * @param {string} category - The category ('nonLinkedKeys', 'mappedKeys', or 'ignoredKeys')
+     * @param {Array|string} items - Items to remove (can be array or single item)
+     */
+    function removeFromMappingCategory(category, items) {
+        if (!['nonLinkedKeys', 'mappedKeys', 'ignoredKeys'].includes(category)) {
+            console.error(`Invalid mapping category: ${category}`);
+            return;
+        }
+        
+        ensureMappingArrays();
+        
+        const itemsArray = Array.isArray(items) ? items : [items];
+        const oldValue = [...state.mappings[category]];
+        
+        // Remove items
+        itemsArray.forEach(item => {
+            const index = state.mappings[category].indexOf(item);
+            if (index > -1) {
+                state.mappings[category].splice(index, 1);
+            }
+        });
+        
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the category update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.${category}`,
+            oldValue,
+            newValue: [...state.mappings[category]]
+        });
+    }
+    
+    /**
+     * Ensures all mapping category arrays are initialized
+     */
+    function ensureMappingArrays() {
+        if (!state.mappings.nonLinkedKeys) {
+            state.mappings.nonLinkedKeys = [];
+        }
+        if (!state.mappings.mappedKeys) {
+            state.mappings.mappedKeys = [];
+        }
+        if (!state.mappings.ignoredKeys) {
+            state.mappings.ignoredKeys = [];
+        }
+    }
+    
+    /**
+     * Increments the reconciliation completed counter
+     */
+    function incrementReconciliationCompleted() {
+        const oldProgress = JSON.parse(JSON.stringify(state.reconciliationProgress));
+        state.reconciliationProgress.completed++;
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the progress update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'reconciliationProgress.completed',
+            oldValue: oldProgress.completed,
+            newValue: state.reconciliationProgress.completed
+        });
+    }
+    
+    /**
+     * Increments the reconciliation skipped counter (if we track skipped items)
+     */
+    function incrementReconciliationSkipped() {
+        // Initialize skipped counter if it doesn't exist
+        if (!state.reconciliationProgress.hasOwnProperty('skipped')) {
+            state.reconciliationProgress.skipped = 0;
+        }
+        
+        const oldSkipped = state.reconciliationProgress.skipped;
+        state.reconciliationProgress.skipped++;
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the skipped counter update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'reconciliationProgress.skipped',
+            oldValue: oldSkipped,
+            newValue: state.reconciliationProgress.skipped
+        });
+    }
+    
+    /**
+     * Sets the reconciliation progress values
+     * @param {number} completed - Number of completed reconciliations
+     * @param {number} total - Total number of items to reconcile
+     */
+    function setReconciliationProgress(completed, total) {
+        const oldProgress = JSON.parse(JSON.stringify(state.reconciliationProgress));
+        
+        state.reconciliationProgress.completed = completed || 0;
+        state.reconciliationProgress.total = total || 0;
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the progress update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'reconciliationProgress',
+            oldValue: oldProgress,
+            newValue: JSON.parse(JSON.stringify(state.reconciliationProgress))
+        });
+    }
+    
+    /**
+     * Loads mock data for testing purposes
+     * @param {Object} mockItems - Mock items data with items array
+     * @param {Object} mockMapping - Mock mapping data with mappings object
+     */
+    function loadMockData(mockItems, mockMapping) {
+        const oldState = JSON.parse(JSON.stringify(state));
+        
+        // Load mock items
+        if (mockItems && mockItems.items) {
+            state.fetchedData = mockItems.items;
+        }
+        
+        // Load mock mappings
+        if (mockMapping && mockMapping.mappings) {
+            state.mappings.mappedKeys = mockMapping.mappings.mappedKeys || [];
+            state.mappings.nonLinkedKeys = mockMapping.mappings.nonLinkedKeys || [];
+            state.mappings.ignoredKeys = mockMapping.mappings.ignoredKeys || [];
+        }
+        
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the mock data load
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'mockDataLoaded',
+            oldValue: null,
+            newValue: { mockItems, mockMapping }
+        });
+    }
+    
+    /**
+     * Clear persisted state from localStorage
+     */
+    function clearPersistedState() {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+            console.log('🗑️ Cleared persisted state from localStorage');
+        } catch (error) {
+            console.error('Failed to clear persisted state:', error);
+        }
+    }
+    
     // API for state management
     return {
         getState,
@@ -342,6 +726,20 @@ export function setupState() {
         exportState,
         importState,
         isTestMode,
-        setTestMode
+        setTestMode,
+        // Convenience methods for mappings
+        updateMappings,
+        addToMappingCategory,
+        removeFromMappingCategory,
+        ensureMappingArrays,
+        // Convenience methods for reconciliation progress
+        incrementReconciliationCompleted,
+        incrementReconciliationSkipped,
+        setReconciliationProgress,
+        // Utility methods
+        loadMockData,
+        // Persistence methods
+        clearPersistedState,
+        persistState
     };
 }
