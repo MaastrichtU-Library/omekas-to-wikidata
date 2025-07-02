@@ -3,6 +3,7 @@
  * Separates the content definitions from the modal UI functionality
  * @module ui/modal-content
  */
+import { createElement, createFileInput } from './components.js';
 
 /**
  * Returns the HTML content for the mapping modal
