@@ -51,8 +51,9 @@ gh issue list --state all --json number,title,body,state,labels,createdAt,update
 - Use arrow functions for callbacks
 - Use template literals instead of string concatenation
 - Use destructuring for objects and arrays
-- Use async/await for asynchronous operations
+- **ALWAYS use async/await for asynchronous operations** - never use `.then()` or raw Promises
 - Use optional chaining and nullish coalescing when appropriate
+- Wrap async operations in try/catch blocks for proper error handling
 
 ### HTML/CSS
 - Use semantic HTML elements
