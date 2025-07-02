@@ -1007,14 +1007,119 @@ export function setupDesignerStep(state) {
         }
     }
     
-    // Search for references in API data
+    // Search for references in API data with interactive modal
     function searchForReferences() {
-        const searchTerm = prompt('Search for IDs or URLs in the API data:', '');
-        if (!searchTerm) return;
+        showReferenceSearchModal();
+    }
+    
+    // Show interactive reference search modal
+    function showReferenceSearchModal() {
+        const modalContainer = document.getElementById('modal-container');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        const modalFooter = document.getElementById('modal-footer');
+        
+        if (!modalContainer || !modalTitle || !modalContent || !modalFooter) {
+            console.error('Modal elements not found');
+            return;
+        }
+        
+        // Set modal title
+        modalTitle.textContent = 'Search for References';
+        
+        // Create modal content
+        const searchContainer = createElement('div', {
+            className: 'reference-search-container'
+        });
+        
+        // Search input section
+        const searchInputSection = createElement('div', {
+            className: 'search-input-section'
+        });
+        
+        const searchLabel = createElement('label', {
+            htmlFor: 'reference-search-input'
+        }, 'Search for IDs or URLs in the API data:');
+        
+        const searchInput = createElement('input', {
+            type: 'text',
+            id: 'reference-search-input',
+            className: 'reference-search-input',
+            placeholder: 'Type to search...'
+        });
+        
+        searchInputSection.appendChild(searchLabel);
+        searchInputSection.appendChild(searchInput);
+        
+        // Results section
+        const resultsSection = createElement('div', {
+            className: 'search-results-section'
+        });
+        
+        const resultsHeader = createElement('div', {
+            className: 'results-header'
+        }, 'Search Results:');
+        
+        const resultsContainer = createElement('div', {
+            className: 'reference-search-results',
+            id: 'reference-search-results'
+        });
+        
+        // Initial placeholder
+        const placeholder = createElement('div', {
+            className: 'search-placeholder'
+        }, 'Start typing to search for references...');
+        resultsContainer.appendChild(placeholder);
+        
+        resultsSection.appendChild(resultsHeader);
+        resultsSection.appendChild(resultsContainer);
+        
+        searchContainer.appendChild(searchInputSection);
+        searchContainer.appendChild(resultsSection);
+        
+        // Set modal content
+        modalContent.innerHTML = '';
+        modalContent.appendChild(searchContainer);
+        
+        // Modal footer with close button
+        modalFooter.innerHTML = '';
+        const closeButton = createButton('Close', {
+            type: 'secondary',
+            onClick: () => closeModal()
+        });
+        modalFooter.appendChild(closeButton);
+        
+        // Show modal
+        modalContainer.style.display = 'flex';
+        
+        // Focus search input
+        searchInput.focus();
+        
+        // Add search functionality with debouncing
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                performReferenceSearch(e.target.value, resultsContainer);
+            }, 300);
+        });
+    }
+    
+    // Perform reference search and update results
+    function performReferenceSearch(searchTerm, resultsContainer) {
+        resultsContainer.innerHTML = '';
+        
+        if (!searchTerm || searchTerm.length < 2) {
+            const placeholder = createElement('div', {
+                className: 'search-placeholder'
+            }, 'Start typing to search for references...');
+            resultsContainer.appendChild(placeholder);
+            return;
+        }
         
         const fetchedData = state.getState().fetchedData || [];
         const currentReferences = state.getState().references || [];
-        const foundRefs = new Set();
+        const foundRefs = new Map();
         
         // Search through all items and properties
         fetchedData.forEach(item => {
@@ -1049,48 +1154,161 @@ export function setupDesignerStep(state) {
                         
                         if (urls) {
                             urls.forEach(url => {
-                                foundRefs.add({
-                                    url: url,
-                                    type: `Found in ${key}`,
-                                    autoDetected: false,
-                                    enabled: true,
-                                    source: `Item: ${item['o:title'] || 'Untitled'}`
-                                });
+                                const refKey = url;
+                                if (!foundRefs.has(refKey)) {
+                                    foundRefs.set(refKey, {
+                                        url: url,
+                                        type: `Found in ${key}`,
+                                        autoDetected: false,
+                                        enabled: true,
+                                        source: `Item: ${item['o:title'] || 'Untitled'}`,
+                                        context: searchValue.toString(),
+                                        property: key
+                                    });
+                                }
                             });
                         }
                         
                         // Also check if the whole value is a URL
                         if (searchValue.toString().startsWith('http')) {
-                            foundRefs.add({
-                                url: searchValue.toString(),
-                                type: `Found in ${key}`,
-                                autoDetected: false,
-                                enabled: true,
-                                source: `Item: ${item['o:title'] || 'Untitled'}`
-                            });
+                            const refKey = searchValue.toString();
+                            if (!foundRefs.has(refKey)) {
+                                foundRefs.set(refKey, {
+                                    url: searchValue.toString(),
+                                    type: `Found in ${key}`,
+                                    autoDetected: false,
+                                    enabled: true,
+                                    source: `Item: ${item['o:title'] || 'Untitled'}`,
+                                    context: searchValue.toString(),
+                                    property: key
+                                });
+                            }
                         }
                     }
                 });
             });
         });
         
-        // Add found references that aren't already in the list
-        let addedCount = 0;
+        if (foundRefs.size === 0) {
+            const noResults = createElement('div', {
+                className: 'no-search-results'
+            }, `No references found containing "${searchTerm}"`);
+            resultsContainer.appendChild(noResults);
+            return;
+        }
+        
+        // Display found references
+        const resultsCount = createElement('div', {
+            className: 'results-count'
+        }, `Found ${foundRefs.size} reference${foundRefs.size > 1 ? 's' : ''} containing "${searchTerm}"`);
+        resultsContainer.appendChild(resultsCount);
+        
         foundRefs.forEach(ref => {
-            const exists = currentReferences.some(r => r.url === ref.url);
-            if (!exists) {
-                currentReferences.push(ref);
-                addedCount++;
+            const isAlreadyAdded = currentReferences.some(r => r.url === ref.url);
+            
+            const refItem = createElement('div', {
+                className: `reference-search-result ${isAlreadyAdded ? 'already-added' : ''}`
+            });
+            
+            const refInfo = createElement('div', {
+                className: 'reference-info'
+            });
+            
+            const refUrl = createElement('a', {
+                className: 'reference-url',
+                href: ref.url,
+                target: '_blank'
+            }, ref.url);
+            
+            const refDetails = createElement('div', {
+                className: 'reference-details'
+            });
+            
+            const refType = createElement('div', {
+                className: 'reference-type'
+            }, `${ref.type} • ${ref.source}`);
+            
+            if (ref.context && ref.context !== ref.url) {
+                const refContext = createElement('div', {
+                    className: 'reference-context'
+                }, `Context: ${ref.context.length > 100 ? ref.context.substring(0, 100) + '...' : ref.context}`);
+                refDetails.appendChild(refContext);
             }
+            
+            refDetails.appendChild(refType);
+            refInfo.appendChild(refUrl);
+            refInfo.appendChild(refDetails);
+            
+            const refActions = createElement('div', {
+                className: 'reference-actions'
+            });
+            
+            if (isAlreadyAdded) {
+                const addedLabel = createElement('span', {
+                    className: 'reference-added-label'
+                }, '✓ Added');
+                refActions.appendChild(addedLabel);
+            } else {
+                const addButton = createButton('+ Add', {
+                    type: 'primary',
+                    onClick: () => addReferenceFromSearch(ref, refItem)
+                });
+                refActions.appendChild(addButton);
+            }
+            
+            refItem.appendChild(refInfo);
+            refItem.appendChild(refActions);
+            
+            resultsContainer.appendChild(refItem);
+        });
+    }
+    
+    // Add reference from search results
+    function addReferenceFromSearch(ref, refItem) {
+        const references = state.getState().references || [];
+        
+        // Check if already exists
+        if (references.some(r => r.url === ref.url)) {
+            showMessage('This reference already exists', 'warning');
+            return;
+        }
+        
+        // Add the reference
+        references.push({
+            url: ref.url,
+            type: ref.type,
+            autoDetected: false,
+            enabled: true,
+            source: ref.source
         });
         
-        if (addedCount > 0) {
-            state.updateState('references', currentReferences);
-            displayReferences();
-            updateProceedButton();
-            showMessage(`Found ${addedCount} new reference${addedCount > 1 ? 's' : ''} containing "${searchTerm}"`, 'success');
-        } else {
-            showMessage(`No new references found containing "${searchTerm}"`, 'info');
+        state.updateState('references', references);
+        displayReferences();
+        updateProceedButton();
+        
+        // Update the UI to show it's been added
+        refItem.classList.add('already-added');
+        const actionsDiv = refItem.querySelector('.reference-actions');
+        actionsDiv.innerHTML = '';
+        const addedLabel = createElement('span', {
+            className: 'reference-added-label'
+        }, '✓ Added');
+        actionsDiv.appendChild(addedLabel);
+        
+        showMessage('Reference added successfully', 'success');
+        
+        // Hide reference warning if it exists
+        const referenceWarning = document.getElementById('reference-warning');
+        if (referenceWarning) {
+            referenceWarning.style.display = 'none';
+        }
+    }
+    
+    // Close modal helper
+    function closeModal() {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) {
+            modalContainer.style.display = 'none';
         }
     }
     

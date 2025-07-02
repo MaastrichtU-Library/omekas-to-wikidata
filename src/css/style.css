@@ -3474,3 +3474,250 @@ main {
     font-style: italic;
     padding: 2rem;
 }
+
+/* Modal Container Styles */
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 600px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8f9fa;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.close-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.modal-content {
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    background-color: #f8f9fa;
+}
+
+/* Reference Search Modal Styles */
+.reference-search-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.search-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.search-input-section label {
+    font-weight: 500;
+    color: #333;
+}
+
+.reference-search-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.reference-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.search-results-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.results-header {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.reference-search-results {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.search-placeholder {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 2rem;
+}
+
+.no-search-results {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 1.5rem;
+}
+
+.results-count {
+    padding: 0.75rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.reference-search-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: white;
+    transition: background-color 0.2s;
+}
+
+.reference-search-result:hover {
+    background-color: #f8f9fa;
+}
+
+.reference-search-result:last-child {
+    border-bottom: none;
+}
+
+.reference-search-result.already-added {
+    background-color: #e8f5e8;
+    border-left: 3px solid var(--success-color);
+}
+
+.reference-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.reference-info .reference-url {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    word-break: break-all;
+    font-size: 0.9rem;
+}
+
+.reference-info .reference-url:hover {
+    text-decoration: underline;
+}
+
+.reference-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.reference-type {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.reference-context {
+    font-size: 0.8rem;
+    color: #888;
+    font-style: italic;
+}
+
+.reference-actions {
+    display: flex;
+    align-items: center;
+    margin-left: 1rem;
+    flex-shrink: 0;
+}
+
+.reference-added-label {
+    color: var(--success-color);
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Scrollbar styling for search results */
+.reference-search-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.reference-search-results::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.reference-search-results::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.reference-search-results::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
