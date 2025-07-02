@@ -67,7 +67,10 @@ export function getSaveProjectModalContent(state) {
         htmlFor: 'save-filename'
     }, 'File Name:');
 
-    const defaultFileName = `omeka-wikidata-project-${new Date().toISOString().slice(0, 10)}.json`;
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '-');
+    const defaultFileName = `omeka-wikidata-project-${dateStr}-${timeStr}.json`;
     const fileNameInput = createElement('input', {
         type: 'text',
         id: 'save-filename',

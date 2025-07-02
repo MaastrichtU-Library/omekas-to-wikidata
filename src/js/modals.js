@@ -121,12 +121,28 @@ export function setupModals(state) {
                     throw new Error('Invalid project file format');
                 }
                 
-                // Import state
+                // Import state - but use a modified approach to trigger proper navigation
+                const oldState = state.getState();
                 const success = state.importState(JSON.stringify(projectData));
                 
                 if (success) {
+                    // Trigger step navigation like session restore does
+                    // First, publish the STATE_CHANGED event with restored flag
+                    eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                        path: 'entire-state',
+                        oldValue: oldState,
+                        newValue: state.getState(),
+                        restored: true
+                    });
+                    
+                    // Then trigger step change event to initialize the current step properly
+                    eventSystem.publish(eventSystem.Events.STEP_CHANGED, {
+                        oldStep: oldState.currentStep,
+                        newStep: state.getState().currentStep
+                    });
+                    
                     modalUI.closeModal();
-                    showMessage('Project loaded successfully', 'success');
+                    showMessage(`Project loaded successfully - jumped to step ${state.getState().currentStep}`, 'success');
                 } else {
                     throw new Error('Failed to import project data');
                 }
