@@ -236,7 +236,7 @@ export function setupDesignerStep(state) {
             });
             
             // Try to auto-select a reasonable default (title-like fields)
-            const preferredKeys = ['o:title', 'dcterms:title', 'rdfs:label', 'schema:name', 'title'];
+            const preferredKeys = ['schema:name', 'o:title', 'dcterms:title', 'rdfs:label', 'title'];
             for (const preferredKey of preferredKeys) {
                 if (allKeys.has(preferredKey)) {
                     itemLabelSelector.value = preferredKey;
