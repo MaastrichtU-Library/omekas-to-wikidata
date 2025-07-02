@@ -557,21 +557,30 @@ export function setupDesignerStep(state) {
                 className: 'wikidata-statement'
             });
             
-            // Property label column (left side)
+            // Property label section - compact layout with label and P number on same line
             const propertyLabelSection = createElement('div', {
                 className: 'statement-property'
             });
             
-            const propertyLabel = createElement('div', {
+            const propertyHeaderRow = createElement('div', {
+                className: 'property-header-row'
+            });
+            
+            const propertyLabel = createElement('span', {
                 className: 'property-label'
             }, mapping.property.label);
             
-            const propertyIdBadge = createElement('div', {
-                className: 'property-id'
+            const propertyIdLink = createElement('a', {
+                href: `https://www.wikidata.org/entity/${mapping.property.id}`,
+                target: '_blank',
+                className: 'property-id-link'
             }, mapping.property.id);
             
-            propertyLabelSection.appendChild(propertyLabel);
-            propertyLabelSection.appendChild(propertyIdBadge);
+            propertyHeaderRow.appendChild(propertyLabel);
+            propertyHeaderRow.appendChild(createElement('span', {}, ' ('));
+            propertyHeaderRow.appendChild(propertyIdLink);
+            propertyHeaderRow.appendChild(createElement('span', {}, ')'));
+            propertyLabelSection.appendChild(propertyHeaderRow);
             
             // Property value column (right side)
             const propertyValueSection = createElement('div', {
@@ -643,11 +652,6 @@ export function setupDesignerStep(state) {
                 }
             }
             
-            // Create the main value display
-            const statementMainValue = createElement('div', {
-                className: 'statement-main-value'
-            }, reconciledDisplay || `Original: ${exampleValue}`);
-            
             // Calculate statistics for value count
             let itemsWithProperty = 0;
             
@@ -672,18 +676,109 @@ export function setupDesignerStep(state) {
                 });
             }
             
-            // Create value count indicator
-            const valueCount = createElement('div', {
-                className: 'statement-value-count'
-            }, specificItem ? 
-                (itemsWithProperty > 0 ? '1 value' : 'No value') : 
-                (itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : 'No items have this property')
-            );
+            // Create the compact value display with label, QID, 'example', and count
+            const statementMainValue = createElement('div', {
+                className: 'statement-main-value'
+            });
             
+            // Extract label and QID from reconciled data for compact display
+            let displayLabel = 'No value';
+            let displayQID = null;
+            
+            if (specificItem) {
+                const itemIndex = fetchedData.indexOf(specificItem);
+                const itemKey = `item-${itemIndex}`;
+                const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+                
+                if (reconciledData?.selectedMatch) {
+                    const match = reconciledData.selectedMatch;
+                    if (match.type === 'wikidata') {
+                        displayLabel = match.label;
+                        displayQID = match.id;
+                    } else {
+                        displayLabel = match.value || 'Custom value';
+                    }
+                } else if (specificItem[mapping.key]) {
+                    displayLabel = specificItem[mapping.key];
+                }
+            } else {
+                // For multi-item view, find first reconciled value
+                for (let i = 0; i < fetchedData.length; i++) {
+                    const item = fetchedData[i];
+                    const itemKey = `item-${i}`;
+                    const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+                    
+                    if (reconciledData?.selectedMatch) {
+                        const match = reconciledData.selectedMatch;
+                        if (match.type === 'wikidata') {
+                            displayLabel = match.label;
+                            displayQID = match.id;
+                        } else {
+                            displayLabel = match.value || 'Custom value';
+                        }
+                        break;
+                    }
+                }
+                
+                // If no reconciled values found, show original
+                if (displayLabel === 'No value') {
+                    for (let item of fetchedData) {
+                        if (item[mapping.key]) {
+                            displayLabel = item[mapping.key];
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Build the compact value display: label (QID if exists) example [count]
+            const valueRow = createElement('div', {
+                className: 'value-display-row'
+            });
+            
+            // Label (and QID if available)
+            if (displayQID) {
+                const labelLink = createElement('a', {
+                    href: `https://www.wikidata.org/entity/${displayQID}`,
+                    target: '_blank',
+                    className: 'value-qid-link'
+                }, displayLabel);
+                valueRow.appendChild(labelLink);
+                
+                const qidBadge = createElement('a', {
+                    href: `https://www.wikidata.org/entity/${displayQID}`,
+                    target: '_blank',
+                    className: 'value-qid-badge'
+                }, ` (${displayQID})`);
+                valueRow.appendChild(qidBadge);
+            } else {
+                const labelSpan = createElement('span', {
+                    className: 'value-label'
+                }, displayLabel);
+                valueRow.appendChild(labelSpan);
+            }
+            
+            // 'example' text
+            const exampleText = createElement('span', {
+                className: 'example-text'
+            }, ' example');
+            valueRow.appendChild(exampleText);
+            
+            // Value count (clickable to show modal)
+            const valueCountLink = createElement('a', {
+                href: '#',
+                className: 'value-count-link',
+                onClick: (e) => {
+                    e.preventDefault();
+                    showValuesModal(mapping, fetchedData, reconciliationData, specificItem);
+                }
+            }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
+            valueRow.appendChild(valueCountLink);
+            
+            statementMainValue.appendChild(valueRow);
             propertyValueSection.appendChild(statementMainValue);
-            propertyValueSection.appendChild(valueCount);
             
-            // Create actions section
+            // Create actions section - aligned to the right
             const statementActions = createElement('div', {
                 className: 'statement-actions'
             });
@@ -706,6 +801,126 @@ export function setupDesignerStep(state) {
         });
     }
     
+    // Show values modal when value count is clicked
+    async function showValuesModal(mapping, fetchedData, reconciliationData, specificItem) {
+        const { createModal } = await import('../ui/components.js');
+        
+        const modal = createModal({
+            title: `All values for ${mapping.property.label} (${mapping.property.id})`,
+            content: '',
+            onClose: () => modal.remove()
+        });
+        
+        const modalContent = modal.querySelector('.modal-content');
+        modalContent.innerHTML = '';
+        
+        // Create values list
+        const valuesList = createElement('div', {
+            className: 'values-modal-list'
+        });
+        
+        if (specificItem) {
+            // For specific item, show only that item's value
+            const itemIndex = fetchedData.indexOf(specificItem);
+            const itemKey = `item-${itemIndex}`;
+            const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+            
+            const valueItem = createElement('div', {
+                className: 'value-modal-item'
+            });
+            
+            const itemLabel = createElement('div', {
+                className: 'value-item-label'
+            }, `Item ${itemIndex + 1}`);
+            
+            let valueDisplay = 'No value';
+            if (reconciledData?.selectedMatch) {
+                const match = reconciledData.selectedMatch;
+                if (match.type === 'wikidata') {
+                    valueDisplay = createElement('a', {
+                        href: `https://www.wikidata.org/entity/${match.id}`,
+                        target: '_blank',
+                        className: 'value-link'
+                    }, `${match.label} (${match.id})`);
+                } else {
+                    valueDisplay = match.value || 'Custom value';
+                }
+            } else if (specificItem[mapping.key]) {
+                valueDisplay = `Original: ${specificItem[mapping.key]}`;
+            }
+            
+            const valueContent = createElement('div', {
+                className: 'value-content'
+            });
+            if (typeof valueDisplay === 'string') {
+                valueContent.textContent = valueDisplay;
+            } else {
+                valueContent.appendChild(valueDisplay);
+            }
+            
+            valueItem.appendChild(itemLabel);
+            valueItem.appendChild(valueContent);
+            valuesList.appendChild(valueItem);
+        } else {
+            // For multi-item view, show all items with values
+            fetchedData.forEach((item, index) => {
+                const itemKey = `item-${index}`;
+                const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+                const hasOriginalData = item[mapping.key] !== undefined && item[mapping.key] !== null;
+                
+                if (reconciledData || hasOriginalData) {
+                    const valueItem = createElement('div', {
+                        className: 'value-modal-item'
+                    });
+                    
+                    const itemLabel = createElement('div', {
+                        className: 'value-item-label'
+                    }, `Item ${index + 1}`);
+                    
+                    let valueDisplay = 'No value';
+                    if (reconciledData?.selectedMatch) {
+                        const match = reconciledData.selectedMatch;
+                        if (match.type === 'wikidata') {
+                            valueDisplay = createElement('a', {
+                                href: `https://www.wikidata.org/entity/${match.id}`,
+                                target: '_blank',
+                                className: 'value-link'
+                            }, `${match.label} (${match.id})`);
+                        } else {
+                            valueDisplay = match.value || 'Custom value';
+                        }
+                    } else if (item[mapping.key]) {
+                        valueDisplay = `Original: ${item[mapping.key]}`;
+                    }
+                    
+                    const valueContent = createElement('div', {
+                        className: 'value-content'
+                    });
+                    if (typeof valueDisplay === 'string') {
+                        valueContent.textContent = valueDisplay;
+                    } else {
+                        valueContent.appendChild(valueDisplay);
+                    }
+                    
+                    valueItem.appendChild(itemLabel);
+                    valueItem.appendChild(valueContent);
+                    valuesList.appendChild(valueItem);
+                }
+            });
+        }
+        
+        if (valuesList.children.length === 0) {
+            const noValues = createElement('div', {
+                className: 'no-values-message'
+            }, 'No values found for this property.');
+            valuesList.appendChild(noValues);
+        }
+        
+        modalContent.appendChild(valuesList);
+        document.body.appendChild(modal);
+        modal.classList.remove('hidden');
+    }
+
     // Auto-detect references
     function autoDetectReferences(showNotification = true) {
         const fetchedData = state.getState().fetchedData || [];

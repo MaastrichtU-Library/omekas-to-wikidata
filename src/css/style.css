@@ -3025,7 +3025,7 @@ main {
     background-color: #f8f9fa;
 }
 
-/* Property label section (left column) */
+/* Property label section (left column) - compact design */
 .statement-property {
     width: 200px;
     flex-shrink: 0;
@@ -3037,14 +3037,35 @@ main {
     justify-content: flex-start;
 }
 
+.property-header-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    line-height: 1.3;
+}
+
 .property-label {
     font-size: 0.875rem;
     color: #222;
-    line-height: 1.4;
-    margin-bottom: 0.25rem;
     font-weight: normal;
+    margin-right: 0.25rem;
 }
 
+.property-id-link {
+    font-size: 0.75rem;
+    color: #0645ad;
+    font-family: monospace;
+    font-weight: bold;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.property-id-link:hover {
+    text-decoration: underline;
+    color: #0b0080;
+}
+
+/* Legacy property-id for backwards compatibility */
 .property-id {
     font-size: 0.75rem;
     color: #72777d;
@@ -3052,35 +3073,86 @@ main {
     font-weight: normal;
 }
 
-/* Property value section (right column) */
+/* Property value section (right column) - compact design */
 .statement-value {
     flex: 1;
     padding: 0.75rem 1rem;
     display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: space-between;
 }
 
-/* Statement main value */
+/* Statement main value - compact row layout */
 .statement-main-value {
+    flex: 1;
     font-size: 0.875rem;
     color: #222;
     line-height: 1.4;
-    margin-bottom: 0.5rem;
 }
 
-/* Statement value count */
+.value-display-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.value-qid-link {
+    color: #0645ad;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.value-qid-link:hover {
+    text-decoration: underline;
+}
+
+.value-qid-badge {
+    color: #0645ad;
+    text-decoration: none;
+    font-family: monospace;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.value-qid-badge:hover {
+    text-decoration: underline;
+}
+
+.value-label {
+    font-weight: 500;
+    color: #222;
+}
+
+.example-text {
+    color: #72777d;
+    font-style: italic;
+}
+
+.value-count-link {
+    color: #0645ad;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.value-count-link:hover {
+    text-decoration: underline;
+}
+
+/* Legacy statement value count for backwards compatibility */
 .statement-value-count {
     font-size: 0.75rem;
     color: #72777d;
     margin-bottom: 0.5rem;
 }
 
-/* Statement actions */
+/* Statement actions - aligned to the right */
 .statement-actions {
     display: flex;
     gap: 0.5rem;
-    margin-top: auto;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 /* Wikidata-style buttons */
@@ -3109,9 +3181,62 @@ main {
     color: #0645ad;
 }
 
+/* Values Modal Styles */
+.values-modal-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.value-modal-item {
+    padding: 1rem;
+    border-bottom: 1px solid #eaecf0;
+    margin-bottom: 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.value-modal-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.value-item-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.value-content {
+    color: #222;
+    line-height: 1.4;
+}
+
+.value-link {
+    color: #0645ad;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.value-link:hover {
+    text-decoration: underline;
+}
+
+.no-values-message {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 2rem;
+}
+
 /* New Statement Modal */
 .new-statement-modal {
     width: 500px;
+    max-width: 90vw;
+}
+
+.values-modal {
+    width: 600px;
     max-width: 90vw;
 }
 
@@ -3181,7 +3306,7 @@ main {
 }
 
 .prop-label {
-    font-weight: 500;
+    font-weight: bold;
     color: #222;
 }
 
