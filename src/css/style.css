@@ -2924,17 +2924,6 @@ main {
     font-weight: 500;
 }
 
-.property-stats.reconciled {
-    color: var(--success-color);
-}
-
-.property-stats.partial {
-    color: #ff9800;
-}
-
-.property-stats.not-reconciled {
-    color: var(--danger-color);
-}
 
 .property-actions {
     display: flex;

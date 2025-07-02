@@ -551,26 +551,15 @@ export function setupDesignerStep(state) {
             let statsText = '';
             
             if (specificItem) {
-                if (itemsReconciled) {
-                    statsClass += ' reconciled';
-                    statsText = '✓ Reconciled';
-                } else if (itemsWithProperty) {
-                    statsClass += ' not-reconciled';
-                    statsText = '⚠️ Not reconciled';
+                if (itemsWithProperty > 0) {
+                    statsText = '1 data point';
                 } else {
                     statsText = 'No value';
                 }
             } else {
                 // Multi-item view
-                if (itemsReconciled === itemsWithProperty && itemsWithProperty > 0) {
-                    statsClass += ' reconciled';
-                    statsText = `✓ All ${itemsWithProperty} items reconciled`;
-                } else if (itemsReconciled > 0) {
-                    statsClass += ' partial';
-                    statsText = `${itemsReconciled}/${itemsWithProperty} reconciled`;
-                } else if (itemsWithProperty > 0) {
-                    statsClass += ' not-reconciled';
-                    statsText = `⚠️ 0/${itemsWithProperty} reconciled`;
+                if (itemsWithProperty > 0) {
+                    statsText = `${itemsWithProperty} data point${itemsWithProperty === 1 ? '' : 's'}`;
                 } else {
                     statsText = 'No items have this property';
                 }
