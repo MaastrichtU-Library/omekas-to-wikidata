@@ -90,6 +90,36 @@ gh issue list --state all --json number,title,body,state,labels,createdAt,update
   ```
 - **Benefits:** Consistent styling, centralized behavior, easier maintenance, better testing
 
+### State Management
+- **ALWAYS use convenience methods** from `src/js/state.js` for common operations
+- **NEVER use verbose `updateState` calls** when convenience methods exist  
+- **Available convenience methods:**
+  - `updateMappings(nonLinked, mapped, ignored)` - Atomic mapping category updates
+  - `addToMappingCategory(category, items)` / `removeFromMappingCategory(category, items)` - Category-specific operations
+  - `incrementReconciliationCompleted()` / `incrementReconciliationSkipped()` - Progress tracking
+  - `setReconciliationProgress(completed, total)` - Direct progress setting
+  - `ensureMappingArrays()` - Array initialization
+  - `loadMockData(mockItems, mockMapping)` - Testing data loader
+- **Import pattern:** All methods available from state instance passed to step modules
+- **Usage examples:**
+  ```javascript
+  // Instead of: 
+  state.updateState('mappings.nonLinkedKeys', nonLinked);
+  state.updateState('mappings.mappedKeys', mapped);
+  state.updateState('mappings.ignoredKeys', ignored);
+  
+  // Use: 
+  state.updateMappings(nonLinked, mapped, ignored);
+  
+  // Instead of:
+  const currentState = state.getState();
+  state.updateState('reconciliationProgress.completed', currentState.reconciliationProgress.completed + 1);
+  
+  // Use:
+  state.incrementReconciliationCompleted();
+  ```
+- **Benefits:** Atomic operations, cleaner code, consistent state changes, proper event notifications
+
 ## Testing
 - Test all new functionality in different browsers
 - Test error cases and edge conditions
