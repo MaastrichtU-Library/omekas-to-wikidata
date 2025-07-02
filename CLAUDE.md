@@ -66,6 +66,21 @@ gh issue list --state all --json number,title,body,state,labels,createdAt,update
 - Create modular components that can be reused
 - Separate concerns: data management, UI rendering, and application logic
 
+### UI Component Creation
+- **ALWAYS use the component factory system** from `src/js/ui/components.js`
+- **NEVER use `document.createElement()` directly** - use standardized factory functions instead
+- **Available factory functions:**
+  - `createElement(tag, attrs, content)` - Base element creation with attributes and content
+  - `createButton(text, options)` - Standardized buttons with consistent styling
+  - `createInput(type, options)` - Input elements with validation and options
+  - `createListItem(content, options)` - List items with click handlers and styling
+  - `createModal(options)` - Modal containers with overlay and close behavior
+  - `createFileInput(options)` - File inputs with accept types and change handlers
+  - `createDownloadLink(href, filename, options)` - Download anchors with cleanup
+  - `showMessage(message, type, duration)` - Toast notifications
+- **Import pattern:** `import { createElement, createButton } from '../ui/components.js';`
+- **Benefits:** Consistent styling, centralized behavior, easier maintenance, better testing
+
 ## Testing
 - Test all new functionality in different browsers
 - Test error cases and edge conditions
