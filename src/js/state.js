@@ -100,8 +100,7 @@ export function setupState() {
                 const parsed = JSON.parse(stored);
                 if (parsed.version === STORAGE_VERSION) {
                     console.log('✅ Loaded persisted state from localStorage');
-                    // Don't persist the current step on load - always start at step 1
-                    parsed.state.currentStep = 1;
+                    // Preserve the last opened step from saved state
                     return parsed.state;
                 }
             }
@@ -176,55 +175,15 @@ export function setupState() {
     }
     
     /**
-     * Determines the most appropriate step to navigate to based on the current state data
-     * @returns {number} The step number to navigate to (1-5)
-     */
-    function determineLastMeaningfulStep() {
-        // Step 5: Export - if we have quickStatements ready
-        if (state.quickStatements && state.quickStatements.length > 0) {
-            return 5;
-        }
-        
-        // Step 4: Designer - if we have references and designer data
-        if (state.references && state.references.length > 0 && 
-            state.designerData && state.designerData.length > 0) {
-            return 4;
-        }
-        
-        // Step 3: Reconciliation - if we have reconciliation data or completed reconciliation
-        if (state.reconciliationData && Object.keys(state.reconciliationData).length > 0) {
-            return 3;
-        }
-        
-        // Step 2: Mapping - if we have mapped keys
-        if (state.mappings && state.mappings.mappedKeys && state.mappings.mappedKeys.length > 0) {
-            return 2;
-        }
-        
-        // Step 1: Input - if we have fetched data
-        if (state.fetchedData) {
-            return 1;
-        }
-        
-        // Default to step 1 if no meaningful data is found
-        return 1;
-    }
-
-    /**
      * Restore the persisted state
      */
     function restorePersistedState() {
         const loadedState = loadPersistedState();
         if (loadedState) {
+            const previousStep = state.currentStep;
             state = loadedState;
             
-            // Determine the most appropriate step to navigate to
-            const targetStep = determineLastMeaningfulStep();
-            
-            // Update the current step to the determined target step
-            state.currentStep = targetStep;
-            
-            console.log(`🔄 Session restored - navigating to step ${targetStep} based on available data`);
+            console.log(`🔄 Session restored - returning to step ${state.currentStep}`);
             
             // Notify all modules that state has been restored
             eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
@@ -234,10 +193,16 @@ export function setupState() {
                 restored: true
             });
             
+            // Trigger step change event to initialize the current step properly
+            eventSystem.publish(eventSystem.Events.STEP_CHANGED, {
+                oldStep: 1,
+                newStep: state.currentStep
+            });
+            
             // Show success message using the showMessage function if available
             setTimeout(() => {
                 if (window.showMessage) {
-                    window.showMessage(`Previous session restored - jumped to step ${targetStep}`, 'success');
+                    window.showMessage(`Previous session restored - returned to step ${state.currentStep}`, 'success');
                 }
             }, 1000);
         }
