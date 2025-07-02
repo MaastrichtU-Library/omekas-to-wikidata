@@ -2999,7 +2999,7 @@ main {
 /* Add statement container */
 .add-statement-container {
     margin-top: 1rem;
-    text-align: center;
+    text-align: right;
 }
 
 /* Wikidata-style statements container */
@@ -3120,6 +3120,10 @@ main {
     margin-bottom: 1.5rem;
 }
 
+.property-search-section {
+    position: relative;
+}
+
 .property-search-section label,
 .value-section label {
     display: block;
@@ -3138,14 +3142,18 @@ main {
 }
 
 .property-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
     max-height: 200px;
     overflow-y: auto;
     border: 1px solid #eaecf0;
     border-top: none;
     background-color: white;
-    position: relative;
     z-index: 1000;
     display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .property-search-results:not(:empty) {

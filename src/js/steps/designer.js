@@ -652,11 +652,21 @@ export function setupDesignerStep(state) {
             let itemsWithProperty = 0;
             
             if (specificItem) {
-                itemsWithProperty = specificItem[mapping.key] ? 1 : 0;
+                // Check if it's a custom property or has reconciliation data
+                const itemIndex = fetchedData.indexOf(specificItem);
+                const itemKey = `item-${itemIndex}`;
+                const hasReconciliationData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+                const hasOriginalData = specificItem[mapping.key] !== undefined && specificItem[mapping.key] !== null;
+                
+                itemsWithProperty = (hasReconciliationData || hasOriginalData) ? 1 : 0;
             } else {
-                // Count items with property
-                fetchedData.forEach((item) => {
-                    if (item[mapping.key] !== undefined && item[mapping.key] !== null) {
+                // Count items with property (check both original data and reconciliation data)
+                fetchedData.forEach((item, index) => {
+                    const itemKey = `item-${index}`;
+                    const hasReconciliationData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+                    const hasOriginalData = item[mapping.key] !== undefined && item[mapping.key] !== null;
+                    
+                    if (hasReconciliationData || hasOriginalData) {
                         itemsWithProperty++;
                     }
                 });
