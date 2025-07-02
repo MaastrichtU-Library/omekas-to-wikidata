@@ -29,6 +29,12 @@ export function createElement(tag, attrs = {}, content = null) {
         } else if (key.startsWith('on') && typeof value === 'function') {
             const eventName = key.slice(2).toLowerCase();
             element.addEventListener(eventName, value);
+        } else if (key === 'disabled') {
+            // Handle disabled attribute properly - only set if true
+            if (value === true || value === 'true') {
+                element.setAttribute('disabled', 'disabled');
+            }
+            // If false, don't set the attribute at all
         } else {
             element.setAttribute(key, value);
         }
