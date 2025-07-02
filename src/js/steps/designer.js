@@ -359,20 +359,26 @@ export function setupDesignerStep(state) {
         const reconciliationData = currentState.reconciliationData || {};
         const fetchedData = currentState.fetchedData || [];
         
-        // Debug log to check if we have reconciliation data
-        console.log('Designer - Reconciliation data available:', Object.keys(reconciliationData).length > 0);
-        console.log('Designer - Mapped keys:', mappedKeys.length);
+        // Enhanced debug logging
+        console.log('=== DEBUG: displayProperties called ===');
+        console.log('Full state:', currentState);
+        console.log('Reconciliation data keys:', Object.keys(reconciliationData));
+        console.log('Reconciliation data:', reconciliationData);
+        console.log('Mapped keys:', mappedKeys);
+        console.log('Mapped keys length:', mappedKeys.length);
+        console.log('Fetched data length:', fetchedData.length);
         
         displayPropertiesSubset(mappedKeys, null, reconciliationData);
     }
     
     // Display a subset of properties
     function displayPropertiesSubset(mappedKeys, specificItem, reconciliationData) {
-        console.log('Designer - displayPropertiesSubset called with:', {
-            mappedKeysLength: mappedKeys?.length,
-            specificItem: !!specificItem,
-            reconciliationDataKeys: Object.keys(reconciliationData || {})
-        });
+        console.log('=== DEBUG: displayPropertiesSubset called ===');
+        console.log('mappedKeys:', mappedKeys);
+        console.log('mappedKeys length:', mappedKeys?.length);
+        console.log('specificItem:', specificItem);
+        console.log('reconciliationData keys:', Object.keys(reconciliationData || {}));
+        console.log('reconciliationData:', reconciliationData);
         
         // Get the properties list element fresh each time
         const propertiesList = document.getElementById('properties-list');
@@ -395,9 +401,25 @@ export function setupDesignerStep(state) {
         
         console.log('Designer - Processing', mappedKeys.length, 'mapped keys');
         
+        // Debug: Check structure of each mapping
+        mappedKeys.forEach((mapping, index) => {
+            console.log(`=== DEBUG: Mapping ${index} structure ===`);
+            console.log('Full mapping object:', mapping);
+            console.log('Has property field:', !!mapping.property);
+            console.log('Property field:', mapping.property);
+            console.log('Property ID:', mapping.property?.id);
+        });
+        
         const fetchedData = state.getState().fetchedData || [];
         
         mappedKeys.forEach(mapping => {
+            // Check if mapping has required property structure
+            if (!mapping.property || !mapping.property.id) {
+                console.error('=== DEBUG: Invalid mapping structure ===');
+                console.error('Mapping missing property.id:', mapping);
+                return; // Skip this mapping
+            }
+            
             const propertyItem = createElement('div', {
                 className: 'property-item'
             });
