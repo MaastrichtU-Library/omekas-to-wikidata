@@ -325,6 +325,197 @@ export function setupState() {
         });
     }
     
+    /**
+     * Updates all mapping categories atomically in a single operation
+     * @param {Array} nonLinked - Array of non-linked keys
+     * @param {Array} mapped - Array of mapped keys  
+     * @param {Array} ignored - Array of ignored keys
+     */
+    function updateMappings(nonLinked, mapped, ignored) {
+        const oldMappings = JSON.parse(JSON.stringify(state.mappings));
+        
+        state.mappings.nonLinkedKeys = nonLinked || [];
+        state.mappings.mappedKeys = mapped || [];
+        state.mappings.ignoredKeys = ignored || [];
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the mapping update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'mappings',
+            oldValue: oldMappings,
+            newValue: JSON.parse(JSON.stringify(state.mappings))
+        });
+    }
+    
+    /**
+     * Adds items to a specific mapping category
+     * @param {string} category - The category ('nonLinkedKeys', 'mappedKeys', or 'ignoredKeys')
+     * @param {Array|string} items - Items to add (can be array or single item)
+     */
+    function addToMappingCategory(category, items) {
+        if (!['nonLinkedKeys', 'mappedKeys', 'ignoredKeys'].includes(category)) {
+            console.error(`Invalid mapping category: ${category}`);
+            return;
+        }
+        
+        ensureMappingArrays();
+        
+        const itemsArray = Array.isArray(items) ? items : [items];
+        const oldValue = [...state.mappings[category]];
+        
+        // Add items that aren't already present
+        itemsArray.forEach(item => {
+            if (!state.mappings[category].includes(item)) {
+                state.mappings[category].push(item);
+            }
+        });
+        
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the category update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.${category}`,
+            oldValue,
+            newValue: [...state.mappings[category]]
+        });
+    }
+    
+    /**
+     * Removes items from a specific mapping category
+     * @param {string} category - The category ('nonLinkedKeys', 'mappedKeys', or 'ignoredKeys')
+     * @param {Array|string} items - Items to remove (can be array or single item)
+     */
+    function removeFromMappingCategory(category, items) {
+        if (!['nonLinkedKeys', 'mappedKeys', 'ignoredKeys'].includes(category)) {
+            console.error(`Invalid mapping category: ${category}`);
+            return;
+        }
+        
+        ensureMappingArrays();
+        
+        const itemsArray = Array.isArray(items) ? items : [items];
+        const oldValue = [...state.mappings[category]];
+        
+        // Remove items
+        itemsArray.forEach(item => {
+            const index = state.mappings[category].indexOf(item);
+            if (index > -1) {
+                state.mappings[category].splice(index, 1);
+            }
+        });
+        
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the category update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.${category}`,
+            oldValue,
+            newValue: [...state.mappings[category]]
+        });
+    }
+    
+    /**
+     * Ensures all mapping category arrays are initialized
+     */
+    function ensureMappingArrays() {
+        if (!state.mappings.nonLinkedKeys) {
+            state.mappings.nonLinkedKeys = [];
+        }
+        if (!state.mappings.mappedKeys) {
+            state.mappings.mappedKeys = [];
+        }
+        if (!state.mappings.ignoredKeys) {
+            state.mappings.ignoredKeys = [];
+        }
+    }
+    
+    /**
+     * Increments the reconciliation completed counter
+     */
+    function incrementReconciliationCompleted() {
+        const oldProgress = JSON.parse(JSON.stringify(state.reconciliationProgress));
+        state.reconciliationProgress.completed++;
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the progress update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'reconciliationProgress.completed',
+            oldValue: oldProgress.completed,
+            newValue: state.reconciliationProgress.completed
+        });
+    }
+    
+    /**
+     * Increments the reconciliation skipped counter (if we track skipped items)
+     */
+    function incrementReconciliationSkipped() {
+        // Initialize skipped counter if it doesn't exist
+        if (!state.reconciliationProgress.hasOwnProperty('skipped')) {
+            state.reconciliationProgress.skipped = 0;
+        }
+        
+        const oldSkipped = state.reconciliationProgress.skipped;
+        state.reconciliationProgress.skipped++;
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the skipped counter update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'reconciliationProgress.skipped',
+            oldValue: oldSkipped,
+            newValue: state.reconciliationProgress.skipped
+        });
+    }
+    
+    /**
+     * Sets the reconciliation progress values
+     * @param {number} completed - Number of completed reconciliations
+     * @param {number} total - Total number of items to reconcile
+     */
+    function setReconciliationProgress(completed, total) {
+        const oldProgress = JSON.parse(JSON.stringify(state.reconciliationProgress));
+        
+        state.reconciliationProgress.completed = completed || 0;
+        state.reconciliationProgress.total = total || 0;
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the progress update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'reconciliationProgress',
+            oldValue: oldProgress,
+            newValue: JSON.parse(JSON.stringify(state.reconciliationProgress))
+        });
+    }
+    
+    /**
+     * Loads mock data for testing purposes
+     * @param {Object} mockItems - Mock items data with items array
+     * @param {Object} mockMapping - Mock mapping data with mappings object
+     */
+    function loadMockData(mockItems, mockMapping) {
+        const oldState = JSON.parse(JSON.stringify(state));
+        
+        // Load mock items
+        if (mockItems && mockItems.items) {
+            state.fetchedData = mockItems.items;
+        }
+        
+        // Load mock mappings
+        if (mockMapping && mockMapping.mappings) {
+            state.mappings.mappedKeys = mockMapping.mappings.mappedKeys || [];
+            state.mappings.nonLinkedKeys = mockMapping.mappings.nonLinkedKeys || [];
+            state.mappings.ignoredKeys = mockMapping.mappings.ignoredKeys || [];
+        }
+        
+        state.hasUnsavedChanges = true;
+        
+        // Notify listeners of the mock data load
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'mockDataLoaded',
+            oldValue: null,
+            newValue: { mockItems, mockMapping }
+        });
+    }
+    
     // API for state management
     return {
         getState,
@@ -342,6 +533,17 @@ export function setupState() {
         exportState,
         importState,
         isTestMode,
-        setTestMode
+        setTestMode,
+        // Convenience methods for mappings
+        updateMappings,
+        addToMappingCategory,
+        removeFromMappingCategory,
+        ensureMappingArrays,
+        // Convenience methods for reconciliation progress
+        incrementReconciliationCompleted,
+        incrementReconciliationSkipped,
+        setReconciliationProgress,
+        // Utility methods
+        loadMockData
     };
 }

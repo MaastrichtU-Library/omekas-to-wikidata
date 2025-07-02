@@ -334,15 +334,7 @@ export function setupMappingStep(state) {
         console.log('Key analysis:', keyAnalysis);
         
         // Initialize arrays if they don't exist in state
-        if (!currentState.mappings.nonLinkedKeys) {
-            state.updateState('mappings.nonLinkedKeys', []);
-        }
-        if (!currentState.mappings.mappedKeys) {
-            state.updateState('mappings.mappedKeys', []);
-        }
-        if (!currentState.mappings.ignoredKeys) {
-            state.updateState('mappings.ignoredKeys', []);
-        }
+        state.ensureMappingArrays();
         
         // Get updated state after initialization
         const updatedState = state.getState();
@@ -386,14 +378,15 @@ export function setupMappingStep(state) {
         
         // Add ignored keys to ignored list
         const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...ignoredKeys];
-        state.updateState('mappings.ignoredKeys', currentIgnoredKeys);
         
         // Add regular keys to non-linked keys
         const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.filter(k => 
             !keyAnalysis.find(ka => ka.key === (k.key || k))
         );
         const allNonLinkedKeys = [...currentNonLinkedKeys, ...regularKeys];
-        state.updateState('mappings.nonLinkedKeys', allNonLinkedKeys);
+        
+        // Update all mappings atomically
+        state.updateMappings(allNonLinkedKeys, updatedState.mappings.mappedKeys, currentIgnoredKeys);
         
         // Get final state for UI update
         const finalState = state.getState();
@@ -1009,9 +1002,7 @@ export function setupMappingStep(state) {
         });
         
         // Update all categories
-        state.updateState('mappings.nonLinkedKeys', updatedNonLinkedKeys);
-        state.updateState('mappings.mappedKeys', updatedMappedKeys);
-        state.updateState('mappings.ignoredKeys', updatedIgnoredKeys);
+        state.updateMappings(updatedNonLinkedKeys, updatedMappedKeys, updatedIgnoredKeys);
         
         // Clear isNewlyMoved flag from all existing items to prevent old animations
         const clearAnimationFlag = (items) => items.map(item => {
@@ -1028,22 +1019,13 @@ export function setupMappingStep(state) {
         
         if (category === 'ignored') {
             const finalIgnoredKeys = [...cleanedIgnoredKeys, keyDataWithAnimation];
-            state.updateState('mappings.ignoredKeys', finalIgnoredKeys);
-            // Update other categories without animation
-            state.updateState('mappings.nonLinkedKeys', cleanedNonLinkedKeys);
-            state.updateState('mappings.mappedKeys', cleanedMappedKeys);
+            state.updateMappings(cleanedNonLinkedKeys, cleanedMappedKeys, finalIgnoredKeys);
         } else if (category === 'mapped') {
             const finalMappedKeys = [...cleanedMappedKeys, keyDataWithAnimation];
-            state.updateState('mappings.mappedKeys', finalMappedKeys);
-            // Update other categories without animation
-            state.updateState('mappings.nonLinkedKeys', cleanedNonLinkedKeys);
-            state.updateState('mappings.ignoredKeys', cleanedIgnoredKeys);
+            state.updateMappings(cleanedNonLinkedKeys, finalMappedKeys, cleanedIgnoredKeys);
         } else if (category === 'non-linked') {
             const finalNonLinkedKeys = [...cleanedNonLinkedKeys, keyDataWithAnimation];
-            state.updateState('mappings.nonLinkedKeys', finalNonLinkedKeys);
-            // Update other categories without animation
-            state.updateState('mappings.mappedKeys', cleanedMappedKeys);
-            state.updateState('mappings.ignoredKeys', cleanedIgnoredKeys);
+            state.updateMappings(finalNonLinkedKeys, cleanedMappedKeys, cleanedIgnoredKeys);
         }
         
         // Update UI
@@ -1176,9 +1158,7 @@ export function setupMappingStep(state) {
         const ignoredKeys = processKeys(mappingData.mappings.ignored || []);
         
         // Update state
-        state.updateState('mappings.mappedKeys', mappedKeys);
-        state.updateState('mappings.ignoredKeys', ignoredKeys);
-        state.updateState('mappings.nonLinkedKeys', []); // Clear non-linked keys
+        state.updateMappings([], mappedKeys, ignoredKeys); // Clear non-linked keys, load mapped and ignored
         
         // Update UI
         populateLists();

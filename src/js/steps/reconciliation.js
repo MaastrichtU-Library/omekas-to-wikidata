@@ -148,11 +148,7 @@ export function setupReconciliationStep(state) {
             // Initialize reconciliation progress
             const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
             console.log('✅ Total reconcilable cells:', totalCells);
-            state.updateState('reconciliationProgress', {
-                total: totalCells,
-                completed: 0,
-                skipped: 0
-            });
+            state.setReconciliationProgress(0, totalCells);
             
             // Initialize reconciliation data structure
             reconciliationData = {};
@@ -210,10 +206,7 @@ export function setupReconciliationStep(state) {
         const mockMapping = getMockMappingData();
         
         // Update state with mock data
-        state.updateState('fetchedData', mockItems.items);
-        state.updateState('mappings.mappedKeys', mockMapping.mappings.mappedKeys);
-        state.updateState('mappings.nonLinkedKeys', mockMapping.mappings.nonLinkedKeys);
-        state.updateState('mappings.ignoredKeys', mockMapping.mappings.ignoredKeys);
+        state.loadMockData(mockItems, mockMapping);
         
         console.log('🧪 Mock data loaded, calling initializeReconciliation()');
         
@@ -2381,8 +2374,7 @@ export function setupReconciliationStep(state) {
         updateCellDisplay(itemId, property, valueIndex, 'reconciled', reconciliation);
         
         // Update progress
-        const currentState = state.getState();
-        state.updateState('reconciliationProgress.completed', currentState.reconciliationProgress.completed + 1);
+        state.incrementReconciliationCompleted();
         updateProgressDisplay();
         
         // Store in context suggestions
@@ -2412,8 +2404,7 @@ export function setupReconciliationStep(state) {
         updateCellDisplay(itemId, property, valueIndex, 'skipped');
         
         // Update progress
-        const currentState = state.getState();
-        state.updateState('reconciliationProgress.skipped', currentState.reconciliationProgress.skipped + 1);
+        state.incrementReconciliationSkipped();
         updateProgressDisplay();
         
         // Update state
@@ -2442,8 +2433,7 @@ export function setupReconciliationStep(state) {
         updateCellDisplay(itemId, property, valueIndex, 'no-item');
         
         // Update progress (count as completed since it's a decision)
-        const currentState = state.getState();
-        state.updateState('reconciliationProgress.completed', currentState.reconciliationProgress.completed + 1);
+        state.incrementReconciliationCompleted();
         updateProgressDisplay();
         
         // Update state
