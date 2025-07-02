@@ -678,13 +678,7 @@ export function setupDesignerStep(state) {
                 onClick: () => addReferenceToProperty(mapping.property.id)
             });
             
-            const editBtn = createButton('Edit', {
-                className: 'wikidata-btn wikidata-btn--edit',
-                onClick: () => editPropertyValue(mapping)
-            });
-            
             statementActions.appendChild(addRefBtn);
-            statementActions.appendChild(editBtn);
             
             // Add actions to value section
             propertyValueSection.appendChild(statementActions);
@@ -711,6 +705,7 @@ export function setupDesignerStep(state) {
                     item['schema:sameAs'] : [item['schema:sameAs']];
                 
                 sameAsValues.forEach(value => {
+                    // Handle string values (simple format)
                     if (typeof value === 'string' && value.startsWith('http')) {
                         detectedRefs.add({
                             url: value,
@@ -718,6 +713,18 @@ export function setupDesignerStep(state) {
                             autoDetected: true,
                             enabled: true
                         });
+                    }
+                    // Handle object values (complex format with @id)
+                    else if (typeof value === 'object' && value !== null && value['@id']) {
+                        const url = value['@id'];
+                        if (typeof url === 'string' && url.startsWith('http')) {
+                            detectedRefs.add({
+                                url: url,
+                                type: value['o:label'] ? `sameAs (${value['o:label']})` : 'sameAs URL',
+                                autoDetected: true,
+                                enabled: true
+                            });
+                        }
                     }
                 });
             }
@@ -895,256 +902,6 @@ export function setupDesignerStep(state) {
     }
     
     // Edit property value
-    function editPropertyValue(mapping) {
-        const currentState = state.getState();
-        const fetchedData = currentState.fetchedData || [];
-        const reconciliationData = currentState.reconciliationData || {};
-        const exampleItemSelector = document.getElementById('example-item-selector');
-        const selectedValue = exampleItemSelector?.value;
-        
-        // Create modal for editing
-        const modal = createElement('div', {
-            className: 'modal-overlay active'
-        });
-        
-        const modalContent = createElement('div', {
-            className: 'modal property-edit-modal'
-        });
-        
-        const modalHeader = createElement('div', {
-            className: 'modal-header'
-        });
-        
-        const modalTitle = createElement('h3', {}, `Edit Property: ${mapping.property.label}`);
-        
-        const closeBtn = createButton('×', {
-            className: 'modal-close',
-            onClick: () => modal.remove()
-        });
-        
-        modalHeader.appendChild(modalTitle);
-        modalHeader.appendChild(closeBtn);
-        
-        const modalBody = createElement('div', {
-            className: 'modal-body'
-        });
-        
-        // Get all values for this property
-        const propertyValues = [];
-        
-        if (selectedValue === 'multi-item') {
-            // Get values from all items
-            fetchedData.forEach((item, index) => {
-                const itemKey = `item-${index}`;
-                const value = item[mapping.key];
-                const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
-                
-                if (value !== undefined && value !== null) {
-                    propertyValues.push({
-                        itemIndex: index,
-                        itemKey: itemKey,
-                        itemTitle: item['o:title'] || `Item ${index + 1}`,
-                        originalValue: value,
-                        reconciled: reconciledData
-                    });
-                }
-            });
-        } else {
-            // Get value from selected item
-            const itemIndex = parseInt(selectedValue);
-            const item = fetchedData[itemIndex];
-            const itemKey = `item-${itemIndex}`;
-            const value = item[mapping.key];
-            const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
-            
-            if (value !== undefined && value !== null) {
-                propertyValues.push({
-                    itemIndex: itemIndex,
-                    itemKey: itemKey,
-                    itemTitle: item['o:title'] || `Item ${itemIndex + 1}`,
-                    originalValue: value,
-                    reconciled: reconciledData
-                });
-            }
-        }
-        
-        // Display property values
-        const valuesContainer = createElement('div', {
-            className: 'property-values-container'
-        });
-        
-        propertyValues.forEach((pv, index) => {
-            const valueItem = createElement('div', {
-                className: 'property-value-item'
-            });
-            
-            const itemLabel = createElement('div', {
-                className: 'item-label'
-            }, pv.itemTitle);
-            
-            const originalValue = createElement('div', {
-                className: 'original-value'
-            }, `Original: ${Array.isArray(pv.originalValue) ? pv.originalValue[0]['@value'] || pv.originalValue[0] : pv.originalValue}`);
-            
-            const currentValue = createElement('div', {
-                className: 'current-value'
-            });
-            
-            if (pv.reconciled?.selectedMatch) {
-                const match = pv.reconciled.selectedMatch;
-                if (match.type === 'wikidata') {
-                    currentValue.textContent = `Current: ${match.label} (${match.id})`;
-                } else {
-                    currentValue.textContent = `Current: ${match.value}`;
-                }
-                currentValue.classList.add('reconciled');
-            } else {
-                currentValue.textContent = 'Not reconciled';
-                currentValue.classList.add('not-reconciled');
-            }
-            
-            const editBtn = createButton('Edit', {
-                className: 'edit-value-btn',
-                onClick: () => editSingleValue(pv, mapping)
-            });
-            
-            valueItem.appendChild(itemLabel);
-            valueItem.appendChild(originalValue);
-            valueItem.appendChild(currentValue);
-            valueItem.appendChild(editBtn);
-            
-            valuesContainer.appendChild(valueItem);
-        });
-        
-        modalBody.appendChild(valuesContainer);
-        
-        // Add universal update option if multi-item
-        if (selectedValue === 'multi-item' && propertyValues.length > 1) {
-            const universalSection = createElement('div', {
-                className: 'universal-update-section'
-            });
-            
-            const universalTitle = createElement('h4', {}, 'Universal Update');
-            const universalDesc = createElement('p', {}, 'Apply the same value to all items with this property');
-            
-            const universalBtn = createButton('Set Universal Value', {
-                className: 'button--primary',
-                onClick: () => setUniversalValue(mapping, propertyValues)
-            });
-            
-            universalSection.appendChild(universalTitle);
-            universalSection.appendChild(universalDesc);
-            universalSection.appendChild(universalBtn);
-            
-            modalBody.appendChild(universalSection);
-        }
-        
-        modalContent.appendChild(modalHeader);
-        modalContent.appendChild(modalBody);
-        modal.appendChild(modalContent);
-        
-        document.body.appendChild(modal);
-    }
-    
-    // Edit single property value
-    function editSingleValue(propertyValue, mapping) {
-        const newValue = prompt(`Enter new value for ${mapping.property.label}:`, 
-            propertyValue.reconciled?.selectedMatch?.label || 
-            propertyValue.reconciled?.selectedMatch?.value || 
-            (Array.isArray(propertyValue.originalValue) ? propertyValue.originalValue[0]['@value'] || propertyValue.originalValue[0] : propertyValue.originalValue)
-        );
-        
-        if (newValue === null) return;
-        
-        // Update reconciliation data
-        const reconciliationData = state.getState().reconciliationData || {};
-        
-        if (!reconciliationData[propertyValue.itemKey]) {
-            reconciliationData[propertyValue.itemKey] = { 
-                originalData: state.getState().fetchedData[propertyValue.itemIndex],
-                properties: {} 
-            };
-        }
-        
-        if (!reconciliationData[propertyValue.itemKey].properties[mapping.key]) {
-            reconciliationData[propertyValue.itemKey].properties[mapping.key] = { 
-                originalValues: [propertyValue.originalValue],
-                reconciled: [] 
-            };
-        }
-        
-        reconciliationData[propertyValue.itemKey].properties[mapping.key].reconciled[0] = {
-            status: 'reconciled',
-            selectedMatch: {
-                type: 'custom',
-                value: newValue,
-                datatype: 'string'
-            },
-            confidence: 100
-        };
-        
-        state.updateState('reconciliationData', reconciliationData);
-        
-        // Refresh displays
-        displayProperties();
-        updatePreview();
-        
-        // Close modal
-        document.querySelector('.modal-overlay')?.remove();
-        
-        showMessage(`Updated ${mapping.property.label} for ${propertyValue.itemTitle}`, 'success');
-    }
-    
-    // Set universal value for all items
-    function setUniversalValue(mapping, propertyValues) {
-        const universalValue = prompt(`Enter universal value for ${mapping.property.label} (will apply to all ${propertyValues.length} items):`);
-        
-        if (universalValue === null) return;
-        
-        // Update reconciliation data for all items
-        const reconciliationData = state.getState().reconciliationData || {};
-        
-        propertyValues.forEach(pv => {
-            if (!reconciliationData[pv.itemKey]) {
-                reconciliationData[pv.itemKey] = { 
-                    originalData: state.getState().fetchedData[pv.itemIndex],
-                    properties: {} 
-                };
-            }
-            
-            if (!reconciliationData[pv.itemKey].properties[mapping.key]) {
-                reconciliationData[pv.itemKey].properties[mapping.key] = { 
-                    originalValues: [pv.originalValue],
-                    reconciled: [] 
-                };
-            }
-            
-            reconciliationData[pv.itemKey].properties[mapping.key].reconciled[0] = {
-                status: 'reconciled',
-                selectedMatch: {
-                    type: 'custom',
-                    value: universalValue,
-                    datatype: 'string'
-                },
-                confidence: 100
-            };
-        });
-        
-        state.updateState('reconciliationData', reconciliationData);
-        
-        // Update reconciliation progress
-        state.updateState('reconciliationProgress.completed', 
-            state.getState().reconciliationProgress.completed + propertyValues.length);
-        
-        // Refresh displays
-        displayProperties();
-        updatePreview();
-        
-        // Close modal
-        document.querySelector('.modal-overlay')?.remove();
-        
-        showMessage(`Updated ${mapping.property.label} for ${propertyValues.length} items`, 'success');
-    }
     
     // Check for issues
     function checkForIssues() {
