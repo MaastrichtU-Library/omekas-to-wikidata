@@ -4,6 +4,8 @@
 import { createElement, createButton, showMessage } from '../ui/components.js';
 
 export function setupDesignerStep(state) {
+    console.log('🎨 Designer - setupDesignerStep called');
+    
     // Get DOM elements with correct IDs
     const exampleItemSelector = document.getElementById('example-item-selector');
     const referencesList = document.getElementById('references-list');
@@ -13,6 +15,14 @@ export function setupDesignerStep(state) {
     const designerPreview = document.getElementById('designer-preview');
     const issuesList = document.getElementById('issues-list');
     const referenceWarning = document.getElementById('reference-warning');
+    
+    console.log('Designer - DOM elements found:', {
+        exampleItemSelector: !!exampleItemSelector,
+        referencesList: !!referencesList,
+        propertiesList: !!propertiesList,
+        unavailableProperties: !!unavailableProperties,
+        designerPreview: !!designerPreview
+    });
     
     // Buttons
     const autoDetectReferencesBtn = document.getElementById('auto-detect-references');
@@ -36,6 +46,18 @@ export function setupDesignerStep(state) {
         document.getElementById('proceed-to-designer')?.addEventListener('click', () => {
             initializeDesigner();
         });
+    });
+    
+    // Listen for step change events
+    window.addEventListener('STEP_CHANGED', (event) => {
+        console.log('Designer - STEP_CHANGED event received:', event.detail);
+        if (event.detail.newStep === 4) {
+            console.log('Designer - Initializing designer for step 4');
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                initializeDesigner();
+            }, 100);
+        }
     });
     
     // Event listeners
@@ -71,6 +93,7 @@ export function setupDesignerStep(state) {
     
     // Initialize the designer
     function initializeDesigner() {
+        console.log('🎨 Designer - initializeDesigner() called');
         const currentState = state.getState();
         
         // Debug logging to understand the state
@@ -78,13 +101,18 @@ export function setupDesignerStep(state) {
         console.log('Designer - API data type:', typeof currentState.fetchedData);
         console.log('Designer - API data:', currentState.fetchedData);
         console.log('Designer - Reconciliation data:', currentState.reconciliationData);
+        console.log('Designer - Mappings:', currentState.mappings);
+        console.log('Designer - Mapped keys:', currentState.mappings?.mappedKeys);
         
         // Check if we have completed reconciliation
         const reconciliationData = currentState.reconciliationData;
         if (!reconciliationData || Object.keys(reconciliationData).length === 0) {
+            console.error('Designer - No reconciliation data found!');
             showMessage('Please complete the reconciliation step first.', 'warning');
             return;
         }
+        
+        console.log('Designer - Reconciliation data found, proceeding with initialization');
         
         // Initialize state structures if needed
         if (!state.getState().references) {
@@ -96,11 +124,17 @@ export function setupDesignerStep(state) {
         }
         
         // Populate components
+        console.log('Designer - Calling populateItemSelector()');
         populateItemSelector();
+        console.log('Designer - Calling displayReferences()');
         displayReferences();
+        console.log('Designer - Calling displayProperties()');
         displayProperties();
+        console.log('Designer - Calling checkForIssues()');
         checkForIssues();
+        console.log('Designer - Calling updatePreview()');
         updatePreview();
+        console.log('Designer - Calling updateProceedButton()');
         updateProceedButton();
         
         // Try to auto-detect references on init
@@ -109,7 +143,11 @@ export function setupDesignerStep(state) {
     
     // Populate the item selector dropdown
     function populateItemSelector() {
-        if (!exampleItemSelector) return;
+        const exampleItemSelector = document.getElementById('example-item-selector');
+        if (!exampleItemSelector) {
+            console.error('Designer - exampleItemSelector not found!');
+            return;
+        }
         
         const currentState = state.getState();
         const fetchedData = currentState.fetchedData;
@@ -136,11 +174,17 @@ export function setupDesignerStep(state) {
     
     // Handle item selection change
     function handleItemSelection() {
+        const exampleItemSelector = document.getElementById('example-item-selector');
+        if (!exampleItemSelector) return;
+        
         const selectedValue = exampleItemSelector.value;
         
         if (selectedValue === 'multi-item') {
             // Show all properties
-            unavailableProperties.style.display = 'none';
+            const unavailableProperties = document.getElementById('unavailable-properties');
+            if (unavailableProperties) {
+                unavailableProperties.style.display = 'none';
+            }
             displayProperties();
         } else {
             // Show properties for specific item
@@ -185,8 +229,15 @@ export function setupDesignerStep(state) {
         
         // Display unavailable properties
         if (missingProperties.length > 0) {
-            unavailableProperties.style.display = 'block';
-            unavailableList.innerHTML = '';
+            const unavailableProperties = document.getElementById('unavailable-properties');
+            const unavailableList = document.getElementById('unavailable-list');
+            
+            if (unavailableProperties) {
+                unavailableProperties.style.display = 'block';
+            }
+            
+            if (unavailableList) {
+                unavailableList.innerHTML = '';
             
             missingProperties.forEach(mapping => {
                 const propItem = createElement('div', {
@@ -195,8 +246,12 @@ export function setupDesignerStep(state) {
                 }, `${mapping.property.label} (${mapping.property.id})`);
                 unavailableList.appendChild(propItem);
             });
+            }
         } else {
-            unavailableProperties.style.display = 'none';
+            const unavailableProperties = document.getElementById('unavailable-properties');
+            if (unavailableProperties) {
+                unavailableProperties.style.display = 'none';
+            }
         }
     }
     
@@ -208,8 +263,11 @@ export function setupDesignerStep(state) {
             if (item[key] !== undefined && item[key] !== null) {
                 // Select this item in the dropdown
                 const itemId = item['o:id'] || fetchedData.indexOf(item);
-                exampleItemSelector.value = itemId.toString();
-                handleItemSelection();
+                const exampleItemSelector = document.getElementById('example-item-selector');
+                if (exampleItemSelector) {
+                    exampleItemSelector.value = itemId.toString();
+                    handleItemSelection();
+                }
                 break;
             }
         }
@@ -217,7 +275,11 @@ export function setupDesignerStep(state) {
     
     // Display references
     function displayReferences() {
-        if (!referencesList) return;
+        const referencesList = document.getElementById('references-list');
+        if (!referencesList) {
+            console.error('Designer - referencesList not found!');
+            return;
+        }
         
         const references = state.getState().references || [];
         
@@ -299,17 +361,32 @@ export function setupDesignerStep(state) {
     
     // Display a subset of properties
     function displayPropertiesSubset(mappedKeys, specificItem, reconciliationData) {
-        if (!propertiesList) return;
+        console.log('Designer - displayPropertiesSubset called with:', {
+            mappedKeysLength: mappedKeys?.length,
+            specificItem: !!specificItem,
+            reconciliationDataKeys: Object.keys(reconciliationData || {})
+        });
+        
+        // Get the properties list element fresh each time
+        const propertiesList = document.getElementById('properties-list');
+        
+        if (!propertiesList) {
+            console.error('Designer - propertiesList element not found!');
+            return;
+        }
         
         propertiesList.innerHTML = '';
         
         if (!mappedKeys || mappedKeys.length === 0) {
+            console.warn('Designer - No mapped keys found, showing placeholder');
             const placeholder = createElement('div', {
                 className: 'placeholder'
             }, 'Properties will appear here after reconciliation');
             propertiesList.appendChild(placeholder);
             return;
         }
+        
+        console.log('Designer - Processing', mappedKeys.length, 'mapped keys');
         
         const fetchedData = state.getState().fetchedData || [];
         
@@ -544,10 +621,13 @@ export function setupDesignerStep(state) {
         }
         
         // Show warning if no references found at all
-        if (currentReferences.length === 0) {
-            referenceWarning.style.display = 'block';
-        } else {
-            referenceWarning.style.display = 'none';
+        const referenceWarning = document.getElementById('reference-warning');
+        if (referenceWarning) {
+            if (currentReferences.length === 0) {
+                referenceWarning.style.display = 'block';
+            } else {
+                referenceWarning.style.display = 'none';
+            }
         }
     }
     
@@ -582,7 +662,11 @@ export function setupDesignerStep(state) {
         state.updateState('references', references);
         displayReferences();
         updateProceedButton();
-        referenceWarning.style.display = 'none';
+        
+        const referenceWarning = document.getElementById('reference-warning');
+        if (referenceWarning) {
+            referenceWarning.style.display = 'none';
+        }
         
         showMessage('Reference added successfully', 'success');
     }
@@ -599,7 +683,11 @@ export function setupDesignerStep(state) {
     
     // Check for issues
     function checkForIssues() {
-        if (!issuesList) return;
+        const issuesList = document.getElementById('issues-list');
+        if (!issuesList) {
+            console.error('Designer - issuesList not found!');
+            return;
+        }
         
         const issues = [];
         const currentState = state.getState();
@@ -668,13 +756,18 @@ export function setupDesignerStep(state) {
     
     // Update preview
     function updatePreview() {
-        if (!designerPreview) return;
+        const designerPreview = document.getElementById('designer-preview');
+        if (!designerPreview) {
+            console.error('Designer - designerPreview not found!');
+            return;
+        }
         
         const currentState = state.getState();
         const references = currentState.references || [];
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const reconciliationData = currentState.reconciliationData || {};
         const fetchedData = currentState.fetchedData || [];
+        const exampleItemSelector = document.getElementById('example-item-selector');
         const selectedItemValue = exampleItemSelector?.value;
         
         // Generate preview content
@@ -771,7 +864,11 @@ export function setupDesignerStep(state) {
     
     // Update proceed button state
     function updateProceedButton() {
-        if (!proceedToExportBtn) return;
+        const proceedToExportBtn = document.getElementById('proceed-to-export');
+        if (!proceedToExportBtn) {
+            console.error('Designer - proceedToExportBtn not found!');
+            return;
+        }
         
         const references = state.getState().references || [];
         const enabledReferences = references.filter(r => r.enabled);
