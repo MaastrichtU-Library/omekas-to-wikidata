@@ -995,9 +995,13 @@ export function setupDesignerStep(state) {
     
     // Search for properties
     function searchProperties(query, resultsContainer) {
+        console.log('Searching for properties with query:', query);
         resultsContainer.innerHTML = '';
         
-        if (!query || query.length < 2) return;
+        if (!query || query.length < 2) {
+            console.log('Query too short, hiding results');
+            return;
+        }
         
         // Simple property search - in a real implementation, this would search Wikidata
         const commonProperties = [
@@ -1041,6 +1045,8 @@ export function setupDesignerStep(state) {
             
             resultsContainer.appendChild(resultItem);
         });
+        
+        console.log('Added', filteredProperties.length, 'results to container');
     }
     
     // Select a property

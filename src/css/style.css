@@ -2996,16 +2996,10 @@ main {
     padding-bottom: 0.5rem;
 }
 
-/* Statements header */
-.statements-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.statements-header h4 {
-    margin: 0;
+/* Add statement container */
+.add-statement-container {
+    margin-top: 1rem;
+    text-align: center;
 }
 
 /* Wikidata-style statements container */
@@ -3149,6 +3143,13 @@ main {
     border: 1px solid #eaecf0;
     border-top: none;
     background-color: white;
+    position: relative;
+    z-index: 1000;
+    display: none;
+}
+
+.property-search-results:not(:empty) {
+    display: block;
 }
 
 .property-result-item {
