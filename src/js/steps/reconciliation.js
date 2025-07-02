@@ -8,6 +8,7 @@ import { setupModalUI } from '../ui/modal-ui.js';
 import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes, setupDynamicDatePrecision, standardizeDateInput } from '../utils/property-types.js';
 import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
+import { createElement } from '../ui/components.js';
 
 export function setupReconciliationStep(state) {
     console.log('🔧 Setting up ReconciliationStep module');
@@ -281,18 +282,18 @@ export function setupReconciliationStep(state) {
             propertyHeaders.innerHTML = '';
             
             // Add item header
-            const itemHeader = document.createElement('th');
-            itemHeader.textContent = 'Item';
-            itemHeader.className = 'item-header';
+            const itemHeader = createElement('th', {
+                className: 'item-header'
+            }, 'Item');
             propertyHeaders.appendChild(itemHeader);
             
             // Add property headers
             mappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                const th = document.createElement('th');
-                th.textContent = keyName;
-                th.className = 'property-header';
-                th.dataset.property = keyName;
+                const th = createElement('th', {
+                    className: 'property-header',
+                    dataset: { property: keyName }
+                }, keyName);
                 propertyHeaders.appendChild(th);
             });
         }
@@ -304,15 +305,16 @@ export function setupReconciliationStep(state) {
             
             data.forEach((item, index) => {
                 const itemId = `item-${index}`;
-                const tr = document.createElement('tr');
-                tr.id = `row-${itemId}`;
-                tr.className = 'reconciliation-row';
+                const tr = createElement('tr', {
+                    id: `row-${itemId}`,
+                    className: 'reconciliation-row'
+                });
                 
                 // Add item cell
-                const itemCell = document.createElement('td');
-                itemCell.className = 'item-cell';
                 const itemTitle = item['o:title'] || item['title'] || `Item ${index + 1}`;
-                itemCell.textContent = itemTitle;
+                const itemCell = createElement('td', {
+                    className: 'item-cell'
+                }, itemTitle);
                 tr.appendChild(itemCell);
                 
                 // Add property cells
@@ -322,9 +324,9 @@ export function setupReconciliationStep(state) {
                     
                     if (values.length === 0) {
                         // Empty cell
-                        const td = document.createElement('td');
-                        td.className = 'property-cell empty-cell';
-                        td.textContent = '—';
+                        const td = createElement('td', {
+                            className: 'property-cell empty-cell'
+                        }, '—');
                         tr.appendChild(td);
                     } else if (values.length === 1) {
                         // Single value cell
@@ -332,10 +334,13 @@ export function setupReconciliationStep(state) {
                         tr.appendChild(td);
                     } else {
                         // Multiple values cell
-                        const td = document.createElement('td');
-                        td.className = 'property-cell multi-value-cell';
-                        td.dataset.itemId = itemId;
-                        td.dataset.property = keyName;
+                        const td = createElement('td', {
+                            className: 'property-cell multi-value-cell',
+                            dataset: {
+                                itemId: itemId,
+                                property: keyName
+                            }
+                        });
                         
                         values.forEach((value, valueIndex) => {
                             const valueDiv = createValueElement(itemId, keyName, valueIndex, value);
@@ -763,11 +768,14 @@ export function setupReconciliationStep(state) {
      * Create a property cell for the reconciliation table
      */
     function createPropertyCell(itemId, property, valueIndex, value) {
-        const td = document.createElement('td');
-        td.className = 'property-cell single-value-cell';
-        td.dataset.itemId = itemId;
-        td.dataset.property = property;
-        td.dataset.valueIndex = valueIndex;
+        const td = createElement('td', {
+            className: 'property-cell single-value-cell',
+            dataset: {
+                itemId: itemId,
+                property: property,
+                valueIndex: valueIndex
+            }
+        });
         
         const valueDiv = createValueElement(itemId, property, valueIndex, value);
         td.appendChild(valueDiv);
@@ -779,17 +787,18 @@ export function setupReconciliationStep(state) {
      * Create a value element within a property cell
      */
     function createValueElement(itemId, property, valueIndex, value) {
-        const valueDiv = document.createElement('div');
-        valueDiv.className = 'property-value';
-        valueDiv.dataset.status = 'pending';
+        const valueDiv = createElement('div', {
+            className: 'property-value',
+            dataset: { status: 'pending' }
+        });
         
-        const textSpan = document.createElement('span');
-        textSpan.className = 'value-text';
-        textSpan.textContent = value || 'Empty value';
+        const textSpan = createElement('span', {
+            className: 'value-text'
+        }, value || 'Empty value');
         
-        const statusSpan = document.createElement('span');
-        statusSpan.className = 'value-status';
-        statusSpan.textContent = 'Click to reconcile';
+        const statusSpan = createElement('span', {
+            className: 'value-status'
+        }, 'Click to reconcile');
         
         valueDiv.appendChild(textSpan);
         valueDiv.appendChild(statusSpan);
@@ -1423,7 +1432,7 @@ export function setupReconciliationStep(state) {
         if (text === undefined || text === null) {
             return '';
         }
-        const div = document.createElement('div');
+        const div = createElement('div');
         div.textContent = String(text);
         return div.innerHTML;
     }
