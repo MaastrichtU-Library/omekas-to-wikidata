@@ -606,7 +606,6 @@ export function setupDynamicDatePrecision(container) {
         if (datePickerBtn && datePicker) {
             datePickerBtn.addEventListener('click', function() {
                 datePicker.style.display = 'block';
-                datePicker.focus();
                 datePicker.click();
             });
             
@@ -618,11 +617,6 @@ export function setupDynamicDatePrecision(container) {
                 this.style.display = 'none';
             });
             
-            datePicker.addEventListener('blur', function() {
-                setTimeout(() => {
-                    this.style.display = 'none';
-                }, 200);
-            });
         }
         
         // Initialize precision on page load if there's already a value

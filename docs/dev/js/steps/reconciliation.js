@@ -571,11 +571,13 @@ export function setupReconciliationStep(state) {
                                 result.bestMatch
                             );
                         } else {
-                            // No matches found - set to pending
+                            // No matches found - store empty matches array and set to pending
+                            storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
                             updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
                         }
                     } else {
-                        // Result was null - set to pending
+                        // Result was null - store empty matches array and set to pending
+                        storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
                         updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
                     }
                 });
@@ -610,6 +612,26 @@ export function setupReconciliationStep(state) {
         
         // Update UI to show the best match percentage (for table display)
         updateCellDisplayWithMatch(itemId, property, valueIndex, bestMatch);
+        
+        // Update state
+        state.updateState('reconciliationData', reconciliationData);
+    }
+
+    /**
+     * Store empty matches when no reconciliation results found
+     * This ensures the system knows reconciliation was attempted
+     */
+    function storeEmptyMatches(cellInfo) {
+        const { itemId, property, valueIndex } = cellInfo;
+        
+        // Update data structure to store empty matches array
+        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
+            const propData = reconciliationData[itemId].properties[property];
+            if (propData.reconciled[valueIndex]) {
+                propData.reconciled[valueIndex].matches = [];
+                propData.reconciled[valueIndex].confidence = 0;
+            }
+        }
         
         // Update state
         state.updateState('reconciliationData', reconciliationData);
@@ -779,14 +801,6 @@ export function setupReconciliationStep(state) {
         
         valueDiv.addEventListener('click', clickHandler);
         
-        // Add keyboard support
-        valueDiv.setAttribute('tabindex', '0');
-        valueDiv.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                clickHandler();
-            }
-        });
         
         return valueDiv;
     }
@@ -1044,6 +1058,20 @@ export function setupReconciliationStep(state) {
                     <div class="matches-display" style="display: none;">
                         <!-- Results will be populated here -->
                     </div>
+                    <div class="primary-recommendations" style="display: none;">
+                        <!-- Primary recommendations will be populated here -->
+                    </div>
+                </div>
+                
+                <!-- Fallback Options (Manual Search) -->
+                <div class="fallback-options" style="display: none;">
+                    <div class="search-wikidata">
+                        <input type="text" class="search-input" placeholder="Search Wikidata..." value="">
+                        <button class="btn primary search-btn">Search</button>
+                    </div>
+                    <button class="btn create-new-item" onclick="createNewWikidataItem()">
+                        ➕ Create New Wikidata Item
+                    </button>
                 </div>
             </div>
         `;
@@ -1062,13 +1090,15 @@ export function setupReconciliationStep(state) {
             (typeof keyObj === 'string' ? keyObj : keyObj.key) === property
         );
         
-        if (mappingInfo && typeof mappingInfo === 'object' && mappingInfo.wikidataProperty) {
+        if (mappingInfo && typeof mappingInfo === 'object' && mappingInfo.property) {
             // We have real Wikidata property information
+            const wikidataProperty = mappingInfo.property;
             return {
-                label: mappingInfo.propertyLabel || mappingInfo.wikidataProperty.label || property,
-                pid: mappingInfo.wikidataProperty.pid || mappingInfo.wikidataProperty.id,
-                description: mappingInfo.wikidataProperty.description || getPropertyDescription(property),
-                wikidataUrl: `https://www.wikidata.org/wiki/Property:${mappingInfo.wikidataProperty.pid || mappingInfo.wikidataProperty.id}`
+                label: wikidataProperty.label || property,
+                pid: wikidataProperty.id,
+                description: wikidataProperty.description || getPropertyDescription(property),
+                wikidataUrl: `https://www.wikidata.org/wiki/Property:${wikidataProperty.id}`,
+                isMock: false
             };
         }
         
@@ -1183,8 +1213,21 @@ export function setupReconciliationStep(state) {
         // Get the original key name from the source data
         const originalData = reconciliationData[itemId]?.originalData;
         
-        // Try to find the most specific LOD URI for this key
-        let lodUri = generateLodUri(property, originalData);
+        // Try to get the correct linked data URI from mapping information
+        const currentState = state.getState();
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
+        const mappingInfo = mappedKeys.find(keyObj => 
+            (typeof keyObj === 'string' ? keyObj : keyObj.key) === property
+        );
+        
+        let lodUri;
+        if (mappingInfo && mappingInfo.linkedDataUri) {
+            // Use the correct linked data URI from the mapping
+            lodUri = mappingInfo.linkedDataUri;
+        } else {
+            // Fallback: try to extract from original data or generate generic URI
+            lodUri = generateLodUri(property, originalData);
+        }
         
         return {
             keyName: property,
@@ -1268,14 +1311,24 @@ export function setupReconciliationStep(state) {
         
         // Handle non-Wikidata properties
         if (propertyType !== 'wikibase-item') {
-            matchesDisplay.innerHTML = '<p>Non-Wikidata property - use manual input section below.</p>';
-            matchesDisplay.style.display = 'block';
+            if (propertyType === 'time' || isDateValue(value)) {
+                // For date properties, show date input interface directly
+                matchesDisplay.innerHTML = '<p>Date/time property - use the date input below.</p>';
+                matchesDisplay.style.display = 'block';
+                showCustomInputInterface(propertyType, value);
+            } else {
+                matchesDisplay.innerHTML = '<p>Non-Wikidata property - use manual input section below.</p>';
+                matchesDisplay.style.display = 'block';
+            }
             return;
         }
         
         if (!matches || matches.length === 0) {
             matchesDisplay.innerHTML = '<p class="no-matches">No automatic matches found. Try manual search below.</p>';
             matchesDisplay.style.display = 'block';
+            
+            // Show fallback options for manual search
+            displayFallbackOptions(value, []);
             return;
         }
         
@@ -1354,6 +1407,11 @@ export function setupReconciliationStep(state) {
         
         matchesDisplay.style.display = 'block';
         
+        // Show fallback options if there are no high-confidence matches
+        if (highConfidenceMatches.length === 0) {
+            displayFallbackOptions(value, matches);
+        }
+        
         // Store all matches for "View all" functionality
         window.allReconciliationMatches = matches;
     }
@@ -1409,6 +1467,15 @@ export function setupReconciliationStep(state) {
         const container = document.querySelector('.fallback-options');
         if (!container) return;
         
+        // Show the fallback options container
+        container.style.display = 'block';
+        
+        // Populate the search input with the original value
+        const searchInput = container.querySelector('.search-input');
+        if (searchInput) {
+            searchInput.value = value || '';
+        }
+        
         // Setup manual search functionality
         setTimeout(() => {
             setupManualSearchInFallback();
@@ -1436,6 +1503,19 @@ export function setupReconciliationStep(state) {
                 </div>
             </div>
         `;
+        
+        // Show the container
+        container.style.display = 'block';
+        
+        // Setup date precision for date inputs
+        if (propertyType === 'time') {
+            setTimeout(() => {
+                const dateInput = container.querySelector('.flexible-date-input');
+                if (dateInput) {
+                    setupDynamicDatePrecision(dateInput);
+                }
+            }, 100);
+        }
     }
     
     /**
@@ -1460,11 +1540,6 @@ export function setupReconciliationStep(state) {
             };
             
             searchBtn.onclick = performSearch;
-            searchInput.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    performSearch();
-                }
-            };
         }
     }
     
@@ -1516,21 +1591,36 @@ export function setupReconciliationStep(state) {
         const propertyType = detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
         
+        // For date properties, skip reconciliation and show date input directly
+        if (propertyType === 'time' || isDateValue(value)) {
+            console.log('🕒 Date property detected, showing date input interface');
+            displayReconciliationResults([], propertyType, value);
+            return;
+        }
+        
         try {
             let matches = [];
+            let hasBeenReconciled = false;
             
-            // Check if we already have matches from batch reconciliation
+            // Check if we already have reconciliation data from batch reconciliation
             if (itemId && valueIndex !== undefined && reconciliationData[itemId]) {
                 const propData = reconciliationData[itemId].properties[property];
-                if (propData && propData.reconciled[valueIndex] && propData.reconciled[valueIndex].matches) {
-                    // Use existing matches from batch reconciliation (all matches, not just best)
-                    matches = propData.reconciled[valueIndex].matches;
-                    console.log('🔄 Using existing matches from batch reconciliation:', matches.length, 'matches');
+                if (propData && propData.reconciled[valueIndex]) {
+                    const reconciledData = propData.reconciled[valueIndex];
+                    
+                    // Check if reconciliation has been attempted (regardless of results)
+                    if (reconciledData.matches !== undefined) {
+                        hasBeenReconciled = true;
+                        matches = reconciledData.matches || [];
+                        console.log('🔄 Using existing reconciliation data:', matches.length, 'matches');
+                    }
                 }
             }
             
-            // If no existing matches, fetch new ones
-            if (!matches || matches.length === 0) {
+            // Only fetch new matches if reconciliation has never been attempted
+            if (!hasBeenReconciled) {
+                console.log('🔍 Performing first-time reconciliation for:', value);
+                
                 // Try reconciliation API first
                 matches = await tryReconciliationApi(value, property);
                 
@@ -1538,6 +1628,17 @@ export function setupReconciliationStep(state) {
                 if (!matches || matches.length === 0) {
                     matches = await tryDirectWikidataSearch(value);
                 }
+                
+                // Store matches (even if empty) to track that reconciliation was attempted
+                if (itemId && valueIndex !== undefined) {
+                    if (matches && matches.length > 0) {
+                        storeAllMatches({ itemId, property, valueIndex }, matches, matches[0]);
+                    } else {
+                        storeEmptyMatches({ itemId, property, valueIndex });
+                    }
+                }
+            } else {
+                console.log('⏭️ Skipping reconciliation - already attempted for this value');
             }
             
             // Check for 100% confidence auto-selection (Q&A requirement)
@@ -2013,11 +2114,6 @@ export function setupReconciliationStep(state) {
             };
             
             searchBtn.onclick = performSearch;
-            searchInput.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    performSearch();
-                }
-            };
         }
     }
     
@@ -2238,11 +2334,6 @@ export function setupReconciliationStep(state) {
         };
         
         searchBtn.onclick = performSearch;
-        searchInput.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        };
     }
     
     window.selectManualMatch = function(matchId) {

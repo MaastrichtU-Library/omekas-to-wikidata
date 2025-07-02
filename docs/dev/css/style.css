@@ -636,11 +636,6 @@ main {
     overflow-x: auto;
 }
 
-.shortcut-hint {
-    font-size: 0.8em;
-    opacity: 0.7;
-    margin-left: 4px;
-}
 
 /* Mapping Modal Styles */
 .mapping-modal-content {
@@ -683,11 +678,6 @@ main {
     width: 100%;
 }
 
-.property-search-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
-}
 
 .property-suggestions {
     max-height: 300px;
@@ -1423,12 +1413,6 @@ main {
     border-color: var(--primary-color);
 }
 
-.property-value:focus {
-    outline: none;
-    background-color: #e3f2fd;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
-}
 
 .property-value[data-status="pending"] {
     background-color: #fff;
@@ -2455,11 +2439,6 @@ main {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.date-input-group .flexible-date-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
-}
 
 .date-input-group .flexible-date-input.precision-year {
     border-left: 4px solid #ff9800;

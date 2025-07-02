@@ -15,7 +15,6 @@ export function setupModalUI() {
     const closeModalBtn = document.getElementById('close-modal');
     
     // Track active modal state
-    let activeModalKeydownHandler = null;
     let activeModalCloseHandler = null;
     
     /**
@@ -32,11 +31,6 @@ export function setupModalUI() {
         if (modalContent) modalContent.innerHTML = '';
         if (modalFooter) modalFooter.innerHTML = '';
         
-        // Remove any active keyboard handler
-        if (activeModalKeydownHandler) {
-            document.removeEventListener('keydown', activeModalKeydownHandler);
-            activeModalKeydownHandler = null;
-        }
         
         // Notify listeners that modal was closed
         eventSystem.publish(eventSystem.Events.UI_MODAL_CLOSED, {});
@@ -83,18 +77,7 @@ export function setupModalUI() {
                     onClick: button.callback
                 });
                 
-                if (button.keyboardShortcut) {
-                    btn.appendChild(document.createTextNode(button.text));
-                    
-                    const shortcutSpan = createElement('span', {
-                        className: 'shortcut-hint',
-                        textContent: ` [${button.keyboardShortcut.toUpperCase()}]`
-                    });
-                    
-                    btn.appendChild(shortcutSpan);
-                } else {
-                    btn.textContent = button.text;
-                }
+                btn.textContent = button.text;
                 
                 modalFooter.appendChild(btn);
             });
@@ -105,32 +88,6 @@ export function setupModalUI() {
             modalContainer.style.display = 'flex';
         }
         
-        // Setup keyboard shortcuts
-        function handleKeydown(e) {
-            // Close on Escape
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-            
-            // Don't trigger shortcuts when typing in input fields
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                return;
-            }
-            
-            // Button shortcuts
-            buttons.forEach(button => {
-                if (button.keyboardShortcut && 
-                    e.key.toLowerCase() === button.keyboardShortcut.toLowerCase() && 
-                    !e.ctrlKey && !e.altKey && !e.metaKey) {
-                    e.preventDefault();
-                    button.callback();
-                }
-            });
-        }
-        
-        // Save the keydown handler
-        activeModalKeydownHandler = handleKeydown;
-        document.addEventListener('keydown', handleKeydown);
         
         // Save the close handler
         activeModalCloseHandler = onClose;
