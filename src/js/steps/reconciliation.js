@@ -50,6 +50,36 @@ export function setupReconciliationStep(state) {
     let contextSuggestions = new Map(); // Store previously selected values for suggestions
     let autoAdvanceSetting = true; // Default to auto-advance enabled
     
+    // Add click handler for proceed to designer button
+    if (proceedToDesignerBtn) {
+        proceedToDesignerBtn.addEventListener('click', () => {
+            console.log('🎯 PROCEED TO DESIGNER BUTTON CLICKED!');
+            console.log('📊 Reconciliation Data at time of click:', reconciliationData);
+            console.log('📊 Number of items reconciled:', Object.keys(reconciliationData).length);
+            
+            // Log detailed reconciliation data
+            Object.entries(reconciliationData).forEach(([itemId, itemData]) => {
+                console.log(`📋 Item ${itemId}:`, itemData);
+                Object.entries(itemData.properties).forEach(([property, propData]) => {
+                    console.log(`  Property ${property}:`, propData);
+                    propData.reconciled.forEach((reconciled, index) => {
+                        console.log(`    Value ${index}:`, reconciled);
+                    });
+                });
+            });
+            
+            // Check state
+            const currentState = state.getState();
+            console.log('🔍 Current State:', currentState);
+            console.log('🔍 State reconciliationData:', currentState.reconciliationData);
+            console.log('🔍 State mappings:', currentState.mappings);
+            console.log('🔍 State fetchedData:', currentState.fetchedData);
+            
+            // Navigate to designer step
+            state.updateState('currentStep', 4);
+        });
+    }
+    
     // Initialize reconciliation data when entering this step
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🎯 ReconciliationStep: DOM loaded, setting up event listeners');
