@@ -2,6 +2,7 @@
  * Handles the Wikidata Designer step functionality
  */
 import { createElement, createButton, showMessage } from '../ui/components.js';
+import { eventSystem } from '../events.js';
 
 export function setupDesignerStep(state) {
     console.log('🎨 Designer - setupDesignerStep called');
@@ -49,9 +50,9 @@ export function setupDesignerStep(state) {
     });
     
     // Listen for step change events
-    window.addEventListener('STEP_CHANGED', (event) => {
-        console.log('Designer - STEP_CHANGED event received:', event.detail);
-        if (event.detail.newStep === 4) {
+    eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
+        console.log('Designer - STEP_CHANGED event received:', data);
+        if (data.newStep === 4) {
             console.log('Designer - Initializing designer for step 4');
             // Small delay to ensure DOM is ready
             setTimeout(() => {
