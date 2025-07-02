@@ -2784,11 +2784,40 @@ main {
     color: #666;
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 3px;
+}
+
+.property-example.reconciled {
+    color: var(--success-color);
+    background-color: #e8f5e9;
+    border-left: 3px solid var(--success-color);
+}
+
+.property-example.not-reconciled {
+    color: #ff9800;
+    background-color: #fff3e0;
+    border-left: 3px solid #ff9800;
 }
 
 .property-stats {
     font-size: 0.85rem;
     color: #999;
+    font-weight: 500;
+}
+
+.property-stats.reconciled {
+    color: var(--success-color);
+}
+
+.property-stats.partial {
+    color: #ff9800;
+}
+
+.property-stats.not-reconciled {
+    color: var(--danger-color);
 }
 
 .property-actions {

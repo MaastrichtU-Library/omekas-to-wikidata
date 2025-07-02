@@ -71,8 +71,16 @@ export function setupDesignerStep(state) {
     
     // Initialize the designer
     function initializeDesigner() {
+        const currentState = state.getState();
+        
+        // Debug logging to understand the state
+        console.log('Designer - Current state:', currentState);
+        console.log('Designer - API data type:', typeof currentState.apiData);
+        console.log('Designer - API data:', currentState.apiData);
+        console.log('Designer - Reconciliation data:', currentState.reconciliationData);
+        
         // Check if we have completed reconciliation
-        const reconciliationData = state.getState().reconciliationData;
+        const reconciliationData = currentState.reconciliationData;
         if (!reconciliationData || Object.keys(reconciliationData).length === 0) {
             showMessage('Please complete the reconciliation step first.', 'warning');
             return;
@@ -148,6 +156,9 @@ export function setupDesignerStep(state) {
         const apiData = currentState.apiData;
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const reconciliationData = currentState.reconciliationData || {};
+        
+        console.log('Designer - Displaying properties for item:', itemId);
+        console.log('Designer - Reconciliation data for this item:', reconciliationData[itemId]);
         
         // Find the selected item
         const selectedItem = apiData.find(item => 
@@ -279,6 +290,10 @@ export function setupDesignerStep(state) {
         const reconciliationData = currentState.reconciliationData || {};
         const apiData = currentState.apiData || [];
         
+        // Debug log to check if we have reconciliation data
+        console.log('Designer - Reconciliation data available:', Object.keys(reconciliationData).length > 0);
+        console.log('Designer - Mapped keys:', mappedKeys.length);
+        
         displayPropertiesSubset(mappedKeys, null, reconciliationData);
     }
     
@@ -321,40 +336,121 @@ export function setupDesignerStep(state) {
             
             propertyLabelRow.appendChild(propertyLabelText);
             
-            // Get example value
+            // Get reconciled value
             let exampleValue = 'No value';
-            if (specificItem && specificItem[mapping.key]) {
-                exampleValue = specificItem[mapping.key];
-            } else if (!specificItem) {
-                // Find first non-null value across all items
+            let reconciledDisplay = '';
+            
+            if (specificItem) {
+                // For specific item view
+                const itemId = specificItem['o:id'] || apiData.indexOf(specificItem);
+                const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
+                
+                if (reconciledData?.selectedMatch) {
+                    const match = reconciledData.selectedMatch;
+                    if (match.type === 'wikidata') {
+                        exampleValue = `${match.label} (${match.id})`;
+                        reconciledDisplay = `✓ Reconciled to: ${match.label} (${match.id})`;
+                    } else {
+                        exampleValue = match.value || 'Custom value';
+                        reconciledDisplay = `✓ Custom value: ${match.value || 'Set'}`;
+                    }
+                } else if (specificItem[mapping.key]) {
+                    exampleValue = `Original: ${specificItem[mapping.key]}`;
+                    reconciledDisplay = '⚠️ Not reconciled yet';
+                }
+            } else {
+                // For multi-item view, find first reconciled value
+                let foundReconciled = false;
                 for (let item of apiData) {
-                    if (item[mapping.key]) {
-                        exampleValue = item[mapping.key];
+                    const itemId = item['o:id'] || apiData.indexOf(item);
+                    const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
+                    
+                    if (reconciledData?.selectedMatch) {
+                        const match = reconciledData.selectedMatch;
+                        if (match.type === 'wikidata') {
+                            exampleValue = `${match.label} (${match.id})`;
+                            reconciledDisplay = `Example: ${match.label} (${match.id})`;
+                        } else {
+                            exampleValue = match.value || 'Custom value';
+                            reconciledDisplay = `Example: ${match.value || 'Custom value'}`;
+                        }
+                        foundReconciled = true;
                         break;
+                    }
+                }
+                
+                // If no reconciled values found, show original
+                if (!foundReconciled) {
+                    for (let item of apiData) {
+                        if (item[mapping.key]) {
+                            exampleValue = `Original: ${item[mapping.key]}`;
+                            reconciledDisplay = '⚠️ No items reconciled yet';
+                            break;
+                        }
                     }
                 }
             }
             
+            const isReconciled = reconciledDisplay && reconciledDisplay.includes('✓');
             const propertyExample = createElement('div', {
-                className: 'property-example'
-            }, `Example: ${exampleValue}`);
+                className: `property-example ${isReconciled ? 'reconciled' : 'not-reconciled'}`
+            }, reconciledDisplay || `Original: ${exampleValue}`);
             
-            // Calculate statistics
+            // Calculate statistics including reconciliation
             let itemsWithProperty = 0;
+            let itemsReconciled = 0;
+            
             if (specificItem) {
+                const itemId = specificItem['o:id'] || apiData.indexOf(specificItem);
                 itemsWithProperty = specificItem[mapping.key] ? 1 : 0;
+                const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
+                itemsReconciled = reconciledData?.selectedMatch ? 1 : 0;
             } else {
-                itemsWithProperty = apiData.filter(item => 
-                    item[mapping.key] !== undefined && item[mapping.key] !== null
-                ).length;
+                // Count items with property and reconciliation status
+                apiData.forEach(item => {
+                    if (item[mapping.key] !== undefined && item[mapping.key] !== null) {
+                        itemsWithProperty++;
+                        const itemId = item['o:id'] || apiData.indexOf(item);
+                        const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
+                        if (reconciledData?.selectedMatch) {
+                            itemsReconciled++;
+                        }
+                    }
+                });
+            }
+            
+            let statsClass = 'property-stats';
+            let statsText = '';
+            
+            if (specificItem) {
+                if (itemsReconciled) {
+                    statsClass += ' reconciled';
+                    statsText = '✓ Reconciled';
+                } else if (itemsWithProperty) {
+                    statsClass += ' not-reconciled';
+                    statsText = '⚠️ Not reconciled';
+                } else {
+                    statsText = 'No value';
+                }
+            } else {
+                // Multi-item view
+                if (itemsReconciled === itemsWithProperty && itemsWithProperty > 0) {
+                    statsClass += ' reconciled';
+                    statsText = `✓ All ${itemsWithProperty} items reconciled`;
+                } else if (itemsReconciled > 0) {
+                    statsClass += ' partial';
+                    statsText = `${itemsReconciled}/${itemsWithProperty} reconciled`;
+                } else if (itemsWithProperty > 0) {
+                    statsClass += ' not-reconciled';
+                    statsText = `⚠️ 0/${itemsWithProperty} reconciled`;
+                } else {
+                    statsText = 'No items have this property';
+                }
             }
             
             const propertyStats = createElement('div', {
-                className: 'property-stats'
-            }, specificItem ? 
-                (itemsWithProperty ? 'Has value' : 'No value') : 
-                `${itemsWithProperty}/${apiData.length} items have this property`
-            );
+                className: statsClass
+            }, statsText);
             
             propertyContent.appendChild(propertyLabelRow);
             propertyContent.appendChild(propertyExample);
@@ -577,19 +673,82 @@ export function setupDesignerStep(state) {
         const currentState = state.getState();
         const references = currentState.references || [];
         const mappedKeys = currentState.mappings?.mappedKeys || [];
+        const reconciliationData = currentState.reconciliationData || {};
+        const apiData = currentState.apiData || [];
+        const selectedItemValue = exampleItemSelector?.value;
         
         // Generate preview content
         const previewData = {
+            item: selectedItemValue === 'multi-item' ? 'Multi-item view' : `Item ${selectedItemValue}`,
             references: references.filter(r => r.enabled).map(r => ({
                 P854: r.url,
                 P813: new Date().toISOString().split('T')[0]
             })),
-            properties: mappedKeys.map(mapping => ({
-                property: mapping.property.id,
-                label: mapping.property.label,
-                example: 'example value'
-            }))
+            statements: []
         };
+        
+        // Add reconciled statements to preview
+        mappedKeys.forEach(mapping => {
+            const statementData = {
+                property: mapping.property.id,
+                propertyLabel: mapping.property.label,
+                values: []
+            };
+            
+            if (selectedItemValue === 'multi-item') {
+                // Show all reconciled values across items
+                apiData.forEach(item => {
+                    const itemId = item['o:id'] || apiData.indexOf(item);
+                    const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
+                    
+                    if (reconciledData?.selectedMatch) {
+                        const match = reconciledData.selectedMatch;
+                        if (match.type === 'wikidata') {
+                            statementData.values.push({
+                                type: 'wikidata-item',
+                                value: match.id,
+                                label: match.label
+                            });
+                        } else {
+                            statementData.values.push({
+                                type: match.datatype || 'string',
+                                value: match.value
+                            });
+                        }
+                    }
+                });
+            } else {
+                // Show values for specific item
+                const selectedItem = apiData.find(item => 
+                    (item['o:id'] || apiData.indexOf(item)).toString() === selectedItemValue
+                );
+                
+                if (selectedItem) {
+                    const itemId = selectedItem['o:id'] || apiData.indexOf(selectedItem);
+                    const reconciledData = reconciliationData[itemId]?.properties[mapping.key]?.reconciled?.[0];
+                    
+                    if (reconciledData?.selectedMatch) {
+                        const match = reconciledData.selectedMatch;
+                        if (match.type === 'wikidata') {
+                            statementData.values.push({
+                                type: 'wikidata-item',
+                                value: match.id,
+                                label: match.label
+                            });
+                        } else {
+                            statementData.values.push({
+                                type: match.datatype || 'string',
+                                value: match.value
+                            });
+                        }
+                    }
+                }
+            }
+            
+            if (statementData.values.length > 0) {
+                previewData.statements.push(statementData);
+            }
+        });
         
         const previewContent = designerPreview.querySelector('.preview-content');
         if (previewContent) {
