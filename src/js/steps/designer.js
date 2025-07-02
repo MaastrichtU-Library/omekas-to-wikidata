@@ -361,12 +361,20 @@ export function setupDesignerStep(state) {
         
         // Enhanced debug logging
         console.log('=== DEBUG: displayProperties called ===');
-        console.log('Full state:', currentState);
+        console.log('Full state keys:', Object.keys(currentState));
+        console.log('Mappings state:', currentState.mappings);
         console.log('Reconciliation data keys:', Object.keys(reconciliationData));
-        console.log('Reconciliation data:', reconciliationData);
-        console.log('Mapped keys:', mappedKeys);
+        console.log('Mapped keys from state:', mappedKeys);
         console.log('Mapped keys length:', mappedKeys.length);
         console.log('Fetched data length:', fetchedData.length);
+        
+        // Check if mappedKeys have the expected structure
+        if (mappedKeys.length > 0) {
+            console.log('=== DEBUG: First mappedKey structure ===');
+            console.log('First mappedKey:', mappedKeys[0]);
+            console.log('Has property field:', !!mappedKeys[0].property);
+            console.log('Property field:', mappedKeys[0].property);
+        }
         
         displayPropertiesSubset(mappedKeys, null, reconciliationData);
     }
