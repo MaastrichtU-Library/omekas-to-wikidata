@@ -45,18 +45,89 @@ export function setupExportStep(state) {
     function generateQuickStatements() {
         if (!quickStatementsTextarea) return;
         
-        // For wireframe, generate placeholder QuickStatements
-        let quickStatementsText = 'CREATE';
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliationData;
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
+        const globalReferences = currentState.globalReferences || [];
+        const entitySchema = currentState.entitySchema;
         
-        if (state.designerData && state.designerData.length) {
-            state.designerData.forEach(data => {
-                quickStatementsText += `\nLAST\t${data.property}\t"${data.value}"\tS854\t"${data.reference?.value || 'Example Reference'}"`;
-            });
-        } else {
-            quickStatementsText += '\nLAST\tP31\tQ5\tS854\t"Example Reference"';
-            quickStatementsText += '\nLAST\tP1476\t"Example Title"\tS854\t"Example Reference"';
-            quickStatementsText += '\nLAST\tP577\t+2023-01-15T00:00:00Z/11\tS854\t"Example Reference"';
+        if (!reconciliationData || Object.keys(reconciliationData).length === 0) {
+            quickStatementsTextarea.value = 'No reconciliation data available. Please complete the reconciliation step.';
+            return;
         }
+        
+        let quickStatementsText = '';
+        
+        // Process each item
+        Object.keys(reconciliationData).forEach(itemId => {
+            const itemData = reconciliationData[itemId];
+            
+            // Add CREATE statement for new item
+            quickStatementsText += 'CREATE\n';
+            
+            // Add entity type from schema if available
+            if (entitySchema) {
+                quickStatementsText += `LAST\tP31\t${entitySchema}\n`;
+            }
+            
+            // Process each property
+            Object.keys(itemData.properties).forEach(propertyKey => {
+                const propertyData = itemData.properties[propertyKey];
+                
+                // Find the corresponding mapping to get the Wikidata property ID
+                const mapping = mappedKeys.find(m => m.key === propertyKey);
+                const wikidataPropertyId = mapping?.property?.id || propertyKey;
+                
+                // Process each reconciled value
+                propertyData.reconciled.forEach(reconciledValue => {
+                    if (reconciledValue.selectedMatch) {
+                        const match = reconciledValue.selectedMatch;
+                        let value = '';
+                        
+                        if (match.type === 'wikidata') {
+                            value = match.id;
+                        } else if (match.type === 'custom') {
+                            if (match.datatype === 'time') {
+                                // Format time value for QuickStatements
+                                value = `+${match.value}T00:00:00Z/11`;
+                            } else {
+                                value = `"${match.value}"`;
+                            }
+                        }
+                        
+                        if (value) {
+                            // Add the main statement
+                            quickStatementsText += `LAST\t${wikidataPropertyId}\t${value}`;
+                            
+                            // Add property-specific references
+                            if (propertyData.references && propertyData.references.length > 0) {
+                                propertyData.references.forEach(ref => {
+                                    quickStatementsText += `\tS854\t"${ref.url}"`;
+                                    if (ref.retrievedDate) {
+                                        quickStatementsText += `\tS813\t+${ref.retrievedDate}T00:00:00Z/11`;
+                                    }
+                                });
+                            }
+                            
+                            // Add global references if no property-specific ones
+                            else if (globalReferences.length > 0) {
+                                globalReferences.forEach(ref => {
+                                    quickStatementsText += `\tS854\t"${ref.url}"`;
+                                    if (ref.retrievedDate) {
+                                        quickStatementsText += `\tS813\t+${ref.retrievedDate}T00:00:00Z/11`;
+                                    }
+                                });
+                            }
+                            
+                            quickStatementsText += '\n';
+                        }
+                    }
+                });
+            });
+            
+            // Add separator between items
+            quickStatementsText += '\n';
+        });
         
         quickStatementsTextarea.value = quickStatementsText;
     }

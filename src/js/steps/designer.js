@@ -413,19 +413,22 @@ export function setupDesignerStep(state) {
             return;
         }
         
-        const references = state.getState().references || [];
+        // Get both old-style references and new global references
+        const oldReferences = state.getState().references || [];
+        const globalReferences = state.getState().globalReferences || [];
+        const allReferences = [...oldReferences, ...globalReferences];
         
         referencesList.innerHTML = '';
         
-        if (references.length === 0) {
+        if (allReferences.length === 0) {
             const placeholder = createElement('div', {
                 className: 'placeholder'
-            }, 'No references added yet. References will be auto-detected from sameAs and ARK identifiers.');
+            }, 'No global references added yet. You can add references to specific properties or globally.');
             referencesList.appendChild(placeholder);
             return;
         }
         
-        references.forEach((ref, index) => {
+        allReferences.forEach((ref, index) => {
             const refItem = createElement('div', {
                 className: `reference-item ${ref.autoDetected ? 'auto-detected' : ''}`
             });
@@ -793,12 +796,82 @@ export function setupDesignerStep(state) {
             // Add actions to value section
             propertyValueSection.appendChild(statementActions);
             
+            // Display property-specific references if any
+            const propertyReferences = getPropertyReferences(mapping.property.id, reconciliationData, specificItem);
+            if (propertyReferences.length > 0) {
+                const referencesSection = createElement('div', {
+                    className: 'statement-references'
+                });
+                
+                const referencesTitle = createElement('div', {
+                    className: 'references-title'
+                }, `References (${propertyReferences.length}):`);
+                referencesSection.appendChild(referencesTitle);
+                
+                propertyReferences.forEach(ref => {
+                    const refItem = createElement('div', {
+                        className: 'reference-item-small'
+                    });
+                    
+                    const refLink = createElement('a', {
+                        href: ref.url,
+                        target: '_blank',
+                        className: 'reference-link'
+                    }, ref.url.length > 50 ? ref.url.substring(0, 50) + '...' : ref.url);
+                    
+                    refItem.appendChild(refLink);
+                    
+                    if (ref.retrievedDate) {
+                        const dateSpan = createElement('span', {
+                            className: 'reference-date'
+                        }, ` (retrieved ${ref.retrievedDate})`);
+                        refItem.appendChild(dateSpan);
+                    }
+                    
+                    referencesSection.appendChild(refItem);
+                });
+                
+                propertyItem.appendChild(referencesSection);
+            }
+            
             // Assemble the complete statement
             propertyItem.appendChild(propertyLabelSection);
             propertyItem.appendChild(propertyValueSection);
             
             propertiesList.appendChild(propertyItem);
         });
+    }
+    
+    // Get references for a specific property
+    function getPropertyReferences(propertyId, reconciliationData, specificItem) {
+        const references = [];
+        
+        if (specificItem) {
+            // Get references for specific item
+            const itemIndex = state.getState().fetchedData.indexOf(specificItem);
+            const itemKey = `item-${itemIndex}`;
+            const propData = reconciliationData[itemKey]?.properties[propertyId];
+            
+            if (propData && propData.references) {
+                references.push(...propData.references);
+            }
+        } else {
+            // Get references from all items that have this property
+            const uniqueRefs = new Map();
+            
+            Object.keys(reconciliationData).forEach(itemKey => {
+                const propData = reconciliationData[itemKey]?.properties[propertyId];
+                if (propData && propData.references) {
+                    propData.references.forEach(ref => {
+                        uniqueRefs.set(ref.url, ref);
+                    });
+                }
+            });
+            
+            references.push(...Array.from(uniqueRefs.values()));
+        }
+        
+        return references;
     }
     
     // Show values modal when value count is clicked
@@ -1265,24 +1338,28 @@ export function setupDesignerStep(state) {
     
     // Add reference from search results
     function addReferenceFromSearch(ref, refItem) {
-        const references = state.getState().references || [];
+        const currentState = state.getState();
+        const globalReferences = currentState.globalReferences || [];
+        const oldReferences = currentState.references || [];
         
-        // Check if already exists
-        if (references.some(r => r.url === ref.url)) {
+        // Check if already exists in either location
+        if (globalReferences.some(r => r.url === ref.url) || oldReferences.some(r => r.url === ref.url)) {
             showMessage('This reference already exists', 'warning');
             return;
         }
         
-        // Add the reference
-        references.push({
+        // Add the reference to global references
+        globalReferences.push({
             url: ref.url,
             type: ref.type,
             autoDetected: false,
             enabled: true,
-            source: ref.source
+            source: ref.source,
+            retrievedDate: new Date().toISOString().split('T')[0], // Today's date
+            addedAt: new Date().toISOString()
         });
         
-        state.updateState('references', references);
+        state.updateState('globalReferences', globalReferences);
         displayReferences();
         updateProceedButton();
         
@@ -1317,22 +1394,26 @@ export function setupDesignerStep(state) {
         const url = prompt('Enter reference URL:', 'https://');
         if (!url || url === 'https://') return;
         
-        const references = state.getState().references || [];
+        const currentState = state.getState();
+        const globalReferences = currentState.globalReferences || [];
+        const oldReferences = currentState.references || [];
         
-        // Check if already exists
-        if (references.some(r => r.url === url)) {
+        // Check if already exists in either location
+        if (globalReferences.some(r => r.url === url) || oldReferences.some(r => r.url === url)) {
             showMessage('This reference already exists', 'warning');
             return;
         }
         
-        references.push({
+        globalReferences.push({
             url: url,
             type: 'Manual reference',
             autoDetected: false,
-            enabled: true
+            enabled: true,
+            retrievedDate: new Date().toISOString().split('T')[0],
+            addedAt: new Date().toISOString()
         });
         
-        state.updateState('references', references);
+        state.updateState('globalReferences', globalReferences);
         displayReferences();
         updateProceedButton();
         
@@ -1346,7 +1427,190 @@ export function setupDesignerStep(state) {
     
     // Add reference to specific property
     function addReferenceToProperty(propertyId) {
-        showMessage('Property-specific reference management will be implemented in Phase 2', 'info');
+        const modal = createElement('div', {
+            className: 'modal-overlay active'
+        });
+        
+        const modalContent = createElement('div', {
+            className: 'modal reference-modal'
+        });
+        
+        const modalHeader = createElement('div', {
+            className: 'modal-header'
+        });
+        
+        const modalTitle = createElement('h3', {}, `Add Reference for ${propertyId}`);
+        modalHeader.appendChild(modalTitle);
+        
+        const closeBtn = createButton('×', {
+            className: 'modal-close',
+            onClick: () => document.body.removeChild(modal)
+        });
+        modalHeader.appendChild(closeBtn);
+        modalContent.appendChild(modalHeader);
+        
+        const modalBody = createElement('div', {
+            className: 'modal-body'
+        });
+        
+        // Reference URL input
+        const urlGroup = createElement('div', {
+            className: 'form-group'
+        });
+        const urlLabel = createElement('label', {}, 'Reference URL (P854)');
+        const urlInput = createElement('input', {
+            type: 'url',
+            className: 'wikidata-input',
+            placeholder: 'https://example.com/source',
+            required: true
+        });
+        urlGroup.appendChild(urlLabel);
+        urlGroup.appendChild(urlInput);
+        modalBody.appendChild(urlGroup);
+        
+        // Retrieved date input
+        const dateGroup = createElement('div', {
+            className: 'form-group'
+        });
+        const dateLabel = createElement('label', {}, 'Retrieved Date (P813)');
+        const dateInput = createElement('input', {
+            type: 'date',
+            className: 'wikidata-input',
+            value: new Date().toISOString().split('T')[0] // Today's date
+        });
+        dateGroup.appendChild(dateLabel);
+        dateGroup.appendChild(dateInput);
+        modalBody.appendChild(dateGroup);
+        
+        // Scope selector
+        const scopeGroup = createElement('div', {
+            className: 'form-group'
+        });
+        const scopeLabel = createElement('label', {}, 'Apply reference to:');
+        const scopeSelect = createElement('select', {
+            className: 'wikidata-input'
+        });
+        
+        const scopeOptions = [
+            { value: 'this-property-all-items', text: `All items with property ${propertyId}` },
+            { value: 'this-property-selected-item', text: 'Only the selected item' },
+            { value: 'all-properties', text: 'All properties (global reference)' }
+        ];
+        
+        scopeOptions.forEach(opt => {
+            const option = createElement('option', {
+                value: opt.value
+            }, opt.text);
+            scopeSelect.appendChild(option);
+        });
+        
+        scopeGroup.appendChild(scopeLabel);
+        scopeGroup.appendChild(scopeSelect);
+        modalBody.appendChild(scopeGroup);
+        
+        modalContent.appendChild(modalBody);
+        
+        // Modal footer with buttons
+        const modalFooter = createElement('div', {
+            className: 'modal-footer'
+        });
+        
+        const cancelBtn = createButton('Cancel', {
+            className: 'wikidata-btn wikidata-btn--secondary',
+            onClick: () => document.body.removeChild(modal)
+        });
+        
+        const addBtn = createButton('Add Reference', {
+            className: 'wikidata-btn wikidata-btn--primary',
+            onClick: () => {
+                const url = urlInput.value.trim();
+                const retrievedDate = dateInput.value;
+                const scope = scopeSelect.value;
+                
+                if (!url) {
+                    showMessage('Please enter a reference URL', 'error');
+                    return;
+                }
+                
+                addPropertyReference(propertyId, url, retrievedDate, scope);
+                document.body.removeChild(modal);
+            }
+        });
+        
+        modalFooter.appendChild(cancelBtn);
+        modalFooter.appendChild(addBtn);
+        modalContent.appendChild(modalFooter);
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Focus URL input
+        setTimeout(() => urlInput.focus(), 100);
+    }
+    
+    // Add a reference to a property with the specified scope
+    function addPropertyReference(propertyId, url, retrievedDate, scope) {
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliationData;
+        const selectedItemValue = exampleItemSelector?.value || 'multi-item';
+        
+        if (scope === 'all-properties') {
+            // Add to global references
+            const globalRefs = currentState.globalReferences || [];
+            globalRefs.push({
+                url: url,
+                retrievedDate: retrievedDate,
+                addedAt: new Date().toISOString()
+            });
+            state.updateState('globalReferences', globalRefs);
+        } else {
+            // Add to specific property references
+            const itemsToUpdate = [];
+            
+            if (scope === 'this-property-all-items') {
+                // Add to all items that have this property
+                Object.keys(reconciliationData).forEach(itemId => {
+                    if (reconciliationData[itemId].properties[propertyId]) {
+                        itemsToUpdate.push(itemId);
+                    }
+                });
+            } else if (scope === 'this-property-selected-item' && selectedItemValue !== 'multi-item') {
+                // Add only to selected item
+                const itemIndex = parseInt(selectedItemValue);
+                const itemId = `item-${itemIndex}`;
+                if (reconciliationData[itemId]?.properties[propertyId]) {
+                    itemsToUpdate.push(itemId);
+                }
+            }
+            
+            // Update reconciliation data for each item
+            itemsToUpdate.forEach(itemId => {
+                const propData = reconciliationData[itemId].properties[propertyId];
+                if (!propData.references) {
+                    propData.references = [];
+                }
+                
+                // Check if reference already exists
+                const existingRef = propData.references.find(ref => ref.url === url);
+                if (!existingRef) {
+                    propData.references.push({
+                        url: url,
+                        retrievedDate: retrievedDate,
+                        addedAt: new Date().toISOString()
+                    });
+                }
+            });
+            
+            // Update state with modified reconciliation data
+            state.updateState('reconciliationData', reconciliationData);
+        }
+        
+        // Refresh the display
+        displayProperties();
+        displayReferences();
+        updatePreview();
+        
+        showMessage(`Reference added to ${scope === 'all-properties' ? 'all properties' : propertyId}`, 'success');
     }
     
     // Show new statement modal

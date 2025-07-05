@@ -195,6 +195,7 @@ export function setupReconciliationStep(state) {
                     const values = extractPropertyValues(item, keyName);
                     reconciliationData[itemId].properties[keyName] = {
                         originalValues: values,
+                        references: [], // References specific to this property
                         reconciled: values.map(() => ({
                             status: 'pending', // pending, reconciled, skipped, failed
                             matches: [],
@@ -543,7 +544,10 @@ export function setupReconciliationStep(state) {
                         reconciliationData[job.itemId] = { properties: {} };
                     }
                     if (!reconciliationData[job.itemId].properties[job.property]) {
-                        reconciliationData[job.itemId].properties[job.property] = { reconciled: [] };
+                        reconciliationData[job.itemId].properties[job.property] = { 
+                            reconciled: [],
+                            references: [] // References specific to this property
+                        };
                     }
                     if (!reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex]) {
                         reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {};

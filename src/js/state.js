@@ -42,9 +42,10 @@ export function setupState() {
         reconciliationData: [],
         
         // Step 4: Designer
-        references: [],
+        references: [], // Deprecated - references now stored in reconciliationData
         selectedExampleItem: '',
         designerData: [],
+        globalReferences: [], // References that apply to all items/properties
         
         // Step 5: Export
         quickStatements: '',
