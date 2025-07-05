@@ -279,13 +279,64 @@
                 <div class="export-container">
                     <div class="export-info">
                         <h3>QuickStatements Export</h3>
-                        <p>QuickStatements is a tool for batch editing Wikidata. Copy the generated code below and paste it into QuickStatements.</p>
+                        <p>QuickStatements is a tool for batch editing Wikidata. Configure your export settings below, then copy or download the generated code.</p>
+                        <a href="https://quickstatements.toolforge.org/" target="_blank" class="info-link">Open QuickStatements Tool</a>
+                        <span class="info-separator">|</span>
                         <a href="https://www.wikidata.org/wiki/Help:QuickStatements" target="_blank" class="info-link">Learn more about QuickStatements</a>
                     </div>
                     
+                    <!-- Export Settings Panel -->
+                    <div class="export-settings">
+                        <h4>Export Settings</h4>
+                        <div class="settings-group">
+                            <div class="export-mode-selection">
+                                <label class="radio-label">
+                                    <input type="radio" name="export-mode" value="create" checked>
+                                    <span class="radio-text">Create new items</span>
+                                    <span class="radio-description">Generate CREATE statements for new Wikidata items</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="export-mode" value="existing">
+                                    <span class="radio-text">Add to existing items</span>
+                                    <span class="radio-description">Add statements to existing Wikidata items (requires item IDs)</span>
+                                </label>
+                            </div>
+                            
+                            <div id="item-selection" class="item-selection" style="display: none;">
+                                <h5>Select items to export:</h5>
+                                <div class="item-selection-list">
+                                    <!-- Dynamically populated -->
+                                </div>
+                            </div>
+                            
+                            <div class="export-options">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="include-labels" checked>
+                                    <span class="checkbox-text">Include item labels</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="include-references" checked>
+                                    <span class="checkbox-text">Include source references</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Validation Display -->
+                    <div id="validation-display" class="validation-display">
+                        <!-- Dynamically populated -->
+                    </div>
+                    
+                    <!-- QuickStatements Output -->
                     <div class="quick-statements-output">
-                        <textarea id="quick-statements" readonly rows="10" placeholder="QuickStatements code will appear here"></textarea>
-                        <button id="copy-quick-statements" class="button button--secondary secondary-button">Copy to Clipboard</button>
+                        <div class="output-header">
+                            <h4>Generated QuickStatements</h4>
+                            <div class="output-actions">
+                                <button id="copy-quick-statements" class="button button--secondary">Copy to Clipboard</button>
+                                <button id="download-quick-statements" class="button button--secondary">Download as .txt</button>
+                            </div>
+                        </div>
+                        <textarea id="quick-statements" readonly rows="12" placeholder="QuickStatements code will appear here"></textarea>
                     </div>
                     
                     <!-- JSON export/import removed for MVP simplicity -->
