@@ -633,6 +633,7 @@ function updateDateInputFeedback(dateInput, precision, inputValue) {
     const container = dateInput.closest('.date-input-group');
     const hint = container.querySelector('.date-format-hint');
     
+    console.log('Updating date input feedback:', {
         precision,
         inputValue,
         hasContainer: !!container,

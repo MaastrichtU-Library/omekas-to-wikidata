@@ -17,6 +17,7 @@ export function setupDesignerStep(state) {
     const issuesList = document.getElementById('issues-list');
     const referenceWarning = document.getElementById('reference-warning');
     
+    console.log('Designer DOM elements:', {
         exampleItemSelector: !!exampleItemSelector,
         itemLabelSelector: !!itemLabelSelector,
         itemLabelPreview: !!itemLabelPreview,
