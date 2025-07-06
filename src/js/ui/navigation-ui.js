@@ -54,8 +54,6 @@ export function setupNavigationUI() {
         const targetContent = document.getElementById(`step${stepNumber}`);
         if (!targetContent) {
             console.error(`Step content not found for step ${stepNumber}, looking for id: step${stepNumber}`);
-        } else {
-            console.log(`Showing step content for step ${stepNumber}`);
         }
         toggleClass(targetContent, 'active', true);
         
@@ -183,7 +181,6 @@ export function setupNavigationUI() {
         eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (data) => {
             if (data.restored) {
                 // When state is restored, update the UI to reflect the current step
-                console.log('🎯 Navigation UI: State restored, updating UI');
                 updateStepUI(data.newValue.currentStep);
             }
         });

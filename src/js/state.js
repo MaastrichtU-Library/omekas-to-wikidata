@@ -100,7 +100,6 @@ export function setupState() {
             if (stored) {
                 const parsed = JSON.parse(stored);
                 if (parsed.version === STORAGE_VERSION) {
-                    console.log('✅ Loaded persisted state from localStorage');
                     // Preserve the last opened step from saved state
                     return parsed.state;
                 }
@@ -161,7 +160,6 @@ export function setupState() {
         
         const handleFresh = () => {
             modal.style.display = 'none';
-            console.log('User chose to start fresh');
             clearPersistedState();
             cleanup();
         };
@@ -184,7 +182,6 @@ export function setupState() {
             const previousStep = state.currentStep;
             state = loadedState;
             
-            console.log(`🔄 Session restored - returning to step ${state.currentStep}`);
             
             // Notify all modules that state has been restored
             eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
@@ -220,7 +217,6 @@ export function setupState() {
                 state: state
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
-            console.log('💾 State persisted to localStorage');
         } catch (error) {
             console.error('Failed to persist state:', error);
         }
@@ -232,11 +228,6 @@ export function setupState() {
      */
     function getState() {
         const stateCopy = JSON.parse(JSON.stringify(state));
-        console.log('📝 State requested. Current state summary:');
-        console.log('  - Current step:', stateCopy.currentStep);
-        console.log('  - Has fetchedData:', !!stateCopy.fetchedData);
-        console.log('  - Mapped keys count:', stateCopy.mappings?.mappedKeys?.length || 0);
-        console.log('  - Test mode:', stateCopy.testMode);
         return stateCopy;
     }
     
@@ -330,16 +321,13 @@ export function setupState() {
      * @param {number} step - The step number to set as current (1-5)
      */
     function setCurrentStep(step) {
-        console.log(`🔄 setCurrentStep called with step: ${step}, current step: ${state.currentStep}`);
         if (step < 1 || step > 5 || step === state.currentStep) {
-            console.log(`🔄 setCurrentStep rejected - out of bounds or same step`);
             return;
         }
         
         const oldStep = state.currentStep;
         state.currentStep = step;
         
-        console.log(`🔄 Step changed from ${oldStep} to ${step}`);
         
         // Notify listeners of the step change
         eventSystem.publish(eventSystem.Events.STEP_CHANGED, {
@@ -708,7 +696,6 @@ export function setupState() {
     function clearPersistedState() {
         try {
             localStorage.removeItem(STORAGE_KEY);
-            console.log('🗑️ Cleared persisted state from localStorage');
         } catch (error) {
             console.error('Failed to clear persisted state:', error);
         }

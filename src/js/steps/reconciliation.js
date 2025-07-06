@@ -11,16 +11,13 @@ import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
 
 export function setupReconciliationStep(state) {
-    console.log('🔧 Setting up ReconciliationStep module');
     
     // Initialize modal UI
     const modalUI = setupModalUI();
     
     // Listen for STEP_CHANGED events to initialize reconciliation when entering step 3
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
-        console.log('🎯 STEP_CHANGED event received:', data);
         if (data.newStep === 3) {
-            console.log('🎯 Entering step 3 - calling initializeReconciliation()');
             setTimeout(() => {
                 initializeReconciliation();
             }, 100); // Small delay to ensure DOM is updated
@@ -36,13 +33,6 @@ export function setupReconciliationStep(state) {
     const testReconciliationModelBtn = document.getElementById('test-reconciliation-model');
     
     // Debug DOM element initialization
-    console.log('🔧 ReconciliationStep DOM elements initialized:');
-    console.log('  - propertyHeaders:', !!propertyHeaders, propertyHeaders);
-    console.log('  - reconciliationRows:', !!reconciliationRows, reconciliationRows);
-    console.log('  - reconciliationProgress:', !!reconciliationProgress, reconciliationProgress);
-    console.log('  - reconcileNextBtn:', !!reconcileNextBtn, reconcileNextBtn);
-    console.log('  - proceedToDesignerBtn:', !!proceedToDesignerBtn, proceedToDesignerBtn);
-    console.log('  - testReconciliationModelBtn:', !!testReconciliationModelBtn, testReconciliationModelBtn);
     
     // Reconciliation state management
     let reconciliationData = {};
@@ -53,27 +43,17 @@ export function setupReconciliationStep(state) {
     // Add click handler for proceed to designer button
     if (proceedToDesignerBtn) {
         proceedToDesignerBtn.addEventListener('click', () => {
-            console.log('🎯 PROCEED TO DESIGNER BUTTON CLICKED!');
-            console.log('📊 Reconciliation Data at time of click:', reconciliationData);
-            console.log('📊 Number of items reconciled:', Object.keys(reconciliationData).length);
             
             // Log detailed reconciliation data
             Object.entries(reconciliationData).forEach(([itemId, itemData]) => {
-                console.log(`📋 Item ${itemId}:`, itemData);
                 Object.entries(itemData.properties).forEach(([property, propData]) => {
-                    console.log(`  Property ${property}:`, propData);
                     propData.reconciled.forEach((reconciled, index) => {
-                        console.log(`    Value ${index}:`, reconciled);
                     });
                 });
             });
             
             // Check state
             const currentState = state.getState();
-            console.log('🔍 Current State:', currentState);
-            console.log('🔍 State reconciliationData:', currentState.reconciliationData);
-            console.log('🔍 State mappings:', currentState.mappings);
-            console.log('🔍 State fetchedData:', currentState.fetchedData);
             
             // Navigate to designer step
             state.setCurrentStep(4);
@@ -82,16 +62,12 @@ export function setupReconciliationStep(state) {
     
     // Initialize reconciliation data when entering this step
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('🎯 ReconciliationStep: DOM loaded, setting up event listeners');
         
         // Listen for step changes
         document.querySelectorAll('.step').forEach(step => {
-            console.log(`🎯 Adding click listener to step ${step.dataset.step}`);
             step.addEventListener('click', () => {
                 const stepNumber = parseInt(step.dataset.step);
-                console.log(`🎯 Step ${stepNumber} clicked`);
                 if (stepNumber === 3) {
-                    console.log('🎯 Step 3 clicked - calling initializeReconciliation()');
                     initializeReconciliation();
                 }
             });
@@ -100,9 +76,7 @@ export function setupReconciliationStep(state) {
         // Also listen for the navigation button
         const proceedBtn = document.getElementById('proceed-to-reconciliation');
         if (proceedBtn) {
-            console.log('🎯 Found proceed-to-reconciliation button, adding listener');
             proceedBtn.addEventListener('click', () => {
-                console.log('🎯 proceed-to-reconciliation button clicked - calling initializeReconciliation()');
                 initializeReconciliation();
             });
         } else {
@@ -120,7 +94,6 @@ export function setupReconciliationStep(state) {
     // Test reconciliation model button for debugging
     if (testReconciliationModelBtn) {
         testReconciliationModelBtn.addEventListener('click', () => {
-            console.log('🧪 Test reconciliation button clicked - loading mock data');
             loadMockDataForTesting();
         });
     }
@@ -129,9 +102,7 @@ export function setupReconciliationStep(state) {
      * Initialize reconciliation interface based on fetched data and mappings
      */
     async function initializeReconciliation() {
-        console.log('🚀 initializeReconciliation() called');
         const currentState = state.getState();
-        console.log('🚀 Current state:', currentState);
         
         if (!currentState.mappings || !currentState.mappings.mappedKeys || !currentState.mappings.mappedKeys.length) {
             console.warn('❌ No mapped keys available for reconciliation');
@@ -153,31 +124,21 @@ export function setupReconciliationStep(state) {
             return;
         }
         
-        console.log('✅ Validation passed - proceeding with reconciliation initialization');
-        console.log('✅ Mapped keys:', currentState.mappings.mappedKeys);
-        console.log('✅ Fetched data type:', typeof currentState.fetchedData);
-        console.log('✅ Fetched data structure:', currentState.fetchedData);
         
         // Filter out keys that are not in the current dataset
         const mappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
-        console.log('✅ Filtered mapped keys (excluding not in current dataset):', mappedKeys);
         
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-        console.log('✅ Data array:', data);
-        console.log('✅ Data length:', data.length);
         
         // Check if we already have reconciliation data from a previous session
         let isReturningToStep = false;
         if (currentState.reconciliationData && Object.keys(currentState.reconciliationData).length > 0) {
-            console.log('🔄 Found existing reconciliation data - restoring previous state');
             reconciliationData = currentState.reconciliationData;
             isReturningToStep = true;
         } else {
-            console.log('🆕 No existing reconciliation data - initializing fresh');
             
             // Initialize reconciliation progress
             const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
-            console.log('✅ Total reconcilable cells:', totalCells);
             state.setReconciliationProgress(0, totalCells);
             
             // Initialize reconciliation data structure
@@ -213,25 +174,20 @@ export function setupReconciliationStep(state) {
         updateProgressDisplay();
         
         // Create reconciliation table
-        console.log('✅ Creating reconciliation table...');
         await createReconciliationTable(data, mappedKeys, isReturningToStep);
         
         // Update state
-        console.log('✅ Updating state with reconciliation data...');
         state.updateState('reconciliationData', reconciliationData);
         
         // Enable/disable proceed button
-        console.log('✅ Updating proceed button...');
         updateProceedButton();
         
-        console.log('🎉 Reconciliation initialization completed successfully!');
     }
     
     /**
      * Load mock data for testing purposes
      */
     function loadMockDataForTesting() {
-        console.log('🧪 Loading mock data for testing reconciliation...');
         
         const mockItems = getMockItemsData();
         const mockMapping = getMockMappingData();
@@ -239,7 +195,6 @@ export function setupReconciliationStep(state) {
         // Update state with mock data
         state.loadMockData(mockItems, mockMapping);
         
-        console.log('🧪 Mock data loaded, calling initializeReconciliation()');
         
         // Initialize reconciliation with mock data
         setTimeout(() => {
@@ -295,14 +250,9 @@ export function setupReconciliationStep(state) {
      * Create the reconciliation table interface
      */
     async function createReconciliationTable(data, mappedKeys, isReturningToStep = false) {
-        console.log('🔨 Creating reconciliation table with data:', data.length, 'items and', mappedKeys.length, 'mapped keys');
-        console.log('🔨 Is returning to step:', isReturningToStep);
-        console.log('🔨 Property headers element:', propertyHeaders);
-        console.log('🔨 Reconciliation rows element:', reconciliationRows);
         
         // Clear existing content
         if (propertyHeaders) {
-            console.log('🔨 Clearing property headers');
             propertyHeaders.innerHTML = '';
             
             // Add item header
@@ -324,7 +274,6 @@ export function setupReconciliationStep(state) {
         
         // Create item rows
         if (reconciliationRows) {
-            console.log('🔨 Clearing and creating reconciliation rows');
             reconciliationRows.innerHTML = '';
             
             data.forEach((item, index) => {
@@ -377,14 +326,11 @@ export function setupReconciliationStep(state) {
                 
                 reconciliationRows.appendChild(tr);
             });
-            console.log('🔨 Added', data.length, 'rows to reconciliation table');
             
             // Only perform batch auto-acceptance for fresh initialization, not when returning to step
             if (!isReturningToStep) {
-                console.log('🤖 Starting batch auto-acceptance...');
                 await performBatchAutoAcceptance(data, mappedKeys);
             } else {
-                console.log('🔄 Returning to step - restoring existing reconciliation states');
                 restoreReconciliationDisplay(data, mappedKeys);
             }
             
@@ -418,7 +364,6 @@ export function setupReconciliationStep(state) {
             });
         });
         
-        console.log(`🤖 Processing ${batchJobs.length} values for auto-acceptance...`);
         
         // Group by property to batch API calls efficiently
         const batchByProperty = new Map();
@@ -465,7 +410,6 @@ export function setupReconciliationStep(state) {
         
         // Process API-requiring properties in batches
         for (const [property, jobs] of batchByProperty.entries()) {
-            console.log(`🤖 Batch processing ${jobs.length} values for property: ${property}`);
             
             // Mark all jobs as queued first
             jobs.forEach(job => {
@@ -621,7 +565,6 @@ export function setupReconciliationStep(state) {
             }
         }
         
-        console.log(`🎉 Batch auto-acceptance completed! Auto-accepted ${autoAcceptedCount} values.`);
         
         // Update progress display (removes current activity indicator)
         updateProgressDisplay();
@@ -1034,7 +977,6 @@ export function setupReconciliationStep(state) {
         setTimeout(() => {
             const modalElement = document.querySelector('#modal-content');
             if (modalElement) {
-                console.log('🔧 Setting up compact modal functionality');
                 setupDynamicDatePrecision(modalElement);
                 setupAutoAdvanceToggle();
             } else {
@@ -1384,9 +1326,7 @@ export function setupReconciliationStep(state) {
         }
         
         // Debug logging to identify undefined labels
-        console.log('🔍 Debug: displayMatches in reconciliation modal:', displayMatches);
         displayMatches.forEach((match, index) => {
-            console.log(`🔍 Debug: Match ${index}:`, {
                 id: match.id,
                 name: match.name,
                 description: match.description,
@@ -1629,7 +1569,6 @@ export function setupReconciliationStep(state) {
         
         // For date properties, skip reconciliation and show date input directly
         if (propertyType === 'time' || isDateValue(value)) {
-            console.log('🕒 Date property detected, showing date input interface');
             displayReconciliationResults([], propertyType, value);
             return;
         }
@@ -1648,14 +1587,12 @@ export function setupReconciliationStep(state) {
                     if (reconciledData.matches !== undefined) {
                         hasBeenReconciled = true;
                         matches = reconciledData.matches || [];
-                        console.log('🔄 Using existing reconciliation data:', matches.length, 'matches');
                     }
                 }
             }
             
             // Only fetch new matches if reconciliation has never been attempted
             if (!hasBeenReconciled) {
-                console.log('🔍 Performing first-time reconciliation for:', value);
                 
                 // Try reconciliation API first
                 matches = await tryReconciliationApi(value, property);
@@ -1674,12 +1611,10 @@ export function setupReconciliationStep(state) {
                     }
                 }
             } else {
-                console.log('⏭️ Skipping reconciliation - already attempted for this value');
             }
             
             // Check for 100% confidence auto-selection (Q&A requirement)
             if (matches && matches.length > 0 && matches[0].score >= 100) {
-                console.log('🎯 Auto-selecting 100% confidence match:', matches[0]);
                 
                 // Auto-select 100% confidence match
                 const perfectMatch = matches[0];
@@ -1741,7 +1676,6 @@ export function setupReconciliationStep(state) {
         
         // Try primary endpoint first
         try {
-            console.log(`🔍 Trying primary reconciliation API for "${value}"`);
             const response = await fetch(primaryApiUrl, {
                 method: "POST",
                 headers: {
@@ -1755,7 +1689,6 @@ export function setupReconciliationStep(state) {
                 throw new Error(`Primary API error: ${response.status} ${response.statusText}`);
             }
             
-            console.log(`✅ Primary API successful for "${value}"`);
             const data = await response.json();
             return parseReconciliationResults(data, value);
             
@@ -1764,7 +1697,6 @@ export function setupReconciliationStep(state) {
             
             // Try fallback endpoint
             try {
-                console.log(`🔍 Trying fallback reconciliation API for "${value}"`);
                 const response = await fetch(fallbackApiUrl, {
                     method: "POST",
                     headers: {
@@ -1778,7 +1710,6 @@ export function setupReconciliationStep(state) {
                     throw new Error(`Fallback API error: ${response.status} ${response.statusText}`);
                 }
                 
-                console.log(`✅ Fallback API successful for "${value}"`);
                 const data = await response.json();
                 return parseReconciliationResults(data, value);
                 
@@ -1799,7 +1730,6 @@ export function setupReconciliationStep(state) {
     function parseReconciliationResults(data, value) {
         if (data.q1 && data.q1.result) {
             return data.q1.result.map(match => {
-                console.log('🔍 Reconciliation API match:', match);
                 return {
                     id: match.id,
                     name: match.name || match.label || 'Unnamed item',
@@ -1840,7 +1770,6 @@ export function setupReconciliationStep(state) {
         
         if (data.search) {
             return data.search.map(item => {
-                console.log('🔍 Wikidata search item:', item);
                 return {
                     id: item.id,
                     name: item.label || item.name || 'Unnamed item',
@@ -1920,7 +1849,6 @@ export function setupReconciliationStep(state) {
      * Restore reconciliation display states when returning to the step
      */
     function restoreReconciliationDisplay(data, mappedKeys) {
-        console.log('🔄 Restoring reconciliation display states...');
         
         data.forEach((item, index) => {
             const itemId = `item-${index}`;
@@ -1952,7 +1880,6 @@ export function setupReconciliationStep(state) {
             });
         });
         
-        console.log('✅ Reconciliation display states restored');
     }
     
     // Tab functionality removed - now using progressive disclosure design
@@ -2161,7 +2088,6 @@ export function setupReconciliationStep(state) {
         if (autoAdvanceCheckbox) {
             autoAdvanceCheckbox.addEventListener('change', (e) => {
                 autoAdvanceSetting = e.target.checked;
-                console.log('🔄 Auto-advance setting changed to:', autoAdvanceSetting);
             });
         }
     }
@@ -2226,7 +2152,6 @@ export function setupReconciliationStep(state) {
     window.selectMatch = function(matchId, matchName, matchDescription) {
         if (!currentReconciliationCell) return;
         
-        console.log('🎯 Selecting match:', matchId, matchName);
         
         // Mark as reconciled
         markCellAsReconciled(currentReconciliationCell, {
@@ -2566,35 +2491,14 @@ export function setupReconciliationStep(state) {
      * Can be called from browser console: window.debugReconciliation()
      */
     function debugReconciliationStep() {
-        console.log('🔍=== RECONCILIATION DEBUG REPORT ===');
         
         // Check DOM elements
-        console.log('🔍 DOM Elements:');
-        console.log('  - propertyHeaders:', propertyHeaders);
-        console.log('  - reconciliationRows:', reconciliationRows);
-        console.log('  - reconciliationProgress:', reconciliationProgress);
-        console.log('  - reconcileNextBtn:', reconcileNextBtn);
-        console.log('  - proceedToDesignerBtn:', proceedToDesignerBtn);
-        console.log('  - testReconciliationModelBtn:', testReconciliationModelBtn);
         
         // Check state
         const currentState = state.getState();
-        console.log('🔍 State:');
-        console.log('  - Current step:', currentState.currentStep);
-        console.log('  - Has fetchedData:', !!currentState.fetchedData);
-        console.log('  - fetchedData type:', typeof currentState.fetchedData);
-        console.log('  - fetchedData length:', Array.isArray(currentState.fetchedData) ? currentState.fetchedData.length : 'not array');
-        console.log('  - Has mappings:', !!currentState.mappings);
-        console.log('  - mappedKeys count:', currentState.mappings?.mappedKeys?.length || 0);
-        console.log('  - mappedKeys:', currentState.mappings?.mappedKeys);
-        console.log('  - Test mode:', currentState.testMode);
         
         // Check reconciliation data
-        console.log('🔍 Reconciliation Data:');
-        console.log('  - reconciliationData object keys:', Object.keys(reconciliationData));
-        console.log('  - reconciliationData:', reconciliationData);
         
-        console.log('🔍=== END DEBUG REPORT ===');
         
         return {
             domElements: {
@@ -2624,7 +2528,6 @@ export function setupReconciliationStep(state) {
         }
         
         const newType = select.value;
-        console.log('🔄 Applying type override:', newType);
         
         // Get current property and value from the modal context
         if (!currentReconciliationCell) return;
@@ -2705,7 +2608,6 @@ export function setupReconciliationStep(state) {
             typeSettingsDesc.textContent = getUserFriendlyTypeName(newType);
         }
         
-        console.log('✅ Type override applied successfully with progressive disclosure');
     };
     
     // Return public API if needed

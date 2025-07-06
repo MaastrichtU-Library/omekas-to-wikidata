@@ -16,7 +16,6 @@ export function setupExportStep(state) {
         // Check if we're already on step 5 (e.g., from restored state)
         const currentState = state.getState();
         if (currentState.currentStep === 5) {
-            console.log('Export step: Already on step 5, initializing export');
             initializeExport();
         }
         
@@ -37,9 +36,7 @@ export function setupExportStep(state) {
     
     // Listen for step change events
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
-        console.log('Export step: Received STEP_CHANGED event', data);
         if (data.newStep === 5) {
-            console.log('Export step: Navigated to step 5 via event');
             initializeExport();
         }
     });

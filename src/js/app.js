@@ -38,8 +38,6 @@ function initializeApp() {
     // Set up application-level event listeners
     setupAppEventListeners(state);
     
-    // Log initialization status
-    console.log('Omeka S to Wikidata Mapping Tool initialized');
 }
 
 /**
@@ -56,19 +54,6 @@ function setupAppEventListeners(state) {
         }
     });
     
-    // Listen for state changes
-    eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (data) => {
-        console.debug('State changed:', data.path);
-    });
-    
-    // Listen for major events (for debugging/logging)
-    eventSystem.subscribe(eventSystem.Events.STEP_COMPLETED, (data) => {
-        console.debug(`Step ${data.step} completed`);
-    });
-    
-    eventSystem.subscribe(eventSystem.Events.VALIDATION_FAILED, (data) => {
-        console.debug(`Validation failed for step ${data.step}`);
-    });
 }
 
 // Initialize when the DOM is ready

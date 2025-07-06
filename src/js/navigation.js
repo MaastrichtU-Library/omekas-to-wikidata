@@ -36,9 +36,6 @@ export function setupNavigation(state) {
     function navigateToStep(stepNumber) {
         if (stepNumber < 1 || stepNumber > 5) return;
         
-        console.log(`🦭 Navigation: navigateToStep(${stepNumber}) called`);
-        console.log(`🦭 Current step before navigation: ${state.getCurrentStep()}`);
-        console.log(`🦭 Test mode: ${testMode}`);
         
         // Update state (this will trigger STEP_CHANGED event)
         state.setCurrentStep(stepNumber);
@@ -49,8 +46,6 @@ export function setupNavigation(state) {
                 state.completeStep(i);
             }
         }
-        
-        console.log(`🦭 Navigation completed to step ${stepNumber}`);
     }
     
     /**
@@ -107,25 +102,18 @@ export function setupNavigation(state) {
                 const timeSinceLastClick = currentTime - lastClickTime;
                 const isDoubleClick = timeSinceLastClick < 300; // 300ms threshold for double click
                 
-                console.log(`🦭 Step ${stepNumber} indicator clicked`);
-                
                 lastClickTime = currentTime;
                 
                 
                 // Normal navigation behavior
                 if (testMode) {
                     // In test mode, allow navigation to any step
-                    console.log(`🦭 Test mode: navigating to step ${stepNumber}`);
                     navigateToStep(stepNumber);
                 } else {
                     // Normal behavior: Only allow navigation to steps that are already completed or the current step + 1
                     const highestCompleted = state.getHighestCompletedStep();
-                    console.log(`🦭 Normal mode: highest completed step is ${highestCompleted}`);
                     if (stepNumber <= highestCompleted + 1) {
-                        console.log(`🦭 Navigation allowed to step ${stepNumber}`);
                         navigateToStep(stepNumber);
-                    } else {
-                        console.log(`🦭 Navigation blocked to step ${stepNumber} (not yet accessible)`);
                     }
                 }
             });

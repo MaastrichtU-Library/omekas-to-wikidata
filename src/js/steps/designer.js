@@ -5,8 +5,6 @@ import { createElement, createButton, showMessage } from '../ui/components.js';
 import { eventSystem } from '../events.js';
 
 export function setupDesignerStep(state) {
-    console.log('🎨 Designer - setupDesignerStep called');
-    console.log('🎨 Designer - Module loaded and function executing');
     
     // Get DOM elements with correct IDs
     const exampleItemSelector = document.getElementById('example-item-selector');
@@ -19,7 +17,6 @@ export function setupDesignerStep(state) {
     const issuesList = document.getElementById('issues-list');
     const referenceWarning = document.getElementById('reference-warning');
     
-    console.log('Designer - DOM elements found:', {
         exampleItemSelector: !!exampleItemSelector,
         itemLabelSelector: !!itemLabelSelector,
         itemLabelPreview: !!itemLabelPreview,
@@ -54,11 +51,8 @@ export function setupDesignerStep(state) {
     });
     
     // Listen for step change events
-    console.log('🎨 Designer - Subscribing to STEP_CHANGED events');
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
-        console.log('🎨 Designer - STEP_CHANGED event received:', data);
         if (data.newStep === 4) {
-            console.log('🎨 Designer - Initializing designer for step 4');
             // Small delay to ensure DOM is ready
             setTimeout(() => {
                 initializeDesigner();
@@ -99,14 +93,11 @@ export function setupDesignerStep(state) {
     
     if (proceedToExportBtn) {
         proceedToExportBtn.addEventListener('click', () => {
-            console.log('Export button clicked');
             proceedToExportBtn.disabled = true; // Disable immediately to prevent double-clicks
             
             if (validateDesignerData()) {
-                console.log('Validation passed, transitioning to step 5');
                 state.setCurrentStep(5);
             } else {
-                console.log('Validation failed');
                 // Re-enable the button if validation fails
                 proceedToExportBtn.disabled = false;
             }
@@ -115,24 +106,13 @@ export function setupDesignerStep(state) {
     
     // Initialize the designer
     function initializeDesigner() {
-        console.log('🎨 Designer - initializeDesigner() called');
         const currentState = state.getState();
         
         // Debug logging to understand the state
-        console.log('Designer - Current state:', currentState);
-        console.log('Designer - API data type:', typeof currentState.fetchedData);
-        console.log('Designer - API data:', currentState.fetchedData);
-        console.log('Designer - Reconciliation data:', currentState.reconciliationData);
-        console.log('Designer - Reconciliation data keys:', Object.keys(currentState.reconciliationData || {}));
-        console.log('Designer - First item reconciliation data:', currentState.reconciliationData?.['item-0']);
-        console.log('Designer - Mappings:', currentState.mappings);
-        console.log('Designer - Mapped keys:', currentState.mappings?.mappedKeys);
         
         // Test accessing specific reconciled data
         if (currentState.reconciliationData && currentState.reconciliationData['item-0']) {
             const firstItem = currentState.reconciliationData['item-0'];
-            console.log('Designer - First item properties:', Object.keys(firstItem.properties));
-            console.log('Designer - First item author reconciliation:', firstItem.properties['schema:author']);
         }
         
         // Check if we have completed reconciliation
@@ -143,7 +123,6 @@ export function setupDesignerStep(state) {
             return;
         }
         
-        console.log('Designer - Reconciliation data found, proceeding with initialization');
         
         // Initialize state structures if needed
         if (!state.getState().references) {
@@ -155,17 +134,11 @@ export function setupDesignerStep(state) {
         }
         
         // Populate components
-        console.log('Designer - Calling populateItemSelector()');
         populateItemSelector();
-        console.log('Designer - Calling populateLabelSelector()');
         populateLabelSelector();
-        console.log('Designer - Calling displayReferences()');
         displayReferences();
-        console.log('Designer - Calling displayProperties()');
         displayProperties();
-        console.log('Designer - Calling checkForIssues()');
         checkForIssues();
-        console.log('Designer - Calling updateProceedButton()');
         updateProceedButton();
         
         // Try to auto-detect references on init
@@ -337,8 +310,6 @@ export function setupDesignerStep(state) {
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const reconciliationData = currentState.reconciliationData || {};
         
-        console.log('Designer - Displaying properties for item:', itemId);
-        console.log('Designer - Reconciliation data for this item:', reconciliationData[itemId]);
         
         // Find the selected item by index
         const selectedItem = fetchedData[parseInt(itemId)];
@@ -522,20 +493,9 @@ export function setupDesignerStep(state) {
         const fetchedData = currentState.fetchedData || [];
         
         // Enhanced debug logging
-        console.log('=== DEBUG: displayProperties called ===');
-        console.log('Full state keys:', Object.keys(currentState));
-        console.log('Mappings state:', currentState.mappings);
-        console.log('Reconciliation data keys:', Object.keys(reconciliationData));
-        console.log('Mapped keys from state:', mappedKeys);
-        console.log('Mapped keys length:', mappedKeys.length);
-        console.log('Fetched data length:', fetchedData.length);
         
         // Check if mappedKeys have the expected structure
         if (mappedKeys.length > 0) {
-            console.log('=== DEBUG: First mappedKey structure ===');
-            console.log('First mappedKey:', mappedKeys[0]);
-            console.log('Has property field:', !!mappedKeys[0].property);
-            console.log('Property field:', mappedKeys[0].property);
         }
         
         displayPropertiesSubset(mappedKeys, null, reconciliationData);
@@ -543,12 +503,6 @@ export function setupDesignerStep(state) {
     
     // Display a subset of properties
     function displayPropertiesSubset(mappedKeys, specificItem, reconciliationData) {
-        console.log('=== DEBUG: displayPropertiesSubset called ===');
-        console.log('mappedKeys:', mappedKeys);
-        console.log('mappedKeys length:', mappedKeys?.length);
-        console.log('specificItem:', specificItem);
-        console.log('reconciliationData keys:', Object.keys(reconciliationData || {}));
-        console.log('reconciliationData:', reconciliationData);
         
         // Get the properties list element fresh each time
         const propertiesList = document.getElementById('properties-list');
@@ -569,15 +523,9 @@ export function setupDesignerStep(state) {
             return;
         }
         
-        console.log('Designer - Processing', mappedKeys.length, 'mapped keys');
         
         // Debug: Check structure of each mapping
         mappedKeys.forEach((mapping, index) => {
-            console.log(`=== DEBUG: Mapping ${index} structure ===`);
-            console.log('Full mapping object:', mapping);
-            console.log('Has property field:', !!mapping.property);
-            console.log('Property field:', mapping.property);
-            console.log('Property ID:', mapping.property?.id);
         });
         
         const fetchedData = state.getState().fetchedData || [];
@@ -632,12 +580,8 @@ export function setupDesignerStep(state) {
                 // For specific item view
                 const itemIndex = fetchedData.indexOf(specificItem);
                 const itemKey = `item-${itemIndex}`;
-                console.log(`Designer - Looking for reconciliation data for itemIndex: ${itemIndex}, property: ${mapping.key}`);
-                console.log(`Designer - Trying itemKey: ${itemKey}`);
-                console.log(`Designer - ReconciliationData has key ${itemKey}:`, itemKey in reconciliationData);
                 
                 const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
-                console.log(`Designer - Reconciled data for ${itemKey}/${mapping.key}:`, reconciledData);
                 
                 if (reconciledData?.selectedMatch) {
                     const match = reconciledData.selectedMatch;
@@ -658,10 +602,8 @@ export function setupDesignerStep(state) {
                 for (let i = 0; i < fetchedData.length; i++) {
                     const item = fetchedData[i];
                     const itemKey = `item-${i}`;  // Use index-based key
-                    console.log(`Designer - Multi-item view checking ${itemKey} for property ${mapping.key}`);
                     
                     const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
-                    console.log(`Designer - Multi-item reconciled data for ${itemKey}/${mapping.key}:`, reconciledData);
                     
                     if (reconciledData?.selectedMatch) {
                         const match = reconciledData.selectedMatch;
@@ -1899,11 +1841,9 @@ export function setupDesignerStep(state) {
     
     // Search for properties
     function searchProperties(query, resultsContainer) {
-        console.log('Searching for properties with query:', query);
         resultsContainer.innerHTML = '';
         
         if (!query || query.length < 2) {
-            console.log('Query too short, hiding results');
             return;
         }
         
@@ -1965,7 +1905,6 @@ export function setupDesignerStep(state) {
             resultsContainer.appendChild(resultItem);
         });
         
-        console.log('Added', filteredProperties.length, 'results to container');
     }
     
     // Select a property
