@@ -41,116 +41,21 @@ export function setupExportStep(state) {
         });
     }
     
-    // Export settings event handlers
-    const exportModeRadios = document.querySelectorAll('input[name="export-mode"]');
-    exportModeRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            exportSettings.mode = e.target.value;
-            updateExportModeUI();
-            generateQuickStatements();
+    // Open QuickStatements button
+    const openQuickStatementsBtn = document.getElementById('open-quick-statements');
+    if (openQuickStatementsBtn) {
+        openQuickStatementsBtn.addEventListener('click', () => {
+            openQuickStatements();
         });
-    });
-    
-    // Export options event handlers
-    const includeLabelsCheckbox = document.getElementById('include-labels');
-    if (includeLabelsCheckbox) {
-        includeLabelsCheckbox.addEventListener('change', (e) => {
-            exportSettings.includeLabels = e.target.checked;
-            generateQuickStatements();
-        });
-    }
-    
-    const includeReferencesCheckbox = document.getElementById('include-references');
-    if (includeReferencesCheckbox) {
-        includeReferencesCheckbox.addEventListener('change', (e) => {
-            exportSettings.includeReferences = e.target.checked;
-            generateQuickStatements();
-        });
-    }
-    
-    // Update export mode UI
-    function updateExportModeUI() {
-        const itemSelectionDiv = document.getElementById('item-selection');
-        if (itemSelectionDiv) {
-            itemSelectionDiv.style.display = exportSettings.mode === 'existing' ? 'block' : 'none';
-        }
     }
     
     // JSON export/import functionality removed for MVP
     
     // Initialize export
     function initializeExport() {
-        // Set up export settings UI
-        setupExportSettingsUI();
-        // Generate QuickStatements
+        // Generate QuickStatements directly
         generateQuickStatements();
     }
-    
-    // Setup export settings UI
-    function setupExportSettingsUI() {
-        const currentState = state.getState();
-        const reconciliationData = currentState.reconciliationData;
-        
-        // Update item selection if in existing mode
-        if (exportSettings.mode === 'existing' && reconciliationData) {
-            const itemSelectionDiv = document.getElementById('item-selection');
-            if (itemSelectionDiv) {
-                const selectionList = itemSelectionDiv.querySelector('.item-selection-list');
-                if (selectionList) {
-                    selectionList.innerHTML = '';
-                    Object.keys(reconciliationData).forEach(itemId => {
-                        const checkbox = createElement('input', {
-                            type: 'checkbox',
-                            id: `item-${itemId}`,
-                            value: itemId,
-                            checked: exportSettings.selectedItems.includes(itemId)
-                        });
-                        
-                        checkbox.addEventListener('change', (e) => {
-                            if (e.target.checked) {
-                                exportSettings.selectedItems.push(itemId);
-                            } else {
-                                exportSettings.selectedItems = exportSettings.selectedItems.filter(id => id !== itemId);
-                            }
-                            generateQuickStatements();
-                        });
-                        
-                        const label = createElement('label', {
-                            htmlFor: `item-${itemId}`,
-                            className: 'item-checkbox-label'
-                        }, `Item ${itemId}`);
-                        
-                        const wrapper = createElement('div', {
-                            className: 'item-checkbox-wrapper'
-                        }, [checkbox, label]);
-                        
-                        selectionList.appendChild(wrapper);
-                    });
-                }
-            }
-        }
-        
-        // Initialize checkbox states
-        const includeLabelsCheckbox = document.getElementById('include-labels');
-        if (includeLabelsCheckbox) {
-            includeLabelsCheckbox.checked = exportSettings.includeLabels;
-        }
-        
-        const includeReferencesCheckbox = document.getElementById('include-references');
-        if (includeReferencesCheckbox) {
-            includeReferencesCheckbox.checked = exportSettings.includeReferences;
-        }
-        
-        updateExportModeUI();
-    }
-    
-    // Export settings
-    let exportSettings = {
-        mode: 'create', // 'create' or 'existing'
-        selectedItems: [], // For existing mode
-        includeLabels: true,
-        includeReferences: true
-    };
     
     // Utility function to escape strings for QuickStatements
     function escapeQuickStatementsString(str) {
@@ -294,52 +199,39 @@ export function setupExportStep(state) {
         Object.keys(reconciliationData).forEach(itemId => {
             const itemData = reconciliationData[itemId];
             
-            // Skip if in existing mode and item not selected
-            if (exportSettings.mode === 'existing' && !exportSettings.selectedItems.includes(itemId)) {
-                return;
-            }
-            
             try {
-                if (exportSettings.mode === 'create') {
-                    // Add CREATE statement for new item
-                    quickStatementsText += 'CREATE\n';
-                    
-                    // Add label if configured and available
-                    if (exportSettings.includeLabels) {
-                        // Try to get label from designer data first
-                        let labelValue = null;
-                        if (designerData.labelProperty && itemData.properties[designerData.labelProperty]) {
-                            labelValue = itemData.properties[designerData.labelProperty];
-                        } else {
-                            // Fall back to first available property that could be a label
-                            const potentialLabelKeys = Object.keys(itemData.properties).filter(key => 
-                                key.toLowerCase().includes('name') || 
-                                key.toLowerCase().includes('title') || 
-                                key.toLowerCase().includes('label')
-                            );
-                            if (potentialLabelKeys.length > 0) {
-                                labelValue = itemData.properties[potentialLabelKeys[0]];
-                            }
-                        }
-                        
-                        if (labelValue && labelValue.reconciled && labelValue.reconciled[0]) {
-                            const label = labelValue.reconciled[0].selectedMatch?.value || labelValue.reconciled[0].original;
-                            if (label) {
-                                quickStatementsText += `LAST\tLen\t${escapeQuickStatementsString(label)}\n`;
-                            }
-                        }
-                    }
-                    
-                    // Add entity type from schema if available
-                    if (entitySchema) {
-                        quickStatementsText += `LAST\tP31\t${entitySchema}\n`;
-                    }
-                    
-                    var itemPrefix = 'LAST';
+                // Always create new items
+                quickStatementsText += 'CREATE\n';
+                
+                // Always add label - try to get label from designer data first
+                let labelValue = null;
+                if (designerData.labelProperty && itemData.properties[designerData.labelProperty]) {
+                    labelValue = itemData.properties[designerData.labelProperty];
                 } else {
-                    // For existing items, use the item ID directly
-                    var itemPrefix = itemId;
+                    // Fall back to first available property that could be a label
+                    const potentialLabelKeys = Object.keys(itemData.properties).filter(key => 
+                        key.toLowerCase().includes('name') || 
+                        key.toLowerCase().includes('title') || 
+                        key.toLowerCase().includes('label')
+                    );
+                    if (potentialLabelKeys.length > 0) {
+                        labelValue = itemData.properties[potentialLabelKeys[0]];
+                    }
                 }
+                
+                if (labelValue && labelValue.reconciled && labelValue.reconciled[0]) {
+                    const label = labelValue.reconciled[0].selectedMatch?.value || labelValue.reconciled[0].original;
+                    if (label) {
+                        quickStatementsText += `LAST\tLen\t${escapeQuickStatementsString(label)}\n`;
+                    }
+                }
+                
+                // Add entity type from schema if available
+                if (entitySchema) {
+                    quickStatementsText += `LAST\tP31\t${entitySchema}\n`;
+                }
+                
+                var itemPrefix = 'LAST';
                 
                 // Process each property
                 Object.keys(itemData.properties).forEach(propertyKey => {
@@ -371,11 +263,8 @@ export function setupExportStep(state) {
                                 }
                                 
                                 if (value) {
-                                    // Get references for this statement
-                                    let references = [];
-                                    if (exportSettings.includeReferences) {
-                                        references = propertyData.references || globalReferences;
-                                    }
+                                    // Always get references for this statement
+                                    let references = propertyData.references || globalReferences;
                                     
                                     // Format the statement
                                     const statement = formatStatement(itemPrefix, wikidataPropertyId, value, references);
@@ -496,6 +385,42 @@ export function setupExportStep(state) {
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
+    }
+    
+    // Generate QuickStatements URL
+    function generateQuickStatementsUrl(quickStatementsText) {
+        if (!quickStatementsText || !quickStatementsText.trim()) {
+            return null;
+        }
+        
+        // Replace TAB characters with "|" and newlines with "||"
+        let urlText = quickStatementsText
+            .replace(/\t/g, '|')
+            .replace(/\n/g, '||');
+        
+        // Apply URL encoding
+        urlText = encodeURIComponent(urlText);
+        
+        // Generate the complete URL
+        return `https://quickstatements.toolforge.org/#/v1=${urlText}`;
+    }
+    
+    // Open QuickStatements with generated URL
+    function openQuickStatements() {
+        if (!quickStatementsTextarea || !quickStatementsTextarea.value.trim()) {
+            showMessage('No QuickStatements to open', 'error');
+            return;
+        }
+        
+        const quickStatementsText = quickStatementsTextarea.value;
+        const url = generateQuickStatementsUrl(quickStatementsText);
+        
+        if (url) {
+            window.open(url, '_blank');
+            showMessage('Opening QuickStatements in new tab', 'success');
+        } else {
+            showMessage('Failed to generate QuickStatements URL', 'error');
+        }
     }
     
     // Download JSON
