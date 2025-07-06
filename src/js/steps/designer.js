@@ -378,7 +378,21 @@ export function setupDesignerStep(state) {
         }
     }
     
+    // Helper function to create a standardized reference object
+    // This ensures consistency across all reference operations
+    function createReferenceObject(ref) {
+        return {
+            url: ref.url,
+            retrievedDate: ref.retrievedDate || new Date().toISOString().split('T')[0],
+            addedAt: ref.addedAt || new Date().toISOString(),
+            autoDetected: ref.autoDetected,
+            type: ref.type
+        };
+    }
+    
     // Check if a reference is applied to any properties
+    // This function iterates through all items and their properties to determine
+    // if a specific reference URL is already being used anywhere in the reconciliation data
     function checkIfReferenceIsApplied(ref) {
         const currentState = state.getState();
         const reconciliationData = currentState.reconciliationData || {};
@@ -461,14 +475,17 @@ export function setupDesignerStep(state) {
                 htmlFor: `ref-toggle-${index}`
             }, 'Apply to all');
             
+            // Toggle behavior: When checked, the reference is applied to ALL properties across ALL items
+            // When unchecked, the reference is removed from ALL properties across ALL items
+            // This provides a quick way to bulk apply/remove references globally
             toggleInput.addEventListener('change', (e) => {
                 ref.enabled = e.target.checked;
                 
                 if (e.target.checked) {
-                    // Apply this reference to all properties
+                    // Apply this reference to all properties when toggle is checked
                     applyReferenceToAllProperties(ref);
                 } else {
-                    // Remove this reference from all properties
+                    // Remove this reference from all properties when toggle is unchecked
                     removeReferenceFromAllProperties(ref);
                 }
                 
@@ -1622,13 +1639,8 @@ export function setupDesignerStep(state) {
                     // Check if reference already exists
                     const existingRef = propData.references.find(r => r.url === ref.url);
                     if (!existingRef) {
-                        propData.references.push({
-                            url: ref.url,
-                            retrievedDate: ref.retrievedDate || new Date().toISOString().split('T')[0],
-                            addedAt: ref.addedAt || new Date().toISOString(),
-                            autoDetected: ref.autoDetected,
-                            type: ref.type
-                        });
+                        // Use the helper function to create a consistent reference object
+                        propData.references.push(createReferenceObject(ref));
                     }
                 });
             }
@@ -1733,6 +1745,7 @@ export function setupDesignerStep(state) {
                 // Check if reference already exists
                 const existingRef = propData.references.find(ref => ref.url === url);
                 if (!existingRef) {
+                    // Create a reference object manually here since we have different parameters
                     propData.references.push({
                         url: url,
                         retrievedDate: retrievedDate,
