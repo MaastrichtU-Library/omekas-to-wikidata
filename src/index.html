@@ -214,23 +214,20 @@
                         
                         <!-- Wikidata-like item header -->
                         <div class="wikidata-item-header">
-                            <div class="item-label-group">
-                                <label for="item-label-selector">Label Source:</label>
-                                <select id="item-label-selector" class="item-label-selector">
-                                    <option value="">Select property for label</option>
-                                    <!-- Dynamically populated with available keys -->
-                                </select>
-                                <label for="item-label">Preview:</label>
-                                <input type="text" id="item-label" class="item-label-input" placeholder="Label preview will appear here" readonly>
+                            <div class="labels-section">
+                                <h4>Labels</h4>
+                                <div id="labels-container" class="language-mappings-container">
+                                    <!-- Language-specific labels will be added here -->
+                                </div>
+                                <button type="button" id="add-label-language" class="button button--secondary button--small">+ Add Language for Label</button>
                             </div>
-                            <div class="item-description-group">
-                                <label for="item-description-selector">Description Source:</label>
-                                <select id="item-description-selector" class="item-description-selector">
-                                    <option value="">Select property for description</option>
-                                    <!-- Dynamically populated with available keys -->
-                                </select>
-                                <label for="item-description">Preview:</label>
-                                <input type="text" id="item-description" class="item-description-input" placeholder="Description preview will appear here" readonly>
+                            
+                            <div class="descriptions-section">
+                                <h4>Descriptions</h4>
+                                <div id="descriptions-container" class="language-mappings-container">
+                                    <!-- Language-specific descriptions will be added here -->
+                                </div>
+                                <button type="button" id="add-description-language" class="button button--secondary button--small">+ Add Language for Description</button>
                             </div>
                         </div>
                         

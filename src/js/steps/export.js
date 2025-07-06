@@ -168,8 +168,9 @@ export function setupExportStep(state) {
             
             // Validate property ID (second part)
             const propertyId = parts[1];
-            if (!propertyId.match(/^[PS]\d+$/)) {
-                errors.push(`Line ${lineNum}: Invalid property ID '${propertyId}' - should be P or S followed by numbers`);
+            // Allow special properties for labels (Len) and descriptions (Den) where n is language code
+            if (!propertyId.match(/^[PS]\d+$/) && !propertyId.match(/^[LD][a-z]{2}(-[a-z]+)?$/)) {
+                errors.push(`Line ${lineNum}: Invalid property ID '${propertyId}' - should be P or S followed by numbers, or L/D followed by language code`);
             }
             
             // Validate value format (third part)
@@ -188,6 +189,40 @@ export function setupExportStep(state) {
             errors,
             warnings
         };
+    }
+    
+    // Get label or description value from item data
+    function getLabelOrDescriptionValue(itemData, propertyKey, fetchedData, itemId) {
+        // First try to get from reconciled data
+        if (itemData.properties && itemData.properties[propertyKey]) {
+            const propertyData = itemData.properties[propertyKey];
+            if (propertyData.reconciled && propertyData.reconciled[0] && propertyData.reconciled[0].selectedMatch) {
+                return propertyData.reconciled[0].selectedMatch.value || propertyData.reconciled[0].original;
+            }
+        }
+        
+        // Fall back to original fetched data
+        if (fetchedData && Array.isArray(fetchedData)) {
+            // Extract item index from itemId (format: "item-0", "item-1", etc.)
+            const itemIndex = parseInt(itemId.replace('item-', ''));
+            const originalItem = fetchedData[itemIndex];
+            
+            if (originalItem && originalItem[propertyKey] !== undefined && originalItem[propertyKey] !== null) {
+                let value = originalItem[propertyKey];
+                
+                // Handle complex values
+                if (Array.isArray(value)) {
+                    value = value[0];
+                }
+                if (typeof value === 'object' && value !== null) {
+                    value = value['@value'] || value['o:label'] || JSON.stringify(value);
+                }
+                
+                return value;
+            }
+        }
+        
+        return null;
     }
     
     // Generate QuickStatements
@@ -224,51 +259,31 @@ export function setupExportStep(state) {
                 // Always create new items
                 quickStatementsText += 'CREATE\n';
                 
-                // Always add label - try to get label from designer data first
-                let labelValue = null;
-                if (designerData.labelKey && itemData.properties[designerData.labelKey]) {
-                    labelValue = itemData.properties[designerData.labelKey];
-                } else {
-                    // Fall back to first available property that could be a label
-                    const potentialLabelKeys = Object.keys(itemData.properties).filter(key => 
-                        key.toLowerCase().includes('name') || 
-                        key.toLowerCase().includes('title') || 
-                        key.toLowerCase().includes('label')
-                    );
-                    if (potentialLabelKeys.length > 0) {
-                        labelValue = itemData.properties[potentialLabelKeys[0]];
+                // Add labels for all configured languages
+                const labelMappings = designerData.labelMappings || {};
+                Object.keys(labelMappings).forEach(languageCode => {
+                    const propertyKey = labelMappings[languageCode];
+                    if (propertyKey) {
+                        const labelValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
+                        if (labelValue) {
+                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
+                            quickStatementsText += `LAST\tL${langSuffix}\t${escapeQuickStatementsString(labelValue)}\n`;
+                        }
                     }
-                }
+                });
                 
-                if (labelValue && labelValue.reconciled && labelValue.reconciled[0]) {
-                    const label = labelValue.reconciled[0].selectedMatch?.value || labelValue.reconciled[0].original;
-                    if (label) {
-                        quickStatementsText += `LAST\tLen\t${escapeQuickStatementsString(label)}\n`;
+                // Add descriptions for all configured languages
+                const descriptionMappings = designerData.descriptionMappings || {};
+                Object.keys(descriptionMappings).forEach(languageCode => {
+                    const propertyKey = descriptionMappings[languageCode];
+                    if (propertyKey) {
+                        const descriptionValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
+                        if (descriptionValue) {
+                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
+                            quickStatementsText += `LAST\tD${langSuffix}\t${escapeQuickStatementsString(descriptionValue)}\n`;
+                        }
                     }
-                }
-                
-                // Add description if available
-                let descriptionValue = null;
-                if (designerData.descriptionKey && itemData.properties[designerData.descriptionKey]) {
-                    descriptionValue = itemData.properties[designerData.descriptionKey];
-                } else {
-                    // Fall back to first available property that could be a description
-                    const potentialDescKeys = Object.keys(itemData.properties).filter(key => 
-                        key.toLowerCase().includes('description') || 
-                        key.toLowerCase().includes('summary') || 
-                        key.toLowerCase().includes('abstract')
-                    );
-                    if (potentialDescKeys.length > 0) {
-                        descriptionValue = itemData.properties[potentialDescKeys[0]];
-                    }
-                }
-                
-                if (descriptionValue && descriptionValue.reconciled && descriptionValue.reconciled[0]) {
-                    const description = descriptionValue.reconciled[0].selectedMatch?.value || descriptionValue.reconciled[0].original;
-                    if (description) {
-                        quickStatementsText += `LAST\tDen\t${escapeQuickStatementsString(description)}\n`;
-                    }
-                }
+                });
                 
                 // Add entity type from schema if available and valid
                 // Only add P31 (instance of) if entitySchema is a valid Q-identifier
