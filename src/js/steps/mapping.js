@@ -16,11 +16,8 @@ export function setupMappingStep(state) {
     const saveMappingBtn = document.getElementById('save-mapping');
     const loadMappingFileInput = document.getElementById('load-mapping-file');
     
-    // Set default entity schema
-    if (entitySchemaInput && !entitySchemaInput.value) {
-        entitySchemaInput.value = 'E473';
-        state.updateState('entitySchema', 'E473');
-    }
+    // Don't set a default entity schema - leave it empty
+    // The user should explicitly choose a valid Wikidata Q-identifier
     
     // Listen for step changes via event system
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
@@ -1048,7 +1045,7 @@ export function setupMappingStep(state) {
         const mappingData = {
             version: "1.0",
             createdAt: new Date().toISOString(),
-            entitySchema: currentState.entitySchema || 'E473',
+            entitySchema: currentState.entitySchema || '',
             mappings: {
                 mapped: currentState.mappings.mappedKeys.map(key => ({
                     key: key.key,
