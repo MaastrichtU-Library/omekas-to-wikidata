@@ -1327,6 +1327,7 @@ export function setupReconciliationStep(state) {
         
         // Debug logging to identify undefined labels
         displayMatches.forEach((match, index) => {
+            console.log('Match data:', {
                 id: match.id,
                 name: match.name,
                 description: match.description,
