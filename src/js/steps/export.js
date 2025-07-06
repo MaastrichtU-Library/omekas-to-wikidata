@@ -226,8 +226,8 @@ export function setupExportStep(state) {
                 
                 // Always add label - try to get label from designer data first
                 let labelValue = null;
-                if (designerData.labelProperty && itemData.properties[designerData.labelProperty]) {
-                    labelValue = itemData.properties[designerData.labelProperty];
+                if (designerData.labelKey && itemData.properties[designerData.labelKey]) {
+                    labelValue = itemData.properties[designerData.labelKey];
                 } else {
                     // Fall back to first available property that could be a label
                     const potentialLabelKeys = Object.keys(itemData.properties).filter(key => 
@@ -244,6 +244,29 @@ export function setupExportStep(state) {
                     const label = labelValue.reconciled[0].selectedMatch?.value || labelValue.reconciled[0].original;
                     if (label) {
                         quickStatementsText += `LAST\tLen\t${escapeQuickStatementsString(label)}\n`;
+                    }
+                }
+                
+                // Add description if available
+                let descriptionValue = null;
+                if (designerData.descriptionKey && itemData.properties[designerData.descriptionKey]) {
+                    descriptionValue = itemData.properties[designerData.descriptionKey];
+                } else {
+                    // Fall back to first available property that could be a description
+                    const potentialDescKeys = Object.keys(itemData.properties).filter(key => 
+                        key.toLowerCase().includes('description') || 
+                        key.toLowerCase().includes('summary') || 
+                        key.toLowerCase().includes('abstract')
+                    );
+                    if (potentialDescKeys.length > 0) {
+                        descriptionValue = itemData.properties[potentialDescKeys[0]];
+                    }
+                }
+                
+                if (descriptionValue && descriptionValue.reconciled && descriptionValue.reconciled[0]) {
+                    const description = descriptionValue.reconciled[0].selectedMatch?.value || descriptionValue.reconciled[0].original;
+                    if (description) {
+                        quickStatementsText += `LAST\tDen\t${escapeQuickStatementsString(description)}\n`;
                     }
                 }
                 

@@ -10,6 +10,8 @@ export function setupDesignerStep(state) {
     const exampleItemSelector = document.getElementById('example-item-selector');
     const itemLabelSelector = document.getElementById('item-label-selector');
     const itemLabelPreview = document.getElementById('item-label');
+    const itemDescriptionSelector = document.getElementById('item-description-selector');
+    const itemDescriptionPreview = document.getElementById('item-description');
     const referencesList = document.getElementById('references-list');
     const propertiesList = document.getElementById('properties-list');
     const unavailableProperties = document.getElementById('unavailable-properties');
@@ -21,6 +23,8 @@ export function setupDesignerStep(state) {
         exampleItemSelector: !!exampleItemSelector,
         itemLabelSelector: !!itemLabelSelector,
         itemLabelPreview: !!itemLabelPreview,
+        itemDescriptionSelector: !!itemDescriptionSelector,
+        itemDescriptionPreview: !!itemDescriptionPreview,
         referencesList: !!referencesList,
         propertiesList: !!propertiesList,
         unavailableProperties: !!unavailableProperties
@@ -68,6 +72,10 @@ export function setupDesignerStep(state) {
     
     if (itemLabelSelector) {
         itemLabelSelector.addEventListener('change', handleLabelSelection);
+    }
+    
+    if (itemDescriptionSelector) {
+        itemDescriptionSelector.addEventListener('change', handleDescriptionSelection);
     }
     
     if (autoDetectReferencesBtn) {
@@ -137,6 +145,7 @@ export function setupDesignerStep(state) {
         // Populate components
         populateItemSelector();
         populateLabelSelector();
+        populateDescriptionSelector();
         displayReferences();
         displayProperties();
         checkForIssues();
@@ -225,6 +234,54 @@ export function setupDesignerStep(state) {
         }
     }
     
+    // Populate the description selector dropdown
+    function populateDescriptionSelector() {
+        if (!itemDescriptionSelector) {
+            console.error('Designer - itemDescriptionSelector not found!');
+            return;
+        }
+        
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData;
+        
+        // Clear existing options except the first one
+        while (itemDescriptionSelector.options.length > 1) {
+            itemDescriptionSelector.remove(1);
+        }
+        
+        if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
+            // Get all unique keys from the fetched data
+            const allKeys = new Set();
+            fetchedData.forEach(item => {
+                Object.keys(item).forEach(key => {
+                    // Skip technical keys and add user-friendly ones
+                    if (!key.startsWith('@') && !key.startsWith('o:') || 
+                        key === 'o:title' || key === 'o:id') {
+                        allKeys.add(key);
+                    }
+                });
+            });
+            
+            // Sort keys and add to selector
+            Array.from(allKeys).sort().forEach(key => {
+                const option = createElement('option', {
+                    value: key
+                }, key);
+                itemDescriptionSelector.appendChild(option);
+            });
+            
+            // Try to auto-select a reasonable default (description-like fields)
+            const preferredKeys = ['schema:description', 'dcterms:description', 'description', 'dcterms:abstract', 'abstract', 'summary'];
+            for (const preferredKey of preferredKeys) {
+                if (allKeys.has(preferredKey)) {
+                    itemDescriptionSelector.value = preferredKey;
+                    handleDescriptionSelection(); // Update preview
+                    break;
+                }
+            }
+        }
+    }
+    
     // Handle label selection change
     function handleLabelSelection() {
         if (!itemLabelSelector || !itemLabelPreview) return;
@@ -281,6 +338,55 @@ export function setupDesignerStep(state) {
         // Update preview
     }
     
+    // Handle description selection change
+    function handleDescriptionSelection() {
+        if (!itemDescriptionSelector || !itemDescriptionPreview) return;
+        
+        const selectedKey = itemDescriptionSelector.value;
+        if (!selectedKey) {
+            itemDescriptionPreview.value = '';
+            return;
+        }
+        
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData;
+        const exampleItemSelector = document.getElementById('example-item-selector');
+        const selectedItemValue = exampleItemSelector?.value;
+        
+        if (selectedItemValue === 'multi-item') {
+            // For multi-item view, show first available value
+            for (const item of fetchedData) {
+                if (item[selectedKey] !== undefined && item[selectedKey] !== null) {
+                    let displayValue = item[selectedKey];
+                    // Convert object values to display format
+                    if (typeof displayValue === 'object' && displayValue !== null) {
+                        displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
+                    }
+                    itemDescriptionPreview.value = displayValue;
+                    break;
+                }
+            }
+        } else {
+            // Show value for specific item
+            const selectedItem = fetchedData[parseInt(selectedItemValue)];
+            if (selectedItem && selectedItem[selectedKey] !== undefined) {
+                let displayValue = selectedItem[selectedKey];
+                // Convert object values to display format
+                if (typeof displayValue === 'object' && displayValue !== null) {
+                    displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
+                }
+                itemDescriptionPreview.value = displayValue;
+            } else {
+                itemDescriptionPreview.value = 'No value for this item';
+            }
+        }
+        
+        // Store the selected description key in state
+        state.updateState('designerData.descriptionKey', selectedKey);
+        
+        // Update preview
+    }
+    
     // Handle item selection change
     function handleItemSelection() {
         const exampleItemSelector = document.getElementById('example-item-selector');
@@ -302,6 +408,8 @@ export function setupDesignerStep(state) {
         
         // Update label preview for the new selection
         handleLabelSelection();
+        // Update description preview for the new selection
+        handleDescriptionSelection();
     }
     
     // Display properties for a specific item
