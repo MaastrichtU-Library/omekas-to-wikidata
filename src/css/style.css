@@ -3078,6 +3078,12 @@ main {
     flex: 1;
     padding: 0.75rem 1rem;
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.statement-value > :first-child {
+    display: flex;
     align-items: center;
     justify-content: space-between;
 }
@@ -3175,6 +3181,79 @@ main {
 
 .wikidata-btn--reference {
     color: #00af89;
+}
+
+/* Statement references section */
+.statement-references {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #eaecf0;
+    border-radius: 2px;
+}
+
+.references-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #72777d;
+    margin-bottom: 0.5rem;
+}
+
+.reference-item-small {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    margin-bottom: 0.25rem;
+    background-color: white;
+    border: 1px solid #eaecf0;
+    border-radius: 2px;
+    font-size: 0.8rem;
+}
+
+.reference-item-small:last-child {
+    margin-bottom: 0;
+}
+
+.reference-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reference-link {
+    color: #0645ad;
+    text-decoration: none;
+    font-size: 0.8rem;
+    word-break: break-all;
+}
+
+.reference-link:hover {
+    text-decoration: underline;
+}
+
+.reference-date {
+    color: #72777d;
+    font-size: 0.75rem;
+}
+
+.reference-remove-btn {
+    padding: 0.15rem 0.4rem;
+    font-size: 1rem;
+    line-height: 1;
+    color: #c8102e;
+    background-color: transparent;
+    border: 1px solid #c8102e;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reference-remove-btn:hover {
+    background-color: #c8102e;
+    color: white;
 }
 
 .wikidata-btn--edit {

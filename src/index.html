@@ -285,42 +285,6 @@
                         <a href="https://www.wikidata.org/wiki/Help:QuickStatements" target="_blank" class="info-link">Learn more about QuickStatements</a>
                     </div>
                     
-                    <!-- Export Settings Panel -->
-                    <div class="export-settings">
-                        <h4>Export Settings</h4>
-                        <div class="settings-group">
-                            <div class="export-mode-selection">
-                                <label class="radio-label">
-                                    <input type="radio" name="export-mode" value="create" checked>
-                                    <span class="radio-text">Create new items</span>
-                                    <span class="radio-description">Generate CREATE statements for new Wikidata items</span>
-                                </label>
-                                <label class="radio-label">
-                                    <input type="radio" name="export-mode" value="existing">
-                                    <span class="radio-text">Add to existing items</span>
-                                    <span class="radio-description">Add statements to existing Wikidata items (requires item IDs)</span>
-                                </label>
-                            </div>
-                            
-                            <div id="item-selection" class="item-selection" style="display: none;">
-                                <h5>Select items to export:</h5>
-                                <div class="item-selection-list">
-                                    <!-- Dynamically populated -->
-                                </div>
-                            </div>
-                            
-                            <div class="export-options">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="include-labels" checked>
-                                    <span class="checkbox-text">Include item labels</span>
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="include-references" checked>
-                                    <span class="checkbox-text">Include source references</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
                     
                     <!-- Validation Display -->
                     <div id="validation-display" class="validation-display">
@@ -334,6 +298,7 @@
                             <div class="output-actions">
                                 <button id="copy-quick-statements" class="button button--secondary">Copy to Clipboard</button>
                                 <button id="download-quick-statements" class="button button--secondary">Download as .txt</button>
+                                <button id="open-quick-statements" class="button button--primary">Open in QuickStatements</button>
                             </div>
                         </div>
                         <textarea id="quick-statements" readonly rows="12" placeholder="QuickStatements code will appear here"></textarea>

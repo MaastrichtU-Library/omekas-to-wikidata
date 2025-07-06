@@ -797,7 +797,7 @@ export function setupDesignerStep(state) {
             propertyValueSection.appendChild(statementActions);
             
             // Display property-specific references if any
-            const propertyReferences = getPropertyReferences(mapping.property.id, reconciliationData, specificItem);
+            const propertyReferences = getPropertyReferences(mapping.property.id, reconciliationData, specificItem, mapping.key);
             if (propertyReferences.length > 0) {
                 const referencesSection = createElement('div', {
                     className: 'statement-references'
@@ -808,9 +808,13 @@ export function setupDesignerStep(state) {
                 }, `References (${propertyReferences.length}):`);
                 referencesSection.appendChild(referencesTitle);
                 
-                propertyReferences.forEach(ref => {
+                propertyReferences.forEach((ref, index) => {
                     const refItem = createElement('div', {
                         className: 'reference-item-small'
+                    });
+                    
+                    const refContent = createElement('div', {
+                        className: 'reference-content'
                     });
                     
                     const refLink = createElement('a', {
@@ -819,19 +823,30 @@ export function setupDesignerStep(state) {
                         className: 'reference-link'
                     }, ref.url.length > 50 ? ref.url.substring(0, 50) + '...' : ref.url);
                     
-                    refItem.appendChild(refLink);
+                    refContent.appendChild(refLink);
                     
                     if (ref.retrievedDate) {
                         const dateSpan = createElement('span', {
                             className: 'reference-date'
                         }, ` (retrieved ${ref.retrievedDate})`);
-                        refItem.appendChild(dateSpan);
+                        refContent.appendChild(dateSpan);
                     }
                     
+                    refItem.appendChild(refContent);
+                    
+                    // Add remove button
+                    const removeBtn = createButton('×', {
+                        className: 'reference-remove-btn',
+                        title: 'Remove reference',
+                        onClick: () => removePropertyReference(mapping.property.id, mapping.key, ref, specificItem)
+                    });
+                    
+                    refItem.appendChild(removeBtn);
                     referencesSection.appendChild(refItem);
                 });
                 
-                propertyItem.appendChild(referencesSection);
+                // Add references section to the property value section instead of property item
+                propertyValueSection.appendChild(referencesSection);
             }
             
             // Assemble the complete statement
@@ -843,29 +858,47 @@ export function setupDesignerStep(state) {
     }
     
     // Get references for a specific property
-    function getPropertyReferences(propertyId, reconciliationData, specificItem) {
+    function getPropertyReferences(propertyId, reconciliationData, specificItem, mappingKey) {
         const references = [];
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
         
         if (specificItem) {
             // Get references for specific item
-            const itemIndex = state.getState().fetchedData.indexOf(specificItem);
+            const itemIndex = fetchedData.indexOf(specificItem);
             const itemKey = `item-${itemIndex}`;
-            const propData = reconciliationData[itemKey]?.properties[propertyId];
             
-            if (propData && propData.references) {
-                references.push(...propData.references);
+            // Check all possible locations for references
+            // 1. Direct property references using mapping key
+            const propDataByKey = reconciliationData[itemKey]?.properties[mappingKey];
+            if (propDataByKey && propDataByKey.references) {
+                references.push(...propDataByKey.references);
+            }
+            
+            // 2. Property references using property ID
+            const propDataById = reconciliationData[itemKey]?.properties[propertyId];
+            if (propDataById && propDataById.references) {
+                references.push(...propDataById.references);
             }
         } else {
             // Get references from all items that have this property
             const uniqueRefs = new Map();
             
             Object.keys(reconciliationData).forEach(itemKey => {
-                const propData = reconciliationData[itemKey]?.properties[propertyId];
-                if (propData && propData.references) {
-                    propData.references.forEach(ref => {
-                        uniqueRefs.set(ref.url, ref);
-                    });
-                }
+                // Check both mapping key and property ID
+                const propDataByKey = reconciliationData[itemKey]?.properties[mappingKey];
+                const propDataById = reconciliationData[itemKey]?.properties[propertyId];
+                
+                const collectRefs = (propData) => {
+                    if (propData && propData.references) {
+                        propData.references.forEach(ref => {
+                            uniqueRefs.set(ref.url, ref);
+                        });
+                    }
+                };
+                
+                collectRefs(propDataByKey);
+                collectRefs(propDataById);
             });
             
             references.push(...Array.from(uniqueRefs.values()));
@@ -1548,11 +1581,61 @@ export function setupDesignerStep(state) {
         setTimeout(() => urlInput.focus(), 100);
     }
     
+    // Remove a reference from a property
+    function removePropertyReference(propertyId, mappingKey, refToRemove, specificItem) {
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliationData;
+        const fetchedData = currentState.fetchedData || [];
+        
+        if (specificItem) {
+            // Remove from specific item
+            const itemIndex = fetchedData.indexOf(specificItem);
+            const itemKey = `item-${itemIndex}`;
+            
+            // Check both mapping key and property ID locations
+            [mappingKey, propertyId].forEach(key => {
+                if (key && reconciliationData[itemKey]?.properties[key]?.references) {
+                    reconciliationData[itemKey].properties[key].references = 
+                        reconciliationData[itemKey].properties[key].references.filter(
+                            ref => ref.url !== refToRemove.url
+                        );
+                }
+            });
+        } else {
+            // Remove from all items
+            Object.keys(reconciliationData).forEach(itemKey => {
+                // Check both mapping key and property ID locations
+                [mappingKey, propertyId].forEach(key => {
+                    if (key && reconciliationData[itemKey]?.properties[key]?.references) {
+                        reconciliationData[itemKey].properties[key].references = 
+                            reconciliationData[itemKey].properties[key].references.filter(
+                                ref => ref.url !== refToRemove.url
+                            );
+                    }
+                });
+            });
+        }
+        
+        // Update state with modified reconciliation data
+        state.updateState('reconciliationData', reconciliationData);
+        
+        // Refresh display
+        displayProperties();
+        updatePreview();
+        
+        showMessage('Reference removed', 'success');
+    }
+    
     // Add a reference to a property with the specified scope
     function addPropertyReference(propertyId, url, retrievedDate, scope) {
         const currentState = state.getState();
         const reconciliationData = currentState.reconciliationData;
         const selectedItemValue = exampleItemSelector?.value || 'multi-item';
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
+        
+        // Find the mapping for this property ID to get the key
+        const mapping = mappedKeys.find(m => m.property?.id === propertyId);
+        const mappingKey = mapping?.key;
         
         if (scope === 'all-properties') {
             // Add to global references
@@ -1570,22 +1653,37 @@ export function setupDesignerStep(state) {
             if (scope === 'this-property-all-items') {
                 // Add to all items that have this property
                 Object.keys(reconciliationData).forEach(itemId => {
-                    if (reconciliationData[itemId].properties[propertyId]) {
-                        itemsToUpdate.push(itemId);
+                    // Check if item has this property using both propertyId and mappingKey
+                    const hasPropertyById = reconciliationData[itemId].properties[propertyId];
+                    const hasPropertyByKey = mappingKey && reconciliationData[itemId].properties[mappingKey];
+                    
+                    if (hasPropertyById || hasPropertyByKey) {
+                        itemsToUpdate.push({
+                            itemId: itemId,
+                            propertyKey: hasPropertyByKey ? mappingKey : propertyId
+                        });
                     }
                 });
             } else if (scope === 'this-property-selected-item' && selectedItemValue !== 'multi-item') {
                 // Add only to selected item
                 const itemIndex = parseInt(selectedItemValue);
                 const itemId = `item-${itemIndex}`;
-                if (reconciliationData[itemId]?.properties[propertyId]) {
-                    itemsToUpdate.push(itemId);
+                
+                // Check if item has this property using both propertyId and mappingKey
+                const hasPropertyById = reconciliationData[itemId]?.properties[propertyId];
+                const hasPropertyByKey = mappingKey && reconciliationData[itemId]?.properties[mappingKey];
+                
+                if (hasPropertyById || hasPropertyByKey) {
+                    itemsToUpdate.push({
+                        itemId: itemId,
+                        propertyKey: hasPropertyByKey ? mappingKey : propertyId
+                    });
                 }
             }
             
             // Update reconciliation data for each item
-            itemsToUpdate.forEach(itemId => {
-                const propData = reconciliationData[itemId].properties[propertyId];
+            itemsToUpdate.forEach(update => {
+                const propData = reconciliationData[update.itemId].properties[update.propertyKey];
                 if (!propData.references) {
                     propData.references = [];
                 }
