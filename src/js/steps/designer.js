@@ -391,27 +391,64 @@ export function setupDesignerStep(state) {
         };
     }
     
-    // Check if a reference is applied to any properties
-    // This function iterates through all items and their properties to determine
-    // if a specific reference URL is already being used anywhere in the reconciliation data
+    // Check if a reference is applied to all properties that should have it
+    // This function checks if a reference is consistently applied across all properties and items
     function checkIfReferenceIsApplied(ref) {
         const currentState = state.getState();
         const reconciliationData = currentState.reconciliationData || {};
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
         
-        // Check if this reference exists in any property of any item
+        // If no reconciliation data exists, return false
+        if (Object.keys(reconciliationData).length === 0) {
+            return false;
+        }
+        
+        // Get all property keys that should have references
+        const allPropertyKeys = new Set();
+        
+        // Add mapped keys
+        mappedKeys.forEach(mapping => {
+            allPropertyKeys.add(mapping.key);
+        });
+        
+        // Add any custom properties that exist in reconciliation data
+        Object.keys(reconciliationData).forEach(itemKey => {
+            const itemData = reconciliationData[itemKey];
+            if (itemData.properties) {
+                Object.keys(itemData.properties).forEach(propertyKey => {
+                    allPropertyKeys.add(propertyKey);
+                });
+            }
+        });
+        
+        // If no properties exist, return false
+        if (allPropertyKeys.size === 0) {
+            return false;
+        }
+        
+        // Check if the reference is applied to ALL properties across ALL items
+        let totalPropertiesWithData = 0;
+        let propertiesWithThisReference = 0;
+        
         for (const itemKey of Object.keys(reconciliationData)) {
             const itemData = reconciliationData[itemKey];
             if (itemData.properties) {
-                for (const propertyKey of Object.keys(itemData.properties)) {
+                for (const propertyKey of allPropertyKeys) {
                     const propData = itemData.properties[propertyKey];
-                    if (propData.references && propData.references.some(r => r.url === ref.url)) {
-                        return true;
+                    // Only count properties that have reconciled data or are used
+                    if (propData && (propData.reconciled?.length > 0 || propData.references?.length > 0)) {
+                        totalPropertiesWithData++;
+                        if (propData.references && propData.references.some(r => r.url === ref.url)) {
+                            propertiesWithThisReference++;
+                        }
                     }
                 }
             }
         }
         
-        return false;
+        // Return true if this reference is applied to all properties that have data
+        // This ensures the toggle reflects whether the reference is applied "to all"
+        return totalPropertiesWithData > 0 && propertiesWithThisReference === totalPropertiesWithData;
     }
     
     // Display references
@@ -1625,26 +1662,56 @@ export function setupDesignerStep(state) {
         const reconciliationData = currentState.reconciliationData;
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         
-        // Apply to all items and all properties
+        // Get all property keys that should have references applied
+        // This includes both original mapped keys and any custom properties added via "Add New Statement"
+        const allPropertyKeys = new Set();
+        
+        // Add mapped keys
+        mappedKeys.forEach(mapping => {
+            allPropertyKeys.add(mapping.key);
+        });
+        
+        // Add any custom properties that exist in reconciliation data
+        Object.keys(reconciliationData).forEach(itemKey => {
+            const itemData = reconciliationData[itemKey];
+            if (itemData.properties) {
+                Object.keys(itemData.properties).forEach(propertyKey => {
+                    allPropertyKeys.add(propertyKey);
+                });
+            }
+        });
+        
+        // Apply reference to all items and all identified properties
         Object.keys(reconciliationData).forEach(itemKey => {
             const itemData = reconciliationData[itemKey];
             
-            if (itemData.properties) {
-                Object.keys(itemData.properties).forEach(propertyKey => {
-                    const propData = itemData.properties[propertyKey];
-                    
-                    if (!propData.references) {
-                        propData.references = [];
-                    }
-                    
-                    // Check if reference already exists
-                    const existingRef = propData.references.find(r => r.url === ref.url);
-                    if (!existingRef) {
-                        // Use the helper function to create a consistent reference object
-                        propData.references.push(createReferenceObject(ref));
-                    }
-                });
+            if (!itemData.properties) {
+                itemData.properties = {};
             }
+            
+            // Ensure all property keys exist and have the reference applied
+            allPropertyKeys.forEach(propertyKey => {
+                // Initialize property if it doesn't exist
+                if (!itemData.properties[propertyKey]) {
+                    itemData.properties[propertyKey] = {
+                        references: [],
+                        reconciled: []
+                    };
+                }
+                
+                const propData = itemData.properties[propertyKey];
+                
+                if (!propData.references) {
+                    propData.references = [];
+                }
+                
+                // Check if reference already exists
+                const existingRef = propData.references.find(r => r.url === ref.url);
+                if (!existingRef) {
+                    // Use the helper function to create a consistent reference object
+                    propData.references.push(createReferenceObject(ref));
+                }
+            });
         });
         
         // Update state with modified reconciliation data
@@ -1658,16 +1725,36 @@ export function setupDesignerStep(state) {
     function removeReferenceFromAllProperties(ref) {
         const currentState = state.getState();
         const reconciliationData = currentState.reconciliationData;
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
         
-        // Remove from all items and all properties
+        // Get all property keys that might have this reference
+        // This includes both original mapped keys and any custom properties added via "Add New Statement"
+        const allPropertyKeys = new Set();
+        
+        // Add mapped keys
+        mappedKeys.forEach(mapping => {
+            allPropertyKeys.add(mapping.key);
+        });
+        
+        // Add any custom properties that exist in reconciliation data
+        Object.keys(reconciliationData).forEach(itemKey => {
+            const itemData = reconciliationData[itemKey];
+            if (itemData.properties) {
+                Object.keys(itemData.properties).forEach(propertyKey => {
+                    allPropertyKeys.add(propertyKey);
+                });
+            }
+        });
+        
+        // Remove reference from all items and all identified properties
         Object.keys(reconciliationData).forEach(itemKey => {
             const itemData = reconciliationData[itemKey];
             
             if (itemData.properties) {
-                Object.keys(itemData.properties).forEach(propertyKey => {
+                allPropertyKeys.forEach(propertyKey => {
                     const propData = itemData.properties[propertyKey];
                     
-                    if (propData.references) {
+                    if (propData && propData.references) {
                         propData.references = propData.references.filter(r => r.url !== ref.url);
                     }
                 });
@@ -1980,8 +2067,31 @@ export function setupDesignerStep(state) {
                         datatype: 'string'
                     },
                     confidence: 100
-                }]
+                }],
+                references: [] // Initialize empty references array for new properties
             };
+        });
+        
+        // Apply any enabled global references to the new property
+        const oldReferences = currentState.references || [];
+        const globalReferences = currentState.globalReferences || [];
+        const allReferences = [...oldReferences, ...globalReferences];
+        
+        allReferences.forEach(ref => {
+            if (ref.enabled !== false) { // Apply references that are enabled
+                fetchedData.forEach((item, index) => {
+                    const itemKey = `item-${index}`;
+                    const propData = reconciliationData[itemKey].properties[newMapping.key];
+                    
+                    if (propData && propData.references) {
+                        // Check if reference doesn't already exist
+                        const existingRef = propData.references.find(r => r.url === ref.url);
+                        if (!existingRef) {
+                            propData.references.push(createReferenceObject(ref));
+                        }
+                    }
+                });
+            }
         });
         
         // Update state
