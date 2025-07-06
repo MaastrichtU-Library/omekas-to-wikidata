@@ -2153,8 +2153,11 @@ export function setupDesignerStep(state) {
     
     // Validate designer data before proceeding
     function validateDesignerData() {
-        const references = state.getState().references || [];
-        const enabledReferences = references.filter(r => r.enabled);
+        // Get both old-style references and new global references
+        const oldReferences = state.getState().references || [];
+        const globalReferences = state.getState().globalReferences || [];
+        const allReferences = [...oldReferences, ...globalReferences];
+        const enabledReferences = allReferences.filter(r => r.enabled !== false);
         
         if (enabledReferences.length === 0) {
             showMessage('Please add at least one reference before proceeding', 'warning');
@@ -2172,8 +2175,11 @@ export function setupDesignerStep(state) {
             return;
         }
         
-        const references = state.getState().references || [];
-        const enabledReferences = references.filter(r => r.enabled);
+        // Get both old-style references and new global references
+        const oldReferences = state.getState().references || [];
+        const globalReferences = state.getState().globalReferences || [];
+        const allReferences = [...oldReferences, ...globalReferences];
+        const enabledReferences = allReferences.filter(r => r.enabled !== false);
         
         proceedToExportBtn.disabled = enabledReferences.length === 0;
     }
