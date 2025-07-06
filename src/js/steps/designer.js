@@ -8,10 +8,10 @@ export function setupDesignerStep(state) {
     
     // Get DOM elements with correct IDs
     const exampleItemSelector = document.getElementById('example-item-selector');
-    const itemLabelSelector = document.getElementById('item-label-selector');
-    const itemLabelPreview = document.getElementById('item-label');
-    const itemDescriptionSelector = document.getElementById('item-description-selector');
-    const itemDescriptionPreview = document.getElementById('item-description');
+    const labelsContainer = document.getElementById('labels-container');
+    const descriptionsContainer = document.getElementById('descriptions-container');
+    const addLabelLanguageBtn = document.getElementById('add-label-language');
+    const addDescriptionLanguageBtn = document.getElementById('add-description-language');
     const referencesList = document.getElementById('references-list');
     const propertiesList = document.getElementById('properties-list');
     const unavailableProperties = document.getElementById('unavailable-properties');
@@ -21,10 +21,10 @@ export function setupDesignerStep(state) {
     
     console.log('Designer DOM elements:', {
         exampleItemSelector: !!exampleItemSelector,
-        itemLabelSelector: !!itemLabelSelector,
-        itemLabelPreview: !!itemLabelPreview,
-        itemDescriptionSelector: !!itemDescriptionSelector,
-        itemDescriptionPreview: !!itemDescriptionPreview,
+        labelsContainer: !!labelsContainer,
+        descriptionsContainer: !!descriptionsContainer,
+        addLabelLanguageBtn: !!addLabelLanguageBtn,
+        addDescriptionLanguageBtn: !!addDescriptionLanguageBtn,
         referencesList: !!referencesList,
         propertiesList: !!propertiesList,
         unavailableProperties: !!unavailableProperties
@@ -70,12 +70,12 @@ export function setupDesignerStep(state) {
         exampleItemSelector.addEventListener('change', handleItemSelection);
     }
     
-    if (itemLabelSelector) {
-        itemLabelSelector.addEventListener('change', handleLabelSelection);
+    if (addLabelLanguageBtn) {
+        addLabelLanguageBtn.addEventListener('click', () => showLanguageModal('label'));
     }
     
-    if (itemDescriptionSelector) {
-        itemDescriptionSelector.addEventListener('change', handleDescriptionSelection);
+    if (addDescriptionLanguageBtn) {
+        addDescriptionLanguageBtn.addEventListener('click', () => showLanguageModal('description'));
     }
     
     if (autoDetectReferencesBtn) {
@@ -144,8 +144,7 @@ export function setupDesignerStep(state) {
         
         // Populate components
         populateItemSelector();
-        populateLabelSelector();
-        populateDescriptionSelector();
+        initializeLanguageMappings();
         displayReferences();
         displayProperties();
         checkForIssues();
@@ -186,122 +185,422 @@ export function setupDesignerStep(state) {
         exampleItemSelector.value = 'multi-item';
     }
     
-    // Populate the label selector dropdown
-    function populateLabelSelector() {
-        if (!itemLabelSelector) {
-            console.error('Designer - itemLabelSelector not found!');
-            return;
+    // Initialize language mappings with default English
+    function initializeLanguageMappings() {
+        const currentState = state.getState();
+        const designerData = currentState.designerData || {};
+        
+        // Initialize language mappings structure if not exists
+        if (!designerData.labelMappings) {
+            designerData.labelMappings = {};
+        }
+        if (!designerData.descriptionMappings) {
+            designerData.descriptionMappings = {};
+        }
+        if (!designerData.supportedLanguages) {
+            designerData.supportedLanguages = ['en']; // Default to English
         }
         
+        state.updateState('designerData', designerData);
+        
+        // If no languages configured yet, add default English
+        if (Object.keys(designerData.labelMappings).length === 0) {
+            addLanguageMapping('label', 'en');
+        }
+        if (Object.keys(designerData.descriptionMappings).length === 0) {
+            addLanguageMapping('description', 'en');
+        }
+        
+        // Render existing language mappings
+        renderLanguageMappings();
+    }
+    
+    // Get all available property keys from fetched data
+    function getAvailablePropertyKeys() {
         const currentState = state.getState();
         const fetchedData = currentState.fetchedData;
         
-        // Clear existing options except the first one
-        while (itemLabelSelector.options.length > 1) {
-            itemLabelSelector.remove(1);
+        if (!fetchedData || !Array.isArray(fetchedData) || fetchedData.length === 0) {
+            return [];
         }
         
-        if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
-            // Get all unique keys from the fetched data
-            const allKeys = new Set();
-            fetchedData.forEach(item => {
-                Object.keys(item).forEach(key => {
-                    // Skip technical keys and add user-friendly ones
-                    if (!key.startsWith('@') && !key.startsWith('o:') || 
-                        key === 'o:title' || key === 'o:id') {
-                        allKeys.add(key);
+        // Get all unique keys from the fetched data
+        const allKeys = new Set();
+        fetchedData.forEach(item => {
+            Object.keys(item).forEach(key => {
+                // Skip technical keys and add user-friendly ones
+                if (!key.startsWith('@') && !key.startsWith('o:') || 
+                    key === 'o:title' || key === 'o:id') {
+                    allKeys.add(key);
+                }
+            });
+        });
+        
+        return Array.from(allKeys).sort();
+    }
+    
+    // Show language selection modal
+    function showLanguageModal(type) {
+        const modal = createElement('div', {
+            className: 'modal-overlay active'
+        });
+        
+        const modalContent = createElement('div', {
+            className: 'modal language-modal'
+        });
+        
+        const modalHeader = createElement('div', {
+            className: 'modal-header'
+        });
+        
+        const modalTitle = createElement('h3', {}, `Add Language for ${type === 'label' ? 'Labels' : 'Descriptions'}`);
+        modalHeader.appendChild(modalTitle);
+        
+        const closeBtn = createElement('button', {
+            className: 'modal-close',
+            onClick: () => modal.remove()
+        }, '×');
+        modalHeader.appendChild(closeBtn);
+        
+        const modalBody = createElement('div', {
+            className: 'modal-body'
+        });
+        
+        // Language selection
+        const languageGroup = createElement('div', {
+            className: 'form-group'
+        });
+        
+        const languageLabel = createElement('label', {}, 'Language:');
+        const languageSelect = createElement('select', {
+            className: 'language-select'
+        });
+        
+        // Common languages
+        const commonLanguages = [
+            { code: 'en', name: 'English' },
+            { code: 'es', name: 'Spanish' },
+            { code: 'fr', name: 'French' },
+            { code: 'de', name: 'German' },
+            { code: 'it', name: 'Italian' },
+            { code: 'pt', name: 'Portuguese' },
+            { code: 'nl', name: 'Dutch' },
+            { code: 'ru', name: 'Russian' },
+            { code: 'zh', name: 'Chinese' },
+            { code: 'ja', name: 'Japanese' },
+            { code: 'ar', name: 'Arabic' }
+        ];
+        
+        // Add placeholder option
+        const placeholderOption = createElement('option', { value: '' }, 'Select a language...');
+        languageSelect.appendChild(placeholderOption);
+        
+        // Add common languages
+        commonLanguages.forEach(lang => {
+            const option = createElement('option', { value: lang.code }, `${lang.name} (${lang.code})`);
+            languageSelect.appendChild(option);
+        });
+        
+        // Add custom option
+        const customOption = createElement('option', { value: 'custom' }, 'Other language (enter code)');
+        languageSelect.appendChild(customOption);
+        
+        languageGroup.appendChild(languageLabel);
+        languageGroup.appendChild(languageSelect);
+        
+        // Custom language input (hidden by default)
+        const customGroup = createElement('div', {
+            className: 'form-group custom-language-group',
+            style: 'display: none;'
+        });
+        
+        const customLabel = createElement('label', {}, 'Language Code (e.g., "sv" for Swedish):');
+        const customInput = createElement('input', {
+            type: 'text',
+            className: 'custom-language-input',
+            placeholder: 'Enter 2-letter language code',
+            maxLength: 10
+        });
+        
+        customGroup.appendChild(customLabel);
+        customGroup.appendChild(customInput);
+        
+        // Show/hide custom input based on selection
+        languageSelect.addEventListener('change', () => {
+            if (languageSelect.value === 'custom') {
+                customGroup.style.display = 'block';
+                customInput.focus();
+            } else {
+                customGroup.style.display = 'none';
+            }
+        });
+        
+        modalBody.appendChild(languageGroup);
+        modalBody.appendChild(customGroup);
+        
+        // Modal footer
+        const modalFooter = createElement('div', {
+            className: 'modal-footer'
+        });
+        
+        const cancelBtn = createElement('button', {
+            className: 'button button--secondary',
+            onClick: () => modal.remove()
+        }, 'Cancel');
+        
+        const addBtn = createElement('button', {
+            className: 'button button--primary',
+            onClick: () => {
+                const selectedLang = languageSelect.value;
+                let languageCode = '';
+                
+                if (selectedLang === 'custom') {
+                    languageCode = customInput.value.trim().toLowerCase();
+                    if (!languageCode || languageCode.length < 2) {
+                        showMessage('Please enter a valid language code', 'error');
+                        return;
                     }
-                });
+                } else if (selectedLang) {
+                    languageCode = selectedLang;
+                } else {
+                    showMessage('Please select a language', 'error');
+                    return;
+                }
+                
+                // Check if language already exists
+                const currentState = state.getState();
+                const mappings = type === 'label' ? 
+                    currentState.designerData?.labelMappings || {} : 
+                    currentState.designerData?.descriptionMappings || {};
+                
+                if (mappings[languageCode]) {
+                    showMessage(`Language "${languageCode}" already exists for ${type}s`, 'warning');
+                    return;
+                }
+                
+                addLanguageMapping(type, languageCode);
+                modal.remove();
+            }
+        }, 'Add Language');
+        
+        modalFooter.appendChild(cancelBtn);
+        modalFooter.appendChild(addBtn);
+        
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(modalBody);
+        modalContent.appendChild(modalFooter);
+        modal.appendChild(modalContent);
+        
+        document.body.appendChild(modal);
+        
+        // Focus language select
+        setTimeout(() => languageSelect.focus(), 100);
+    }
+    
+    // Add a language mapping
+    function addLanguageMapping(type, languageCode) {
+        const currentState = state.getState();
+        const designerData = { ...currentState.designerData };
+        
+        if (!designerData.labelMappings) designerData.labelMappings = {};
+        if (!designerData.descriptionMappings) designerData.descriptionMappings = {};
+        if (!designerData.supportedLanguages) designerData.supportedLanguages = [];
+        
+        // Add to the appropriate mapping
+        if (type === 'label') {
+            designerData.labelMappings[languageCode] = null; // Will be set when user selects property
+        } else {
+            designerData.descriptionMappings[languageCode] = null;
+        }
+        
+        // Add to supported languages if not already there
+        if (!designerData.supportedLanguages.includes(languageCode)) {
+            designerData.supportedLanguages.push(languageCode);
+        }
+        
+        state.updateState('designerData', designerData);
+        renderLanguageMappings();
+        
+        showMessage(`Added ${languageCode} language for ${type}s`, 'success');
+    }
+    
+    // Remove a language mapping
+    function removeLanguageMapping(type, languageCode) {
+        const currentState = state.getState();
+        const designerData = { ...currentState.designerData };
+        
+        if (type === 'label' && designerData.labelMappings) {
+            delete designerData.labelMappings[languageCode];
+        } else if (type === 'description' && designerData.descriptionMappings) {
+            delete designerData.descriptionMappings[languageCode];
+        }
+        
+        // Remove from supported languages if not used elsewhere
+        const isUsedInLabels = designerData.labelMappings && designerData.labelMappings[languageCode];
+        const isUsedInDescriptions = designerData.descriptionMappings && designerData.descriptionMappings[languageCode];
+        
+        if (!isUsedInLabels && !isUsedInDescriptions && designerData.supportedLanguages) {
+            designerData.supportedLanguages = designerData.supportedLanguages.filter(lang => lang !== languageCode);
+        }
+        
+        state.updateState('designerData', designerData);
+        renderLanguageMappings();
+        
+        showMessage(`Removed ${languageCode} language for ${type}s`, 'success');
+    }
+    
+    // Render all language mappings
+    function renderLanguageMappings() {
+        renderLanguageMappingsForType('label');
+        renderLanguageMappingsForType('description');
+    }
+    
+    // Render language mappings for a specific type
+    function renderLanguageMappingsForType(type) {
+        const container = type === 'label' ? labelsContainer : descriptionsContainer;
+        if (!container) return;
+        
+        const currentState = state.getState();
+        const mappings = type === 'label' ? 
+            currentState.designerData?.labelMappings || {} : 
+            currentState.designerData?.descriptionMappings || {};
+        
+        container.innerHTML = '';
+        
+        const availableKeys = getAvailablePropertyKeys();
+        
+        Object.keys(mappings).forEach(languageCode => {
+            const languageRow = createElement('div', {
+                className: `language-mapping-row ${languageCode === 'en' ? 'default-language' : ''}`
             });
             
-            // Sort keys and add to selector
-            Array.from(allKeys).sort().forEach(key => {
-                const option = createElement('option', {
-                    value: key
-                }, key);
-                itemLabelSelector.appendChild(option);
+            // Language code label
+            const languageLabel = createElement('div', {
+                className: 'language-code'
+            }, languageCode);
+            if (languageCode === 'en') {
+                languageLabel.appendChild(createElement('span', {
+                    className: 'default-indicator'
+                }, ' (default)'));
+            }
+            
+            // Property selector
+            const propertySelector = createElement('select', {
+                className: 'property-selector',
+                'data-language': languageCode,
+                'data-type': type
             });
             
-            // Try to auto-select a reasonable default (title-like fields)
-            const preferredKeys = ['schema:name', 'o:title', 'dcterms:title', 'rdfs:label', 'title'];
-            for (const preferredKey of preferredKeys) {
-                if (allKeys.has(preferredKey)) {
-                    itemLabelSelector.value = preferredKey;
-                    handleLabelSelection(); // Update preview
-                    break;
+            // Add placeholder option
+            const placeholderOption = createElement('option', { value: '' }, `Select property for ${type}...`);
+            propertySelector.appendChild(placeholderOption);
+            
+            // Add available properties
+            availableKeys.forEach(key => {
+                const option = createElement('option', { value: key }, key);
+                propertySelector.appendChild(option);
+            });
+            
+            // Set current value
+            if (mappings[languageCode]) {
+                propertySelector.value = mappings[languageCode];
+            } else {
+                // Auto-select reasonable defaults for new mappings
+                const preferredKeys = type === 'label' ? 
+                    ['schema:name', 'o:title', 'dcterms:title', 'rdfs:label', 'title'] :
+                    ['schema:description', 'dcterms:description', 'description', 'dcterms:abstract', 'abstract', 'summary'];
+                
+                for (const preferredKey of preferredKeys) {
+                    if (availableKeys.includes(preferredKey)) {
+                        propertySelector.value = preferredKey;
+                        handleLanguageMappingChange(type, languageCode, preferredKey);
+                        break;
+                    }
                 }
             }
+            
+            // Event listener for property selection
+            propertySelector.addEventListener('change', () => {
+                handleLanguageMappingChange(type, languageCode, propertySelector.value);
+            });
+            
+            // Preview field
+            const previewField = createElement('input', {
+                type: 'text',
+                className: 'language-preview',
+                readonly: true,
+                placeholder: `${type} preview will appear here`
+            });
+            
+            // Update preview immediately
+            updateLanguagePreview(type, languageCode, propertySelector.value, previewField);
+            
+            // Remove button (don't allow removing if it's the only language)
+            const removeBtn = createElement('button', {
+                className: 'button button--danger button--small remove-language-btn',
+                onClick: () => removeLanguageMapping(type, languageCode)
+            }, '×');
+            
+            // Disable remove button if it's the only language
+            if (Object.keys(mappings).length === 1) {
+                removeBtn.disabled = true;
+                removeBtn.title = 'Cannot remove the only language';
+            }
+            
+            languageRow.appendChild(languageLabel);
+            languageRow.appendChild(propertySelector);
+            languageRow.appendChild(previewField);
+            languageRow.appendChild(removeBtn);
+            
+            container.appendChild(languageRow);
+        });
+    }
+    
+    // Handle language mapping change
+    function handleLanguageMappingChange(type, languageCode, propertyKey) {
+        const currentState = state.getState();
+        const designerData = { ...currentState.designerData };
+        
+        if (type === 'label') {
+            if (!designerData.labelMappings) designerData.labelMappings = {};
+            designerData.labelMappings[languageCode] = propertyKey;
+        } else {
+            if (!designerData.descriptionMappings) designerData.descriptionMappings = {};
+            designerData.descriptionMappings[languageCode] = propertyKey;
+        }
+        
+        state.updateState('designerData', designerData);
+        
+        // Update preview for this language
+        const previewField = document.querySelector(`.language-mapping-row .property-selector[data-language="${languageCode}"][data-type="${type}"]`)
+            ?.parentNode?.querySelector('.language-preview');
+        
+        if (previewField) {
+            updateLanguagePreview(type, languageCode, propertyKey, previewField);
         }
     }
     
-    // Populate the description selector dropdown
-    function populateDescriptionSelector() {
-        if (!itemDescriptionSelector) {
-            console.error('Designer - itemDescriptionSelector not found!');
+    // Update language preview
+    function updateLanguagePreview(type, languageCode, propertyKey, previewField) {
+        if (!propertyKey || !previewField) {
+            if (previewField) previewField.value = '';
             return;
         }
         
         const currentState = state.getState();
         const fetchedData = currentState.fetchedData;
-        
-        // Clear existing options except the first one
-        while (itemDescriptionSelector.options.length > 1) {
-            itemDescriptionSelector.remove(1);
-        }
-        
-        if (fetchedData && Array.isArray(fetchedData) && fetchedData.length > 0) {
-            // Get all unique keys from the fetched data
-            const allKeys = new Set();
-            fetchedData.forEach(item => {
-                Object.keys(item).forEach(key => {
-                    // Skip technical keys and add user-friendly ones
-                    if (!key.startsWith('@') && !key.startsWith('o:') || 
-                        key === 'o:title' || key === 'o:id') {
-                        allKeys.add(key);
-                    }
-                });
-            });
-            
-            // Sort keys and add to selector
-            Array.from(allKeys).sort().forEach(key => {
-                const option = createElement('option', {
-                    value: key
-                }, key);
-                itemDescriptionSelector.appendChild(option);
-            });
-            
-            // Try to auto-select a reasonable default (description-like fields)
-            const preferredKeys = ['schema:description', 'dcterms:description', 'description', 'dcterms:abstract', 'abstract', 'summary'];
-            for (const preferredKey of preferredKeys) {
-                if (allKeys.has(preferredKey)) {
-                    itemDescriptionSelector.value = preferredKey;
-                    handleDescriptionSelection(); // Update preview
-                    break;
-                }
-            }
-        }
-    }
-    
-    // Handle label selection change
-    function handleLabelSelection() {
-        if (!itemLabelSelector || !itemLabelPreview) return;
-        
-        const selectedKey = itemLabelSelector.value;
-        if (!selectedKey) {
-            itemLabelPreview.value = '';
-            return;
-        }
-        
-        const currentState = state.getState();
-        const fetchedData = currentState.fetchedData;
-        const exampleItemSelector = document.getElementById('example-item-selector');
         const selectedItemValue = exampleItemSelector?.value;
+        
+        if (!fetchedData || fetchedData.length === 0) {
+            previewField.value = 'No data available';
+            return;
+        }
         
         if (selectedItemValue === 'multi-item') {
             // For multi-item view, show first available value
             for (const item of fetchedData) {
-                if (item[selectedKey] !== undefined && item[selectedKey] !== null) {
-                    let displayValue = item[selectedKey];
+                if (item[propertyKey] !== undefined && item[propertyKey] !== null) {
+                    let displayValue = item[propertyKey];
                     // Handle complex values
                     if (Array.isArray(displayValue)) {
                         displayValue = displayValue[0];
@@ -309,16 +608,17 @@ export function setupDesignerStep(state) {
                     if (typeof displayValue === 'object' && displayValue !== null) {
                         displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
                     }
-                    itemLabelPreview.value = `Example: ${displayValue}`;
-                    break;
+                    previewField.value = `Example: ${displayValue}`;
+                    return;
                 }
             }
+            previewField.value = 'No values found';
         } else {
             // For specific item view
             const itemIndex = parseInt(selectedItemValue);
             const selectedItem = fetchedData[itemIndex];
-            if (selectedItem && selectedItem[selectedKey] !== undefined && selectedItem[selectedKey] !== null) {
-                let displayValue = selectedItem[selectedKey];
+            if (selectedItem && selectedItem[propertyKey] !== undefined && selectedItem[propertyKey] !== null) {
+                let displayValue = selectedItem[propertyKey];
                 // Handle complex values
                 if (Array.isArray(displayValue)) {
                     displayValue = displayValue[0];
@@ -326,65 +626,43 @@ export function setupDesignerStep(state) {
                 if (typeof displayValue === 'object' && displayValue !== null) {
                     displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
                 }
-                itemLabelPreview.value = displayValue;
+                previewField.value = displayValue;
             } else {
-                itemLabelPreview.value = 'No value for this item';
+                previewField.value = 'No value for this item';
             }
         }
-        
-        // Store the selected label key in state
-        state.updateState('designerData.labelKey', selectedKey);
-        
-        // Update preview
     }
     
-    // Handle description selection change
-    function handleDescriptionSelection() {
-        if (!itemDescriptionSelector || !itemDescriptionPreview) return;
-        
-        const selectedKey = itemDescriptionSelector.value;
-        if (!selectedKey) {
-            itemDescriptionPreview.value = '';
-            return;
-        }
-        
+    // Update all language previews when item selection changes
+    function updateAllLanguagePreviews() {
         const currentState = state.getState();
-        const fetchedData = currentState.fetchedData;
-        const exampleItemSelector = document.getElementById('example-item-selector');
-        const selectedItemValue = exampleItemSelector?.value;
+        const designerData = currentState.designerData || {};
         
-        if (selectedItemValue === 'multi-item') {
-            // For multi-item view, show first available value
-            for (const item of fetchedData) {
-                if (item[selectedKey] !== undefined && item[selectedKey] !== null) {
-                    let displayValue = item[selectedKey];
-                    // Convert object values to display format
-                    if (typeof displayValue === 'object' && displayValue !== null) {
-                        displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
-                    }
-                    itemDescriptionPreview.value = displayValue;
-                    break;
+        // Update label previews
+        const labelMappings = designerData.labelMappings || {};
+        Object.keys(labelMappings).forEach(languageCode => {
+            const propertyKey = labelMappings[languageCode];
+            if (propertyKey) {
+                const previewField = document.querySelector(`.language-mapping-row .property-selector[data-language="${languageCode}"][data-type="label"]`)
+                    ?.parentNode?.querySelector('.language-preview');
+                if (previewField) {
+                    updateLanguagePreview('label', languageCode, propertyKey, previewField);
                 }
             }
-        } else {
-            // Show value for specific item
-            const selectedItem = fetchedData[parseInt(selectedItemValue)];
-            if (selectedItem && selectedItem[selectedKey] !== undefined) {
-                let displayValue = selectedItem[selectedKey];
-                // Convert object values to display format
-                if (typeof displayValue === 'object' && displayValue !== null) {
-                    displayValue = displayValue['@value'] || displayValue['o:label'] || JSON.stringify(displayValue);
+        });
+        
+        // Update description previews
+        const descriptionMappings = designerData.descriptionMappings || {};
+        Object.keys(descriptionMappings).forEach(languageCode => {
+            const propertyKey = descriptionMappings[languageCode];
+            if (propertyKey) {
+                const previewField = document.querySelector(`.language-mapping-row .property-selector[data-language="${languageCode}"][data-type="description"]`)
+                    ?.parentNode?.querySelector('.language-preview');
+                if (previewField) {
+                    updateLanguagePreview('description', languageCode, propertyKey, previewField);
                 }
-                itemDescriptionPreview.value = displayValue;
-            } else {
-                itemDescriptionPreview.value = 'No value for this item';
             }
-        }
-        
-        // Store the selected description key in state
-        state.updateState('designerData.descriptionKey', selectedKey);
-        
-        // Update preview
+        });
     }
     
     // Handle item selection change
@@ -406,10 +684,8 @@ export function setupDesignerStep(state) {
             displayPropertiesForItem(selectedValue);
         }
         
-        // Update label preview for the new selection
-        handleLabelSelection();
-        // Update description preview for the new selection
-        handleDescriptionSelection();
+        // Update all language previews for the new selection
+        updateAllLanguagePreviews();
     }
     
     // Display properties for a specific item
@@ -2253,16 +2529,6 @@ export function setupDesignerStep(state) {
             issues.push({
                 type: 'no-references',
                 text: 'No references added. At least one reference is required.',
-                icon: '⚠️'
-            });
-        }
-        
-        // Check for items without labels
-        const labelKey = currentState.designerData?.labelKey;
-        if (!labelKey) {
-            issues.push({
-                type: 'no-label-selected',
-                text: 'No label source selected. Please select a property for item labels.',
                 icon: '⚠️'
             });
         }
