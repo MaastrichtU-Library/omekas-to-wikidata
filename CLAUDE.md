@@ -128,3 +128,10 @@ gh issue list --state all --json number,title,body,state,labels,createdAt,update
 - Document APIs and complex functions
 - Keep README up to date
 - Add JSDoc comments to functions when appropriate
+
+## Code Replacement Guidelines
+- **NEVER create fallback options or legacy code** when replacing functionality unless explicitly requested
+- When asked to replace or change something, completely remove the old implementation
+- Avoid keeping both old and new methods side by side as it creates confusion and code clutter
+- Clean removal of old code prevents ambiguity about which method should be used
+- If fallback options are needed, the user will explicitly ask for them
