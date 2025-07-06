@@ -407,6 +407,27 @@ export function setupDesignerStep(state) {
         }
     }
     
+    // Check if a reference is applied to any properties
+    function checkIfReferenceIsApplied(ref) {
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliationData || {};
+        
+        // Check if this reference exists in any property of any item
+        for (const itemKey of Object.keys(reconciliationData)) {
+            const itemData = reconciliationData[itemKey];
+            if (itemData.properties) {
+                for (const propertyKey of Object.keys(itemData.properties)) {
+                    const propData = itemData.properties[propertyKey];
+                    if (propData.references && propData.references.some(r => r.url === ref.url)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+    
     // Display references
     function displayReferences() {
         const referencesList = document.getElementById('references-list');
@@ -456,10 +477,13 @@ export function setupDesignerStep(state) {
                 className: 'reference-toggle'
             });
             
+            // Check if this reference is already applied to any properties
+            const isAppliedToProperties = checkIfReferenceIsApplied(ref);
+            
             const toggleInput = createElement('input', {
                 type: 'checkbox',
                 id: `ref-toggle-${index}`,
-                checked: ref.enabled !== false
+                checked: isAppliedToProperties || ref.enabled !== false
             });
             
             const toggleLabel = createElement('label', {
@@ -468,6 +492,15 @@ export function setupDesignerStep(state) {
             
             toggleInput.addEventListener('change', (e) => {
                 ref.enabled = e.target.checked;
+                
+                if (e.target.checked) {
+                    // Apply this reference to all properties
+                    applyReferenceToAllProperties(ref);
+                } else {
+                    // Remove this reference from all properties
+                    removeReferenceFromAllProperties(ref);
+                }
+                
                 state.markChangesUnsaved();
             });
             
@@ -1626,6 +1659,73 @@ export function setupDesignerStep(state) {
         showMessage('Reference removed', 'success');
     }
     
+    // Apply reference to all properties
+    function applyReferenceToAllProperties(ref) {
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliationData;
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
+        
+        // Apply to all items and all properties
+        Object.keys(reconciliationData).forEach(itemKey => {
+            const itemData = reconciliationData[itemKey];
+            
+            if (itemData.properties) {
+                Object.keys(itemData.properties).forEach(propertyKey => {
+                    const propData = itemData.properties[propertyKey];
+                    
+                    if (!propData.references) {
+                        propData.references = [];
+                    }
+                    
+                    // Check if reference already exists
+                    const existingRef = propData.references.find(r => r.url === ref.url);
+                    if (!existingRef) {
+                        propData.references.push({
+                            url: ref.url,
+                            retrievedDate: ref.retrievedDate || new Date().toISOString().split('T')[0],
+                            addedAt: ref.addedAt || new Date().toISOString(),
+                            autoDetected: ref.autoDetected,
+                            type: ref.type
+                        });
+                    }
+                });
+            }
+        });
+        
+        // Update state with modified reconciliation data
+        state.updateState('reconciliationData', reconciliationData);
+        
+        // Refresh the display
+        displayProperties();
+    }
+    
+    // Remove reference from all properties
+    function removeReferenceFromAllProperties(ref) {
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliationData;
+        
+        // Remove from all items and all properties
+        Object.keys(reconciliationData).forEach(itemKey => {
+            const itemData = reconciliationData[itemKey];
+            
+            if (itemData.properties) {
+                Object.keys(itemData.properties).forEach(propertyKey => {
+                    const propData = itemData.properties[propertyKey];
+                    
+                    if (propData.references) {
+                        propData.references = propData.references.filter(r => r.url !== ref.url);
+                    }
+                });
+            }
+        });
+        
+        // Update state with modified reconciliation data
+        state.updateState('reconciliationData', reconciliationData);
+        
+        // Refresh the display
+        displayProperties();
+    }
+    
     // Add a reference to a property with the specified scope
     function addPropertyReference(propertyId, url, retrievedDate, scope) {
         const currentState = state.getState();
@@ -1958,14 +2058,30 @@ export function setupDesignerStep(state) {
         const oldReferences = currentState.references || [];
         const globalReferences = currentState.globalReferences || [];
         const allReferences = [...oldReferences, ...globalReferences];
-        const enabledReferences = allReferences.filter(r => r.enabled !== false);
         const fetchedData = currentState.fetchedData || [];
+        const reconciliationData = currentState.reconciliationData || {};
         
-        // Check for items without references
-        if (enabledReferences.length === 0) {
+        // Check if any property has references
+        let hasAnyReferences = false;
+        for (const itemKey of Object.keys(reconciliationData)) {
+            const itemData = reconciliationData[itemKey];
+            if (itemData.properties) {
+                for (const propertyKey of Object.keys(itemData.properties)) {
+                    const propData = itemData.properties[propertyKey];
+                    if (propData.references && propData.references.length > 0) {
+                        hasAnyReferences = true;
+                        break;
+                    }
+                }
+                if (hasAnyReferences) break;
+            }
+        }
+        
+        // Also check if any global references exist (even if not applied yet)
+        if (!hasAnyReferences && allReferences.length === 0) {
             issues.push({
                 type: 'no-references',
-                text: 'No references are enabled. At least one reference is required.',
+                text: 'No references added. At least one reference is required.',
                 icon: '⚠️'
             });
         }
@@ -2160,13 +2276,30 @@ export function setupDesignerStep(state) {
     
     // Validate designer data before proceeding
     function validateDesignerData() {
-        // Get both old-style references and new global references
-        const oldReferences = state.getState().references || [];
-        const globalReferences = state.getState().globalReferences || [];
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliationData || {};
+        const oldReferences = currentState.references || [];
+        const globalReferences = currentState.globalReferences || [];
         const allReferences = [...oldReferences, ...globalReferences];
-        const enabledReferences = allReferences.filter(r => r.enabled !== false);
         
-        if (enabledReferences.length === 0) {
+        // Check if any property has references
+        let hasAnyReferences = false;
+        for (const itemKey of Object.keys(reconciliationData)) {
+            const itemData = reconciliationData[itemKey];
+            if (itemData.properties) {
+                for (const propertyKey of Object.keys(itemData.properties)) {
+                    const propData = itemData.properties[propertyKey];
+                    if (propData.references && propData.references.length > 0) {
+                        hasAnyReferences = true;
+                        break;
+                    }
+                }
+                if (hasAnyReferences) break;
+            }
+        }
+        
+        // If no references applied to properties and no global references exist
+        if (!hasAnyReferences && allReferences.length === 0) {
             showMessage('Please add at least one reference before proceeding', 'warning');
             return false;
         }
@@ -2182,12 +2315,29 @@ export function setupDesignerStep(state) {
             return;
         }
         
-        // Get both old-style references and new global references
-        const oldReferences = state.getState().references || [];
-        const globalReferences = state.getState().globalReferences || [];
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliationData || {};
+        const oldReferences = currentState.references || [];
+        const globalReferences = currentState.globalReferences || [];
         const allReferences = [...oldReferences, ...globalReferences];
-        const enabledReferences = allReferences.filter(r => r.enabled !== false);
         
-        proceedToExportBtn.disabled = enabledReferences.length === 0;
+        // Check if any property has references
+        let hasAnyReferences = false;
+        for (const itemKey of Object.keys(reconciliationData)) {
+            const itemData = reconciliationData[itemKey];
+            if (itemData.properties) {
+                for (const propertyKey of Object.keys(itemData.properties)) {
+                    const propData = itemData.properties[propertyKey];
+                    if (propData.references && propData.references.length > 0) {
+                        hasAnyReferences = true;
+                        break;
+                    }
+                }
+                if (hasAnyReferences) break;
+            }
+        }
+        
+        // Enable button if references exist either in properties or globally
+        proceedToExportBtn.disabled = !hasAnyReferences && allReferences.length === 0;
     }
 }

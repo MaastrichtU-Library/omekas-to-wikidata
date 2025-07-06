@@ -201,10 +201,11 @@ export function setupExportStep(state) {
         const reconciliationData = currentState.reconciliationData;
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         
-        // Combine old-style references with new global references and filter only enabled ones
+        // Combine old-style references with new global references
+        // Note: We don't filter by enabled anymore since we now use property-specific references
         const oldReferences = currentState.references || [];
         const globalReferences = currentState.globalReferences || [];
-        const allEnabledReferences = [...oldReferences, ...globalReferences].filter(ref => ref.enabled !== false);
+        const allReferences = [...oldReferences, ...globalReferences];
         
         const entitySchema = currentState.entitySchema;
         const designerData = currentState.designerData || {};
@@ -286,8 +287,8 @@ export function setupExportStep(state) {
                                 }
                                 
                                 if (value) {
-                                    // Use property-specific references if available, otherwise use enabled global references
-                                    let references = propertyData.references || allEnabledReferences;
+                                    // Use property-specific references if available, otherwise use all global references
+                                    let references = propertyData.references || allReferences;
                                     
                                     // Format the statement
                                     const statement = formatStatement(itemPrefix, wikidataPropertyId, value, references);
