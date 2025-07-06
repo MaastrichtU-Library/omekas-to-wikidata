@@ -16,7 +16,6 @@ export function setupDesignerStep(state) {
     const propertiesList = document.getElementById('properties-list');
     const unavailableProperties = document.getElementById('unavailable-properties');
     const unavailableList = document.getElementById('unavailable-list');
-    const designerPreview = document.getElementById('designer-preview');
     const issuesList = document.getElementById('issues-list');
     const referenceWarning = document.getElementById('reference-warning');
     
@@ -26,8 +25,7 @@ export function setupDesignerStep(state) {
         itemLabelPreview: !!itemLabelPreview,
         referencesList: !!referencesList,
         propertiesList: !!propertiesList,
-        unavailableProperties: !!unavailableProperties,
-        designerPreview: !!designerPreview
+        unavailableProperties: !!unavailableProperties
     });
     
     // Buttons
@@ -167,8 +165,6 @@ export function setupDesignerStep(state) {
         displayProperties();
         console.log('Designer - Calling checkForIssues()');
         checkForIssues();
-        console.log('Designer - Calling updatePreview()');
-        updatePreview();
         console.log('Designer - Calling updateProceedButton()');
         updateProceedButton();
         
@@ -309,7 +305,6 @@ export function setupDesignerStep(state) {
         state.updateState('designerData.labelKey', selectedKey);
         
         // Update preview
-        updatePreview();
     }
     
     // Handle item selection change
@@ -333,7 +328,6 @@ export function setupDesignerStep(state) {
         
         // Update label preview for the new selection
         handleLabelSelection();
-        updatePreview();
     }
     
     // Display properties for a specific item
@@ -475,7 +469,6 @@ export function setupDesignerStep(state) {
             toggleInput.addEventListener('change', (e) => {
                 ref.enabled = e.target.checked;
                 state.markChangesUnsaved();
-                updatePreview();
             });
             
             refToggle.appendChild(toggleInput);
@@ -1629,7 +1622,6 @@ export function setupDesignerStep(state) {
         
         // Refresh display
         displayProperties();
-        updatePreview();
         
         showMessage('Reference removed', 'success');
     }
@@ -1714,7 +1706,6 @@ export function setupDesignerStep(state) {
         // Refresh the display
         displayProperties();
         displayReferences();
-        updatePreview();
         
         showMessage(`Reference added to ${scope === 'all-properties' ? 'all properties' : propertyId}`, 'success');
     }
@@ -1946,7 +1937,6 @@ export function setupDesignerStep(state) {
         
         // Refresh display
         displayProperties();
-        updatePreview();
         
         // Close modal
         modal.remove();
