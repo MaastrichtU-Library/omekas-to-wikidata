@@ -330,7 +330,11 @@ export function setupState() {
      * @param {number} step - The step number to set as current (1-5)
      */
     function setCurrentStep(step) {
-        if (step < 1 || step > 5 || step === state.currentStep) return;
+        console.log(`🔄 setCurrentStep called with step: ${step}, current step: ${state.currentStep}`);
+        if (step < 1 || step > 5 || step === state.currentStep) {
+            console.log(`🔄 setCurrentStep rejected - out of bounds or same step`);
+            return;
+        }
         
         const oldStep = state.currentStep;
         state.currentStep = step;

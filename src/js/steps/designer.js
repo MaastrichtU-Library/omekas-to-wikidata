@@ -95,14 +95,22 @@ export function setupDesignerStep(state) {
     
     if (backToReconciliationBtn) {
         backToReconciliationBtn.addEventListener('click', () => {
-            state.updateState('currentStep', 3);
+            state.setCurrentStep(3);
         });
     }
     
     if (proceedToExportBtn) {
         proceedToExportBtn.addEventListener('click', () => {
+            console.log('Export button clicked');
+            proceedToExportBtn.disabled = true; // Disable immediately to prevent double-clicks
+            
             if (validateDesignerData()) {
-                state.updateState('currentStep', 5);
+                console.log('Validation passed, transitioning to step 5');
+                state.setCurrentStep(5);
+            } else {
+                console.log('Validation failed');
+                // Re-enable the button if validation fails
+                proceedToExportBtn.disabled = false;
             }
         });
     }

@@ -76,7 +76,7 @@ export function setupReconciliationStep(state) {
             console.log('🔍 State fetchedData:', currentState.fetchedData);
             
             // Navigate to designer step
-            state.updateState('currentStep', 4);
+            state.setCurrentStep(4);
         });
     }
     

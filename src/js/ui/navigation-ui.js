@@ -52,6 +52,11 @@ export function setupNavigationUI() {
         toggleClass(targetStep, 'step--active', true);
         
         const targetContent = document.getElementById(`step${stepNumber}`);
+        if (!targetContent) {
+            console.error(`Step content not found for step ${stepNumber}, looking for id: step${stepNumber}`);
+        } else {
+            console.log(`Showing step content for step ${stepNumber}`);
+        }
         toggleClass(targetContent, 'active', true);
         
         // Update progress bar
