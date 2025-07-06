@@ -581,6 +581,7 @@ export function setupDynamicDatePrecision(container) {
             const inputValue = this.value;
             const detectedPrecision = detectDatePrecision(inputValue);
             
+            console.log('Date input changed:', {
                 inputValue,
                 detectedPrecision,
                 hasPrecisionSelect: !!precisionSelect
