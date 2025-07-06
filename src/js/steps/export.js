@@ -2,6 +2,8 @@
  * Handles the Export step functionality
  */
 import { createDownloadLink, createFileInput, createElement, createButton, showMessage } from '../ui/components.js';
+import { eventSystem } from '../events.js';
+
 export function setupExportStep(state) {
     const quickStatementsTextarea = document.getElementById('quick-statements');
     const copyQuickStatementsBtn = document.getElementById('copy-quick-statements');
@@ -11,6 +13,13 @@ export function setupExportStep(state) {
     
     // Initialize export when entering this step
     document.addEventListener('DOMContentLoaded', () => {
+        // Check if we're already on step 5 (e.g., from restored state)
+        const currentState = state.getState();
+        if (currentState.currentStep === 5) {
+            console.log('Export step: Already on step 5, initializing export');
+            initializeExport();
+        }
+        
         // Listen for step changes
         document.querySelectorAll('.step').forEach(step => {
             step.addEventListener('click', () => {
@@ -24,6 +33,14 @@ export function setupExportStep(state) {
         document.getElementById('proceed-to-export')?.addEventListener('click', () => {
             initializeExport();
         });
+    });
+    
+    // Listen for step change events
+    eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
+        if (data.newStep === 5) {
+            console.log('Export step: Navigated to step 5 via event');
+            initializeExport();
+        }
     });
     
     // Copy QuickStatements button
