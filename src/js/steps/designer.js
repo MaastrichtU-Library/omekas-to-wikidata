@@ -1956,19 +1956,23 @@ export function setupDesignerStep(state) {
     
     // Check for issues
     function checkForIssues() {
+        const issuesSection = document.querySelector('.issues-section');
         const issuesList = document.getElementById('issues-list');
-        if (!issuesList) {
-            console.error('Designer - issuesList not found!');
+        if (!issuesSection || !issuesList) {
+            console.error('Designer - issues section not found!');
             return;
         }
         
         const issues = [];
         const currentState = state.getState();
-        const references = currentState.references || [];
+        const oldReferences = currentState.references || [];
+        const globalReferences = currentState.globalReferences || [];
+        const allReferences = [...oldReferences, ...globalReferences];
+        const enabledReferences = allReferences.filter(r => r.enabled !== false);
         const fetchedData = currentState.fetchedData || [];
         
         // Check for items without references
-        if (references.filter(r => r.enabled).length === 0) {
+        if (enabledReferences.length === 0) {
             issues.push({
                 type: 'no-references',
                 text: 'No references are enabled. At least one reference is required.',
@@ -1977,14 +1981,11 @@ export function setupDesignerStep(state) {
         }
         
         // Check for items without labels
-        const itemsWithoutLabels = fetchedData.filter(item => 
-            !item['o:title'] && !item['dcterms:title'] && !item['rdfs:label']
-        );
-        
-        if (itemsWithoutLabels.length > 0) {
+        const labelKey = currentState.designerData?.labelKey;
+        if (!labelKey) {
             issues.push({
-                type: 'no-labels',
-                text: `${itemsWithoutLabels.length} item${itemsWithoutLabels.length > 1 ? 's' : ''} without labels`,
+                type: 'no-label-selected',
+                text: 'No label source selected. Please select a property for item labels.',
                 icon: '⚠️'
             });
         }
@@ -1993,11 +1994,12 @@ export function setupDesignerStep(state) {
         issuesList.innerHTML = '';
         
         if (issues.length === 0) {
-            const placeholder = createElement('div', {
-                className: 'placeholder'
-            }, 'No issues detected');
-            issuesList.appendChild(placeholder);
+            // Hide the entire issues section when there are no issues
+            issuesSection.style.display = 'none';
         } else {
+            // Show the issues section when there are issues
+            issuesSection.style.display = 'block';
+            
             issues.forEach(issue => {
                 const issueItem = createElement('div', {
                     className: 'issue-item'
@@ -2029,6 +2031,13 @@ export function setupDesignerStep(state) {
     
     // Update preview
     function updatePreview() {
+        // Hide the preview section as it's not needed
+        const previewSection = document.querySelector('.preview-section');
+        if (previewSection) {
+            previewSection.style.display = 'none';
+        }
+        return; // Exit early as preview is not needed
+        
         const designerPreview = document.getElementById('designer-preview');
         if (!designerPreview) {
             console.error('Designer - designerPreview not found!');
