@@ -4,6 +4,10 @@
 import { createDownloadLink, createFileInput, createElement, createButton, showMessage } from '../ui/components.js';
 import { eventSystem } from '../events.js';
 
+// Constants for validation
+const PROPERTY_ID_REGEX = /^[PS]\d+$/;  // Matches P123, S456 (Wikidata properties)
+const LANGUAGE_PROPERTY_REGEX = /^[LD][a-z]{2}(-[a-z]+)?$/;  // Matches Len, Den, Lde-ch (language-specific labels/descriptions)
+
 export function setupExportStep(state) {
     const quickStatementsTextarea = document.getElementById('quick-statements');
     const copyQuickStatementsBtn = document.getElementById('copy-quick-statements');
@@ -169,7 +173,7 @@ export function setupExportStep(state) {
             // Validate property ID (second part)
             const propertyId = parts[1];
             // Allow special properties for labels (Len) and descriptions (Den) where n is language code
-            if (!propertyId.match(/^[PS]\d+$/) && !propertyId.match(/^[LD][a-z]{2}(-[a-z]+)?$/)) {
+            if (!propertyId.match(PROPERTY_ID_REGEX) && !propertyId.match(LANGUAGE_PROPERTY_REGEX)) {
                 errors.push(`Line ${lineNum}: Invalid property ID '${propertyId}' - should be P or S followed by numbers, or L/D followed by language code`);
             }
             
@@ -191,30 +195,48 @@ export function setupExportStep(state) {
         };
     }
     
-    // Get label or description value from item data
+    /**
+     * Extract label or description value from item data with fallback to original fetched data
+     * 
+     * This function implements a two-stage fallback strategy:
+     * 1. First tries to get the value from reconciled data (user has explicitly matched/selected values)
+     * 2. Falls back to the original fetched data if no reconciled value exists
+     * 
+     * @param {Object} itemData - The item's reconciled data containing properties and their matches
+     * @param {string} propertyKey - The key/field name to extract the value from
+     * @param {Array} fetchedData - The original fetched data array from Omeka S
+     * @param {string} itemId - The item identifier in format "item-N" where N is the index
+     * @returns {string|null} The extracted value or null if not found
+     */
     function getLabelOrDescriptionValue(itemData, propertyKey, fetchedData, itemId) {
-        // First try to get from reconciled data
+        // Stage 1: Try to get from reconciled data (preferred source)
+        // This contains user-selected matches from the reconciliation process
         if (itemData.properties && itemData.properties[propertyKey]) {
             const propertyData = itemData.properties[propertyKey];
             if (propertyData.reconciled && propertyData.reconciled[0] && propertyData.reconciled[0].selectedMatch) {
+                // Return the matched value if available, otherwise the original value
                 return propertyData.reconciled[0].selectedMatch.value || propertyData.reconciled[0].original;
             }
         }
         
-        // Fall back to original fetched data
+        // Stage 2: Fall back to original fetched data
+        // This is the raw data from Omeka S before any reconciliation
         if (fetchedData && Array.isArray(fetchedData)) {
-            // Extract item index from itemId (format: "item-0", "item-1", etc.)
+            // Extract numeric index from itemId (format: "item-0", "item-1", etc.)
             const itemIndex = parseInt(itemId.replace('item-', ''));
             const originalItem = fetchedData[itemIndex];
             
             if (originalItem && originalItem[propertyKey] !== undefined && originalItem[propertyKey] !== null) {
                 let value = originalItem[propertyKey];
                 
-                // Handle complex values
+                // Handle complex Omeka S value structures
                 if (Array.isArray(value)) {
+                    // Take first value if property contains multiple values
                     value = value[0];
                 }
                 if (typeof value === 'object' && value !== null) {
+                    // Extract value from Omeka S value objects
+                    // Try common Omeka S value properties in order of preference
                     value = value['@value'] || value['o:label'] || JSON.stringify(value);
                 }
                 
