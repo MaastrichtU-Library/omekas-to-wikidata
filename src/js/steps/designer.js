@@ -1444,48 +1444,91 @@ export function setupDesignerStep(state) {
 
     // Auto-detect references
     function autoDetectReferences(showNotification = true) {
-        const fetchedData = state.getState().fetchedData || [];
-        const currentReferences = state.getState().references || [];
-        const detectedRefs = new Set();
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const reconciliationData = { ...currentState.reconciliationData } || {};
+        const mappedKeys = currentState.mappings?.mappedKeys || [];
         
-        // Search for sameAs and ARK identifiers
-        fetchedData.forEach(item => {
+        let itemsWithSameAs = 0;
+        let totalSameAsRefs = 0;
+        let itemSpecificRefsAdded = 0;
+        const sampleUrls = new Set();
+        
+        // Process each item individually for item-specific sameAs references
+        fetchedData.forEach((item, index) => {
+            const itemKey = `item-${index}`;
+            let itemHasSameAs = false;
+            
             // Check for sameAs
             if (item['schema:sameAs']) {
                 const sameAsValues = Array.isArray(item['schema:sameAs']) ? 
                     item['schema:sameAs'] : [item['schema:sameAs']];
                 
                 sameAsValues.forEach(value => {
+                    let url = null;
+                    let type = 'sameAs URL';
+                    
                     // Handle string values (simple format)
                     if (typeof value === 'string' && value.startsWith('http')) {
-                        detectedRefs.add({
-                            url: value,
-                            type: 'sameAs URL',
-                            autoDetected: true,
-                            enabled: true
-                        });
+                        url = value;
                     }
                     // Handle object values (complex format with @id)
                     else if (typeof value === 'object' && value !== null && value['@id']) {
-                        const url = value['@id'];
-                        if (typeof url === 'string' && url.startsWith('http')) {
-                            detectedRefs.add({
-                                url: url,
-                                type: value['o:label'] ? `sameAs (${value['o:label']})` : 'sameAs URL',
-                                autoDetected: true,
-                                enabled: true
+                        const idValue = value['@id'];
+                        if (typeof idValue === 'string' && idValue.startsWith('http')) {
+                            url = idValue;
+                            type = value['o:label'] ? `sameAs (${value['o:label']})` : 'sameAs URL';
+                        }
+                    }
+                    
+                    if (url) {
+                        itemHasSameAs = true;
+                        totalSameAsRefs++;
+                        sampleUrls.add(url);
+                        
+                        // Add this sameAs URL as a reference to ALL properties of THIS specific item
+                        if (reconciliationData[itemKey]?.properties) {
+                            Object.keys(reconciliationData[itemKey].properties).forEach(propertyKey => {
+                                const propData = reconciliationData[itemKey].properties[propertyKey];
+                                if (!propData.references) {
+                                    propData.references = [];
+                                }
+                                
+                                // Check if this reference already exists for this property
+                                const existingRef = propData.references.find(ref => ref.url === url);
+                                if (!existingRef) {
+                                    propData.references.push({
+                                        url: url,
+                                        type: type,
+                                        autoDetected: true,
+                                        itemSpecific: true,
+                                        retrievedDate: new Date().toISOString().split('T')[0],
+                                        addedAt: new Date().toISOString()
+                                    });
+                                    itemSpecificRefsAdded++;
+                                }
                             });
                         }
                     }
                 });
             }
             
+            if (itemHasSameAs) {
+                itemsWithSameAs++;
+            }
+        });
+        
+        // Also detect ARK identifiers globally (these can remain global as they're usually institutional)
+        const currentGlobalReferences = currentState.globalReferences || [];
+        const detectedGlobalRefs = new Set();
+        
+        fetchedData.forEach(item => {
             // Check for ARK identifiers
             Object.values(item).forEach(value => {
                 if (typeof value === 'string' && value.includes('ark:/')) {
                     const arkMatch = value.match(/ark:\/[\w\/]+/);
                     if (arkMatch) {
-                        detectedRefs.add({
+                        detectedGlobalRefs.add({
                             url: `https://n2t.net/${arkMatch[0]}`,
                             type: 'Archival Resource Key (ARK)',
                             autoDetected: true,
@@ -1496,31 +1539,60 @@ export function setupDesignerStep(state) {
             });
         });
         
-        // Add detected references that aren't already in the list
-        let addedCount = 0;
-        detectedRefs.forEach(ref => {
-            const exists = currentReferences.some(r => r.url === ref.url);
+        // Add ARK references to global references
+        let globalRefsAdded = 0;
+        detectedGlobalRefs.forEach(ref => {
+            const exists = currentGlobalReferences.some(r => r.url === ref.url);
             if (!exists) {
-                currentReferences.push(ref);
-                addedCount++;
+                currentGlobalReferences.push(ref);
+                globalRefsAdded++;
             }
         });
         
-        if (addedCount > 0) {
-            state.updateState('references', currentReferences);
+        // Update state with modified reconciliation data and global references
+        if (itemSpecificRefsAdded > 0) {
+            state.updateState('reconciliationData', reconciliationData);
+        }
+        if (globalRefsAdded > 0) {
+            state.updateState('globalReferences', currentGlobalReferences);
+        }
+        
+        // Update displays
+        if (itemSpecificRefsAdded > 0 || globalRefsAdded > 0) {
             displayReferences();
+            displayProperties();
             updateProceedButton();
-            if (showNotification) {
-                showMessage(`Found ${addedCount} new reference${addedCount > 1 ? 's' : ''}`, 'success');
+        }
+        
+        // Show comprehensive notification
+        if (showNotification) {
+            let message = '';
+            if (itemsWithSameAs > 0) {
+                message += `Added ${totalSameAsRefs} sameAs reference${totalSameAsRefs > 1 ? 's' : ''} to ${itemsWithSameAs}/${fetchedData.length} items`;
+                if (globalRefsAdded > 0) {
+                    message += ` and ${globalRefsAdded} global ARK reference${globalRefsAdded > 1 ? 's' : ''}`;
+                }
+                
+                // Show sameAs summary modal if multiple items have sameAs
+                if (itemsWithSameAs > 1) {
+                    setTimeout(() => showSameAsSummaryModal(itemsWithSameAs, fetchedData.length, Array.from(sampleUrls)), 1000);
+                }
+            } else if (globalRefsAdded > 0) {
+                message = `Found ${globalRefsAdded} ARK reference${globalRefsAdded > 1 ? 's' : ''}`;
+            } else {
+                message = 'No new references found automatically';
             }
-        } else if (showNotification) {
-            showMessage('No new references found automatically', 'info');
+            
+            showMessage(message, itemsWithSameAs > 0 || globalRefsAdded > 0 ? 'success' : 'info');
         }
         
         // Show warning if no references found at all
         const referenceWarning = document.getElementById('reference-warning');
         if (referenceWarning) {
-            if (currentReferences.length === 0) {
+            const totalRefs = (currentState.references?.length || 0) + 
+                             (currentState.globalReferences?.length || 0) + 
+                             itemSpecificRefsAdded;
+            if (totalRefs === 0) {
                 referenceWarning.style.display = 'block';
             } else {
                 referenceWarning.style.display = 'none';
@@ -1528,6 +1600,233 @@ export function setupDesignerStep(state) {
         }
     }
     
+    // Show sameAs summary modal
+    function showSameAsSummaryModal(itemsWithSameAs, totalItems, sampleUrls) {
+        const modal = createElement('div', {
+            className: 'modal-overlay active'
+        });
+        
+        const modalContent = createElement('div', {
+            className: 'modal sameas-summary-modal'
+        });
+        
+        const modalHeader = createElement('div', {
+            className: 'modal-header'
+        });
+        
+        const modalTitle = createElement('h3', {}, 'SameAs References Detected');
+        
+        const closeBtn = createButton('×', {
+            className: 'modal-close',
+            onClick: () => modal.remove()
+        });
+        
+        modalHeader.appendChild(modalTitle);
+        modalHeader.appendChild(closeBtn);
+        
+        const modalBody = createElement('div', {
+            className: 'modal-body'
+        });
+        
+        // Summary section
+        const summarySection = createElement('div', {
+            className: 'sameas-summary'
+        });
+        
+        const summaryTitle = createElement('h4', {}, 'Detection Results');
+        
+        const summaryText = createElement('p', {}, 
+            `Found sameAs statements in ${itemsWithSameAs} out of ${totalItems} items. ` +
+            `Each item's sameAs URL has been added as a reference to that specific item's properties.`
+        );
+        
+        summarySection.appendChild(summaryTitle);
+        summarySection.appendChild(summaryText);
+        
+        // Sample URLs section
+        const samplesSection = createElement('div', {
+            className: 'sameas-samples'
+        });
+        
+        const samplesTitle = createElement('h4', {}, 'Sample URLs Found');
+        
+        const samplesList = createElement('ul', {
+            className: 'sameas-samples-list'
+        });
+        
+        // Show up to 3 sample URLs
+        Array.from(sampleUrls).slice(0, 3).forEach(url => {
+            const listItem = createElement('li', {});
+            const urlLink = createElement('a', {
+                href: url,
+                target: '_blank',
+                className: 'sameas-sample-link'
+            }, url);
+            listItem.appendChild(urlLink);
+            samplesList.appendChild(listItem);
+        });
+        
+        if (sampleUrls.size > 3) {
+            const moreItem = createElement('li', {
+                className: 'more-indicator'
+            }, `... and ${sampleUrls.size - 3} more`);
+            samplesList.appendChild(moreItem);
+        }
+        
+        samplesSection.appendChild(samplesTitle);
+        samplesSection.appendChild(samplesList);
+        
+        // Global reference option section
+        const globalOptionSection = createElement('div', {
+            className: 'global-option-section'
+        });
+        
+        const globalTitle = createElement('h4', {}, 'Optional: Create Global Reference');
+        
+        const globalDescription = createElement('p', {}, 
+            `You can optionally create a global reference that represents the sameAs pattern. ` +
+            `This will be applied to all properties of all items, in addition to the item-specific references.`
+        );
+        
+        const globalForm = createElement('div', {
+            className: 'global-form'
+        });
+        
+        const urlGroup = createElement('div', {
+            className: 'form-group'
+        });
+        
+        const urlLabel = createElement('label', {}, 'Representative URL (optional):');
+        const urlSelect = createElement('select', {
+            className: 'sameas-url-select'
+        });
+        
+        // Add empty option
+        const emptyOption = createElement('option', {
+            value: '',
+            selected: true
+        }, '-- Select a sample URL or enter custom --');
+        urlSelect.appendChild(emptyOption);
+        
+        // Add sample URLs as options
+        Array.from(sampleUrls).forEach(url => {
+            const option = createElement('option', {
+                value: url
+            }, url);
+            urlSelect.appendChild(option);
+        });
+        
+        const customUrlInput = createElement('input', {
+            type: 'url',
+            className: 'custom-url-input',
+            placeholder: 'Or enter a custom URL...',
+            style: 'margin-top: 8px;'
+        });
+        
+        urlGroup.appendChild(urlLabel);
+        urlGroup.appendChild(urlSelect);
+        urlGroup.appendChild(customUrlInput);
+        
+        const descriptionGroup = createElement('div', {
+            className: 'form-group'
+        });
+        
+        const descLabel = createElement('label', {}, 'Description:');
+        const descInput = createElement('input', {
+            type: 'text',
+            className: 'description-input',
+            placeholder: `e.g., "SameAs URLs (${itemsWithSameAs}/${totalItems} items have this)"`,
+            value: `SameAs URLs (${itemsWithSameAs}/${totalItems} items have this)`
+        });
+        
+        descriptionGroup.appendChild(descLabel);
+        descriptionGroup.appendChild(descInput);
+        
+        globalForm.appendChild(urlGroup);
+        globalForm.appendChild(descriptionGroup);
+        
+        globalOptionSection.appendChild(globalTitle);
+        globalOptionSection.appendChild(globalDescription);
+        globalOptionSection.appendChild(globalForm);
+        
+        modalBody.appendChild(summarySection);
+        modalBody.appendChild(samplesSection);
+        modalBody.appendChild(globalOptionSection);
+        
+        // Modal footer
+        const modalFooter = createElement('div', {
+            className: 'modal-footer'
+        });
+        
+        const skipBtn = createButton('Skip Global Reference', {
+            className: 'wikidata-btn wikidata-btn--secondary',
+            onClick: () => modal.remove()
+        });
+        
+        const createBtn = createButton('Create Global Reference', {
+            className: 'wikidata-btn wikidata-btn--primary',
+            onClick: () => {
+                const selectedUrl = urlSelect.value || customUrlInput.value.trim();
+                const description = descInput.value.trim();
+                
+                if (selectedUrl) {
+                    createGlobalSameAsReference(selectedUrl, description);
+                    modal.remove();
+                    showMessage('Global sameAs reference created', 'success');
+                } else {
+                    showMessage('Please select or enter a URL for the global reference', 'warning');
+                }
+            }
+        });
+        
+        modalFooter.appendChild(skipBtn);
+        modalFooter.appendChild(createBtn);
+        
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(modalBody);
+        modalContent.appendChild(modalFooter);
+        modal.appendChild(modalContent);
+        
+        document.body.appendChild(modal);
+        
+        // Handle URL selection switching
+        urlSelect.addEventListener('change', () => {
+            if (urlSelect.value) {
+                customUrlInput.value = '';
+            }
+        });
+        
+        customUrlInput.addEventListener('input', () => {
+            if (customUrlInput.value.trim()) {
+                urlSelect.value = '';
+            }
+        });
+    }
+    
+    // Create global sameAs reference
+    function createGlobalSameAsReference(url, description) {
+        const currentState = state.getState();
+        const globalReferences = currentState.globalReferences || [];
+        
+        // Check if this URL already exists
+        if (globalReferences.some(r => r.url === url)) {
+            showMessage('This reference URL already exists', 'warning');
+            return;
+        }
+        
+        globalReferences.push({
+            url: url,
+            type: description || 'SameAs URL (Global)',
+            autoDetected: false,
+            enabled: true,
+            retrievedDate: new Date().toISOString().split('T')[0],
+            addedAt: new Date().toISOString()
+        });
+        
+        state.updateState('globalReferences', globalReferences);
+        displayReferences();
+    }
+
     // Search for references in API data with interactive modal
     function searchForReferences() {
         showReferenceSearchModal();
@@ -1939,11 +2238,25 @@ export function setupDesignerStep(state) {
             className: 'wikidata-input'
         });
         
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        
         const scopeOptions = [
             { value: 'this-property-all-items', text: `All items with property ${propertyId}` },
-            { value: 'this-property-selected-item', text: 'Only the selected item' },
-            { value: 'all-properties', text: 'All properties (global reference)' }
+            { value: 'all-properties', text: 'All properties of all items (global reference)' },
+            { value: 'item-specific', text: `Item-specific references (add each item's own URL)` }
         ];
+        
+        // Add individual item options if there are multiple items
+        if (fetchedData.length > 1) {
+            fetchedData.forEach((item, index) => {
+                const itemTitle = item['o:title'] || item['dcterms:title'] || `Item ${index + 1}`;
+                scopeOptions.push({
+                    value: `single-item-${index}`,
+                    text: `Only "${itemTitle}"`
+                });
+            });
+        }
         
         scopeOptions.forEach(opt => {
             const option = createElement('option', {
@@ -2155,8 +2468,8 @@ export function setupDesignerStep(state) {
     // Add a reference to a property with the specified scope
     function addPropertyReference(propertyId, url, retrievedDate, scope) {
         const currentState = state.getState();
-        const reconciliationData = currentState.reconciliationData;
-        const selectedItemValue = exampleItemSelector?.value || 'multi-item';
+        const reconciliationData = { ...currentState.reconciliationData };
+        const fetchedData = currentState.fetchedData || [];
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         
         // Find the mapping for this property ID to get the key
@@ -2168,36 +2481,118 @@ export function setupDesignerStep(state) {
             const globalRefs = currentState.globalReferences || [];
             globalRefs.push({
                 url: url,
+                type: 'Manual reference',
+                autoDetected: false,
+                enabled: true,
                 retrievedDate: retrievedDate,
                 addedAt: new Date().toISOString()
             });
             state.updateState('globalReferences', globalRefs);
-        } else {
-            // Add to specific property references
-            const itemsToUpdate = [];
-            
-            if (scope === 'this-property-all-items') {
-                // Add to all items that have this property
-                Object.keys(reconciliationData).forEach(itemId => {
-                    // Check if item has this property using both propertyId and mappingKey
-                    const hasPropertyById = reconciliationData[itemId].properties[propertyId];
-                    const hasPropertyByKey = mappingKey && reconciliationData[itemId].properties[mappingKey];
+        } else if (scope === 'item-specific') {
+            // Add item-specific references - each item gets its own sameAs URL if available
+            let itemsWithSameAs = 0;
+            fetchedData.forEach((item, index) => {
+                const itemKey = `item-${index}`;
+                
+                // Check if this item has sameAs
+                if (item['schema:sameAs']) {
+                    const sameAsValues = Array.isArray(item['schema:sameAs']) ? 
+                        item['schema:sameAs'] : [item['schema:sameAs']];
                     
-                    if (hasPropertyById || hasPropertyByKey) {
-                        itemsToUpdate.push({
-                            itemId: itemId,
-                            propertyKey: hasPropertyByKey ? mappingKey : propertyId
+                    sameAsValues.forEach(value => {
+                        let itemUrl = null;
+                        let itemType = 'sameAs URL';
+                        
+                        // Handle string values (simple format)
+                        if (typeof value === 'string' && value.startsWith('http')) {
+                            itemUrl = value;
+                        }
+                        // Handle object values (complex format with @id)
+                        else if (typeof value === 'object' && value !== null && value['@id']) {
+                            const idValue = value['@id'];
+                            if (typeof idValue === 'string' && idValue.startsWith('http')) {
+                                itemUrl = idValue;
+                                itemType = value['o:label'] ? `sameAs (${value['o:label']})` : 'sameAs URL';
+                            }
+                        }
+                        
+                        if (itemUrl && reconciliationData[itemKey]?.properties) {
+                            // Add to the specific property for this item
+                            const propertyKey = mappingKey || propertyId;
+                            if (reconciliationData[itemKey].properties[propertyKey]) {
+                                const propData = reconciliationData[itemKey].properties[propertyKey];
+                                if (!propData.references) {
+                                    propData.references = [];
+                                }
+                                
+                                // Check if reference already exists
+                                const existingRef = propData.references.find(ref => ref.url === itemUrl);
+                                if (!existingRef) {
+                                    propData.references.push({
+                                        url: itemUrl,
+                                        type: itemType,
+                                        autoDetected: false,
+                                        itemSpecific: true,
+                                        retrievedDate: retrievedDate,
+                                        addedAt: new Date().toISOString()
+                                    });
+                                    itemsWithSameAs++;
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+            
+            if (itemsWithSameAs === 0) {
+                showMessage('No sameAs URLs found in the items', 'warning');
+                return;
+            }
+            
+            // Update state with modified reconciliation data
+            state.updateState('reconciliationData', reconciliationData);
+            showMessage(`Added item-specific sameAs references for ${itemsWithSameAs} items`, 'success');
+        } else if (scope.startsWith('single-item-')) {
+            // Add to single specific item
+            const itemIndex = parseInt(scope.replace('single-item-', ''));
+            const itemKey = `item-${itemIndex}`;
+            
+            if (reconciliationData[itemKey]?.properties) {
+                const propertyKey = mappingKey || propertyId;
+                if (reconciliationData[itemKey].properties[propertyKey]) {
+                    const propData = reconciliationData[itemKey].properties[propertyKey];
+                    if (!propData.references) {
+                        propData.references = [];
+                    }
+                    
+                    // Check if reference already exists
+                    const existingRef = propData.references.find(ref => ref.url === url);
+                    if (!existingRef) {
+                        propData.references.push({
+                            url: url,
+                            type: 'Manual reference',
+                            autoDetected: false,
+                            itemSpecific: true,
+                            retrievedDate: retrievedDate,
+                            addedAt: new Date().toISOString()
                         });
                     }
-                });
-            } else if (scope === 'this-property-selected-item' && selectedItemValue !== 'multi-item') {
-                // Add only to selected item
-                const itemIndex = parseInt(selectedItemValue);
-                const itemId = `item-${itemIndex}`;
-                
+                }
+            }
+            
+            // Update state with modified reconciliation data
+            state.updateState('reconciliationData', reconciliationData);
+            
+            const itemTitle = fetchedData[itemIndex]?.['o:title'] || fetchedData[itemIndex]?.['dcterms:title'] || `Item ${itemIndex + 1}`;
+            showMessage(`Reference added to "${itemTitle}"`, 'success');
+        } else if (scope === 'this-property-all-items') {
+            // Add to all items that have this property
+            const itemsToUpdate = [];
+            
+            Object.keys(reconciliationData).forEach(itemId => {
                 // Check if item has this property using both propertyId and mappingKey
-                const hasPropertyById = reconciliationData[itemId]?.properties[propertyId];
-                const hasPropertyByKey = mappingKey && reconciliationData[itemId]?.properties[mappingKey];
+                const hasPropertyById = reconciliationData[itemId].properties?.[propertyId];
+                const hasPropertyByKey = mappingKey && reconciliationData[itemId].properties?.[mappingKey];
                 
                 if (hasPropertyById || hasPropertyByKey) {
                     itemsToUpdate.push({
@@ -2205,7 +2600,7 @@ export function setupDesignerStep(state) {
                         propertyKey: hasPropertyByKey ? mappingKey : propertyId
                     });
                 }
-            }
+            });
             
             // Update reconciliation data for each item
             itemsToUpdate.forEach(update => {
@@ -2217,9 +2612,10 @@ export function setupDesignerStep(state) {
                 // Check if reference already exists
                 const existingRef = propData.references.find(ref => ref.url === url);
                 if (!existingRef) {
-                    // Create a reference object manually here since we have different parameters
                     propData.references.push({
                         url: url,
+                        type: 'Manual reference',
+                        autoDetected: false,
                         retrievedDate: retrievedDate,
                         addedAt: new Date().toISOString()
                     });
@@ -2228,13 +2624,12 @@ export function setupDesignerStep(state) {
             
             // Update state with modified reconciliation data
             state.updateState('reconciliationData', reconciliationData);
+            showMessage(`Reference added to ${itemsToUpdate.length} items with property ${propertyId}`, 'success');
         }
         
         // Refresh the display
         displayProperties();
         displayReferences();
-        
-        showMessage(`Reference added to ${scope === 'all-properties' ? 'all properties' : propertyId}`, 'success');
     }
     
     // Show new statement modal
