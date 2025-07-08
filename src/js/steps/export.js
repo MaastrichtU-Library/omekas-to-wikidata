@@ -397,9 +397,7 @@ export function setupExportStep(state) {
         validationDisplay.innerHTML = '';
         
         if (validation.isValid && validation.errors.length === 0) {
-            validationDisplay.appendChild(createElement('div', {
-                className: 'validation-success'
-            }, '✓ QuickStatements syntax is valid'));
+            // No success message needed - valid syntax is expected
         } else {
             if (validation.errors.length > 0) {
                 const errorDiv = createElement('div', {

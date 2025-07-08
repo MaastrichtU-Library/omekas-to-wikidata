@@ -198,17 +198,17 @@ export function setupDesignerStep(state) {
             designerData.descriptionMappings = {};
         }
         if (!designerData.supportedLanguages) {
-            designerData.supportedLanguages = ['en']; // Default to English
+            designerData.supportedLanguages = ['mul']; // Default to multilingual
         }
         
         state.updateState('designerData', designerData);
         
-        // If no languages configured yet, add default English
+        // If no languages configured yet, add default multilingual
         if (Object.keys(designerData.labelMappings).length === 0) {
-            addLanguageMapping('label', 'en');
+            addLanguageMapping('label', 'mul');
         }
         if (Object.keys(designerData.descriptionMappings).length === 0) {
-            addLanguageMapping('description', 'en');
+            addLanguageMapping('description', 'mul');
         }
         
         // Render existing language mappings
@@ -298,7 +298,10 @@ export function setupDesignerStep(state) {
         
         // Add common languages
         commonLanguages.forEach(lang => {
-            const option = createElement('option', { value: lang.code }, `${lang.name} (${lang.code})`);
+            const option = createElement('option', { 
+                value: lang.code,
+                selected: lang.code === 'mul' // Default to multilingual
+            }, `${lang.name} (${lang.code})`);
             languageSelect.appendChild(option);
         });
         
@@ -351,6 +354,9 @@ export function setupDesignerStep(state) {
                 mulHelpText.style.display = 'none';
             }
         });
+        
+        // Show help text by default since "mul" is selected
+        mulHelpText.style.display = 'block';
         
         // Modal footer
         const modalFooter = createElement('div', {
@@ -857,85 +863,225 @@ export function setupDesignerStep(state) {
             return;
         }
         
-        // Get both old-style references and new global references
-        const oldReferences = state.getState().references || [];
-        const globalReferences = state.getState().globalReferences || [];
-        const allReferences = [...oldReferences, ...globalReferences];
+        const currentState = state.getState();
+        const globalReferences = currentState.globalReferences || [];
+        const reconciliationData = currentState.reconciliationData || {};
+        const fetchedData = currentState.fetchedData || [];
         
         referencesList.innerHTML = '';
         
-        if (allReferences.length === 0) {
-            const placeholder = createElement('div', {
-                className: 'placeholder'
-            }, 'No global references added yet. You can add references to specific properties or globally.');
-            referencesList.appendChild(placeholder);
-            return;
-        }
+        // Collect item-specific references (sameAs URLs)
+        const itemSpecificRefs = new Map(); // Map of URL -> Set of item indices
+        let totalItemsWithSameAs = 0;
         
-        allReferences.forEach((ref, index) => {
-            const refItem = createElement('div', {
-                className: `reference-item ${ref.autoDetected ? 'auto-detected' : ''}`
+        fetchedData.forEach((item, index) => {
+            if (item['schema:sameAs']) {
+                const sameAsValues = Array.isArray(item['schema:sameAs']) ? 
+                    item['schema:sameAs'] : [item['schema:sameAs']];
+                
+                let itemHasSameAs = false;
+                sameAsValues.forEach(value => {
+                    let url = null;
+                    let type = 'sameAs URL';
+                    
+                    if (typeof value === 'string' && value.startsWith('http')) {
+                        url = value;
+                    } else if (typeof value === 'object' && value !== null && value['@id']) {
+                        const idValue = value['@id'];
+                        if (typeof idValue === 'string' && idValue.startsWith('http')) {
+                            url = idValue;
+                            type = value['o:label'] ? `sameAs (${value['o:label']})` : 'sameAs URL';
+                        }
+                    }
+                    
+                    if (url) {
+                        itemHasSameAs = true;
+                        if (!itemSpecificRefs.has(url)) {
+                            itemSpecificRefs.set(url, new Set());
+                        }
+                        itemSpecificRefs.get(url).add(index);
+                    }
+                });
+                
+                if (itemHasSameAs) {
+                    totalItemsWithSameAs++;
+                }
+            }
+        });
+        
+        // Create sections for different reference types
+        const hasBothTypes = globalReferences.length > 0 && itemSpecificRefs.size > 0;
+        
+        // Display item-specific references section if any exist
+        if (itemSpecificRefs.size > 0) {
+            const itemSpecificSection = createElement('div', {
+                className: 'reference-section item-specific-section'
+            });
+            
+            const sectionHeader = createElement('h4', {
+                className: 'reference-section-header'
+            }, 'Item-Specific References (Auto-detected)');
+            
+            const sectionDescription = createElement('p', {
+                className: 'reference-section-description'
+            }, `Found sameAs statements in ${totalItemsWithSameAs} out of ${fetchedData.length} items. Each item's sameAs URL is applied as a reference to that specific item's properties.`);
+            
+            itemSpecificSection.appendChild(sectionHeader);
+            itemSpecificSection.appendChild(sectionDescription);
+            
+            // Show aggregated view for item-specific references
+            const aggregatedRef = createElement('div', {
+                className: 'reference-item item-specific-aggregate'
             });
             
             const refInfo = createElement('div', {
                 className: 'reference-info'
             });
             
-            const refUrl = createElement('a', {
-                className: 'reference-url',
-                href: ref.url,
-                target: '_blank'
-            }, ref.url);
+            const refLabel = createElement('div', {
+                className: 'reference-label'
+            }, 'sameAs URLs (Item-specific)');
             
-            const refType = createElement('div', {
-                className: 'reference-type'
-            }, ref.type || 'Manual reference');
+            const refDetails = createElement('div', {
+                className: 'reference-details'
+            }, `${itemSpecificRefs.size} unique URL${itemSpecificRefs.size > 1 ? 's' : ''} across ${totalItemsWithSameAs} item${totalItemsWithSameAs > 1 ? 's' : ''}`);
             
-            refInfo.appendChild(refUrl);
-            refInfo.appendChild(refType);
+            refInfo.appendChild(refLabel);
+            refInfo.appendChild(refDetails);
             
-            const refToggle = createElement('div', {
-                className: 'reference-toggle'
+            // Sample URLs
+            const sampleUrls = createElement('div', {
+                className: 'reference-samples'
             });
             
-            // Check if this reference is already applied to any properties
-            const isAppliedToProperties = checkIfReferenceIsApplied(ref);
+            let sampleCount = 0;
+            for (const [url, itemIndices] of itemSpecificRefs) {
+                if (sampleCount >= 2) break;
+                const sampleUrl = createElement('a', {
+                    className: 'reference-sample-url',
+                    href: url,
+                    target: '_blank',
+                    title: `Used by ${itemIndices.size} item${itemIndices.size > 1 ? 's' : ''}`
+                }, url);
+                sampleUrls.appendChild(sampleUrl);
+                sampleCount++;
+            }
             
-            const toggleInput = createElement('input', {
-                type: 'checkbox',
-                id: `ref-toggle-${index}`,
-                checked: isAppliedToProperties || ref.enabled !== false
+            if (itemSpecificRefs.size > 2) {
+                const moreIndicator = createElement('div', {
+                    className: 'reference-more'
+                }, `... and ${itemSpecificRefs.size - 2} more`);
+                sampleUrls.appendChild(moreIndicator);
+            }
+            
+            aggregatedRef.appendChild(refInfo);
+            aggregatedRef.appendChild(sampleUrls);
+            
+            // Status indicator
+            const statusDiv = createElement('div', {
+                className: 'reference-status'
             });
             
-            const toggleLabel = createElement('label', {
-                htmlFor: `ref-toggle-${index}`
-            }, 'Apply to all');
+            const statusIcon = createElement('span', {
+                className: 'status-icon status-applied'
+            }, '✓');
             
-            // Toggle behavior: When checked, the reference is applied to ALL properties across ALL items
-            // When unchecked, the reference is removed from ALL properties across ALL items
-            // This provides a quick way to bulk apply/remove references globally
-            toggleInput.addEventListener('change', (e) => {
-                ref.enabled = e.target.checked;
+            const statusText = createElement('span', {
+                className: 'status-text'
+            }, 'Applied to respective items');
+            
+            statusDiv.appendChild(statusIcon);
+            statusDiv.appendChild(statusText);
+            aggregatedRef.appendChild(statusDiv);
+            
+            itemSpecificSection.appendChild(aggregatedRef);
+            referencesList.appendChild(itemSpecificSection);
+        }
+        
+        // Display global references section
+        if (globalReferences.length > 0) {
+            const globalSection = createElement('div', {
+                className: 'reference-section global-section'
+            });
+            
+            if (hasBothTypes) {
+                const sectionHeader = createElement('h4', {
+                    className: 'reference-section-header'
+                }, 'Global References');
                 
-                if (e.target.checked) {
-                    // Apply this reference to all properties when toggle is checked
-                    applyReferenceToAllProperties(ref);
-                } else {
-                    // Remove this reference from all properties when toggle is unchecked
-                    removeReferenceFromAllProperties(ref);
-                }
+                const sectionDescription = createElement('p', {
+                    className: 'reference-section-description'
+                }, 'These references are applied to all properties of all items.');
                 
-                state.markChangesUnsaved();
+                globalSection.appendChild(sectionHeader);
+                globalSection.appendChild(sectionDescription);
+            }
+            
+            globalReferences.forEach((ref, index) => {
+                const refItem = createElement('div', {
+                    className: `reference-item ${ref.autoDetected ? 'auto-detected' : ''}`
+                });
+                
+                const refInfo = createElement('div', {
+                    className: 'reference-info'
+                });
+                
+                const refUrl = createElement('a', {
+                    className: 'reference-url',
+                    href: ref.url,
+                    target: '_blank'
+                }, ref.url);
+                
+                const refType = createElement('div', {
+                    className: 'reference-type'
+                }, ref.type || 'Manual reference');
+                
+                refInfo.appendChild(refUrl);
+                refInfo.appendChild(refType);
+                
+                // Single toggle button
+                const refActions = createElement('div', {
+                    className: 'reference-actions'
+                });
+                
+                const isApplied = ref.enabled !== false;
+                const toggleBtn = createButton(isApplied ? '✓ Applied' : 'Apply', {
+                    className: `reference-toggle-btn ${isApplied ? 'active' : ''}`,
+                    onClick: () => {
+                        ref.enabled = !ref.enabled;
+                        
+                        if (ref.enabled) {
+                            applyReferenceToAllProperties(ref);
+                            toggleBtn.textContent = '✓ Applied';
+                            toggleBtn.classList.add('active');
+                        } else {
+                            removeReferenceFromAllProperties(ref);
+                            toggleBtn.textContent = 'Apply';
+                            toggleBtn.classList.remove('active');
+                        }
+                        
+                        state.markChangesUnsaved();
+                    }
+                });
+                
+                refActions.appendChild(toggleBtn);
+                
+                refItem.appendChild(refInfo);
+                refItem.appendChild(refActions);
+                
+                globalSection.appendChild(refItem);
             });
             
-            refToggle.appendChild(toggleInput);
-            refToggle.appendChild(toggleLabel);
-            
-            refItem.appendChild(refInfo);
-            refItem.appendChild(refToggle);
-            
-            referencesList.appendChild(refItem);
-        });
+            referencesList.appendChild(globalSection);
+        }
+        
+        // Show placeholder if no references
+        if (globalReferences.length === 0 && itemSpecificRefs.size === 0) {
+            const placeholder = createElement('div', {
+                className: 'placeholder'
+            }, 'No references added yet. Click "Auto-detect References" to find sameAs and ARK identifiers.');
+            referencesList.appendChild(placeholder);
+        }
     }
     
     // Display properties
@@ -1569,6 +1715,13 @@ export function setupDesignerStep(state) {
         }
         if (globalRefsAdded > 0) {
             state.updateState('globalReferences', currentGlobalReferences);
+            
+            // Apply enabled global references immediately
+            currentGlobalReferences.forEach(ref => {
+                if (ref.enabled !== false) {
+                    applyReferenceToAllProperties(ref);
+                }
+            });
         }
         
         // Update displays
@@ -1603,10 +1756,10 @@ export function setupDesignerStep(state) {
         // Show warning if no references found at all
         const referenceWarning = document.getElementById('reference-warning');
         if (referenceWarning) {
-            const totalRefs = (currentState.references?.length || 0) + 
-                             (currentState.globalReferences?.length || 0) + 
-                             itemSpecificRefsAdded;
-            if (totalRefs === 0) {
+            const globalRefs = currentState.globalReferences?.length || 0;
+            const hasItemSpecificRefs = itemSpecificRefsAdded > 0 || totalItemsWithSameAs > 0;
+            
+            if (globalRefs === 0 && !hasItemSpecificRefs) {
                 referenceWarning.style.display = 'block';
             } else {
                 referenceWarning.style.display = 'none';
@@ -2101,16 +2254,15 @@ export function setupDesignerStep(state) {
     function addReferenceFromSearch(ref, refItem) {
         const currentState = state.getState();
         const globalReferences = currentState.globalReferences || [];
-        const oldReferences = currentState.references || [];
         
-        // Check if already exists in either location
-        if (globalReferences.some(r => r.url === ref.url) || oldReferences.some(r => r.url === ref.url)) {
+        // Check if already exists
+        if (globalReferences.some(r => r.url === ref.url)) {
             showMessage('This reference already exists', 'warning');
             return;
         }
         
         // Add the reference to global references
-        globalReferences.push({
+        const newRef = {
             url: ref.url,
             type: ref.type,
             autoDetected: false,
@@ -2118,9 +2270,14 @@ export function setupDesignerStep(state) {
             source: ref.source,
             retrievedDate: new Date().toISOString().split('T')[0], // Today's date
             addedAt: new Date().toISOString()
-        });
+        };
         
+        globalReferences.push(newRef);
         state.updateState('globalReferences', globalReferences);
+        
+        // Apply the reference immediately since it's enabled by default
+        applyReferenceToAllProperties(newRef);
+        
         displayReferences();
         updateProceedButton();
         
@@ -2157,24 +2314,28 @@ export function setupDesignerStep(state) {
         
         const currentState = state.getState();
         const globalReferences = currentState.globalReferences || [];
-        const oldReferences = currentState.references || [];
         
-        // Check if already exists in either location
-        if (globalReferences.some(r => r.url === url) || oldReferences.some(r => r.url === url)) {
+        // Check if already exists
+        if (globalReferences.some(r => r.url === url)) {
             showMessage('This reference already exists', 'warning');
             return;
         }
         
-        globalReferences.push({
+        const newRef = {
             url: url,
             type: 'Manual reference',
             autoDetected: false,
             enabled: true,
             retrievedDate: new Date().toISOString().split('T')[0],
             addedAt: new Date().toISOString()
-        });
+        };
         
+        globalReferences.push(newRef);
         state.updateState('globalReferences', globalReferences);
+        
+        // Apply the reference immediately since it's enabled by default
+        applyReferenceToAllProperties(newRef);
+        
         displayReferences();
         updateProceedButton();
         
@@ -2866,11 +3027,9 @@ export function setupDesignerStep(state) {
         });
         
         // Apply any enabled global references to the new property
-        const oldReferences = currentState.references || [];
         const globalReferences = currentState.globalReferences || [];
-        const allReferences = [...oldReferences, ...globalReferences];
         
-        allReferences.forEach(ref => {
+        globalReferences.forEach(ref => {
             if (ref.enabled !== false) { // Apply references that are enabled
                 fetchedData.forEach((item, index) => {
                     const itemKey = `item-${index}`;
