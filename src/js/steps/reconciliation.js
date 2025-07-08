@@ -169,8 +169,8 @@ export function setupReconciliationStep(state) {
             });
         }
         
-        // Update progress display
-        updateProgressDisplay();
+        // Update proceed button
+        updateProceedButton();
         
         // Create reconciliation table
         await createReconciliationTable(data, mappedKeys, isReturningToStep);
@@ -517,8 +517,6 @@ export function setupReconciliationStep(state) {
                     updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
                 });
                 
-                // Update progress to show current processing batch
-                updateProgressWithCurrentBatch(property, i, batchJobSlice.length, jobs.length);
                 
                 const results = await Promise.all(batchPromiseSlice);
                 
@@ -565,8 +563,8 @@ export function setupReconciliationStep(state) {
         }
         
         
-        // Update progress display (removes current activity indicator)
-        updateProgressDisplay();
+        // Update proceed button
+        updateProceedButton();
     }
     
     /**
@@ -785,32 +783,6 @@ export function setupReconciliationStep(state) {
     
 
     
-    /**
-     * Calculate current progress from reconciliation data
-     */
-    function calculateCurrentProgress() {
-        let total = 0;
-        let completed = 0;
-        let skipped = 0;
-        let errors = 0;
-        
-        Object.values(reconciliationData).forEach(itemData => {
-            Object.values(itemData.properties).forEach(propData => {
-                propData.reconciled.forEach(reconciledItem => {
-                    total++;
-                    if (reconciledItem.status === 'reconciled' || reconciledItem.status === 'no-item') {
-                        completed++;
-                    } else if (reconciledItem.status === 'skipped') {
-                        skipped++;
-                    } else if (reconciledItem.status === 'error') {
-                        errors++;
-                    }
-                });
-            });
-        });
-        
-        return { total, completed, skipped, errors };
-    }
     
     /**
      * Update proceed button state
@@ -2258,7 +2230,7 @@ export function setupReconciliationStep(state) {
         
         // Update progress
         state.incrementReconciliationCompleted();
-        updateProgressDisplay();
+        updateProceedButton();
         
         // Store in context suggestions
         if (reconciliation.type === 'wikidata') {
@@ -2288,7 +2260,7 @@ export function setupReconciliationStep(state) {
         
         // Update progress
         state.incrementReconciliationSkipped();
-        updateProgressDisplay();
+        updateProceedButton();
         
         // Update state
         state.updateState('reconciliationData', reconciliationData);
@@ -2317,7 +2289,7 @@ export function setupReconciliationStep(state) {
         
         // Update progress (count as completed since it's a decision)
         state.incrementReconciliationCompleted();
-        updateProgressDisplay();
+        updateProceedButton();
         
         // Update state
         state.updateState('reconciliationData', reconciliationData);
