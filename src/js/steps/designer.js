@@ -1002,6 +1002,10 @@ export function setupDesignerStep(state) {
                 className: 'reference-status'
             });
             
+            const statusInfo = createElement('div', {
+                className: 'status-info'
+            });
+            
             const statusIcon = createElement('span', {
                 className: 'status-icon status-applied'
             }, '✓');
@@ -1010,8 +1014,17 @@ export function setupDesignerStep(state) {
                 className: 'status-text'
             }, 'Applied to respective items');
             
-            statusDiv.appendChild(statusIcon);
-            statusDiv.appendChild(statusText);
+            statusInfo.appendChild(statusIcon);
+            statusInfo.appendChild(statusText);
+            statusDiv.appendChild(statusInfo);
+            
+            // Add View Details button
+            const viewDetailsBtn = createButton('View Details', {
+                className: 'btn btn-secondary btn-small',
+                onclick: () => showSameAsSummaryModal()
+            });
+            statusDiv.appendChild(viewDetailsBtn);
+            
             aggregatedRef.appendChild(statusDiv);
             
             itemSpecificSection.appendChild(aggregatedRef);

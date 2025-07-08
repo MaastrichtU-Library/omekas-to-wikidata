@@ -2814,6 +2814,82 @@ main {
     margin-top: 0.25rem;
 }
 
+/* Item-specific reference section styling */
+.item-specific-section {
+    border-left: 3px solid var(--primary-color);
+    background-color: #f8f9fa;
+}
+
+.item-specific-aggregate {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+}
+
+.reference-samples {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.reference-sample-url {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    word-break: break-all;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reference-sample-url:hover {
+    border-color: var(--primary-color);
+    background-color: #f0f7ff;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.reference-more {
+    font-size: 0.8rem;
+    color: #666;
+    font-style: italic;
+    padding: 0.25rem 0;
+}
+
+.reference-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: 0.5rem;
+}
+
+.reference-status .status-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-icon.status-applied {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.status-text {
+    font-size: 0.85rem;
+    color: #666;
+}
+
 .reference-toggle {
     display: flex;
     align-items: center;
