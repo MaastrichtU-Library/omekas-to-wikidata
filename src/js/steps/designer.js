@@ -278,6 +278,7 @@ export function setupDesignerStep(state) {
         
         // Common languages
         const commonLanguages = [
+            { code: 'mul', name: 'Multilingual (default for all languages)' },
             { code: 'en', name: 'English' },
             { code: 'es', name: 'Spanish' },
             { code: 'fr', name: 'French' },
@@ -325,18 +326,31 @@ export function setupDesignerStep(state) {
         customGroup.appendChild(customLabel);
         customGroup.appendChild(customInput);
         
-        // Show/hide custom input based on selection
+        modalBody.appendChild(languageGroup);
+        modalBody.appendChild(customGroup);
+        
+        // Add help text for multilingual option
+        const mulHelpText = createElement('div', {
+            className: 'help-text',
+            style: 'display: none; margin-top: 10px; padding: 10px; background-color: #e7f3ff; border-radius: 4px; font-size: 0.9em;'
+        }, 'The "mul" (multilingual) option creates a default label that applies to all languages. This is useful for proper names, technical terms, or universal concepts that don\'t need translation. Wikidata will automatically use this label when no language-specific label exists.');
+        
+        modalBody.appendChild(mulHelpText);
+        
+        // Show/hide custom input and help text based on selection
         languageSelect.addEventListener('change', () => {
             if (languageSelect.value === 'custom') {
                 customGroup.style.display = 'block';
                 customInput.focus();
+                mulHelpText.style.display = 'none';
+            } else if (languageSelect.value === 'mul') {
+                customGroup.style.display = 'none';
+                mulHelpText.style.display = 'block';
             } else {
                 customGroup.style.display = 'none';
+                mulHelpText.style.display = 'none';
             }
         });
-        
-        modalBody.appendChild(languageGroup);
-        modalBody.appendChild(customGroup);
         
         // Modal footer
         const modalFooter = createElement('div', {

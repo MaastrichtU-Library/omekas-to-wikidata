@@ -1,0 +1,1870 @@
+{
+  "version": "1.0",
+  "exportDate": "2025-07-07T07:11:51.779Z",
+  "appName": "Omeka S to Wikidata Mapping Tool",
+  "currentStep": 4,
+  "highestCompletedStep": 3,
+  "hasUnsavedChanges": true,
+  "testMode": false,
+  "apiUrl": "https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&per_page=2",
+  "apiKey": "",
+  "pagination": 10,
+  "fetchedData": [
+    {
+      "@context": "https://digitalcollections.library.maastrichtuniversity.nl/api-context",
+      "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/items/30",
+      "@type": [
+        "o:Item",
+        "schema:Book"
+      ],
+      "o:id": 30,
+      "o:is_public": true,
+      "o:owner": {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/users/7",
+        "o:id": 7
+      },
+      "o:resource_class": {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_classes/790",
+        "o:id": 790
+      },
+      "o:resource_template": {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_templates/3",
+        "o:id": 3
+      },
+      "o:thumbnail": null,
+      "o:title": "Eros op den Parnassus : minnepoëzie uit alle tijden",
+      "thumbnail_display_urls": {
+        "large": "https://digitalcollections.library.maastrichtuniversity.nl/files/large/30/MU_KEMP_313_-_De_onsterfelijken.jpg",
+        "medium": "https://digitalcollections.library.maastrichtuniversity.nl/files/medium/30/MU_KEMP_313_-_De_onsterfelijken.jpg",
+        "square": "https://digitalcollections.library.maastrichtuniversity.nl/files/square/30/MU_KEMP_313_-_De_onsterfelijken.jpg"
+      },
+      "o:created": {
+        "@value": "2023-03-16T13:03:20+00:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "o:modified": {
+        "@value": "2025-04-29T16:10:52+00:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "o:primary_media": {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/31",
+        "o:id": 31
+      },
+      "o:media": [
+        {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/31",
+          "o:id": 31
+        }
+      ],
+      "o:item_set": [
+        {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/item_sets/14",
+          "o:id": 14
+        }
+      ],
+      "o:site": [
+        {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/1",
+          "o:id": 1
+        },
+        {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/6",
+          "o:id": 6
+        }
+      ],
+      "schema:name": [
+        {
+          "type": "literal",
+          "property_id": 1451,
+          "property_label": "name",
+          "is_public": true,
+          "@value": "Eros op den Parnassus : minnepoëzie uit alle tijden"
+        }
+      ],
+      "schema:author": [
+        {
+          "type": "valuesuggest:ndeterms:wikipers",
+          "property_id": 903,
+          "property_label": "author",
+          "is_public": true,
+          "@id": "http://www.wikidata.org/entity/Q7925880",
+          "o:label": "Victor van Vriesland"
+        }
+      ],
+      "schema:description": [
+        {
+          "type": "literal",
+          "property_id": 738,
+          "property_label": "description",
+          "is_public": true,
+          "@value": "Marginalia noted by Pierre Kemp and commented on by his biographer Wiel Kusters in the article \"Pierre Kemp leest poëzie\" in Kusters, W., Prick, H. G. M., & Jägers G. J. M. (1995). \"Bladeren en lezen in groot verstaan\" : Pierre Kemp in de wereld van het boek. University Press Maastricht etc."
+        }
+      ],
+      "schema:locationCreated": [
+        {
+          "type": "valuesuggest:geonames:geonames",
+          "property_id": 1216,
+          "property_label": "locationCreated",
+          "is_public": true,
+          "@id": "http://www.geonames.org/2759794",
+          "o:label": "Amsterdam"
+        }
+      ],
+      "schema:publisher": [
+        {
+          "type": "valuesuggest:oclc:viaf",
+          "property_id": 1527,
+          "property_label": "publisher",
+          "is_public": true,
+          "@id": "http://viaf.org/viaf/172840804",
+          "o:label": "Contact Dutch publisher"
+        }
+      ],
+      "schema:datePublished": [
+        {
+          "type": "numeric:timestamp",
+          "property_id": 556,
+          "property_label": "datePublished",
+          "is_public": true,
+          "@value": "1945",
+          "@type": "http://www.w3.org/2001/XMLSchema#gYear"
+        }
+      ],
+      "bibo:shortDescription": [
+        {
+          "type": "literal",
+          "property_id": 116,
+          "property_label": "shortDescription",
+          "is_public": true,
+          "@value": "314 pages, 28 unnumbered pages (of which 9 pages made visible with annotations by Pierre Kemp), illustrations"
+        },
+        {
+          "type": "uri",
+          "property_id": 116,
+          "property_label": "shortDescription",
+          "is_public": true,
+          "@id": "https://vocab.getty.edu/aat/300015578",
+          "o:label": "illustrations"
+        }
+      ],
+      "schema:inLanguage": [
+        {
+          "type": "valuesuggest:lc:iso6391",
+          "property_id": 767,
+          "property_label": "inLanguage",
+          "is_public": true,
+          "@id": "http://id.loc.gov/vocabulary/iso639-1/nl",
+          "o:label": "Dutch |  Flemish"
+        }
+      ],
+      "schema:itemLocation": [
+        {
+          "type": "literal",
+          "property_id": 1394,
+          "property_label": "itemLocation",
+          "is_public": true,
+          "@value": "MU KEMP 313"
+        },
+        {
+          "type": "valuesuggest:geonames:geonames",
+          "property_id": 1394,
+          "property_label": "itemLocation",
+          "is_public": true,
+          "@id": "http://www.geonames.org/12500996",
+          "o:label": "Maastricht University Library - Inner City Library"
+        }
+      ],
+      "schema:sameAs": [
+        {
+          "type": "uri",
+          "property_id": 1132,
+          "property_label": "sameAs",
+          "is_public": true,
+          "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490"
+        }
+      ],
+      "schema:relatedLink": [
+        {
+          "type": "literal",
+          "property_id": 1522,
+          "property_label": "relatedLink",
+          "is_public": true,
+          "@value": "Bladeren en lezen in groot verstaan : Pierre Kemp in de wereld van het boek. Universitaire Pers Maastricht"
+        },
+        {
+          "type": "uri",
+          "property_id": 1522,
+          "property_label": "relatedLink",
+          "is_public": true,
+          "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/782196806"
+        }
+      ],
+      "schema:license": [
+        {
+          "type": "uri",
+          "property_id": 1574,
+          "property_label": "license",
+          "is_public": true,
+          "@id": "https://www.wikidata.org/wiki/Q20007257",
+          "o:label": "CC-BY 4.0"
+        }
+      ],
+      "schema:copyrightHolder": [
+        {
+          "type": "literal",
+          "property_id": 1512,
+          "property_label": "copyrightHolder",
+          "is_public": true,
+          "@value": "Stichting Pirre Kemp"
+        }
+      ],
+      "schema:provider": [
+        {
+          "type": "uri",
+          "property_id": 1499,
+          "property_label": "provider",
+          "is_public": true,
+          "@id": "https://www.wikidata.org/entity/Q15734302",
+          "o:label": "Maastricht University Library"
+        }
+      ],
+      "dcterms:identifier": [
+        {
+          "type": "literal",
+          "property_id": 10,
+          "property_label": "Identifier",
+          "is_public": true,
+          "@value": "ark:/27364/d1n4b0E"
+        }
+      ],
+      "extracttext:extracted_text": [
+        {
+          "type": "literal",
+          "property_id": 185,
+          "property_label": "extracted text",
+          "is_public": true,
+          "@value": "\f\f\f\f\f\f\f\f\f"
+        },
+        {
+          "type": "literal",
+          "property_id": 185,
+          "property_label": "extracted text",
+          "is_public": true,
+          "@value": "\f\f\f\f\f\f\f\f\f"
+        },
+        {
+          "type": "literal",
+          "property_id": 185,
+          "property_label": "extracted text",
+          "is_public": true,
+          "@value": "\f\f\f\f\f\f\f\f\f"
+        }
+      ]
+    },
+    {
+      "@context": "https://digitalcollections.library.maastrichtuniversity.nl/api-context",
+      "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/items/32",
+      "@type": [
+        "o:Item",
+        "schema:Book"
+      ],
+      "o:id": 32,
+      "o:is_public": true,
+      "o:owner": {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/users/7",
+        "o:id": 7
+      },
+      "o:resource_class": {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_classes/790",
+        "o:id": 790
+      },
+      "o:resource_template": {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_templates/3",
+        "o:id": 3
+      },
+      "o:thumbnail": null,
+      "o:title": "Anthologie de la nouvelle poésie française",
+      "thumbnail_display_urls": {
+        "large": "https://digitalcollections.library.maastrichtuniversity.nl/files/large/32/75_Boek_MU_Kemp_602.jpg",
+        "medium": "https://digitalcollections.library.maastrichtuniversity.nl/files/medium/32/75_Boek_MU_Kemp_602.jpg",
+        "square": "https://digitalcollections.library.maastrichtuniversity.nl/files/square/32/75_Boek_MU_Kemp_602.jpg"
+      },
+      "o:created": {
+        "@value": "2023-03-16T13:21:02+00:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "o:modified": {
+        "@value": "2025-04-29T16:10:52+00:00",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+      },
+      "o:primary_media": {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/33",
+        "o:id": 33
+      },
+      "o:media": [
+        {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/33",
+          "o:id": 33
+        }
+      ],
+      "o:item_set": [
+        {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/item_sets/14",
+          "o:id": 14
+        }
+      ],
+      "o:site": [
+        {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/1",
+          "o:id": 1
+        },
+        {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/6",
+          "o:id": 6
+        }
+      ],
+      "schema:name": [
+        {
+          "type": "literal",
+          "property_id": 1451,
+          "property_label": "name",
+          "is_public": true,
+          "@value": "Anthologie de la nouvelle poésie française"
+        }
+      ],
+      "schema:description": [
+        {
+          "type": "literal",
+          "property_id": 738,
+          "property_label": "description",
+          "is_public": true,
+          "@value": "Marginalia noted by Pierre Kemp and commented on by his biographer Wiel Kusters in the article \"Pierre Kemp leest poëzie\" in Kusters, W., Prick, H. G. M., & Jägers G. J. M. (1995). \"Bladeren en lezen in groot verstaan\" : Pierre Kemp in de wereld van het boek. University Press Maastricht etc."
+        }
+      ],
+      "schema:locationCreated": [
+        {
+          "type": "valuesuggest:geonames:geonames",
+          "property_id": 1216,
+          "property_label": "locationCreated",
+          "is_public": true,
+          "@id": "http://www.geonames.org/2988507",
+          "o:label": "Paris"
+        }
+      ],
+      "schema:publisher": [
+        {
+          "type": "valuesuggest:oclc:viaf",
+          "property_id": 1527,
+          "property_label": "publisher",
+          "is_public": true,
+          "@id": "http://viaf.org/viaf/200887528",
+          "o:label": "Éditions du Sagittaire"
+        }
+      ],
+      "schema:datePublished": [
+        {
+          "type": "numeric:timestamp",
+          "property_id": 556,
+          "property_label": "datePublished",
+          "is_public": true,
+          "@value": "1927",
+          "@type": "http://www.w3.org/2001/XMLSchema#gYear"
+        }
+      ],
+      "bibo:shortDescription": [
+        {
+          "type": "literal",
+          "property_id": 116,
+          "property_label": "shortDescription",
+          "is_public": true,
+          "@value": "464 pages (of which 17 pages made visible with annotations by Pierre Kemp)"
+        }
+      ],
+      "schema:inLanguage": [
+        {
+          "type": "valuesuggest:lc:iso6391",
+          "property_id": 767,
+          "property_label": "inLanguage",
+          "is_public": true,
+          "@id": "http://id.loc.gov/vocabulary/iso639-1/fr",
+          "o:label": "French"
+        }
+      ],
+      "schema:bookEdition": [
+        {
+          "type": "literal",
+          "property_id": 934,
+          "property_label": "bookEdition",
+          "is_public": true,
+          "@value": "Nouv. éd., rev. et corr., 18e éd"
+        }
+      ],
+      "schema:itemLocation": [
+        {
+          "type": "literal",
+          "property_id": 1394,
+          "property_label": "itemLocation",
+          "is_public": true,
+          "@value": "MU KEMP 602"
+        },
+        {
+          "type": "valuesuggest:geonames:geonames",
+          "property_id": 1394,
+          "property_label": "itemLocation",
+          "is_public": true,
+          "@id": "http://www.geonames.org/12500996",
+          "o:label": "Maastricht University Library - Inner City Library"
+        }
+      ],
+      "schema:sameAs": [
+        {
+          "type": "uri",
+          "property_id": 1132,
+          "property_label": "sameAs",
+          "is_public": true,
+          "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/33063658"
+        }
+      ],
+      "schema:relatedLink": [
+        {
+          "type": "literal",
+          "property_id": 1522,
+          "property_label": "relatedLink",
+          "is_public": true,
+          "@value": "Bladeren en lezen in groot verstaan : Pierre Kemp in de wereld van het boek. Universitaire Pers Maastricht"
+        },
+        {
+          "type": "uri",
+          "property_id": 1522,
+          "property_label": "relatedLink",
+          "is_public": true,
+          "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/782196806"
+        }
+      ],
+      "schema:license": [
+        {
+          "type": "uri",
+          "property_id": 1574,
+          "property_label": "license",
+          "is_public": true,
+          "@id": "https://www.wikidata.org/wiki/Q20007257",
+          "o:label": "CC-BY 4.0"
+        }
+      ],
+      "schema:copyrightHolder": [
+        {
+          "type": "literal",
+          "property_id": 1512,
+          "property_label": "copyrightHolder",
+          "is_public": true,
+          "@value": "Stichting Pierre Kemp"
+        }
+      ],
+      "schema:provider": [
+        {
+          "type": "uri",
+          "property_id": 1499,
+          "property_label": "provider",
+          "is_public": true,
+          "@id": "https://www.wikidata.org/entity/Q15734302",
+          "o:label": "Maastricht University Library"
+        }
+      ],
+      "dcterms:identifier": [
+        {
+          "type": "literal",
+          "property_id": 10,
+          "property_label": "Identifier",
+          "is_public": true,
+          "@value": "ark:/27364/d1e9AQE"
+        }
+      ],
+      "extracttext:extracted_text": [
+        {
+          "type": "literal",
+          "property_id": 185,
+          "property_label": "extracted text",
+          "is_public": true,
+          "@value": "\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f"
+        },
+        {
+          "type": "literal",
+          "property_id": 185,
+          "property_label": "extracted text",
+          "is_public": true,
+          "@value": "\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f"
+        },
+        {
+          "type": "literal",
+          "property_id": 185,
+          "property_label": "extracted text",
+          "is_public": true,
+          "@value": "\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f"
+        }
+      ]
+    }
+  ],
+  "selectedExample": {
+    "@context": "https://digitalcollections.library.maastrichtuniversity.nl/api-context",
+    "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/items/30",
+    "@type": [
+      "o:Item",
+      "schema:Book"
+    ],
+    "o:id": 30,
+    "o:is_public": true,
+    "o:owner": {
+      "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/users/7",
+      "o:id": 7
+    },
+    "o:resource_class": {
+      "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_classes/790",
+      "o:id": 790
+    },
+    "o:resource_template": {
+      "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_templates/3",
+      "o:id": 3
+    },
+    "o:thumbnail": null,
+    "o:title": "Eros op den Parnassus : minnepoëzie uit alle tijden",
+    "thumbnail_display_urls": {
+      "large": "https://digitalcollections.library.maastrichtuniversity.nl/files/large/30/MU_KEMP_313_-_De_onsterfelijken.jpg",
+      "medium": "https://digitalcollections.library.maastrichtuniversity.nl/files/medium/30/MU_KEMP_313_-_De_onsterfelijken.jpg",
+      "square": "https://digitalcollections.library.maastrichtuniversity.nl/files/square/30/MU_KEMP_313_-_De_onsterfelijken.jpg"
+    },
+    "o:created": {
+      "@value": "2023-03-16T13:03:20+00:00",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "o:modified": {
+      "@value": "2025-04-29T16:10:52+00:00",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "o:primary_media": {
+      "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/31",
+      "o:id": 31
+    },
+    "o:media": [
+      {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/31",
+        "o:id": 31
+      }
+    ],
+    "o:item_set": [
+      {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/item_sets/14",
+        "o:id": 14
+      }
+    ],
+    "o:site": [
+      {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/1",
+        "o:id": 1
+      },
+      {
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/6",
+        "o:id": 6
+      }
+    ],
+    "schema:name": [
+      {
+        "type": "literal",
+        "property_id": 1451,
+        "property_label": "name",
+        "is_public": true,
+        "@value": "Eros op den Parnassus : minnepoëzie uit alle tijden"
+      }
+    ],
+    "schema:author": [
+      {
+        "type": "valuesuggest:ndeterms:wikipers",
+        "property_id": 903,
+        "property_label": "author",
+        "is_public": true,
+        "@id": "http://www.wikidata.org/entity/Q7925880",
+        "o:label": "Victor van Vriesland"
+      }
+    ],
+    "schema:description": [
+      {
+        "type": "literal",
+        "property_id": 738,
+        "property_label": "description",
+        "is_public": true,
+        "@value": "Marginalia noted by Pierre Kemp and commented on by his biographer Wiel Kusters in the article \"Pierre Kemp leest poëzie\" in Kusters, W., Prick, H. G. M., & Jägers G. J. M. (1995). \"Bladeren en lezen in groot verstaan\" : Pierre Kemp in de wereld van het boek. University Press Maastricht etc."
+      }
+    ],
+    "schema:locationCreated": [
+      {
+        "type": "valuesuggest:geonames:geonames",
+        "property_id": 1216,
+        "property_label": "locationCreated",
+        "is_public": true,
+        "@id": "http://www.geonames.org/2759794",
+        "o:label": "Amsterdam"
+      }
+    ],
+    "schema:publisher": [
+      {
+        "type": "valuesuggest:oclc:viaf",
+        "property_id": 1527,
+        "property_label": "publisher",
+        "is_public": true,
+        "@id": "http://viaf.org/viaf/172840804",
+        "o:label": "Contact Dutch publisher"
+      }
+    ],
+    "schema:datePublished": [
+      {
+        "type": "numeric:timestamp",
+        "property_id": 556,
+        "property_label": "datePublished",
+        "is_public": true,
+        "@value": "1945",
+        "@type": "http://www.w3.org/2001/XMLSchema#gYear"
+      }
+    ],
+    "bibo:shortDescription": [
+      {
+        "type": "literal",
+        "property_id": 116,
+        "property_label": "shortDescription",
+        "is_public": true,
+        "@value": "314 pages, 28 unnumbered pages (of which 9 pages made visible with annotations by Pierre Kemp), illustrations"
+      },
+      {
+        "type": "uri",
+        "property_id": 116,
+        "property_label": "shortDescription",
+        "is_public": true,
+        "@id": "https://vocab.getty.edu/aat/300015578",
+        "o:label": "illustrations"
+      }
+    ],
+    "schema:inLanguage": [
+      {
+        "type": "valuesuggest:lc:iso6391",
+        "property_id": 767,
+        "property_label": "inLanguage",
+        "is_public": true,
+        "@id": "http://id.loc.gov/vocabulary/iso639-1/nl",
+        "o:label": "Dutch |  Flemish"
+      }
+    ],
+    "schema:itemLocation": [
+      {
+        "type": "literal",
+        "property_id": 1394,
+        "property_label": "itemLocation",
+        "is_public": true,
+        "@value": "MU KEMP 313"
+      },
+      {
+        "type": "valuesuggest:geonames:geonames",
+        "property_id": 1394,
+        "property_label": "itemLocation",
+        "is_public": true,
+        "@id": "http://www.geonames.org/12500996",
+        "o:label": "Maastricht University Library - Inner City Library"
+      }
+    ],
+    "schema:sameAs": [
+      {
+        "type": "uri",
+        "property_id": 1132,
+        "property_label": "sameAs",
+        "is_public": true,
+        "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490"
+      }
+    ],
+    "schema:relatedLink": [
+      {
+        "type": "literal",
+        "property_id": 1522,
+        "property_label": "relatedLink",
+        "is_public": true,
+        "@value": "Bladeren en lezen in groot verstaan : Pierre Kemp in de wereld van het boek. Universitaire Pers Maastricht"
+      },
+      {
+        "type": "uri",
+        "property_id": 1522,
+        "property_label": "relatedLink",
+        "is_public": true,
+        "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/782196806"
+      }
+    ],
+    "schema:license": [
+      {
+        "type": "uri",
+        "property_id": 1574,
+        "property_label": "license",
+        "is_public": true,
+        "@id": "https://www.wikidata.org/wiki/Q20007257",
+        "o:label": "CC-BY 4.0"
+      }
+    ],
+    "schema:copyrightHolder": [
+      {
+        "type": "literal",
+        "property_id": 1512,
+        "property_label": "copyrightHolder",
+        "is_public": true,
+        "@value": "Stichting Pirre Kemp"
+      }
+    ],
+    "schema:provider": [
+      {
+        "type": "uri",
+        "property_id": 1499,
+        "property_label": "provider",
+        "is_public": true,
+        "@id": "https://www.wikidata.org/entity/Q15734302",
+        "o:label": "Maastricht University Library"
+      }
+    ],
+    "dcterms:identifier": [
+      {
+        "type": "literal",
+        "property_id": 10,
+        "property_label": "Identifier",
+        "is_public": true,
+        "@value": "ark:/27364/d1n4b0E"
+      }
+    ],
+    "extracttext:extracted_text": [
+      {
+        "type": "literal",
+        "property_id": 185,
+        "property_label": "extracted text",
+        "is_public": true,
+        "@value": "\f\f\f\f\f\f\f\f\f"
+      },
+      {
+        "type": "literal",
+        "property_id": 185,
+        "property_label": "extracted text",
+        "is_public": true,
+        "@value": "\f\f\f\f\f\f\f\f\f"
+      },
+      {
+        "type": "literal",
+        "property_id": 185,
+        "property_label": "extracted text",
+        "is_public": true,
+        "@value": "\f\f\f\f\f\f\f\f\f"
+      }
+    ]
+  },
+  "entitySchema": "E473",
+  "mappings": {
+    "nonLinkedKeys": [
+      {
+        "key": "schema:name",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": "Eros op den Parnassus : minnepoëzie uit alle tijden",
+        "linkedDataUri": "https://schema.org/name",
+        "type": "string",
+        "contextMap": {}
+      },
+      {
+        "key": "schema:description",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": "Marginalia noted by Pierre Kemp and commented on by his biographer Wiel Kusters in the article \"Pierre Kemp leest poëzie\" in Kusters, W., Prick, H. G. M., & Jägers G. J. M. (1995). \"Bladeren en lezen in groot verstaan\" : Pierre Kemp in de wereld van het boek. University Press Maastricht etc.",
+        "linkedDataUri": "https://schema.org/description",
+        "type": "string",
+        "contextMap": {}
+      },
+      {
+        "key": "schema:locationCreated",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": {
+          "type": "valuesuggest:geonames:geonames",
+          "property_id": 1216,
+          "property_label": "locationCreated",
+          "is_public": true,
+          "@id": "http://www.geonames.org/2759794",
+          "o:label": "Amsterdam"
+        },
+        "linkedDataUri": "https://schema.org/locationCreated",
+        "type": "object",
+        "contextMap": {}
+      },
+      {
+        "key": "bibo:shortDescription",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": "314 pages, 28 unnumbered pages (of which 9 pages made visible with annotations by Pierre Kemp), illustrations",
+        "linkedDataUri": "http://purl.org/ontology/bibo/shortDescription",
+        "type": "string",
+        "contextMap": {}
+      },
+      {
+        "key": "schema:itemLocation",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": "MU KEMP 313",
+        "linkedDataUri": "https://schema.org/itemLocation",
+        "type": "string",
+        "contextMap": {}
+      },
+      {
+        "key": "schema:sameAs",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": {
+          "type": "uri",
+          "property_id": 1132,
+          "property_label": "sameAs",
+          "is_public": true,
+          "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490"
+        },
+        "linkedDataUri": "https://schema.org/sameAs",
+        "type": "object",
+        "contextMap": {}
+      },
+      {
+        "key": "schema:relatedLink",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": "Bladeren en lezen in groot verstaan : Pierre Kemp in de wereld van het boek. Universitaire Pers Maastricht",
+        "linkedDataUri": "https://schema.org/relatedLink",
+        "type": "string",
+        "contextMap": {}
+      },
+      {
+        "key": "schema:copyrightHolder",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": "Stichting Pirre Kemp",
+        "linkedDataUri": "https://schema.org/copyrightHolder",
+        "type": "string",
+        "contextMap": {}
+      },
+      {
+        "key": "schema:provider",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": {
+          "type": "uri",
+          "property_id": 1499,
+          "property_label": "provider",
+          "is_public": true,
+          "@id": "https://www.wikidata.org/entity/Q15734302",
+          "o:label": "Maastricht University Library"
+        },
+        "linkedDataUri": "https://schema.org/provider",
+        "type": "object",
+        "contextMap": {}
+      },
+      {
+        "key": "dcterms:identifier",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": "ark:/27364/d1n4b0E",
+        "linkedDataUri": "http://purl.org/dc/terms/identifier",
+        "type": "string",
+        "contextMap": {}
+      },
+      {
+        "key": "extracttext:extracted_text",
+        "frequency": 2,
+        "totalItems": 2,
+        "sampleValue": "\f\f\f\f\f\f\f\f\f",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o-module-extracttext#extracted_text",
+        "type": "string",
+        "contextMap": {}
+      },
+      {
+        "key": "schema:bookEdition",
+        "frequency": 1,
+        "totalItems": 2,
+        "sampleValue": "Nouv. éd., rev. et corr., 18e éd",
+        "linkedDataUri": "https://schema.org/bookEdition",
+        "type": "string",
+        "contextMap": {}
+      }
+    ],
+    "mappedKeys": [
+      {
+        "key": "schema:publisher",
+        "linkedDataUri": "https://schema.org/publisher",
+        "contextMap": {},
+        "property": {
+          "id": "P123",
+          "label": "publisher",
+          "description": "organization or person responsible for publishing books, periodicals, printed music, podcasts, games or software"
+        },
+        "mappedAt": "2025-06-04T13:31:37.297Z",
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "schema:datePublished",
+        "linkedDataUri": "https://schema.org/datePublished",
+        "contextMap": {},
+        "property": {
+          "id": "P577",
+          "label": "publication date",
+          "description": "date or point in time when a work was first published or released"
+        },
+        "mappedAt": "2025-06-04T13:31:51.015Z",
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "schema:inLanguage",
+        "linkedDataUri": "https://schema.org/inLanguage",
+        "contextMap": {},
+        "property": {
+          "id": "P407",
+          "label": "language of work or name",
+          "description": "language associated with this creative work (such as books, shows, songs, broadcasts or websites) or a name (for persons use \"native language\" (P103) and \"languages spoken, written or signed\" (P1412))"
+        },
+        "mappedAt": "2025-06-04T13:32:11.881Z",
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "schema:author",
+        "linkedDataUri": "https://schema.org/author",
+        "contextMap": {},
+        "property": {
+          "id": "P50",
+          "label": "author",
+          "description": "main creator(s) of a written work (use on works, not humans); use P2093 (author name string) when Wikidata item is unknown or does not exist"
+        },
+        "mappedAt": "2025-06-04T13:32:36.649Z",
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "schema:license",
+        "linkedDataUri": "https://schema.org/license",
+        "contextMap": {},
+        "property": {
+          "id": "P275",
+          "label": "copyright license",
+          "description": "license under which this copyrighted work is released"
+        },
+        "mappedAt": "2025-06-04T13:33:00.441Z",
+        "notInCurrentDataset": false
+      }
+    ],
+    "ignoredKeys": [
+      {
+        "key": "o:id",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#id",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:is_public",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#is_public",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:owner",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#owner",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:resource_class",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#resource_class",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:resource_template",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#resource_template",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:thumbnail",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#thumbnail",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:title",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#title",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "thumbnail_display_urls",
+        "linkedDataUri": null,
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:created",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#created",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:modified",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#modified",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:primary_media",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#primary_media",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:media",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#media",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:item_set",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#item_set",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      },
+      {
+        "key": "o:site",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#site",
+        "contextMap": {},
+        "notInCurrentDataset": false
+      }
+    ]
+  },
+  "reconciliationProgress": {
+    "total": 9,
+    "completed": 9,
+    "skipped": 0,
+    "errors": 0
+  },
+  "reconciliationData": {
+    "item-0": {
+      "originalData": {
+        "@context": "https://digitalcollections.library.maastrichtuniversity.nl/api-context",
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/items/30",
+        "@type": [
+          "o:Item",
+          "schema:Book"
+        ],
+        "o:id": 30,
+        "o:is_public": true,
+        "o:owner": {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/users/7",
+          "o:id": 7
+        },
+        "o:resource_class": {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_classes/790",
+          "o:id": 790
+        },
+        "o:resource_template": {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_templates/3",
+          "o:id": 3
+        },
+        "o:thumbnail": null,
+        "o:title": "Eros op den Parnassus : minnepoëzie uit alle tijden",
+        "thumbnail_display_urls": {
+          "large": "https://digitalcollections.library.maastrichtuniversity.nl/files/large/30/MU_KEMP_313_-_De_onsterfelijken.jpg",
+          "medium": "https://digitalcollections.library.maastrichtuniversity.nl/files/medium/30/MU_KEMP_313_-_De_onsterfelijken.jpg",
+          "square": "https://digitalcollections.library.maastrichtuniversity.nl/files/square/30/MU_KEMP_313_-_De_onsterfelijken.jpg"
+        },
+        "o:created": {
+          "@value": "2023-03-16T13:03:20+00:00",
+          "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+        },
+        "o:modified": {
+          "@value": "2025-04-29T16:10:52+00:00",
+          "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+        },
+        "o:primary_media": {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/31",
+          "o:id": 31
+        },
+        "o:media": [
+          {
+            "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/31",
+            "o:id": 31
+          }
+        ],
+        "o:item_set": [
+          {
+            "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/item_sets/14",
+            "o:id": 14
+          }
+        ],
+        "o:site": [
+          {
+            "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/1",
+            "o:id": 1
+          },
+          {
+            "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/6",
+            "o:id": 6
+          }
+        ],
+        "schema:name": [
+          {
+            "type": "literal",
+            "property_id": 1451,
+            "property_label": "name",
+            "is_public": true,
+            "@value": "Eros op den Parnassus : minnepoëzie uit alle tijden"
+          }
+        ],
+        "schema:author": [
+          {
+            "type": "valuesuggest:ndeterms:wikipers",
+            "property_id": 903,
+            "property_label": "author",
+            "is_public": true,
+            "@id": "http://www.wikidata.org/entity/Q7925880",
+            "o:label": "Victor van Vriesland"
+          }
+        ],
+        "schema:description": [
+          {
+            "type": "literal",
+            "property_id": 738,
+            "property_label": "description",
+            "is_public": true,
+            "@value": "Marginalia noted by Pierre Kemp and commented on by his biographer Wiel Kusters in the article \"Pierre Kemp leest poëzie\" in Kusters, W., Prick, H. G. M., & Jägers G. J. M. (1995). \"Bladeren en lezen in groot verstaan\" : Pierre Kemp in de wereld van het boek. University Press Maastricht etc."
+          }
+        ],
+        "schema:locationCreated": [
+          {
+            "type": "valuesuggest:geonames:geonames",
+            "property_id": 1216,
+            "property_label": "locationCreated",
+            "is_public": true,
+            "@id": "http://www.geonames.org/2759794",
+            "o:label": "Amsterdam"
+          }
+        ],
+        "schema:publisher": [
+          {
+            "type": "valuesuggest:oclc:viaf",
+            "property_id": 1527,
+            "property_label": "publisher",
+            "is_public": true,
+            "@id": "http://viaf.org/viaf/172840804",
+            "o:label": "Contact Dutch publisher"
+          }
+        ],
+        "schema:datePublished": [
+          {
+            "type": "numeric:timestamp",
+            "property_id": 556,
+            "property_label": "datePublished",
+            "is_public": true,
+            "@value": "1945",
+            "@type": "http://www.w3.org/2001/XMLSchema#gYear"
+          }
+        ],
+        "bibo:shortDescription": [
+          {
+            "type": "literal",
+            "property_id": 116,
+            "property_label": "shortDescription",
+            "is_public": true,
+            "@value": "314 pages, 28 unnumbered pages (of which 9 pages made visible with annotations by Pierre Kemp), illustrations"
+          },
+          {
+            "type": "uri",
+            "property_id": 116,
+            "property_label": "shortDescription",
+            "is_public": true,
+            "@id": "https://vocab.getty.edu/aat/300015578",
+            "o:label": "illustrations"
+          }
+        ],
+        "schema:inLanguage": [
+          {
+            "type": "valuesuggest:lc:iso6391",
+            "property_id": 767,
+            "property_label": "inLanguage",
+            "is_public": true,
+            "@id": "http://id.loc.gov/vocabulary/iso639-1/nl",
+            "o:label": "Dutch |  Flemish"
+          }
+        ],
+        "schema:itemLocation": [
+          {
+            "type": "literal",
+            "property_id": 1394,
+            "property_label": "itemLocation",
+            "is_public": true,
+            "@value": "MU KEMP 313"
+          },
+          {
+            "type": "valuesuggest:geonames:geonames",
+            "property_id": 1394,
+            "property_label": "itemLocation",
+            "is_public": true,
+            "@id": "http://www.geonames.org/12500996",
+            "o:label": "Maastricht University Library - Inner City Library"
+          }
+        ],
+        "schema:sameAs": [
+          {
+            "type": "uri",
+            "property_id": 1132,
+            "property_label": "sameAs",
+            "is_public": true,
+            "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490"
+          }
+        ],
+        "schema:relatedLink": [
+          {
+            "type": "literal",
+            "property_id": 1522,
+            "property_label": "relatedLink",
+            "is_public": true,
+            "@value": "Bladeren en lezen in groot verstaan : Pierre Kemp in de wereld van het boek. Universitaire Pers Maastricht"
+          },
+          {
+            "type": "uri",
+            "property_id": 1522,
+            "property_label": "relatedLink",
+            "is_public": true,
+            "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/782196806"
+          }
+        ],
+        "schema:license": [
+          {
+            "type": "uri",
+            "property_id": 1574,
+            "property_label": "license",
+            "is_public": true,
+            "@id": "https://www.wikidata.org/wiki/Q20007257",
+            "o:label": "CC-BY 4.0"
+          }
+        ],
+        "schema:copyrightHolder": [
+          {
+            "type": "literal",
+            "property_id": 1512,
+            "property_label": "copyrightHolder",
+            "is_public": true,
+            "@value": "Stichting Pirre Kemp"
+          }
+        ],
+        "schema:provider": [
+          {
+            "type": "uri",
+            "property_id": 1499,
+            "property_label": "provider",
+            "is_public": true,
+            "@id": "https://www.wikidata.org/entity/Q15734302",
+            "o:label": "Maastricht University Library"
+          }
+        ],
+        "dcterms:identifier": [
+          {
+            "type": "literal",
+            "property_id": 10,
+            "property_label": "Identifier",
+            "is_public": true,
+            "@value": "ark:/27364/d1n4b0E"
+          }
+        ],
+        "extracttext:extracted_text": [
+          {
+            "type": "literal",
+            "property_id": 185,
+            "property_label": "extracted text",
+            "is_public": true,
+            "@value": "\f\f\f\f\f\f\f\f\f"
+          },
+          {
+            "type": "literal",
+            "property_id": 185,
+            "property_label": "extracted text",
+            "is_public": true,
+            "@value": "\f\f\f\f\f\f\f\f\f"
+          },
+          {
+            "type": "literal",
+            "property_id": 185,
+            "property_label": "extracted text",
+            "is_public": true,
+            "@value": "\f\f\f\f\f\f\f\f\f"
+          }
+        ]
+      },
+      "properties": {
+        "schema:publisher": {
+          "originalValues": [
+            "Contact Dutch publisher"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-07",
+              "addedAt": "2025-07-07T07:08:38.330Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "wikidata",
+                "id": "Q2277384",
+                "label": "Contact",
+                "description": "Dutch publisher"
+              },
+              "matches": [],
+              "confidence": 95
+            }
+          ]
+        },
+        "schema:datePublished": {
+          "originalValues": [
+            "1945"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-07",
+              "addedAt": "2025-07-07T07:08:38.330Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "custom",
+                "value": "1945-01-01",
+                "datatype": "time",
+                "qualifiers": {
+                  "autoAccepted": true,
+                  "reason": "date value",
+                  "precision": "year",
+                  "displayValue": "1945"
+                }
+              },
+              "matches": [],
+              "confidence": 80
+            }
+          ]
+        },
+        "schema:inLanguage": {
+          "originalValues": [
+            "Dutch |  Flemish"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-06",
+              "addedAt": "2025-07-06T22:02:23.367Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "wikidata",
+                "id": "Q34147",
+                "label": "Flemish",
+                "description": "variety of the Dutch language spoken in Flanders",
+                "qualifiers": {
+                  "autoAccepted": true,
+                  "reason": "100% reconciliation match",
+                  "score": 100
+                }
+              },
+              "matches": [],
+              "confidence": 95
+            }
+          ]
+        },
+        "schema:author": {
+          "originalValues": [
+            "Victor van Vriesland"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-06",
+              "addedAt": "2025-07-06T22:02:23.367Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "wikidata",
+                "id": "Q7925880",
+                "label": "Victor E. van Vriesland",
+                "description": "Dutch poet (1892-1974)",
+                "qualifiers": {
+                  "autoAccepted": true,
+                  "reason": "100% reconciliation match",
+                  "score": 100
+                }
+              },
+              "matches": [],
+              "confidence": 95
+            }
+          ]
+        },
+        "schema:license": {
+          "originalValues": [
+            "CC-BY 4.0"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/65042490",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-06",
+              "addedAt": "2025-07-06T22:02:23.367Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "wikidata",
+                "id": "Q20007257",
+                "label": "Creative Commons Attribution 4.0 International",
+                "description": "Creative Commons license",
+                "qualifiers": {
+                  "autoAccepted": true,
+                  "reason": "100% reconciliation match",
+                  "score": 100
+                }
+              },
+              "matches": [],
+              "confidence": 95
+            }
+          ]
+        }
+      }
+    },
+    "item-1": {
+      "originalData": {
+        "@context": "https://digitalcollections.library.maastrichtuniversity.nl/api-context",
+        "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/items/32",
+        "@type": [
+          "o:Item",
+          "schema:Book"
+        ],
+        "o:id": 32,
+        "o:is_public": true,
+        "o:owner": {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/users/7",
+          "o:id": 7
+        },
+        "o:resource_class": {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_classes/790",
+          "o:id": 790
+        },
+        "o:resource_template": {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/resource_templates/3",
+          "o:id": 3
+        },
+        "o:thumbnail": null,
+        "o:title": "Anthologie de la nouvelle poésie française",
+        "thumbnail_display_urls": {
+          "large": "https://digitalcollections.library.maastrichtuniversity.nl/files/large/32/75_Boek_MU_Kemp_602.jpg",
+          "medium": "https://digitalcollections.library.maastrichtuniversity.nl/files/medium/32/75_Boek_MU_Kemp_602.jpg",
+          "square": "https://digitalcollections.library.maastrichtuniversity.nl/files/square/32/75_Boek_MU_Kemp_602.jpg"
+        },
+        "o:created": {
+          "@value": "2023-03-16T13:21:02+00:00",
+          "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+        },
+        "o:modified": {
+          "@value": "2025-04-29T16:10:52+00:00",
+          "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+        },
+        "o:primary_media": {
+          "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/33",
+          "o:id": 33
+        },
+        "o:media": [
+          {
+            "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/media/33",
+            "o:id": 33
+          }
+        ],
+        "o:item_set": [
+          {
+            "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/item_sets/14",
+            "o:id": 14
+          }
+        ],
+        "o:site": [
+          {
+            "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/1",
+            "o:id": 1
+          },
+          {
+            "@id": "https://digitalcollections.library.maastrichtuniversity.nl/api/sites/6",
+            "o:id": 6
+          }
+        ],
+        "schema:name": [
+          {
+            "type": "literal",
+            "property_id": 1451,
+            "property_label": "name",
+            "is_public": true,
+            "@value": "Anthologie de la nouvelle poésie française"
+          }
+        ],
+        "schema:description": [
+          {
+            "type": "literal",
+            "property_id": 738,
+            "property_label": "description",
+            "is_public": true,
+            "@value": "Marginalia noted by Pierre Kemp and commented on by his biographer Wiel Kusters in the article \"Pierre Kemp leest poëzie\" in Kusters, W., Prick, H. G. M., & Jägers G. J. M. (1995). \"Bladeren en lezen in groot verstaan\" : Pierre Kemp in de wereld van het boek. University Press Maastricht etc."
+          }
+        ],
+        "schema:locationCreated": [
+          {
+            "type": "valuesuggest:geonames:geonames",
+            "property_id": 1216,
+            "property_label": "locationCreated",
+            "is_public": true,
+            "@id": "http://www.geonames.org/2988507",
+            "o:label": "Paris"
+          }
+        ],
+        "schema:publisher": [
+          {
+            "type": "valuesuggest:oclc:viaf",
+            "property_id": 1527,
+            "property_label": "publisher",
+            "is_public": true,
+            "@id": "http://viaf.org/viaf/200887528",
+            "o:label": "Éditions du Sagittaire"
+          }
+        ],
+        "schema:datePublished": [
+          {
+            "type": "numeric:timestamp",
+            "property_id": 556,
+            "property_label": "datePublished",
+            "is_public": true,
+            "@value": "1927",
+            "@type": "http://www.w3.org/2001/XMLSchema#gYear"
+          }
+        ],
+        "bibo:shortDescription": [
+          {
+            "type": "literal",
+            "property_id": 116,
+            "property_label": "shortDescription",
+            "is_public": true,
+            "@value": "464 pages (of which 17 pages made visible with annotations by Pierre Kemp)"
+          }
+        ],
+        "schema:inLanguage": [
+          {
+            "type": "valuesuggest:lc:iso6391",
+            "property_id": 767,
+            "property_label": "inLanguage",
+            "is_public": true,
+            "@id": "http://id.loc.gov/vocabulary/iso639-1/fr",
+            "o:label": "French"
+          }
+        ],
+        "schema:bookEdition": [
+          {
+            "type": "literal",
+            "property_id": 934,
+            "property_label": "bookEdition",
+            "is_public": true,
+            "@value": "Nouv. éd., rev. et corr., 18e éd"
+          }
+        ],
+        "schema:itemLocation": [
+          {
+            "type": "literal",
+            "property_id": 1394,
+            "property_label": "itemLocation",
+            "is_public": true,
+            "@value": "MU KEMP 602"
+          },
+          {
+            "type": "valuesuggest:geonames:geonames",
+            "property_id": 1394,
+            "property_label": "itemLocation",
+            "is_public": true,
+            "@id": "http://www.geonames.org/12500996",
+            "o:label": "Maastricht University Library - Inner City Library"
+          }
+        ],
+        "schema:sameAs": [
+          {
+            "type": "uri",
+            "property_id": 1132,
+            "property_label": "sameAs",
+            "is_public": true,
+            "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/33063658"
+          }
+        ],
+        "schema:relatedLink": [
+          {
+            "type": "literal",
+            "property_id": 1522,
+            "property_label": "relatedLink",
+            "is_public": true,
+            "@value": "Bladeren en lezen in groot verstaan : Pierre Kemp in de wereld van het boek. Universitaire Pers Maastricht"
+          },
+          {
+            "type": "uri",
+            "property_id": 1522,
+            "property_label": "relatedLink",
+            "is_public": true,
+            "@id": "https://maastrichtuniversity.on.worldcat.org/oclc/782196806"
+          }
+        ],
+        "schema:license": [
+          {
+            "type": "uri",
+            "property_id": 1574,
+            "property_label": "license",
+            "is_public": true,
+            "@id": "https://www.wikidata.org/wiki/Q20007257",
+            "o:label": "CC-BY 4.0"
+          }
+        ],
+        "schema:copyrightHolder": [
+          {
+            "type": "literal",
+            "property_id": 1512,
+            "property_label": "copyrightHolder",
+            "is_public": true,
+            "@value": "Stichting Pierre Kemp"
+          }
+        ],
+        "schema:provider": [
+          {
+            "type": "uri",
+            "property_id": 1499,
+            "property_label": "provider",
+            "is_public": true,
+            "@id": "https://www.wikidata.org/entity/Q15734302",
+            "o:label": "Maastricht University Library"
+          }
+        ],
+        "dcterms:identifier": [
+          {
+            "type": "literal",
+            "property_id": 10,
+            "property_label": "Identifier",
+            "is_public": true,
+            "@value": "ark:/27364/d1e9AQE"
+          }
+        ],
+        "extracttext:extracted_text": [
+          {
+            "type": "literal",
+            "property_id": 185,
+            "property_label": "extracted text",
+            "is_public": true,
+            "@value": "\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f"
+          },
+          {
+            "type": "literal",
+            "property_id": 185,
+            "property_label": "extracted text",
+            "is_public": true,
+            "@value": "\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f"
+          },
+          {
+            "type": "literal",
+            "property_id": 185,
+            "property_label": "extracted text",
+            "is_public": true,
+            "@value": "\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f\f"
+          }
+        ]
+      },
+      "properties": {
+        "schema:publisher": {
+          "originalValues": [
+            "Éditions du Sagittaire"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/33063658",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-06",
+              "addedAt": "2025-07-06T22:02:23.367Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "wikidata",
+                "id": "Q3579662",
+                "label": "Éditions du Sagittaire",
+                "description": "maison d'édition française",
+                "qualifiers": {
+                  "autoAccepted": true,
+                  "reason": "100% reconciliation match",
+                  "score": 100
+                }
+              },
+              "matches": [],
+              "confidence": 95
+            }
+          ]
+        },
+        "schema:datePublished": {
+          "originalValues": [
+            "1927"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/33063658",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-06",
+              "addedAt": "2025-07-06T22:02:23.367Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "custom",
+                "value": "1927-01-01",
+                "datatype": "time",
+                "qualifiers": {
+                  "autoAccepted": true,
+                  "reason": "date value",
+                  "precision": "year",
+                  "displayValue": "1927"
+                }
+              },
+              "matches": [],
+              "confidence": 80
+            }
+          ]
+        },
+        "schema:inLanguage": {
+          "originalValues": [
+            "French"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/33063658",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-07",
+              "addedAt": "2025-07-07T07:08:38.330Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "wikidata",
+                "id": "Q150",
+                "label": "French",
+                "description": "Romance language",
+                "qualifiers": {
+                  "autoAccepted": true,
+                  "reason": "100% reconciliation match",
+                  "score": 100
+                }
+              },
+              "matches": [],
+              "confidence": 95
+            }
+          ]
+        },
+        "schema:author": {
+          "originalValues": [],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/33063658",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-07",
+              "addedAt": "2025-07-07T07:08:38.330Z"
+            }
+          ],
+          "reconciled": []
+        },
+        "schema:license": {
+          "originalValues": [
+            "CC-BY 4.0"
+          ],
+          "references": [
+            {
+              "url": "https://maastrichtuniversity.on.worldcat.org/oclc/33063658",
+              "type": "sameAs URL",
+              "autoDetected": true,
+              "itemSpecific": true,
+              "retrievedDate": "2025-07-07",
+              "addedAt": "2025-07-07T07:08:38.330Z"
+            }
+          ],
+          "reconciled": [
+            {
+              "status": "reconciled",
+              "selectedMatch": {
+                "type": "wikidata",
+                "id": "Q20007257",
+                "label": "Creative Commons Attribution 4.0 International",
+                "description": "Creative Commons license",
+                "qualifiers": {
+                  "autoAccepted": true,
+                  "reason": "100% reconciliation match",
+                  "score": 100
+                }
+              },
+              "matches": [],
+              "confidence": 95
+            }
+          ]
+        }
+      }
+    }
+  },
+  "references": [],
+  "selectedExampleItem": "",
+  "designerData": {
+    "labelMappings": {
+      "en": "schema:name"
+    },
+    "descriptionMappings": {
+      "en": "schema:description"
+    },
+    "supportedLanguages": [
+      "en"
+    ]
+  },
+  "globalReferences": [],
+  "quickStatements": "",
+  "exportTimestamp": "2025-07-07T07:11:51.780Z"
+}
