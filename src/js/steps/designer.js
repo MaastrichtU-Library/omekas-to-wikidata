@@ -10,8 +10,10 @@ export function setupDesignerStep(state) {
     const exampleItemSelector = document.getElementById('example-item-selector');
     const labelsContainer = document.getElementById('labels-container');
     const descriptionsContainer = document.getElementById('descriptions-container');
+    const aliasesContainer = document.getElementById('aliases-container');
     const addLabelLanguageBtn = document.getElementById('add-label-language');
     const addDescriptionLanguageBtn = document.getElementById('add-description-language');
+    const addAliasLanguageBtn = document.getElementById('add-alias-language');
     const referencesList = document.getElementById('references-list');
     const propertiesList = document.getElementById('properties-list');
     const unavailableProperties = document.getElementById('unavailable-properties');
@@ -23,8 +25,10 @@ export function setupDesignerStep(state) {
         exampleItemSelector: !!exampleItemSelector,
         labelsContainer: !!labelsContainer,
         descriptionsContainer: !!descriptionsContainer,
+        aliasesContainer: !!aliasesContainer,
         addLabelLanguageBtn: !!addLabelLanguageBtn,
         addDescriptionLanguageBtn: !!addDescriptionLanguageBtn,
+        addAliasLanguageBtn: !!addAliasLanguageBtn,
         referencesList: !!referencesList,
         propertiesList: !!propertiesList,
         unavailableProperties: !!unavailableProperties
@@ -76,6 +80,10 @@ export function setupDesignerStep(state) {
     
     if (addDescriptionLanguageBtn) {
         addDescriptionLanguageBtn.addEventListener('click', () => showLanguageModal('description'));
+    }
+    
+    if (addAliasLanguageBtn) {
+        addAliasLanguageBtn.addEventListener('click', () => showLanguageModal('alias'));
     }
     
     if (autoDetectReferencesBtn) {
@@ -197,6 +205,9 @@ export function setupDesignerStep(state) {
         if (!designerData.descriptionMappings) {
             designerData.descriptionMappings = {};
         }
+        if (!designerData.aliasMappings) {
+            designerData.aliasMappings = {};
+        }
         if (!designerData.supportedLanguages) {
             designerData.supportedLanguages = ['mul']; // Default to multilingual
         }
@@ -209,6 +220,9 @@ export function setupDesignerStep(state) {
         }
         if (Object.keys(designerData.descriptionMappings).length === 0) {
             addLanguageMapping('description', 'mul');
+        }
+        if (Object.keys(designerData.aliasMappings).length === 0) {
+            addLanguageMapping('alias', 'mul');
         }
         
         // Render existing language mappings
@@ -253,7 +267,7 @@ export function setupDesignerStep(state) {
             className: 'modal-header'
         });
         
-        const modalTitle = createElement('h3', {}, `Add Language for ${type === 'label' ? 'Labels' : 'Descriptions'}`);
+        const modalTitle = createElement('h3', {}, `Add Language for ${type === 'label' ? 'Labels' : type === 'description' ? 'Descriptions' : 'Aliases'}`);
         modalHeader.appendChild(modalTitle);
         
         const closeBtn = createElement('button', {
@@ -335,7 +349,7 @@ export function setupDesignerStep(state) {
         // Add help text for multilingual option
         const mulHelpText = createElement('div', {
             className: 'help-text',
-            style: 'display: none; margin-top: 10px; padding: 10px; background-color: #e7f3ff; border-radius: 4px; font-size: 0.9em;'
+            style: 'display: none; margin-top: 8px; padding: 8px; background-color: #e7f3ff; border-radius: 4px; font-size: 0.85em;'
         }, 'The "mul" (multilingual) option creates a default label that applies to all languages. This is useful for proper names, technical terms, or universal concepts that don\'t need translation. Wikidata will automatically use this label when no language-specific label exists.');
         
         modalBody.appendChild(mulHelpText);
@@ -424,13 +438,16 @@ export function setupDesignerStep(state) {
         
         if (!designerData.labelMappings) designerData.labelMappings = {};
         if (!designerData.descriptionMappings) designerData.descriptionMappings = {};
+        if (!designerData.aliasMappings) designerData.aliasMappings = {};
         if (!designerData.supportedLanguages) designerData.supportedLanguages = [];
         
         // Add to the appropriate mapping
         if (type === 'label') {
             designerData.labelMappings[languageCode] = null; // Will be set when user selects property
-        } else {
+        } else if (type === 'description') {
             designerData.descriptionMappings[languageCode] = null;
+        } else if (type === 'alias') {
+            designerData.aliasMappings[languageCode] = null;
         }
         
         // Add to supported languages if not already there
@@ -453,13 +470,16 @@ export function setupDesignerStep(state) {
             delete designerData.labelMappings[languageCode];
         } else if (type === 'description' && designerData.descriptionMappings) {
             delete designerData.descriptionMappings[languageCode];
+        } else if (type === 'alias' && designerData.aliasMappings) {
+            delete designerData.aliasMappings[languageCode];
         }
         
         // Remove from supported languages if not used elsewhere
         const isUsedInLabels = designerData.labelMappings && designerData.labelMappings[languageCode];
         const isUsedInDescriptions = designerData.descriptionMappings && designerData.descriptionMappings[languageCode];
+        const isUsedInAliases = designerData.aliasMappings && designerData.aliasMappings[languageCode];
         
-        if (!isUsedInLabels && !isUsedInDescriptions && designerData.supportedLanguages) {
+        if (!isUsedInLabels && !isUsedInDescriptions && !isUsedInAliases && designerData.supportedLanguages) {
             designerData.supportedLanguages = designerData.supportedLanguages.filter(lang => lang !== languageCode);
         }
         
@@ -473,17 +493,22 @@ export function setupDesignerStep(state) {
     function renderLanguageMappings() {
         renderLanguageMappingsForType('label');
         renderLanguageMappingsForType('description');
+        renderLanguageMappingsForType('alias');
     }
     
     // Render language mappings for a specific type
     function renderLanguageMappingsForType(type) {
-        const container = type === 'label' ? labelsContainer : descriptionsContainer;
+        const container = type === 'label' ? labelsContainer : 
+                        type === 'description' ? descriptionsContainer : 
+                        aliasesContainer;
         if (!container) return;
         
         const currentState = state.getState();
         const mappings = type === 'label' ? 
             currentState.designerData?.labelMappings || {} : 
-            currentState.designerData?.descriptionMappings || {};
+            type === 'description' ? 
+            currentState.designerData?.descriptionMappings || {} :
+            currentState.designerData?.aliasMappings || {};
         
         container.innerHTML = '';
         
@@ -3059,6 +3084,19 @@ export function setupDesignerStep(state) {
         showMessage(`Added "${selectedLabel}" statement to all ${fetchedData.length} items`, 'success');
     }
     
+    // Helper function to ensure all properties have initialized references arrays
+    function ensureReferencesArrays(reconciliationData) {
+        Object.values(reconciliationData).forEach(itemData => {
+            if (itemData.properties) {
+                Object.values(itemData.properties).forEach(propData => {
+                    if (!propData.references) {
+                        propData.references = [];
+                    }
+                });
+            }
+        });
+    }
+    
     // Check for issues
     function checkForIssues() {
         const issuesSection = document.querySelector('.issues-section');
@@ -3076,6 +3114,9 @@ export function setupDesignerStep(state) {
         const fetchedData = currentState.fetchedData || [];
         const reconciliationData = currentState.reconciliationData || {};
         
+        // Ensure all properties have references arrays
+        ensureReferencesArrays(reconciliationData);
+        
         // Check if any property has references
         let hasAnyReferences = false;
         for (const itemKey of Object.keys(reconciliationData)) {
@@ -3083,7 +3124,7 @@ export function setupDesignerStep(state) {
             if (itemData.properties) {
                 for (const propertyKey of Object.keys(itemData.properties)) {
                     const propData = itemData.properties[propertyKey];
-                    if (propData.references && propData.references.length > 0) {
+                    if (propData.references?.length > 0) {
                         hasAnyReferences = true;
                         break;
                     }
@@ -3287,6 +3328,9 @@ export function setupDesignerStep(state) {
         const globalReferences = currentState.globalReferences || [];
         const allReferences = [...oldReferences, ...globalReferences];
         
+        // Ensure all properties have references arrays
+        ensureReferencesArrays(reconciliationData);
+        
         // Check if any property has references
         let hasAnyReferences = false;
         for (const itemKey of Object.keys(reconciliationData)) {
@@ -3294,7 +3338,7 @@ export function setupDesignerStep(state) {
             if (itemData.properties) {
                 for (const propertyKey of Object.keys(itemData.properties)) {
                     const propData = itemData.properties[propertyKey];
-                    if (propData.references && propData.references.length > 0) {
+                    if (propData.references?.length > 0) {
                         hasAnyReferences = true;
                         break;
                     }
@@ -3326,6 +3370,9 @@ export function setupDesignerStep(state) {
         const globalReferences = currentState.globalReferences || [];
         const allReferences = [...oldReferences, ...globalReferences];
         
+        // Ensure all properties have references arrays
+        ensureReferencesArrays(reconciliationData);
+        
         // Check if any property has references
         let hasAnyReferences = false;
         for (const itemKey of Object.keys(reconciliationData)) {
@@ -3333,7 +3380,7 @@ export function setupDesignerStep(state) {
             if (itemData.properties) {
                 for (const propertyKey of Object.keys(itemData.properties)) {
                     const propData = itemData.properties[propertyKey];
-                    if (propData.references && propData.references.length > 0) {
+                    if (propData.references?.length > 0) {
                         hasAnyReferences = true;
                         break;
                     }

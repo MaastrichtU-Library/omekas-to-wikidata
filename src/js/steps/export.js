@@ -6,7 +6,7 @@ import { eventSystem } from '../events.js';
 
 // Constants for validation
 const PROPERTY_ID_REGEX = /^[PS]\d+$/;  // Matches P123, S456 (Wikidata properties)
-const LANGUAGE_PROPERTY_REGEX = /^[LD][a-z]{2,3}(-[a-z]+)?$/;  // Matches Len, Den, Lmul, Lde-ch (language-specific labels/descriptions)
+const LANGUAGE_PROPERTY_REGEX = /^[LDA][a-z]{2,3}(-[a-z]+)?$/;  // Matches Len, Den, Amul, Lde-ch (language-specific labels/descriptions/aliases)
 
 export function setupExportStep(state) {
     const quickStatementsTextarea = document.getElementById('quick-statements');
@@ -303,6 +303,19 @@ export function setupExportStep(state) {
                         if (descriptionValue) {
                             const langSuffix = languageCode === 'en' ? 'en' : languageCode;
                             quickStatementsText += `LAST\tD${langSuffix}\t${escapeQuickStatementsString(descriptionValue)}\n`;
+                        }
+                    }
+                });
+                
+                // Add aliases for all configured languages
+                const aliasMappings = designerData.aliasMappings || {};
+                Object.keys(aliasMappings).forEach(languageCode => {
+                    const propertyKey = aliasMappings[languageCode];
+                    if (propertyKey) {
+                        const aliasValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
+                        if (aliasValue) {
+                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
+                            quickStatementsText += `LAST\tA${langSuffix}\t${escapeQuickStatementsString(aliasValue)}\n`;
                         }
                     }
                 });
