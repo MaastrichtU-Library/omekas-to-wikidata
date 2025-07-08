@@ -27,7 +27,6 @@ export function setupReconciliationStep(state) {
     // Initialize DOM elements
     const propertyHeaders = document.getElementById('property-headers');
     const reconciliationRows = document.getElementById('reconciliation-rows');
-    const reconciliationProgress = document.getElementById('reconciliation-progress');
     const reconcileNextBtn = document.getElementById('reconcile-next');
     const proceedToDesignerBtn = document.getElementById('proceed-to-designer');
     const testReconciliationModelBtn = document.getElementById('test-reconciliation-model');
@@ -784,83 +783,7 @@ export function setupReconciliationStep(state) {
         return valueDiv;
     }
     
-    /**
-     * Update progress with current batch information
-     */
-    function updateProgressWithCurrentBatch(property, batchIndex, batchSize, totalJobs) {
-        if (reconciliationProgress) {
-            const currentState = state.getState();
-            let progress = currentState.reconciliationProgress;
-            if (reconciliationData && Object.keys(reconciliationData).length > 0) {
-                progress = calculateCurrentProgress();
-            }
-            
-            const { total, completed, skipped } = progress;
-            const remaining = total - completed - skipped;
-            const currentBatchStart = batchIndex + 1;
-            const currentBatchEnd = Math.min(batchIndex + batchSize, totalJobs);
-            
-            reconciliationProgress.innerHTML = `
-                <div class="progress-stats">
-                    <span class="stat completed">${completed} completed</span>
-                    <span class="stat skipped">${skipped} skipped</span>
-                    <span class="stat remaining">${remaining} remaining</span>
-                    <span class="stat total">of ${total} total</span>
-                </div>
-                <div class="progress-current-activity">
-                    Processing ${property}: items ${currentBatchStart}-${currentBatchEnd} of ${totalJobs}
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${total > 0 ? ((completed + skipped) / total * 100) : 0}%"></div>
-                </div>
-            `;
-        }
-    }
 
-    /**
-     * Update progress display
-     */
-    function updateProgressDisplay() {
-        if (reconciliationProgress) {
-            const currentState = state.getState();
-            
-            // Calculate progress from actual reconciliation data if available
-            let progress = currentState.reconciliationProgress;
-            if (reconciliationData && Object.keys(reconciliationData).length > 0) {
-                progress = calculateCurrentProgress();
-            }
-            
-            const { total, completed, skipped, errors = 0 } = progress;
-            const remaining = total - completed - skipped - errors;
-            
-            // Check if there are errors to show a warning
-            const errorMessage = errors > 0 ? `
-                <div class="reconciliation-service-warning">
-                    ⚠️ Reconciliation service temporarily unavailable for ${errors} item${errors > 1 ? 's' : ''}. 
-                    You can still proceed manually or try again later.
-                </div>
-            ` : '';
-            
-            reconciliationProgress.innerHTML = `
-                ${errorMessage}
-                <div class="progress-stats">
-                    <span class="stat completed">${completed} completed</span>
-                    <span class="stat skipped">${skipped} skipped</span>
-                    ${errors > 0 ? `<span class="stat errors">${errors} errors</span>` : ''}
-                    <span class="stat remaining">${remaining} remaining</span>
-                    <span class="stat total">of ${total} total</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${total > 0 ? ((completed + skipped) / total * 100) : 0}%"></div>
-                </div>
-            `;
-            
-            // Update state with current progress
-            state.updateState('reconciliationProgress', progress);
-        }
-        
-        updateProceedButton();
-    }
     
     /**
      * Calculate current progress from reconciliation data
@@ -910,7 +833,7 @@ export function setupReconciliationStep(state) {
         if (pendingCell) {
             pendingCell.click();
         } else {
-            alert('No more items to reconcile. You can proceed to the next step.');
+            // Reconciliation complete - no alert needed
         }
     }
     
