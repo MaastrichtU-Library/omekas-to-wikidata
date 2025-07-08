@@ -569,9 +569,7 @@ export function standardizeDateInput(dateInput) {
  * @param {HTMLElement} container - Container element with date inputs
  */
 export function setupDynamicDatePrecision(container) {
-    console.log('🔧 setupDynamicDatePrecision called with container:', container);
     const dateInputs = container.querySelectorAll('.flexible-date-input[data-auto-precision="true"]');
-    console.log('🔧 Found date inputs:', dateInputs.length, dateInputs);
     
     dateInputs.forEach(dateInput => {
         const precisionSelect = dateInput.closest('.date-input-group').querySelector('.precision-select');
@@ -583,14 +581,13 @@ export function setupDynamicDatePrecision(container) {
             const inputValue = this.value;
             const detectedPrecision = detectDatePrecision(inputValue);
             
-            console.log('📅 Date input changed:', {
+            console.log('Date input changed:', {
                 inputValue,
                 detectedPrecision,
                 hasPrecisionSelect: !!precisionSelect
             });
             
             if (precisionSelect) {
-                console.log('📅 Setting precision select to:', detectedPrecision);
                 // Update precision select to match detected precision
                 precisionSelect.value = detectedPrecision;
                 
@@ -636,7 +633,7 @@ function updateDateInputFeedback(dateInput, precision, inputValue) {
     const container = dateInput.closest('.date-input-group');
     const hint = container.querySelector('.date-format-hint');
     
-    console.log('📅 Updating visual feedback:', {
+    console.log('Updating date input feedback:', {
         precision,
         inputValue,
         hasContainer: !!container,
@@ -648,17 +645,14 @@ function updateDateInputFeedback(dateInput, precision, inputValue) {
     
     // Add precision class for styling
     dateInput.classList.add(`precision-${precision}`);
-    console.log('📅 Added CSS class:', `precision-${precision}`);
     
     // Update hint text with detected precision
     if (hint && inputValue.trim()) {
         const standardized = standardizeDateInput(inputValue);
         hint.textContent = `Detected: ${precision} precision (${standardized.displayValue || inputValue})`;
         hint.style.color = '#2e7d32'; // Green color for successful detection
-        console.log('📅 Updated hint text for input value');
     } else if (hint) {
         hint.textContent = 'Supports: Year (2023), Month (2023-06), Day (2023-06-15), Decade (1990s)';
         hint.style.color = '#666';
-        console.log('📅 Reset hint text to default');
     }
 }

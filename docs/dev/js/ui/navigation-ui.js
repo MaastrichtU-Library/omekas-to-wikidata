@@ -52,6 +52,9 @@ export function setupNavigationUI() {
         toggleClass(targetStep, 'step--active', true);
         
         const targetContent = document.getElementById(`step${stepNumber}`);
+        if (!targetContent) {
+            console.error(`Step content not found for step ${stepNumber}, looking for id: step${stepNumber}`);
+        }
         toggleClass(targetContent, 'active', true);
         
         // Update progress bar
@@ -178,7 +181,6 @@ export function setupNavigationUI() {
         eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (data) => {
             if (data.restored) {
                 // When state is restored, update the UI to reflect the current step
-                console.log('🎯 Navigation UI: State restored, updating UI');
                 updateStepUI(data.newValue.currentStep);
             }
         });

@@ -67,7 +67,6 @@ export function setupInputStep(state) {
                 
                 // Store fetched data
                 state.updateState('fetchedData', data);
-                console.log('Data loaded and saved:', data);
                 
                 // Automatically select first item as example
                 let selectedExample = null;
@@ -81,7 +80,6 @@ export function setupInputStep(state) {
                 
                 if (selectedExample) {
                     state.updateState('selectedExample', selectedExample);
-                    console.log('Selected example saved:', selectedExample);
                     // Mark step 1 as completed
                     state.completeStep(1);
                 }
@@ -277,7 +275,6 @@ export function setupInputStep(state) {
     eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (data) => {
         if (data.restored) {
             // When state is restored, update the UI
-            console.log('📥 Input step: State restored, updating UI');
             updateUIFromState();
         }
     });
@@ -286,7 +283,6 @@ export function setupInputStep(state) {
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
         if (data.newStep === 1) {
             // When entering step 1, refresh the UI state
-            console.log('📥 Input step: Entered step 1, updating UI');
             setTimeout(() => updateUIFromState(), 100); // Small delay to ensure DOM is ready
         }
     });

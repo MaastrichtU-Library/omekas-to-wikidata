@@ -12,7 +12,7 @@
             <div class="header-content">
                 <div class="header-main">
                     <h1>Omeka S to Wikidata Mapping Tool</h1>
-                    <p class="info">Your work is automatically saved and can be restored after page refresh.</p>
+                    <p class="info">Make sure to regularly save your work using the Save button above. If you forget to save and refresh the page, your progress may be lost.</p>
                 </div>
                 <div class="header-toolbar">
                     <button id="save-project" class="button button--secondary toolbar-button">
@@ -94,7 +94,7 @@
                 <div class="mapping-container">
                     <div class="entity-schema-selector" style="display: none;">
                         <label for="entity-schema">Entity Schema:</label>
-                        <input type="text" id="entity-schema" value="E473" placeholder="Enter Entity Schema URL or ID">
+                        <input type="text" id="entity-schema" value="" placeholder="Enter Wikidata Q-identifier (e.g., Q5 for human)">
                         <button class="button button--edit edit-button" title="Edit Entity Schema"><span class="icon">✏️</span></button>
                     </div>
                     
@@ -178,15 +178,6 @@
             <section id="step4" class="step-content">
                 <h2>Step 4: Wikidata Designer</h2>
                 <div class="designer-container">
-                    <!-- Item Selector -->
-                    <div class="item-selector-container">
-                        <label for="example-item-selector">View Item:</label>
-                        <select id="example-item-selector" class="item-selector">
-                            <option value="multi-item">Multi Item (All Properties)</option>
-                            <!-- Dynamically populated with actual items -->
-                        </select>
-                    </div>
-                    
                     <!-- References Section -->
                     <div class="references-section">
                         <h3>References</h3>
@@ -208,24 +199,35 @@
                         </div>
                     </div>
                     
+                    <!-- Item Selector -->
+                    <div class="item-selector-container">
+                        <label for="example-item-selector">View Item:</label>
+                        <select id="example-item-selector" class="item-selector">
+                            <option value="multi-item">Multi Item (All Properties)</option>
+                            <!-- Dynamically populated with actual items -->
+                        </select>
+                    </div>
+                    
                     <!-- Item Designer Section -->
                     <div class="item-designer-section">
                         <h3>Item Designer</h3>
                         
                         <!-- Wikidata-like item header -->
                         <div class="wikidata-item-header">
-                            <div class="item-label-group">
-                                <label for="item-label-selector">Label Source:</label>
-                                <select id="item-label-selector" class="item-label-selector">
-                                    <option value="">Select property for label</option>
-                                    <!-- Dynamically populated with available keys -->
-                                </select>
-                                <label for="item-label">Preview:</label>
-                                <input type="text" id="item-label" class="item-label-input" placeholder="Label preview will appear here" readonly>
+                            <div class="labels-section">
+                                <h4>Labels</h4>
+                                <div id="labels-container" class="language-mappings-container">
+                                    <!-- Language-specific labels will be added here -->
+                                </div>
+                                <button type="button" id="add-label-language" class="button button--secondary button--small">+ Add Language for Label</button>
                             </div>
-                            <div class="item-description-group">
-                                <label for="item-description">Description:</label>
-                                <input type="text" id="item-description" class="item-description-input" placeholder="Item description (from property mapping)">
+                            
+                            <div class="descriptions-section">
+                                <h4>Descriptions</h4>
+                                <div id="descriptions-container" class="language-mappings-container">
+                                    <!-- Language-specific descriptions will be added here -->
+                                </div>
+                                <button type="button" id="add-description-language" class="button button--secondary button--small">+ Add Language for Description</button>
                             </div>
                         </div>
                         
@@ -249,16 +251,8 @@
                         </div>
                     </div>
                     
-                    <!-- Preview Section -->
-                    <div class="preview-section">
-                        <h3>Preview</h3>
-                        <div class="preview-container" id="designer-preview">
-                            <pre class="preview-content">Preview will appear here</pre>
-                        </div>
-                    </div>
-                    
                     <!-- Unresolved Issues Section -->
-                    <div class="issues-section">
+                    <div class="issues-section" style="display: none;">
                         <h3>Unresolved Issues</h3>
                         <div class="issues-list" id="issues-list">
                             <div class="placeholder">No issues detected</div>
@@ -279,13 +273,29 @@
                 <div class="export-container">
                     <div class="export-info">
                         <h3>QuickStatements Export</h3>
-                        <p>QuickStatements is a tool for batch editing Wikidata. Copy the generated code below and paste it into QuickStatements.</p>
+                        <p>QuickStatements is a tool for batch editing Wikidata. Configure your export settings below, then copy or download the generated code.</p>
+                        <a href="https://quickstatements.toolforge.org/" target="_blank" class="info-link">Open QuickStatements Tool</a>
+                        <span class="info-separator">|</span>
                         <a href="https://www.wikidata.org/wiki/Help:QuickStatements" target="_blank" class="info-link">Learn more about QuickStatements</a>
                     </div>
                     
+                    
+                    <!-- Validation Display -->
+                    <div id="validation-display" class="validation-display">
+                        <!-- Dynamically populated -->
+                    </div>
+                    
+                    <!-- QuickStatements Output -->
                     <div class="quick-statements-output">
-                        <textarea id="quick-statements" readonly rows="10" placeholder="QuickStatements code will appear here"></textarea>
-                        <button id="copy-quick-statements" class="button button--secondary secondary-button">Copy to Clipboard</button>
+                        <div class="output-header">
+                            <h4>Generated QuickStatements</h4>
+                            <div class="output-actions">
+                                <button id="copy-quick-statements" class="button button--secondary">Copy to Clipboard</button>
+                                <button id="download-quick-statements" class="button button--secondary">Download as .txt</button>
+                                <button id="open-quick-statements" class="button button--primary">Open in QuickStatements</button>
+                            </div>
+                        </div>
+                        <textarea id="quick-statements" readonly rows="12" placeholder="QuickStatements code will appear here"></textarea>
                     </div>
                     
                     <!-- JSON export/import removed for MVP simplicity -->

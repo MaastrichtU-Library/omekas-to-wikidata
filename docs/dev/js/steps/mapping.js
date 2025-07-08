@@ -16,11 +16,8 @@ export function setupMappingStep(state) {
     const saveMappingBtn = document.getElementById('save-mapping');
     const loadMappingFileInput = document.getElementById('load-mapping-file');
     
-    // Set default entity schema
-    if (entitySchemaInput && !entitySchemaInput.value) {
-        entitySchemaInput.value = 'E473';
-        state.updateState('entitySchema', 'E473');
-    }
+    // Don't set a default entity schema - leave it empty
+    // The user should explicitly choose a valid Wikidata Q-identifier
     
     // Listen for step changes via event system
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
@@ -81,7 +78,6 @@ export function setupMappingStep(state) {
                 event.target.value = '';
                 
                 // Show success message
-                console.log('Mapping loaded successfully');
                 showMessage('Mapping loaded successfully! Restored ' + mappingData.mappings.mapped.length + ' mapped keys and ' + mappingData.mappings.ignored.length + ' ignored keys.', 'success', 5000);
             } catch (error) {
                 console.error('Error loading mapping file:', error);
@@ -108,7 +104,6 @@ export function setupMappingStep(state) {
         }
         
         try {
-            console.log(`Fetching context from: ${contextUrl}`);
             const response = await fetch(contextUrl);
             const contextData = await response.json();
             
@@ -124,10 +119,8 @@ export function setupMappingStep(state) {
                 for (const [prefix, definition] of Object.entries(context)) {
                     if (typeof definition === 'string') {
                         contextMap.set(prefix, definition);
-                        console.log(`Remote context mapping: ${prefix} → ${definition}`);
                     } else if (typeof definition === 'object' && definition['@id']) {
                         contextMap.set(prefix, definition['@id']);
-                        console.log(`Remote context mapping: ${prefix} → ${definition['@id']}`);
                     }
                 }
             }
@@ -214,14 +207,12 @@ export function setupMappingStep(state) {
         // Extract context information from first item
         if (items.length > 0 && items[0]['@context']) {
             const context = items[0]['@context'];
-            console.log('Found @context:', context);
             
             // Handle both object and string contexts
             if (typeof context === 'object') {
                 for (const [prefix, uri] of Object.entries(context)) {
                     if (typeof uri === 'string') {
                         contextMap.set(prefix, uri);
-                        console.log(`Context mapping: ${prefix} → ${uri}`);
                     }
                 }
             } else if (typeof context === 'string') {
@@ -272,7 +263,6 @@ export function setupMappingStep(state) {
                         } else {
                             linkedDataUri = baseUri + '/' + localName;
                         }
-                        console.log(`Generated URI for ${key}: ${linkedDataUri}`);
                     }
                 } else {
                     // Check for common prefixes even without explicit context
@@ -289,7 +279,6 @@ export function setupMappingStep(state) {
                         if (key.toLowerCase().startsWith(prefix.toLowerCase())) {
                             const localName = key.substring(prefix.length);
                             linkedDataUri = uri + localName;
-                            console.log(`Generated URI using common prefix for ${key}: ${linkedDataUri}`);
                             break;
                         }
                     }
@@ -319,19 +308,13 @@ export function setupMappingStep(state) {
     // Helper function to populate key lists
     async function populateLists() {
         const currentState = state.getState();
-        console.log('populateLists called', { 
-            fetchedData: !!currentState.fetchedData,
-            dataType: Array.isArray(currentState.fetchedData) ? 'array' : typeof currentState.fetchedData
-        });
         
         if (!currentState.fetchedData) {
-            console.log('No data available');
             return;
         }
         
         // Analyze all keys from the complete dataset
         const keyAnalysis = await extractAndAnalyzeKeys(currentState.fetchedData);
-        console.log('Key analysis:', keyAnalysis);
         
         // Initialize arrays if they don't exist in state
         state.ensureMappingArrays();
@@ -356,9 +339,7 @@ export function setupMappingStep(state) {
             }
             const settings = await response.json();
             ignorePatterns = settings.ignoredKeyPatterns || ['o:'];
-            console.log('Loaded ignore patterns:', ignorePatterns);
         } catch (error) {
-            console.warn('Could not load ignore settings, using defaults:', error);
         }
         
         // Function to check if key should be ignored
@@ -1064,7 +1045,7 @@ export function setupMappingStep(state) {
         const mappingData = {
             version: "1.0",
             createdAt: new Date().toISOString(),
-            entitySchema: currentState.entitySchema || 'E473',
+            entitySchema: currentState.entitySchema || '',
             mappings: {
                 mapped: currentState.mappings.mappedKeys.map(key => ({
                     key: key.key,
@@ -1109,7 +1090,6 @@ export function setupMappingStep(state) {
         downloadLink.click();
         document.body.removeChild(downloadLink);
         
-        console.log('Mapping saved as:', filename);
     }
     
     // Load mapping data from uploaded file
@@ -1163,12 +1143,6 @@ export function setupMappingStep(state) {
         // Update UI
         populateLists();
         
-        console.log('Loaded mapping with:', {
-            mapped: mappedKeys.length,
-            ignored: ignoredKeys.length,
-            entitySchema: mappingData.entitySchema,
-            keysNotInCurrentDataset: mappedKeys.filter(k => k.notInCurrentDataset).length + ignoredKeys.filter(k => k.notInCurrentDataset).length
-        });
     }
     
 }
