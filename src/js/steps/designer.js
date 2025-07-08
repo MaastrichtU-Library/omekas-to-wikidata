@@ -214,16 +214,11 @@ export function setupDesignerStep(state) {
         
         state.updateState('designerData', designerData);
         
-        // If no languages configured yet, add default multilingual
+        // If no languages configured yet, add default multilingual for labels only
         if (Object.keys(designerData.labelMappings).length === 0) {
             addLanguageMapping('label', 'mul');
         }
-        if (Object.keys(designerData.descriptionMappings).length === 0) {
-            addLanguageMapping('description', 'mul');
-        }
-        if (Object.keys(designerData.aliasMappings).length === 0) {
-            addLanguageMapping('alias', 'mul');
-        }
+        // Descriptions and aliases start empty - user must add them explicitly
         
         // Render existing language mappings
         renderLanguageMappings();

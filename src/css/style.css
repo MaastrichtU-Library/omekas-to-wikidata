@@ -3626,7 +3626,8 @@ main {
 
 /* Language Selector Styles */
 .labels-section,
-.descriptions-section {
+.descriptions-section,
+.aliases-section {
     margin-bottom: 2rem;
     padding: 1.5rem;
     background-color: #f8f9fa;
@@ -3635,7 +3636,8 @@ main {
 }
 
 .labels-section h4,
-.descriptions-section h4 {
+.descriptions-section h4,
+.aliases-section h4 {
     margin-bottom: 1rem;
     color: #333;
     font-size: 1.1rem;
