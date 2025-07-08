@@ -806,6 +806,7 @@ export function setupReconciliationStep(state) {
             pendingCell.click();
         } else {
             // Reconciliation complete - no alert needed
+            updateProceedButton();
         }
     }
     
