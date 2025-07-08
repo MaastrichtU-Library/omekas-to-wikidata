@@ -1782,7 +1782,7 @@ export function setupDesignerStep(state) {
         const referenceWarning = document.getElementById('reference-warning');
         if (referenceWarning) {
             const globalRefs = currentState.globalReferences?.length || 0;
-            const hasItemSpecificRefs = itemSpecificRefsAdded > 0 || totalItemsWithSameAs > 0;
+            const hasItemSpecificRefs = itemSpecificRefsAdded > 0 || itemsWithSameAs > 0;
             
             if (globalRefs === 0 && !hasItemSpecificRefs) {
                 referenceWarning.style.display = 'block';
