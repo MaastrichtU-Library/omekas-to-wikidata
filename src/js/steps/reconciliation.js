@@ -178,6 +178,12 @@ export function setupReconciliationStep(state) {
         // Update state
         state.updateState('reconciliationData', reconciliationData);
         
+        // Calculate and update progress from actual reconciliation data
+        if (reconciliationData && Object.keys(reconciliationData).length > 0) {
+            const progress = calculateCurrentProgress();
+            state.updateState('reconciliationProgress', progress);
+        }
+        
         // Enable/disable proceed button
         updateProceedButton();
         
@@ -782,7 +788,32 @@ export function setupReconciliationStep(state) {
     }
     
 
-    
+    /**
+     * Calculate current progress from reconciliation data
+     */
+    function calculateCurrentProgress() {
+        let total = 0;
+        let completed = 0;
+        let skipped = 0;
+        let errors = 0;
+        
+        Object.values(reconciliationData).forEach(itemData => {
+            Object.values(itemData.properties).forEach(propData => {
+                propData.reconciled.forEach(reconciledItem => {
+                    total++;
+                    if (reconciledItem.status === 'reconciled' || reconciledItem.status === 'no-item') {
+                        completed++;
+                    } else if (reconciledItem.status === 'skipped') {
+                        skipped++;
+                    } else if (reconciledItem.status === 'error') {
+                        errors++;
+                    }
+                });
+            });
+        });
+        
+        return { total, completed, skipped, errors };
+    }
     
     /**
      * Update proceed button state
@@ -806,6 +837,11 @@ export function setupReconciliationStep(state) {
             pendingCell.click();
         } else {
             // Reconciliation complete - no alert needed
+            // Calculate current progress from actual reconciliation data and update state
+            if (reconciliationData && Object.keys(reconciliationData).length > 0) {
+                const progress = calculateCurrentProgress();
+                state.updateState('reconciliationProgress', progress);
+            }
             updateProceedButton();
         }
     }
