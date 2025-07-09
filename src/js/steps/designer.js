@@ -1481,21 +1481,6 @@ export function setupDesignerStep(state) {
             statementMainValue.appendChild(valueRow);
             propertyValueSection.appendChild(statementMainValue);
             
-            // Create actions section - aligned to the right
-            const statementActions = createElement('div', {
-                className: 'statement-actions'
-            });
-            
-            const addRefBtn = createButton('+ Reference', {
-                className: 'wikidata-btn wikidata-btn--reference',
-                onClick: () => addReferenceToProperty(mapping.property.id)
-            });
-            
-            statementActions.appendChild(addRefBtn);
-            
-            // Add actions to value section
-            propertyValueSection.appendChild(statementActions);
-            
             // Display property-specific references if any
             const propertyReferences = getPropertyReferences(mapping.property.id, reconciliationData, specificItem, mapping.key);
             if (propertyReferences.length > 0) {
@@ -1545,9 +1530,24 @@ export function setupDesignerStep(state) {
                     referencesSection.appendChild(refItem);
                 });
                 
-                // Add references section to the property value section instead of property item
+                // Add references section to the property value section before actions
                 propertyValueSection.appendChild(referencesSection);
             }
+            
+            // Create actions section - aligned to the right
+            const statementActions = createElement('div', {
+                className: 'statement-actions'
+            });
+            
+            const addRefBtn = createButton('+ Reference', {
+                className: 'wikidata-btn wikidata-btn--reference',
+                onClick: () => addReferenceToProperty(mapping.property.id)
+            });
+            
+            statementActions.appendChild(addRefBtn);
+            
+            // Add actions to value section
+            propertyValueSection.appendChild(statementActions);
             
             // Assemble the complete statement
             propertyItem.appendChild(propertyLabelSection);
@@ -3798,10 +3798,10 @@ export function setupDesignerStep(state) {
             }
         });
         
-        // Insert expanded container before statement-references if it exists, otherwise append
-        const referencesSection = containerElement.querySelector('.statement-references');
-        if (referencesSection) {
-            containerElement.insertBefore(expandedContainer, referencesSection);
+        // Insert expanded container after statement-references if it exists, but before statement-actions
+        const actionsSection = containerElement.querySelector('.statement-actions');
+        if (actionsSection) {
+            containerElement.insertBefore(expandedContainer, actionsSection);
         } else {
             containerElement.appendChild(expandedContainer);
         }
