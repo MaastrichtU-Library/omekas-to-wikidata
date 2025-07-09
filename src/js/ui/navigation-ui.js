@@ -145,7 +145,7 @@ export function setupNavigationUI() {
                 break;
             case 3:
                 if (navigationButtons.proceedToDesigner) {
-                    navigationButtons.proceedToDesigner.disabled = !isValid;
+                    navigationButtons.proceedToDesigner.disabled = false; // Always enabled temporarily
                 }
                 break;
             case 4:
