@@ -3798,7 +3798,13 @@ export function setupDesignerStep(state) {
             }
         });
         
-        containerElement.appendChild(expandedContainer);
+        // Insert expanded container before statement-references if it exists, otherwise append
+        const referencesSection = containerElement.querySelector('.statement-references');
+        if (referencesSection) {
+            containerElement.insertBefore(expandedContainer, referencesSection);
+        } else {
+            containerElement.appendChild(expandedContainer);
+        }
     }
     
     // Hide expanded values
