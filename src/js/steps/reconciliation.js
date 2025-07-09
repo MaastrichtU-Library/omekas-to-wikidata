@@ -983,6 +983,16 @@ export function setupReconciliationStep(state) {
                         ➕ Create New Wikidata Item
                     </button>
                 </div>
+                
+                <!-- Ignore Option -->
+                <div class="ignore-option" style="margin-top: 20px; text-align: center;">
+                    <button class="btn secondary" onclick="ignoreCurrentValue()" style="background-color: #f44336; color: white;">
+                        🚫 Ignore This Value
+                    </button>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                        This value will be skipped and not included in the final mapping
+                    </p>
+                </div>
             </div>
         `;
     }
@@ -2056,6 +2066,20 @@ export function setupReconciliationStep(state) {
     window.markAsNoWikidataItem = function() {
         if (currentReconciliationCell) {
             markCellAsNoItem(currentReconciliationCell);
+            modalUI.closeModal();
+            
+            // Auto-advance if enabled
+            if (getAutoAdvanceSetting()) {
+                setTimeout(() => {
+                    reconcileNextUnprocessedCell();
+                }, 300);
+            }
+        }
+    };
+    
+    window.ignoreCurrentValue = function() {
+        if (currentReconciliationCell) {
+            markCellAsSkipped(currentReconciliationCell);
             modalUI.closeModal();
             
             // Auto-advance if enabled
