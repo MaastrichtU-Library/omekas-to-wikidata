@@ -1385,22 +1385,8 @@ export function setupDesignerStep(state) {
                 }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
                 valueRow.appendChild(valueCountLink);
             } else {
-                // Specific item view: show "example" text
-                const exampleText = createElement('span', {
-                    className: 'example-text'
-                }, ' example');
-                valueRow.appendChild(exampleText);
-                
-                // Value count (clickable to show modal)
-                const valueCountLink = createElement('a', {
-                    href: '#',
-                    className: 'value-count-link',
-                    onClick: (e) => {
-                        e.preventDefault();
-                        showValuesModal(mapping, fetchedData, reconciliationData, specificItem);
-                    }
-                }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
-                valueRow.appendChild(valueCountLink);
+                // Specific item view: show only the specific value, no additional text or count
+                // The specific value is already displayed in the valueRow from the displayLabel/displayQID logic above
             }
             
             statementMainValue.appendChild(valueRow);
