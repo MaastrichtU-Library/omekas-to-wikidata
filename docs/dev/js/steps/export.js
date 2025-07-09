@@ -355,6 +355,9 @@ export function setupExportStep(state) {
                                     } else {
                                         value = escapeQuickStatementsString(match.value);
                                     }
+                                } else if (match.type === 'string') {
+                                    // Handle string type reconciliation (from "Accept as String" option)
+                                    value = escapeQuickStatementsString(match.value);
                                 }
                                 
                                 if (value) {
