@@ -3,3 +3,4 @@
 .env
 *.env
 
+.issues/all_issues.json
