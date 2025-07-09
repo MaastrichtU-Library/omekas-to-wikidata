@@ -1981,19 +1981,81 @@ export function setupDesignerStep(state) {
     
     // Show sameAs summary modal
     function showSameAsSummaryModal(itemsWithSameAs, totalItems, sampleUrls) {
+        // Get current item-specific reference information
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const itemSpecificSearchRefs = extractItemSpecificReferencesFromSearchData();
+        const itemSpecificRefInfo = [];
+        
+        // Collect sameAs references info
+        const sameAsRefs = new Map();
+        fetchedData.forEach((item, index) => {
+            if (item['schema:sameAs']) {
+                const sameAsValues = Array.isArray(item['schema:sameAs']) ? 
+                    item['schema:sameAs'] : [item['schema:sameAs']];
+                
+                sameAsValues.forEach(value => {
+                    let url = null;
+                    if (typeof value === 'string' && value.startsWith('http')) {
+                        url = value;
+                    } else if (typeof value === 'object' && value !== null && value['@id']) {
+                        const idValue = value['@id'];
+                        if (typeof idValue === 'string' && idValue.startsWith('http')) {
+                            url = idValue;
+                        }
+                    }
+                    
+                    if (url) {
+                        if (!sameAsRefs.has(url)) {
+                            sameAsRefs.set(url, new Set());
+                        }
+                        sameAsRefs.get(url).add(index);
+                    }
+                });
+            }
+        });
+        
+        // Add sameAs references to info array
+        sameAsRefs.forEach((itemIndices, url) => {
+            itemSpecificRefInfo.push({
+                url: url,
+                type: 'sameAs URL',
+                source: 'Auto-detected',
+                itemIndices: itemIndices,
+                itemCount: itemIndices.size,
+                autoDetected: true
+            });
+        });
+        
+        // Add search API references to info array
+        itemSpecificSearchRefs.forEach((itemIndices, url) => {
+            const globalReferences = currentState.globalReferences || [];
+            const globalRef = globalReferences.find(ref => ref.url === url);
+            if (globalRef) {
+                itemSpecificRefInfo.push({
+                    url: url,
+                    type: globalRef.type,
+                    source: 'Search API',
+                    itemIndices: itemIndices,
+                    itemCount: itemIndices.size,
+                    autoDetected: false
+                });
+            }
+        });
+        
         const modal = createElement('div', {
             className: 'modal-overlay active'
         });
         
         const modalContent = createElement('div', {
-            className: 'modal sameas-summary-modal'
+            className: 'modal item-specific-references-modal'
         });
         
         const modalHeader = createElement('div', {
             className: 'modal-header'
         });
         
-        const modalTitle = createElement('h3', {}, 'SameAs References Detected');
+        const modalTitle = createElement('h3', {}, 'Item-Specific References');
         
         const closeBtn = createButton('×', {
             className: 'modal-close',
@@ -2009,53 +2071,117 @@ export function setupDesignerStep(state) {
         
         // Summary section
         const summarySection = createElement('div', {
-            className: 'sameas-summary'
+            className: 'references-summary'
         });
         
-        const summaryTitle = createElement('h4', {}, 'Detection Results');
+        const summaryTitle = createElement('h4', {}, 'Overview');
         
-        const summaryText = createElement('p', {}, 
-            `Found sameAs statements in ${itemsWithSameAs} out of ${totalItems} items. ` +
-            `Each item's sameAs URL has been added as a reference to that specific item's properties.`
-        );
+        const sameAsCount = itemSpecificRefInfo.filter(ref => ref.source === 'Auto-detected').length;
+        const searchApiCount = itemSpecificRefInfo.filter(ref => ref.source === 'Search API').length;
+        
+        let summaryText = `Found ${itemSpecificRefInfo.length} item-specific reference${itemSpecificRefInfo.length > 1 ? 's' : ''} `;
+        if (sameAsCount > 0 && searchApiCount > 0) {
+            summaryText += `(${sameAsCount} auto-detected sameAs, ${searchApiCount} search API) `;
+        } else if (sameAsCount > 0) {
+            summaryText += `(${sameAsCount} auto-detected sameAs) `;
+        } else if (searchApiCount > 0) {
+            summaryText += `(${searchApiCount} search API) `;
+        }
+        summaryText += `across ${new Set(itemSpecificRefInfo.flatMap(ref => Array.from(ref.itemIndices))).size} items.`;
+        
+        const summaryTextEl = createElement('p', {}, summaryText);
         
         summarySection.appendChild(summaryTitle);
-        summarySection.appendChild(summaryText);
+        summarySection.appendChild(summaryTextEl);
         
-        // Sample URLs section
-        const samplesSection = createElement('div', {
-            className: 'sameas-samples'
+        // Categorized references section
+        const categorizedSection = createElement('div', {
+            className: 'categorized-references'
         });
         
-        const samplesTitle = createElement('h4', {}, 'Sample URLs Found');
+        // Filter and sort references by source
+        const sameAsRefs = itemSpecificRefInfo.filter(ref => ref.source === 'Auto-detected');
+        const searchApiRefs = itemSpecificRefInfo.filter(ref => ref.source === 'Search API');
         
-        const samplesList = createElement('ul', {
-            className: 'sameas-samples-list'
-        });
-        
-        // Show up to 3 sample URLs
-        Array.from(sampleUrls).slice(0, 3).forEach(url => {
-            const listItem = createElement('li', {});
-            const urlLink = createElement('a', {
-                href: url,
-                target: '_blank',
-                className: 'sameas-sample-link'
-            }, url);
-            listItem.appendChild(urlLink);
-            samplesList.appendChild(listItem);
-        });
-        
-        if (sampleUrls.size > 3) {
-            const moreItem = createElement('li', {
-                className: 'more-indicator'
-            }, `... and ${sampleUrls.size - 3} more`);
-            samplesList.appendChild(moreItem);
+        // Auto-detected sameAs references
+        if (sameAsRefs.length > 0) {
+            const sameAsSection = createElement('div', {
+                className: 'reference-category'
+            });
+            
+            const sameAsTitle = createElement('h4', {
+                className: 'category-title'
+            }, `Auto-detected sameAs References (${sameAsRefs.length})`);
+            
+            const sameAsList = createElement('div', {
+                className: 'reference-list'
+            });
+            
+            sameAsRefs.forEach(ref => {
+                const refItem = createElement('div', {
+                    className: 'reference-item-detail'
+                });
+                
+                const refUrl = createElement('a', {
+                    href: ref.url,
+                    target: '_blank',
+                    className: 'reference-url-link'
+                }, ref.url);
+                
+                const refMeta = createElement('div', {
+                    className: 'reference-meta'
+                }, `Used by ${ref.itemCount} item${ref.itemCount > 1 ? 's' : ''} • ${ref.type}`);
+                
+                refItem.appendChild(refUrl);
+                refItem.appendChild(refMeta);
+                sameAsList.appendChild(refItem);
+            });
+            
+            sameAsSection.appendChild(sameAsTitle);
+            sameAsSection.appendChild(sameAsList);
+            categorizedSection.appendChild(sameAsSection);
         }
         
-        samplesSection.appendChild(samplesTitle);
-        samplesSection.appendChild(samplesList);
+        // Search API references
+        if (searchApiRefs.length > 0) {
+            const searchApiSection = createElement('div', {
+                className: 'reference-category'
+            });
+            
+            const searchApiTitle = createElement('h4', {
+                className: 'category-title'
+            }, `Search API References (${searchApiRefs.length})`);
+            
+            const searchApiList = createElement('div', {
+                className: 'reference-list'
+            });
+            
+            searchApiRefs.forEach(ref => {
+                const refItem = createElement('div', {
+                    className: 'reference-item-detail'
+                });
+                
+                const refUrl = createElement('a', {
+                    href: ref.url,
+                    target: '_blank',
+                    className: 'reference-url-link'
+                }, ref.url);
+                
+                const refMeta = createElement('div', {
+                    className: 'reference-meta'
+                }, `Used by ${ref.itemCount} item${ref.itemCount > 1 ? 's' : ''} • ${ref.type}`);
+                
+                refItem.appendChild(refUrl);
+                refItem.appendChild(refMeta);
+                searchApiList.appendChild(refItem);
+            });
+            
+            searchApiSection.appendChild(searchApiTitle);
+            searchApiSection.appendChild(searchApiList);
+            categorizedSection.appendChild(searchApiSection);
+        }
         
-        // Global reference option section
+        // Global reference option section (simplified)
         const globalOptionSection = createElement('div', {
             className: 'global-option-section'
         });
@@ -2063,8 +2189,8 @@ export function setupDesignerStep(state) {
         const globalTitle = createElement('h4', {}, 'Optional: Create Global Reference');
         
         const globalDescription = createElement('p', {}, 
-            `You can optionally create a global reference that represents the sameAs pattern. ` +
-            `This will be applied to all properties of all items, in addition to the item-specific references.`
+            `You can create a global reference that applies to all properties of all items, ` +
+            `in addition to these item-specific references.`
         );
         
         const globalForm = createElement('div', {
@@ -2084,14 +2210,14 @@ export function setupDesignerStep(state) {
         const emptyOption = createElement('option', {
             value: '',
             selected: true
-        }, '-- Select a sample URL or enter custom --');
+        }, '-- Select a reference URL or enter custom --');
         urlSelect.appendChild(emptyOption);
         
-        // Add sample URLs as options
-        Array.from(sampleUrls).forEach(url => {
+        // Add all reference URLs as options
+        itemSpecificRefInfo.forEach(ref => {
             const option = createElement('option', {
-                value: url
-            }, url);
+                value: ref.url
+            }, `${ref.url} (${ref.source})`);
             urlSelect.appendChild(option);
         });
         
@@ -2114,8 +2240,8 @@ export function setupDesignerStep(state) {
         const descInput = createElement('input', {
             type: 'text',
             className: 'description-input',
-            placeholder: `e.g., "SameAs URLs (${itemsWithSameAs}/${totalItems} items have this)"`,
-            value: `SameAs URLs (${itemsWithSameAs}/${totalItems} items have this)`
+            placeholder: `e.g., "Item-specific references (${itemSpecificRefInfo.length} URLs)"`,
+            value: `Item-specific references (${itemSpecificRefInfo.length} URLs)`
         });
         
         descriptionGroup.appendChild(descLabel);
@@ -2129,7 +2255,7 @@ export function setupDesignerStep(state) {
         globalOptionSection.appendChild(globalForm);
         
         modalBody.appendChild(summarySection);
-        modalBody.appendChild(samplesSection);
+        modalBody.appendChild(categorizedSection);
         modalBody.appendChild(globalOptionSection);
         
         // Modal footer
