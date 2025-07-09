@@ -1454,16 +1454,6 @@ export function setupDesignerStep(state) {
                     valueRow.appendChild(foldButton);
                 }
                 
-                // Value count (clickable to show modal)
-                const valueCountLink = createElement('a', {
-                    href: '#',
-                    className: 'value-count-link',
-                    onClick: (e) => {
-                        e.preventDefault();
-                        showValuesModal(mapping, fetchedData, reconciliationData, specificItem);
-                    }
-                }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
-                valueRow.appendChild(valueCountLink);
             } else {
                 // Specific item view: show only the specific value, no additional text or count
                 // The specific value is already displayed in the valueRow from the displayLabel/displayQID logic above
@@ -2100,24 +2090,24 @@ export function setupDesignerStep(state) {
         });
         
         // Filter and sort references by source
-        const sameAsRefs = itemSpecificRefInfo.filter(ref => ref.source === 'Auto-detected');
+        const autoDetectedRefs = itemSpecificRefInfo.filter(ref => ref.source === 'Auto-detected');
         const searchApiRefs = itemSpecificRefInfo.filter(ref => ref.source === 'Search API');
         
         // Auto-detected sameAs references
-        if (sameAsRefs.length > 0) {
+        if (autoDetectedRefs.length > 0) {
             const sameAsSection = createElement('div', {
                 className: 'reference-category'
             });
             
             const sameAsTitle = createElement('h4', {
                 className: 'category-title'
-            }, `Auto-detected sameAs References (${sameAsRefs.length})`);
+            }, `Auto-detected sameAs References (${autoDetectedRefs.length})`);
             
             const sameAsList = createElement('div', {
                 className: 'reference-list'
             });
             
-            sameAsRefs.forEach(ref => {
+            autoDetectedRefs.forEach(ref => {
                 const refItem = createElement('div', {
                     className: 'reference-item-detail'
                 });
