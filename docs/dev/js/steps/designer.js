@@ -1394,22 +1394,39 @@ export function setupDesignerStep(state) {
             // Extract label and QID from reconciled data for compact display
             let displayLabel = 'No value';
             let displayQID = null;
+            let originalValue = null;
+            let reconciledValue = null;
             
             if (specificItem) {
                 const itemIndex = fetchedData.indexOf(specificItem);
                 const itemKey = `item-${itemIndex}`;
                 const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
                 
+                // Get original value from source data
+                if (specificItem[mapping.key]) {
+                    originalValue = specificItem[mapping.key];
+                }
+                
+                // Get reconciled value
                 if (reconciledData?.selectedMatch) {
                     const match = reconciledData.selectedMatch;
                     if (match.type === 'wikidata') {
+                        reconciledValue = {
+                            label: match.label,
+                            id: match.id,
+                            type: 'wikidata'
+                        };
                         displayLabel = match.label;
                         displayQID = match.id;
                     } else {
+                        reconciledValue = {
+                            value: match.value || 'Custom value',
+                            type: 'custom'
+                        };
                         displayLabel = match.value || 'Custom value';
                     }
-                } else if (specificItem[mapping.key]) {
-                    displayLabel = specificItem[mapping.key];
+                } else if (originalValue) {
+                    displayLabel = originalValue;
                 }
             } else {
                 // For multi-item view, show the mapping/key name instead of specific values
@@ -1422,26 +1439,131 @@ export function setupDesignerStep(state) {
                 className: 'value-display-row'
             });
             
-            // Label (and QID if available)
-            if (displayQID) {
-                const labelLink = createElement('a', {
-                    href: `https://www.wikidata.org/entity/${displayQID}`,
-                    target: '_blank',
-                    className: 'value-qid-link'
-                }, displayLabel);
-                valueRow.appendChild(labelLink);
-                
-                const qidBadge = createElement('a', {
-                    href: `https://www.wikidata.org/entity/${displayQID}`,
-                    target: '_blank',
-                    className: 'value-qid-badge'
-                }, ` (${displayQID})`);
-                valueRow.appendChild(qidBadge);
+            if (specificItem) {
+                // For specific item view, show both original and reconciled values
+                if (originalValue && reconciledValue) {
+                    // Show both original and reconciled values
+                    const originalSection = createElement('div', {
+                        className: 'value-section original-value-section'
+                    });
+                    
+                    const originalLabel = createElement('span', {
+                        className: 'value-type-label'
+                    }, 'Original: ');
+                    originalSection.appendChild(originalLabel);
+                    
+                    const originalValueSpan = createElement('span', {
+                        className: 'original-value'
+                    }, originalValue);
+                    originalSection.appendChild(originalValueSpan);
+                    
+                    const reconciledSection = createElement('div', {
+                        className: 'value-section reconciled-value-section'
+                    });
+                    
+                    const reconciledLabel = createElement('span', {
+                        className: 'value-type-label'
+                    }, 'Reconciled: ');
+                    reconciledSection.appendChild(reconciledLabel);
+                    
+                    if (reconciledValue.type === 'wikidata') {
+                        const labelLink = createElement('a', {
+                            href: `https://www.wikidata.org/entity/${reconciledValue.id}`,
+                            target: '_blank',
+                            className: 'value-qid-link'
+                        }, reconciledValue.label);
+                        reconciledSection.appendChild(labelLink);
+                        
+                        const qidBadge = createElement('a', {
+                            href: `https://www.wikidata.org/entity/${reconciledValue.id}`,
+                            target: '_blank',
+                            className: 'value-qid-badge'
+                        }, ` (${reconciledValue.id})`);
+                        reconciledSection.appendChild(qidBadge);
+                    } else {
+                        const customValueSpan = createElement('span', {
+                            className: 'reconciled-value-custom'
+                        }, reconciledValue.value);
+                        reconciledSection.appendChild(customValueSpan);
+                    }
+                    
+                    valueRow.appendChild(originalSection);
+                    valueRow.appendChild(reconciledSection);
+                    
+                } else if (reconciledValue) {
+                    // Show only reconciled value
+                    const reconciledSection = createElement('div', {
+                        className: 'value-section reconciled-value-section'
+                    });
+                    
+                    if (reconciledValue.type === 'wikidata') {
+                        const labelLink = createElement('a', {
+                            href: `https://www.wikidata.org/entity/${reconciledValue.id}`,
+                            target: '_blank',
+                            className: 'value-qid-link'
+                        }, reconciledValue.label);
+                        reconciledSection.appendChild(labelLink);
+                        
+                        const qidBadge = createElement('a', {
+                            href: `https://www.wikidata.org/entity/${reconciledValue.id}`,
+                            target: '_blank',
+                            className: 'value-qid-badge'
+                        }, ` (${reconciledValue.id})`);
+                        reconciledSection.appendChild(qidBadge);
+                    } else {
+                        const customValueSpan = createElement('span', {
+                            className: 'reconciled-value-custom'
+                        }, reconciledValue.value);
+                        reconciledSection.appendChild(customValueSpan);
+                    }
+                    
+                    valueRow.appendChild(reconciledSection);
+                    
+                } else if (originalValue) {
+                    // Show only original value (not reconciled yet)
+                    const originalSection = createElement('div', {
+                        className: 'value-section original-value-section'
+                    });
+                    
+                    const originalLabel = createElement('span', {
+                        className: 'value-type-label'
+                    }, 'Original: ');
+                    originalSection.appendChild(originalLabel);
+                    
+                    const originalValueSpan = createElement('span', {
+                        className: 'original-value'
+                    }, originalValue);
+                    originalSection.appendChild(originalValueSpan);
+                    
+                    const statusSpan = createElement('span', {
+                        className: 'reconciliation-status not-reconciled'
+                    }, ' (not reconciled)');
+                    originalSection.appendChild(statusSpan);
+                    
+                    valueRow.appendChild(originalSection);
+                }
             } else {
-                const labelSpan = createElement('span', {
-                    className: 'value-label'
-                }, displayLabel);
-                valueRow.appendChild(labelSpan);
+                // For multi-item view, use the existing logic
+                if (displayQID) {
+                    const labelLink = createElement('a', {
+                        href: `https://www.wikidata.org/entity/${displayQID}`,
+                        target: '_blank',
+                        className: 'value-qid-link'
+                    }, displayLabel);
+                    valueRow.appendChild(labelLink);
+                    
+                    const qidBadge = createElement('a', {
+                        href: `https://www.wikidata.org/entity/${displayQID}`,
+                        target: '_blank',
+                        className: 'value-qid-badge'
+                    }, ` (${displayQID})`);
+                    valueRow.appendChild(qidBadge);
+                } else {
+                    const labelSpan = createElement('span', {
+                        className: 'value-label'
+                    }, displayLabel);
+                    valueRow.appendChild(labelSpan);
+                }
             }
             
             // Check if this is a generic reference or has item-specific values
@@ -1488,9 +1610,20 @@ export function setupDesignerStep(state) {
                     className: 'statement-references'
                 });
                 
+                // Enhanced title with better context
                 const referencesTitle = createElement('div', {
                     className: 'references-title'
-                }, `References (${propertyReferences.length}):`);
+                });
+                
+                if (specificItem) {
+                    // For specific item view, show clear context
+                    const titleText = `References for this ${mapping.property.label} statement (${propertyReferences.length}):`;
+                    referencesTitle.textContent = titleText;
+                } else {
+                    // For multi-item view, show general context
+                    referencesTitle.textContent = `References (${propertyReferences.length}):`;
+                }
+                
                 referencesSection.appendChild(referencesTitle);
                 
                 propertyReferences.forEach((ref, index) => {
@@ -1501,6 +1634,12 @@ export function setupDesignerStep(state) {
                     const refContent = createElement('div', {
                         className: 'reference-content'
                     });
+                    
+                    // Add reference number for clarity
+                    const refNumber = createElement('span', {
+                        className: 'reference-number'
+                    }, `[${index + 1}] `);
+                    refContent.appendChild(refNumber);
                     
                     const refLink = createElement('a', {
                         href: ref.url,
@@ -1515,6 +1654,98 @@ export function setupDesignerStep(state) {
                             className: 'reference-date'
                         }, ` (retrieved ${ref.retrievedDate})`);
                         refContent.appendChild(dateSpan);
+                    }
+                    
+                    // Add item information for multi-item view
+                    if (!specificItem && ref.appliedToItems && ref.appliedToItems.length > 0) {
+                        const itemsContainer = createElement('div', {
+                            className: 'reference-items-container'
+                        });
+                        
+                        const totalItems = Object.keys(reconciliationData).length;
+                        const appliedItemsCount = ref.appliedToItems.length;
+                        
+                        // Create summary line
+                        const itemsSummary = createElement('div', {
+                            className: 'reference-items-summary'
+                        });
+                        
+                        let summaryText;
+                        if (appliedItemsCount === totalItems) {
+                            summaryText = `Applies to: All ${totalItems} items`;
+                        } else {
+                            summaryText = `Applies to: ${appliedItemsCount} of ${totalItems} items`;
+                        }
+                        
+                        const summarySpan = createElement('span', {
+                            className: 'reference-items-count'
+                        }, summaryText);
+                        
+                        itemsSummary.appendChild(summarySpan);
+                        
+                        // Add expandable toggle if more than 3 items or if not all items
+                        if (appliedItemsCount > 3 || appliedItemsCount !== totalItems) {
+                            const toggleBtn = createElement('button', {
+                                className: 'reference-items-toggle',
+                                type: 'button'
+                            }, ' (show details)');
+                            
+                            const itemsList = createElement('div', {
+                                className: 'reference-items-list',
+                                style: 'display: none;'
+                            });
+                            
+                            // Sort items by index for consistent display
+                            const sortedItems = [...ref.appliedToItems].sort((a, b) => a.index - b.index);
+                            
+                            sortedItems.forEach(item => {
+                                const itemSpan = createElement('div', {
+                                    className: 'reference-item-name'
+                                }, `• ${item.title}`);
+                                itemsList.appendChild(itemSpan);
+                            });
+                            
+                            toggleBtn.addEventListener('click', () => {
+                                const isVisible = itemsList.style.display !== 'none';
+                                itemsList.style.display = isVisible ? 'none' : 'block';
+                                toggleBtn.textContent = isVisible ? ' (show details)' : ' (hide details)';
+                            });
+                            
+                            itemsSummary.appendChild(toggleBtn);
+                            itemsContainer.appendChild(itemsList);
+                        } else {
+                            // Show items inline if 3 or fewer
+                            const itemNames = ref.appliedToItems
+                                .sort((a, b) => a.index - b.index)
+                                .map(item => item.title)
+                                .join(', ');
+                            
+                            const inlineItems = createElement('div', {
+                                className: 'reference-items-inline'
+                            }, `Items: ${itemNames}`);
+                            
+                            itemsContainer.appendChild(inlineItems);
+                        }
+                        
+                        itemsContainer.appendChild(itemsSummary);
+                        refContent.appendChild(itemsContainer);
+                    }
+                    
+                    // Add context about what this reference supports
+                    if (specificItem) {
+                        const contextSpan = createElement('div', {
+                            className: 'reference-context'
+                        });
+                        
+                        if (originalValue && reconciledValue) {
+                            contextSpan.textContent = `Supports: "${originalValue}" → "${reconciledValue.type === 'wikidata' ? reconciledValue.label : reconciledValue.value}"`;
+                        } else if (reconciledValue) {
+                            contextSpan.textContent = `Supports: "${reconciledValue.type === 'wikidata' ? reconciledValue.label : reconciledValue.value}"`;
+                        } else if (originalValue) {
+                            contextSpan.textContent = `Supports: "${originalValue}"`;
+                        }
+                        
+                        refContent.appendChild(contextSpan);
                     }
                     
                     refItem.appendChild(refContent);
@@ -1585,6 +1816,11 @@ export function setupDesignerStep(state) {
             const uniqueRefs = new Map();
             
             Object.keys(reconciliationData).forEach(itemKey => {
+                // Extract item index from itemKey (format: "item-X")
+                const itemIndex = parseInt(itemKey.split('-')[1]);
+                const itemData = fetchedData[itemIndex];
+                const itemTitle = itemData?.['o:title'] || itemData?.['dcterms:title'] || `Item ${itemIndex + 1}`;
+                
                 // Check both mapping key and property ID
                 const propDataByKey = reconciliationData[itemKey]?.properties[mappingKey];
                 const propDataById = reconciliationData[itemKey]?.properties[propertyId];
@@ -1592,7 +1828,27 @@ export function setupDesignerStep(state) {
                 const collectRefs = (propData) => {
                     if (propData && propData.references) {
                         propData.references.forEach(ref => {
-                            uniqueRefs.set(ref.url, ref);
+                            if (uniqueRefs.has(ref.url)) {
+                                // Add this item to existing reference
+                                const existingRef = uniqueRefs.get(ref.url);
+                                if (!existingRef.appliedToItems.some(item => item.index === itemIndex)) {
+                                    existingRef.appliedToItems.push({
+                                        index: itemIndex,
+                                        title: itemTitle,
+                                        key: itemKey
+                                    });
+                                }
+                            } else {
+                                // Create new reference with item information
+                                uniqueRefs.set(ref.url, {
+                                    ...ref,
+                                    appliedToItems: [{
+                                        index: itemIndex,
+                                        title: itemTitle,
+                                        key: itemKey
+                                    }]
+                                });
+                            }
                         });
                     }
                 };
@@ -2792,6 +3048,20 @@ export function setupDesignerStep(state) {
             scopeSelect.appendChild(option);
         });
         
+        // Set default selection based on current view context
+        const exampleItemSelector = document.getElementById('example-item-selector');
+        if (exampleItemSelector && exampleItemSelector.value !== 'multi-item') {
+            // In single-item view, default to the current item's "Only [item name]" option
+            const selectedItemIndex = exampleItemSelector.value;
+            const singleItemOption = `single-item-${selectedItemIndex}`;
+            
+            // Check if this option exists (it should since we're viewing a single item)
+            const optionExists = Array.from(scopeSelect.options).some(option => option.value === singleItemOption);
+            if (optionExists) {
+                scopeSelect.value = singleItemOption;
+            }
+        }
+        
         scopeGroup.appendChild(scopeLabel);
         scopeGroup.appendChild(scopeSelect);
         modalBody.appendChild(scopeGroup);
@@ -3772,7 +4042,19 @@ export function setupDesignerStep(state) {
                 }, `Item ${index + 1}: `);
                 itemRow.appendChild(itemLabel);
                 
-                if (reconciledData?.selectedMatch) {
+                // Show both original and reconciled values if available
+                if (reconciledData?.selectedMatch && hasOriginalData) {
+                    // Both original and reconciled values exist
+                    const originalValueSpan = createElement('span', {
+                        className: 'expanded-value-text original'
+                    }, `Original: ${item[mapping.key]}`);
+                    itemRow.appendChild(originalValueSpan);
+                    
+                    const arrowSpan = createElement('span', {
+                        className: 'value-arrow'
+                    }, ' → ');
+                    itemRow.appendChild(arrowSpan);
+                    
                     const match = reconciledData.selectedMatch;
                     if (match.type === 'wikidata') {
                         const valueLink = createElement('a', {
@@ -3783,15 +4065,37 @@ export function setupDesignerStep(state) {
                         itemRow.appendChild(valueLink);
                     } else {
                         const valueText = createElement('span', {
-                            className: 'expanded-value-text'
+                            className: 'expanded-value-text reconciled'
+                        }, match.value || 'Custom value');
+                        itemRow.appendChild(valueText);
+                    }
+                } else if (reconciledData?.selectedMatch) {
+                    // Only reconciled value exists
+                    const match = reconciledData.selectedMatch;
+                    if (match.type === 'wikidata') {
+                        const valueLink = createElement('a', {
+                            href: `https://www.wikidata.org/entity/${match.id}`,
+                            target: '_blank',
+                            className: 'expanded-value-link'
+                        }, `${match.label} (${match.id})`);
+                        itemRow.appendChild(valueLink);
+                    } else {
+                        const valueText = createElement('span', {
+                            className: 'expanded-value-text reconciled'
                         }, match.value || 'Custom value');
                         itemRow.appendChild(valueText);
                     }
                 } else if (hasOriginalData) {
+                    // Only original value exists (not reconciled yet)
                     const valueText = createElement('span', {
                         className: 'expanded-value-text original'
                     }, `Original: ${item[mapping.key]}`);
                     itemRow.appendChild(valueText);
+                    
+                    const statusSpan = createElement('span', {
+                        className: 'reconciliation-status not-reconciled'
+                    }, ' (not reconciled)');
+                    itemRow.appendChild(statusSpan);
                 }
                 
                 expandedContainer.appendChild(itemRow);
