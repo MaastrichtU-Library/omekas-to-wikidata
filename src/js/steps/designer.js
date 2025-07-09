@@ -1313,33 +1313,9 @@ export function setupDesignerStep(state) {
                     displayLabel = specificItem[mapping.key];
                 }
             } else {
-                // For multi-item view, find first reconciled value
-                for (let i = 0; i < fetchedData.length; i++) {
-                    const item = fetchedData[i];
-                    const itemKey = `item-${i}`;
-                    const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
-                    
-                    if (reconciledData?.selectedMatch) {
-                        const match = reconciledData.selectedMatch;
-                        if (match.type === 'wikidata') {
-                            displayLabel = match.label;
-                            displayQID = match.id;
-                        } else {
-                            displayLabel = match.value || 'Custom value';
-                        }
-                        break;
-                    }
-                }
-                
-                // If no reconciled values found, show original
-                if (displayLabel === 'No value') {
-                    for (let item of fetchedData) {
-                        if (item[mapping.key]) {
-                            displayLabel = item[mapping.key];
-                            break;
-                        }
-                    }
-                }
+                // For multi-item view, show the mapping/key name instead of specific values
+                displayLabel = mapping.key;
+                displayQID = null;
             }
             
             // Build the compact value display: label (QID if exists) example [count]
@@ -1372,35 +1348,31 @@ export function setupDesignerStep(state) {
             // Check if this is a generic reference or has item-specific values
             const hasItemSpecificValues = checkIfHasItemSpecificValues(mapping, fetchedData, reconciliationData);
             
-            if (!specificItem && hasItemSpecificValues) {
-                // Create fold/unfold button for non-generic references
-                const foldButton = createElement('button', {
-                    className: 'fold-button',
-                    'data-folded': 'true',
-                    onClick: (e) => {
-                        e.preventDefault();
-                        const button = e.target;
-                        const isFolded = button.getAttribute('data-folded') === 'true';
-                        if (isFolded) {
-                            button.setAttribute('data-folded', 'false');
-                            button.textContent = '▼';
-                            // Show expanded values
-                            showExpandedValues(mapping, fetchedData, reconciliationData, propertyValueSection);
-                        } else {
-                            button.setAttribute('data-folded', 'true');
-                            button.textContent = '▶';
-                            // Hide expanded values
-                            hideExpandedValues(propertyValueSection);
+            if (!specificItem) {
+                // In multi-item view, always show fold/unfold button for items with values
+                if (itemsWithProperty > 0 && hasItemSpecificValues) {
+                    const foldButton = createElement('button', {
+                        className: 'fold-button',
+                        'data-folded': 'true',
+                        onClick: (e) => {
+                            e.preventDefault();
+                            const button = e.target;
+                            const isFolded = button.getAttribute('data-folded') === 'true';
+                            if (isFolded) {
+                                button.setAttribute('data-folded', 'false');
+                                button.textContent = '▼';
+                                // Show expanded values
+                                showExpandedValues(mapping, fetchedData, reconciliationData, propertyValueSection);
+                            } else {
+                                button.setAttribute('data-folded', 'true');
+                                button.textContent = '▶';
+                                // Hide expanded values
+                                hideExpandedValues(propertyValueSection);
+                            }
                         }
-                    }
-                }, '▶');
-                valueRow.appendChild(foldButton);
-                
-                // Use JSON key name as generic name
-                const keyNameText = createElement('span', {
-                    className: 'key-name-text'
-                }, ` ${mapping.key}`);
-                valueRow.appendChild(keyNameText);
+                    }, '▶');
+                    valueRow.appendChild(foldButton);
+                }
                 
                 // Value count (clickable to show modal)
                 const valueCountLink = createElement('a', {
@@ -1413,7 +1385,7 @@ export function setupDesignerStep(state) {
                 }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
                 valueRow.appendChild(valueCountLink);
             } else {
-                // Original behavior for generic references or specific item view
+                // Specific item view: show "example" text
                 const exampleText = createElement('span', {
                     className: 'example-text'
                 }, ' example');
