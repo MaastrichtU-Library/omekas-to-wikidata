@@ -4271,3 +4271,76 @@ main {
         padding: 1rem;
     }
 }
+
+/* Fold button styles */
+.fold-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    font-size: 0.8rem;
+    color: #72777d;
+    transition: color 0.2s;
+}
+
+.fold-button:hover {
+    color: #0645ad;
+}
+
+/* Key name text for non-generic references */
+.key-name-text {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+    margin-left: 0.25rem;
+}
+
+/* Expanded values container */
+.expanded-values-container {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid #eaecf0;
+    border-radius: 2px;
+    width: 100%;
+}
+
+/* Expanded item rows */
+.expanded-item-row {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem 0;
+    font-size: 0.85rem;
+}
+
+.expanded-item-row:not(:last-child) {
+    border-bottom: 1px dotted #eaecf0;
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.5rem;
+}
+
+.expanded-item-label {
+    font-weight: 500;
+    color: #72777d;
+    margin-right: 0.5rem;
+    min-width: 80px;
+}
+
+.expanded-value-link {
+    color: #0645ad;
+    text-decoration: none;
+}
+
+.expanded-value-link:hover {
+    text-decoration: underline;
+}
+
+.expanded-value-text {
+    color: #202122;
+}
+
+.expanded-value-text.original {
+    color: #666;
+    font-style: italic;
+}

@@ -1369,22 +1369,67 @@ export function setupDesignerStep(state) {
                 valueRow.appendChild(labelSpan);
             }
             
-            // 'example' text
-            const exampleText = createElement('span', {
-                className: 'example-text'
-            }, ' example');
-            valueRow.appendChild(exampleText);
+            // Check if this is a generic reference or has item-specific values
+            const hasItemSpecificValues = checkIfHasItemSpecificValues(mapping, fetchedData, reconciliationData);
             
-            // Value count (clickable to show modal)
-            const valueCountLink = createElement('a', {
-                href: '#',
-                className: 'value-count-link',
-                onClick: (e) => {
-                    e.preventDefault();
-                    showValuesModal(mapping, fetchedData, reconciliationData, specificItem);
-                }
-            }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
-            valueRow.appendChild(valueCountLink);
+            if (!specificItem && hasItemSpecificValues) {
+                // Create fold/unfold button for non-generic references
+                const foldButton = createElement('button', {
+                    className: 'fold-button',
+                    'data-folded': 'true',
+                    onClick: (e) => {
+                        e.preventDefault();
+                        const button = e.target;
+                        const isFolded = button.getAttribute('data-folded') === 'true';
+                        if (isFolded) {
+                            button.setAttribute('data-folded', 'false');
+                            button.textContent = '▼';
+                            // Show expanded values
+                            showExpandedValues(mapping, fetchedData, reconciliationData, propertyValueSection);
+                        } else {
+                            button.setAttribute('data-folded', 'true');
+                            button.textContent = '▶';
+                            // Hide expanded values
+                            hideExpandedValues(propertyValueSection);
+                        }
+                    }
+                }, '▶');
+                valueRow.appendChild(foldButton);
+                
+                // Use JSON key name as generic name
+                const keyNameText = createElement('span', {
+                    className: 'key-name-text'
+                }, ` ${mapping.key}`);
+                valueRow.appendChild(keyNameText);
+                
+                // Value count (clickable to show modal)
+                const valueCountLink = createElement('a', {
+                    href: '#',
+                    className: 'value-count-link',
+                    onClick: (e) => {
+                        e.preventDefault();
+                        showValuesModal(mapping, fetchedData, reconciliationData, specificItem);
+                    }
+                }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
+                valueRow.appendChild(valueCountLink);
+            } else {
+                // Original behavior for generic references or specific item view
+                const exampleText = createElement('span', {
+                    className: 'example-text'
+                }, ' example');
+                valueRow.appendChild(exampleText);
+                
+                // Value count (clickable to show modal)
+                const valueCountLink = createElement('a', {
+                    href: '#',
+                    className: 'value-count-link',
+                    onClick: (e) => {
+                        e.preventDefault();
+                        showValuesModal(mapping, fetchedData, reconciliationData, specificItem);
+                    }
+                }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
+                valueRow.appendChild(valueCountLink);
+            }
             
             statementMainValue.appendChild(valueRow);
             propertyValueSection.appendChild(statementMainValue);
@@ -3399,5 +3444,94 @@ export function setupDesignerStep(state) {
         
         // Enable button if references exist either in properties or globally
         proceedToExportBtn.disabled = !hasAnyReferences && allReferences.length === 0;
+    }
+    
+    // Check if a property has item-specific values (not all the same)
+    function checkIfHasItemSpecificValues(mapping, fetchedData, reconciliationData) {
+        const values = new Set();
+        let hasAnyValue = false;
+        
+        fetchedData.forEach((item, index) => {
+            const itemKey = `item-${index}`;
+            const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+            
+            if (reconciledData?.selectedMatch) {
+                hasAnyValue = true;
+                const match = reconciledData.selectedMatch;
+                if (match.type === 'wikidata') {
+                    values.add(match.id);
+                } else {
+                    values.add(match.value);
+                }
+            } else if (item[mapping.key] !== undefined && item[mapping.key] !== null) {
+                hasAnyValue = true;
+                values.add(item[mapping.key]);
+            }
+        });
+        
+        // Return true if there are multiple different values (item-specific)
+        return hasAnyValue && values.size > 1;
+    }
+    
+    // Show expanded values for a property
+    function showExpandedValues(mapping, fetchedData, reconciliationData, containerElement) {
+        // Remove any existing expanded values
+        hideExpandedValues(containerElement);
+        
+        // Create expanded values container
+        const expandedContainer = createElement('div', {
+            className: 'expanded-values-container'
+        });
+        
+        fetchedData.forEach((item, index) => {
+            const itemKey = `item-${index}`;
+            const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+            const hasOriginalData = item[mapping.key] !== undefined && item[mapping.key] !== null;
+            
+            if (reconciledData || hasOriginalData) {
+                const itemRow = createElement('div', {
+                    className: 'expanded-item-row'
+                });
+                
+                const itemLabel = createElement('span', {
+                    className: 'expanded-item-label'
+                }, `Item ${index + 1}: `);
+                itemRow.appendChild(itemLabel);
+                
+                if (reconciledData?.selectedMatch) {
+                    const match = reconciledData.selectedMatch;
+                    if (match.type === 'wikidata') {
+                        const valueLink = createElement('a', {
+                            href: `https://www.wikidata.org/entity/${match.id}`,
+                            target: '_blank',
+                            className: 'expanded-value-link'
+                        }, `${match.label} (${match.id})`);
+                        itemRow.appendChild(valueLink);
+                    } else {
+                        const valueText = createElement('span', {
+                            className: 'expanded-value-text'
+                        }, match.value || 'Custom value');
+                        itemRow.appendChild(valueText);
+                    }
+                } else if (hasOriginalData) {
+                    const valueText = createElement('span', {
+                        className: 'expanded-value-text original'
+                    }, `Original: ${item[mapping.key]}`);
+                    itemRow.appendChild(valueText);
+                }
+                
+                expandedContainer.appendChild(itemRow);
+            }
+        });
+        
+        containerElement.appendChild(expandedContainer);
+    }
+    
+    // Hide expanded values
+    function hideExpandedValues(containerElement) {
+        const expandedContainer = containerElement.querySelector('.expanded-values-container');
+        if (expandedContainer) {
+            expandedContainer.remove();
+        }
     }
 }
