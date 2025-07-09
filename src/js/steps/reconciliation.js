@@ -984,6 +984,16 @@ export function setupReconciliationStep(state) {
                     </button>
                 </div>
                 
+                <!-- Use as String Option -->
+                <div class="use-as-string-option" style="margin-top: 20px; text-align: center;">
+                    <button class="btn primary" onclick="useCurrentValueAsString()" style="background-color: #4CAF50; color: white;">
+                        📝 Use as String
+                    </button>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                        Use the original value as a string instead of linking to Wikidata
+                    </p>
+                </div>
+                
                 <!-- Ignore Option -->
                 <div class="ignore-option" style="margin-top: 20px; text-align: center;">
                     <button class="btn secondary" onclick="ignoreCurrentValue()" style="background-color: #f44336; color: white;">
@@ -2091,6 +2101,20 @@ export function setupReconciliationStep(state) {
         }
     };
     
+    window.useCurrentValueAsString = function() {
+        if (currentReconciliationCell) {
+            markCellAsString(currentReconciliationCell);
+            modalUI.closeModal();
+            
+            // Auto-advance if enabled
+            if (getAutoAdvanceSetting()) {
+                setTimeout(() => {
+                    reconcileNextUnprocessedCell();
+                }, 300);
+            }
+        }
+    };
+    
     window.createNewWikidataItem = function() {
         const value = currentReconciliationCell?.value;
         if (value) {
@@ -2357,6 +2381,42 @@ export function setupReconciliationStep(state) {
     }
     
     /**
+     * Mark a cell as using the original value as a string
+     */
+    function markCellAsString(cellInfo) {
+        const { itemId, property, valueIndex, value } = cellInfo;
+        
+        // Update data structure
+        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
+            const propData = reconciliationData[itemId].properties[property];
+            if (propData.reconciled[valueIndex]) {
+                propData.reconciled[valueIndex].status = 'reconciled';
+                propData.reconciled[valueIndex].selectedMatch = {
+                    type: 'string',
+                    value: value,
+                    label: value,
+                    description: 'Used as string value'
+                };
+            }
+        }
+        
+        // Update UI
+        updateCellDisplay(itemId, property, valueIndex, 'reconciled', {
+            type: 'string',
+            value: value,
+            label: value,
+            description: 'Used as string value'
+        });
+        
+        // Update progress (count as completed since it's a decision)
+        state.incrementReconciliationCompleted();
+        updateProceedButton();
+        
+        // Update state
+        state.updateState('reconciliationData', reconciliationData);
+    }
+    
+    /**
      * Update cell display based on reconciliation status
      */
     function updateCellDisplay(itemId, property, valueIndex, status, reconciliation = null) {
@@ -2378,6 +2438,9 @@ export function setupReconciliationStep(state) {
                         if (reconciliation.type === 'wikidata') {
                             const autoAcceptedText = reconciliation.qualifiers?.autoAccepted ? ' (auto)' : '';
                             statusSpan.innerHTML = `✓ <a href="https://www.wikidata.org/wiki/${reconciliation.id}" target="_blank">${reconciliation.id}</a>${autoAcceptedText}`;
+                        } else if (reconciliation.type === 'string') {
+                            statusSpan.textContent = '✓ String value';
+                            statusSpan.title = `Using original value as string: "${reconciliation.value}"`;
                         } else {
                             const autoAcceptedText = reconciliation.qualifiers?.autoAccepted ? ' (auto)' : '';
                             let customText = `✓ Custom value${autoAcceptedText}`;
