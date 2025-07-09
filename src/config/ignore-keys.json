@@ -1,0 +1,6 @@
+{
+  "ignoredKeyPatterns": [
+    "o:",
+    "thumbnail_display_urls"
+  ]
+}

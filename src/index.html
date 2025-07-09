@@ -4,54 +4,352 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omeka S to Wikidata</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1, h2 {
-            color: #333;
-        }
-        input {
-            padding: 8px;
-            width: 80%;
-            margin-right: 10px;
-        }
-        button {
-            padding: 8px 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #result {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 20px;
-            background-color: #f9f9f9;
-            white-space: pre-wrap;
-            overflow-x: auto;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
-        .loading {
-            display: none;
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h1>Omeka S to Wikidata</h1>
-    <p>In aanbouw</p>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="header-main">
+                    <h1>Omeka S to Wikidata Mapping Tool</h1>
+                    <p class="info">Make sure to regularly save your work using the Save button above. If you forget to save and refresh the page, your progress may be lost.</p>
+                </div>
+                <div class="header-toolbar">
+                    <button id="save-project" class="button button--secondary toolbar-button">
+                        <span class="button-icon">💾</span>
+                        Save Project
+                    </button>
+                    <button id="load-project" class="button button--secondary toolbar-button">
+                        <span class="button-icon">📁</span>
+                        Load Project
+                    </button>
+                </div>
+            </div>
+        </header>
 
+        <!-- Step Navigation -->
+        <nav class="steps-navigation">
+            <ul>
+                <li class="step step--active active" data-step="1">
+                    <div class="step__number step-number">1</div>
+                    <div class="step__label step-label">Input</div>
+                </li>
+                <li class="step" data-step="2">
+                    <div class="step__number step-number">2</div>
+                    <div class="step__label step-label">Mapping</div>
+                </li>
+                <li class="step" data-step="3">
+                    <div class="step__number step-number">3</div>
+                    <div class="step__label step-label">Reconciliation</div>
+                </li>
+                <li class="step" data-step="4">
+                    <div class="step__number step-number">4</div>
+                    <div class="step__label step-label">Wikidata Designer</div>
+                </li>
+                <li class="step" data-step="5">
+                    <div class="step__number step-number">5</div>
+                    <div class="step__label step-label">Export</div>
+                </li>
+            </ul>
+            <div class="progress-bar">
+                <div class="progress" style="width: 20%;"></div>
+            </div>
+        </nav>
+
+        <!-- Main Content Container -->
+        <main>
+            <!-- Step 1: Input -->
+            <section id="step1" class="step-content active">
+                <h2>Step 1: Input</h2>
+                <div class="input-container">
+                    <div class="form-group">
+                        <label for="api-url">API URL:</label>
+                        <input type="text" id="api-url" value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&per_page=2" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
+                        <button id="fetch-data" class="button button--primary primary-button">Fetch Data</button>
+                    </div>
+                    
+                    <!-- Advanced parameters removed for MVP simplicity -->
+                    
+                    <div id="loading" class="loading" style="display: none;">Loading data...</div>
+                    
+                    <div class="json-viewer json-viewer-container">
+                        <div class="json-viewer__header json-viewer-header">
+                            <h3>Data Status</h3>
+                            <button id="view-raw-json" class="button button--secondary" style="display: none;">View Raw JSON</button>
+                        </div>
+                        <div id="data-status" class="data-status">
+                            <p class="placeholder">Data status will appear here after fetching</p>
+                        </div>
+                    </div>
+                    
+                    <div class="selection-controls">
+                        <button id="proceed-to-mapping" class="button button--primary primary-button" disabled>Continue to Mapping</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Mapping -->
+            <section id="step2" class="step-content">
+                <h2>Step 2: Mapping</h2>
+                <div class="mapping-container">
+                    <div class="entity-schema-selector" style="display: none;">
+                        <label for="entity-schema">Entity Schema:</label>
+                        <input type="text" id="entity-schema" value="" placeholder="Enter Wikidata Q-identifier (e.g., Q5 for human)">
+                        <button class="button button--edit edit-button" title="Edit Entity Schema"><span class="icon">✏️</span></button>
+                    </div>
+                    
+                    <div class="key-sections">
+                        <details class="section" open>
+                            <summary>Non-linked Keys</summary>
+                            <ul id="non-linked-keys" class="key-list">
+                                <li class="placeholder">Keys will appear here after fetching data</li>
+                            </ul>
+                        </details>
+                        
+                        <details class="section">
+                            <summary>Mapped Keys</summary>
+                            <ul id="mapped-keys" class="key-list">
+                                <li class="placeholder">Mapped keys will appear here</li>
+                            </ul>
+                        </details>
+                        
+                        <details class="section">
+                            <summary>Ignored Keys</summary>
+                            <ul id="ignored-keys" class="key-list">
+                                <li class="placeholder">Ignored keys will appear here</li>
+                            </ul>
+                        </details>
+                    </div>
+                    
+                    <div class="mapping-actions">
+                        <div class="mapping-file-actions">
+                            <input type="file" id="load-mapping-file" accept=".json" style="display: none;">
+                            <button id="load-mapping" class="button button--secondary">Load Mapping</button>
+                            <button id="save-mapping" class="button button--secondary">Save Mapping</button>
+                        </div>
+                    </div>
+                    
+                    <div class="navigation-buttons">
+                        <button id="back-to-input" class="button button--secondary secondary-button">Back to Input</button>
+                        <button id="test-mapping-model" class="button button--test test-button test-mode-only">Test Modal</button>
+                        <button id="proceed-to-reconciliation" class="button button--primary primary-button" disabled>Continue to Reconciliation</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Reconciliation -->
+            <section id="step3" class="step-content">
+                <h2>Step 3: Reconciliation</h2>
+                <div class="reconciliation-container">
+                    <div class="reconciliation-table-container">
+                        <table class="reconciliation-table">
+                            <thead>
+                                <tr id="property-headers">
+                                    <th>Item</th>
+                                    <th class="placeholder">Properties will appear here</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reconciliation-rows">
+                                <tr class="placeholder">
+                                    <td>Item 1</td>
+                                    <td>Values will appear here after mapping</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="reconciliation-controls">
+                        <button id="reconcile-next" class="button button--primary primary-button">Reconcile Next Item</button>
+                    </div>
+                    
+                    <div class="navigation-buttons">
+                        <button id="back-to-mapping" class="button button--secondary secondary-button">Back to Mapping</button>
+                        <button id="test-reconciliation-model" class="button button--test test-button test-mode-only">Test Modal</button>
+                        <button id="proceed-to-designer" class="button button--primary primary-button" disabled>Continue to Wikidata Designer</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Wikidata Designer -->
+            <section id="step4" class="step-content">
+                <h2>Step 4: Wikidata Designer</h2>
+                <div class="designer-container">
+                    <!-- References Section -->
+                    <div class="references-section">
+                        <h3>References</h3>
+                        <p class="section-description">References will be added to all statements. Each reference includes the URL (P854) and retrieved date (P813).</p>
+                        
+                        <div class="references-list" id="references-list">
+                            <div class="placeholder">No references added yet. References will be auto-detected from sameAs and ARK identifiers.</div>
+                        </div>
+                        
+                        <div class="references-actions">
+                            <button id="auto-detect-references" class="button button--primary">Auto-detect References</button>
+                            <button id="search-reference" class="button button--secondary">Search in API Data</button>
+                            <button id="add-reference" class="button button--secondary">Add Manual Reference</button>
+                        </div>
+                        
+                        <div class="reference-warning" id="reference-warning" style="display: none;">
+                            <span class="warning-icon">⚠️</span>
+                            <span class="warning-text">No automatic references found. Please add a source manually.</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Item Selector -->
+                    <div class="item-selector-container">
+                        <label for="example-item-selector">View Item:</label>
+                        <select id="example-item-selector" class="item-selector">
+                            <option value="multi-item">Multi Item (All Properties)</option>
+                            <!-- Dynamically populated with actual items -->
+                        </select>
+                    </div>
+                    
+                    <!-- Item Designer Section -->
+                    <div class="item-designer-section">
+                        <h3>Item Designer</h3>
+                        
+                        <!-- Wikidata-like item header -->
+                        <div class="wikidata-item-header">
+                            <div class="labels-section">
+                                <h4>Labels</h4>
+                                <div id="labels-container" class="language-mappings-container">
+                                    <!-- Language-specific labels will be added here -->
+                                </div>
+                                <button type="button" id="add-label-language" class="button button--secondary button--small">+ Add Language for Label</button>
+                            </div>
+                            
+                            <div class="descriptions-section">
+                                <h4>Descriptions</h4>
+                                <div id="descriptions-container" class="language-mappings-container">
+                                    <!-- Language-specific descriptions will be added here -->
+                                </div>
+                                <button type="button" id="add-description-language" class="button button--secondary button--small">+ Add Language for Description</button>
+                            </div>
+                            
+                            <div class="aliases-section">
+                                <h4>Aliases</h4>
+                                <div id="aliases-container" class="language-mappings-container">
+                                    <!-- Language-specific aliases will be added here -->
+                                </div>
+                                <button type="button" id="add-alias-language" class="button button--secondary button--small">+ Add Language for Alias</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Statements section -->
+                        <div class="statements-section">
+                            <h4>Statements</h4>
+                            <div class="properties-list" id="properties-list">
+                                <div class="placeholder">Properties will appear here after reconciliation</div>
+                            </div>
+                            <div class="add-statement-container">
+                                <button id="add-new-statement" class="button button--secondary">+ New Statement</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Unavailable properties (shown when specific item selected) -->
+                        <div class="unavailable-properties" id="unavailable-properties" style="display: none;">
+                            <h4>Unavailable Properties for This Item</h4>
+                            <div class="unavailable-list" id="unavailable-list">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Unresolved Issues Section -->
+                    <div class="issues-section" style="display: none;">
+                        <h3>Unresolved Issues</h3>
+                        <div class="issues-list" id="issues-list">
+                            <div class="placeholder">No issues detected</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <div class="navigation-buttons">
+                        <button id="back-to-reconciliation" class="button button--secondary">Back to Reconciliation</button>
+                        <button id="proceed-to-export" class="button button--primary" disabled>Continue to Export</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 5: Export -->
+            <section id="step5" class="step-content">
+                <h2>Step 5: Export</h2>
+                <div class="export-container">
+                    <div class="export-info">
+                        <h3>QuickStatements Export</h3>
+                        <p>QuickStatements is a tool for batch editing Wikidata. Configure your export settings below, then copy or download the generated code.</p>
+                        <a href="https://quickstatements.toolforge.org/" target="_blank" class="info-link">Open QuickStatements Tool</a>
+                        <span class="info-separator">|</span>
+                        <a href="https://www.wikidata.org/wiki/Help:QuickStatements" target="_blank" class="info-link">Learn more about QuickStatements</a>
+                    </div>
+                    
+                    
+                    <!-- Validation Display -->
+                    <div id="validation-display" class="validation-display">
+                        <!-- Dynamically populated -->
+                    </div>
+                    
+                    <!-- QuickStatements Output -->
+                    <div class="quick-statements-output">
+                        <div class="output-header">
+                            <h4>Generated QuickStatements</h4>
+                            <div class="output-actions">
+                                <button id="copy-quick-statements" class="button button--secondary">Copy to Clipboard</button>
+                                <button id="download-quick-statements" class="button button--secondary">Download as .txt</button>
+                                <button id="open-quick-statements" class="button button--primary">Open in QuickStatements</button>
+                            </div>
+                        </div>
+                        <textarea id="quick-statements" readonly rows="12" placeholder="QuickStatements code will appear here"></textarea>
+                    </div>
+                    
+                    <!-- JSON export/import removed for MVP simplicity -->
+                    
+                    <div class="navigation-buttons">
+                        <button id="back-to-designer" class="button button--secondary secondary-button">Back to Wikidata Designer</button>
+                        <button id="start-new-project" class="button button--primary primary-button">Start New Project</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-container" id="modal-container" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="close-button" id="close-modal">×</button>
+            </div>
+            <div class="modal-content" id="modal-content">
+                <!-- Modal content will be inserted here dynamically -->
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <!-- Footer buttons will be inserted here dynamically -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Note: Modal functionality has been moved to modals.js -->
+    
+    <!-- Session Restore Modal -->
+    <div id="restore-session-modal" class="modal-overlay" style="display: none;">
+        <div class="modal restore-session-modal">
+            <div class="modal-header">
+                <h3>Previous Session Found</h3>
+            </div>
+            <div class="modal-body">
+                <p>Found a previous session from <strong id="session-date"></strong> at <strong id="session-time"></strong>.</p>
+                <p>Would you like to restore your previous work or start fresh?</p>
+                <div id="session-summary" class="session-summary"></div>
+            </div>
+            <div class="modal-actions">
+                <button id="restore-session-btn" class="button button--primary">Restore Previous Session</button>
+                <button id="start-fresh-btn" class="button button--secondary">Start Fresh</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/app.js" type="module"></script>
 </body>
 </html>
