@@ -2826,6 +2826,33 @@ main {
     gap: 1rem;
 }
 
+.reference-samples-toggle {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding: 0.5rem 0;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.reference-samples-toggle::before {
+    content: "▶";
+    display: inline-block;
+    margin-right: 0.5rem;
+    transition: transform 0.3s;
+}
+
+.reference-samples-toggle.expanded::before {
+    transform: rotate(90deg);
+}
+
+.reference-samples-toggle:hover {
+    color: var(--primary-color);
+    opacity: 0.8;
+}
+
 .reference-samples {
     display: flex;
     flex-direction: column;

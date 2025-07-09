@@ -969,9 +969,23 @@ export function setupDesignerStep(state) {
             refInfo.appendChild(refLabel);
             refInfo.appendChild(refDetails);
             
-            // Sample URLs
+            // Collapsible toggle for sample URLs
+            const samplesToggle = createElement('div', {
+                className: 'reference-samples-toggle collapsible',
+                onclick: (e) => {
+                    e.stopPropagation();
+                    const toggle = e.target;
+                    const samplesContainer = toggle.nextElementSibling;
+                    
+                    toggle.classList.toggle('expanded');
+                    samplesContainer.style.display = toggle.classList.contains('expanded') ? 'flex' : 'none';
+                }
+            }, `Show ${itemSpecificRefs.size} URL${itemSpecificRefs.size > 1 ? 's' : ''}`);
+            
+            // Sample URLs (initially hidden)
             const sampleUrls = createElement('div', {
-                className: 'reference-samples'
+                className: 'reference-samples',
+                style: 'display: none;'
             });
             
             let sampleCount = 0;
@@ -995,6 +1009,7 @@ export function setupDesignerStep(state) {
             }
             
             aggregatedRef.appendChild(refInfo);
+            aggregatedRef.appendChild(samplesToggle);
             aggregatedRef.appendChild(sampleUrls);
             
             // Status indicator
