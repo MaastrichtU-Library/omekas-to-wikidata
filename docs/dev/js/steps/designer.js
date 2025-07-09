@@ -714,9 +714,11 @@ export function setupDesignerStep(state) {
                 unavailableProperties.style.display = 'none';
             }
             displayProperties();
+            displayReferences(); // Show all references for multi-item view
         } else {
             // Show properties for specific item
             displayPropertiesForItem(selectedValue);
+            displayReferences(selectedValue); // Show references for specific item
         }
         
         // Update all language previews for the new selection
@@ -871,7 +873,7 @@ export function setupDesignerStep(state) {
     }
     
     // Display references
-    function displayReferences() {
+    function displayReferences(specificItem = null) {
         const referencesList = document.getElementById('references-list');
         if (!referencesList) {
             console.error('Designer - referencesList not found!');
@@ -885,11 +887,28 @@ export function setupDesignerStep(state) {
         
         referencesList.innerHTML = '';
         
+        // Add header indicating view mode
+        if (specificItem !== null) {
+            const filterHeader = createElement('div', {
+                className: 'reference-filter-header'
+            });
+            const filterText = createElement('span', {
+                className: 'filter-text'
+            }, `Showing references for Item ${parseInt(specificItem) + 1}`);
+            filterHeader.appendChild(filterText);
+            referencesList.appendChild(filterHeader);
+        }
+        
         // Collect item-specific references (sameAs URLs)
         const itemSpecificSameAsRefs = new Map(); // Map of URL -> Set of item indices
         let totalItemsWithSameAs = 0;
         
         fetchedData.forEach((item, index) => {
+            // If specificItem is provided, only process that item
+            if (specificItem !== null && index !== parseInt(specificItem)) {
+                return;
+            }
+            
             if (item['schema:sameAs']) {
                 const sameAsValues = Array.isArray(item['schema:sameAs']) ? 
                     item['schema:sameAs'] : [item['schema:sameAs']];
@@ -925,7 +944,7 @@ export function setupDesignerStep(state) {
         });
         
         // Collect item-specific references from search API data
-        const itemSpecificSearchRefs = extractItemSpecificReferencesFromSearchData();
+        const itemSpecificSearchRefs = extractItemSpecificReferencesFromSearchData(specificItem);
         
         // Combine both types of item-specific references
         const itemSpecificRefs = new Map();
@@ -1462,21 +1481,6 @@ export function setupDesignerStep(state) {
             statementMainValue.appendChild(valueRow);
             propertyValueSection.appendChild(statementMainValue);
             
-            // Create actions section - aligned to the right
-            const statementActions = createElement('div', {
-                className: 'statement-actions'
-            });
-            
-            const addRefBtn = createButton('+ Reference', {
-                className: 'wikidata-btn wikidata-btn--reference',
-                onClick: () => addReferenceToProperty(mapping.property.id)
-            });
-            
-            statementActions.appendChild(addRefBtn);
-            
-            // Add actions to value section
-            propertyValueSection.appendChild(statementActions);
-            
             // Display property-specific references if any
             const propertyReferences = getPropertyReferences(mapping.property.id, reconciliationData, specificItem, mapping.key);
             if (propertyReferences.length > 0) {
@@ -1526,9 +1530,24 @@ export function setupDesignerStep(state) {
                     referencesSection.appendChild(refItem);
                 });
                 
-                // Add references section to the property value section instead of property item
+                // Add references section to the property value section before actions
                 propertyValueSection.appendChild(referencesSection);
             }
+            
+            // Create actions section - aligned to the right
+            const statementActions = createElement('div', {
+                className: 'statement-actions'
+            });
+            
+            const addRefBtn = createButton('+ Reference', {
+                className: 'wikidata-btn wikidata-btn--reference',
+                onClick: () => addReferenceToProperty(mapping.property.id)
+            });
+            
+            statementActions.appendChild(addRefBtn);
+            
+            // Add actions to value section
+            propertyValueSection.appendChild(statementActions);
             
             // Assemble the complete statement
             propertyItem.appendChild(propertyLabelSection);
@@ -1709,7 +1728,7 @@ export function setupDesignerStep(state) {
     }
 
     // Helper function to extract item-specific references from search API data
-    function extractItemSpecificReferencesFromSearchData() {
+    function extractItemSpecificReferencesFromSearchData(specificItem = null) {
         const currentState = state.getState();
         const fetchedData = currentState.fetchedData || [];
         const globalReferences = currentState.globalReferences || [];
@@ -1728,6 +1747,11 @@ export function setupDesignerStep(state) {
             const refContext = ref.context;
             
             fetchedData.forEach((item, itemIndex) => {
+                // If specificItem is provided, only process that item
+                if (specificItem !== null && itemIndex !== parseInt(specificItem)) {
+                    return;
+                }
+                
                 // Check if this item contains the reference in its data
                 if (refProperty && item[refProperty]) {
                     const propertyValue = item[refProperty];
@@ -3774,7 +3798,13 @@ export function setupDesignerStep(state) {
             }
         });
         
-        containerElement.appendChild(expandedContainer);
+        // Insert expanded container after statement-references if it exists, but before statement-actions
+        const actionsSection = containerElement.querySelector('.statement-actions');
+        if (actionsSection) {
+            containerElement.insertBefore(expandedContainer, actionsSection);
+        } else {
+            containerElement.appendChild(expandedContainer);
+        }
     }
     
     // Hide expanded values
