@@ -2948,6 +2948,20 @@ export function setupDesignerStep(state) {
             scopeSelect.appendChild(option);
         });
         
+        // Set default selection based on current view context
+        const exampleItemSelector = document.getElementById('example-item-selector');
+        if (exampleItemSelector && exampleItemSelector.value !== 'multi-item') {
+            // In single-item view, default to the current item's "Only [item name]" option
+            const selectedItemIndex = exampleItemSelector.value;
+            const singleItemOption = `single-item-${selectedItemIndex}`;
+            
+            // Check if this option exists (it should since we're viewing a single item)
+            const optionExists = Array.from(scopeSelect.options).some(option => option.value === singleItemOption);
+            if (optionExists) {
+                scopeSelect.value = singleItemOption;
+            }
+        }
+        
         scopeGroup.appendChild(scopeLabel);
         scopeGroup.appendChild(scopeSelect);
         modalBody.appendChild(scopeGroup);
