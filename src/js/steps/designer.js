@@ -581,11 +581,6 @@ export function setupDesignerStep(state) {
                 onClick: () => removeLanguageMapping(type, languageCode)
             }, '×');
             
-            // Disable remove button if it's the only language
-            if (Object.keys(mappings).length === 1) {
-                removeBtn.disabled = true;
-                removeBtn.title = 'Cannot remove the only language';
-            }
             
             languageRow.appendChild(languageLabel);
             languageRow.appendChild(propertySelector);
@@ -891,7 +886,7 @@ export function setupDesignerStep(state) {
         referencesList.innerHTML = '';
         
         // Collect item-specific references (sameAs URLs)
-        const itemSpecificRefs = new Map(); // Map of URL -> Set of item indices
+        const itemSpecificSameAsRefs = new Map(); // Map of URL -> Set of item indices
         let totalItemsWithSameAs = 0;
         
         fetchedData.forEach((item, index) => {
@@ -916,10 +911,10 @@ export function setupDesignerStep(state) {
                     
                     if (url) {
                         itemHasSameAs = true;
-                        if (!itemSpecificRefs.has(url)) {
-                            itemSpecificRefs.set(url, new Set());
+                        if (!itemSpecificSameAsRefs.has(url)) {
+                            itemSpecificSameAsRefs.set(url, new Set());
                         }
-                        itemSpecificRefs.get(url).add(index);
+                        itemSpecificSameAsRefs.get(url).add(index);
                     }
                 });
                 
@@ -928,6 +923,51 @@ export function setupDesignerStep(state) {
                 }
             }
         });
+        
+        // Collect item-specific references from search API data
+        const itemSpecificSearchRefs = extractItemSpecificReferencesFromSearchData();
+        
+        // Combine both types of item-specific references
+        const itemSpecificRefs = new Map();
+        const itemSpecificRefInfo = [];
+        
+        // Add sameAs references
+        itemSpecificSameAsRefs.forEach((itemIndices, url) => {
+            itemSpecificRefs.set(url, itemIndices);
+            itemSpecificRefInfo.push({
+                url: url,
+                type: 'sameAs URL',
+                source: 'Auto-detected',
+                itemIndices: itemIndices,
+                itemCount: itemIndices.size,
+                autoDetected: true
+            });
+        });
+        
+        // Add search API references
+        itemSpecificSearchRefs.forEach((itemIndices, url) => {
+            if (!itemSpecificRefs.has(url)) {
+                itemSpecificRefs.set(url, itemIndices);
+                const globalRef = globalReferences.find(ref => ref.url === url);
+                if (globalRef) {
+                    itemSpecificRefInfo.push({
+                        url: url,
+                        type: globalRef.type,
+                        source: 'Search API',
+                        itemIndices: itemIndices,
+                        itemCount: itemIndices.size,
+                        autoDetected: false
+                    });
+                }
+            }
+        });
+        
+        // Count total items with any item-specific references
+        const totalItemsWithItemSpecificRefs = new Set();
+        itemSpecificRefs.forEach((itemIndices) => {
+            itemIndices.forEach(index => totalItemsWithItemSpecificRefs.add(index));
+        });
+        const totalItemsWithReferences = totalItemsWithItemSpecificRefs.size;
         
         // Create sections for different reference types
         const hasBothTypes = globalReferences.length > 0 && itemSpecificRefs.size > 0;
@@ -940,11 +980,24 @@ export function setupDesignerStep(state) {
             
             const sectionHeader = createElement('h4', {
                 className: 'reference-section-header'
-            }, 'Item-Specific References (Auto-detected)');
+            }, 'Item-Specific References');
+            
+            // Count references by source
+            const sameAsCount = itemSpecificRefInfo.filter(ref => ref.source === 'Auto-detected').length;
+            const searchApiCount = itemSpecificRefInfo.filter(ref => ref.source === 'Search API').length;
+            
+            let descriptionText = 'References that apply to specific items based on their data. ';
+            if (sameAsCount > 0 && searchApiCount > 0) {
+                descriptionText += `Includes ${sameAsCount} auto-detected sameAs URL${sameAsCount > 1 ? 's' : ''} and ${searchApiCount} search API reference${searchApiCount > 1 ? 's' : ''}.`;
+            } else if (sameAsCount > 0) {
+                descriptionText += `Found ${sameAsCount} auto-detected sameAs URL${sameAsCount > 1 ? 's' : ''} in ${totalItemsWithSameAs} out of ${fetchedData.length} items.`;
+            } else if (searchApiCount > 0) {
+                descriptionText += `Found ${searchApiCount} search API reference${searchApiCount > 1 ? 's' : ''} specific to individual items.`;
+            }
             
             const sectionDescription = createElement('p', {
                 className: 'reference-section-description'
-            }, `Found sameAs statements in ${totalItemsWithSameAs} out of ${fetchedData.length} items. Each item's sameAs URL is applied as a reference to that specific item's properties.`);
+            }, descriptionText);
             
             itemSpecificSection.appendChild(sectionHeader);
             itemSpecificSection.appendChild(sectionDescription);
@@ -960,11 +1013,11 @@ export function setupDesignerStep(state) {
             
             const refLabel = createElement('div', {
                 className: 'reference-label'
-            }, 'sameAs URLs (Item-specific)');
+            }, 'Item-Specific References');
             
             const refDetails = createElement('div', {
                 className: 'reference-details'
-            }, `${itemSpecificRefs.size} unique URL${itemSpecificRefs.size > 1 ? 's' : ''} across ${totalItemsWithSameAs} item${totalItemsWithSameAs > 1 ? 's' : ''}`);
+            }, `${itemSpecificRefs.size} unique URL${itemSpecificRefs.size > 1 ? 's' : ''} across ${totalItemsWithReferences} item${totalItemsWithReferences > 1 ? 's' : ''}`);
             
             refInfo.appendChild(refLabel);
             refInfo.appendChild(refDetails);
@@ -989,15 +1042,27 @@ export function setupDesignerStep(state) {
             });
             
             let sampleCount = 0;
-            for (const [url, itemIndices] of itemSpecificRefs) {
+            for (const refInfo of itemSpecificRefInfo) {
                 if (sampleCount >= 2) break;
+                
+                const sampleContainer = createElement('div', {
+                    className: 'reference-sample-container'
+                });
+                
                 const sampleUrl = createElement('a', {
                     className: 'reference-sample-url',
-                    href: url,
+                    href: refInfo.url,
                     target: '_blank',
-                    title: `Used by ${itemIndices.size} item${itemIndices.size > 1 ? 's' : ''}`
-                }, url);
-                sampleUrls.appendChild(sampleUrl);
+                    title: `Used by ${refInfo.itemCount} item${refInfo.itemCount > 1 ? 's' : ''}`
+                }, refInfo.url);
+                
+                const sampleSource = createElement('div', {
+                    className: 'reference-sample-source'
+                }, `${refInfo.source} • ${refInfo.type}`);
+                
+                sampleContainer.appendChild(sampleUrl);
+                sampleContainer.appendChild(sampleSource);
+                sampleUrls.appendChild(sampleContainer);
                 sampleCount++;
             }
             
@@ -1651,6 +1716,102 @@ export function setupDesignerStep(state) {
         modalContent.appendChild(valuesList);
         document.body.appendChild(modal);
         modal.classList.remove('hidden');
+    }
+
+    // Helper function to extract item-specific references from search API data
+    function extractItemSpecificReferencesFromSearchData() {
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const globalReferences = currentState.globalReferences || [];
+        
+        // Find global references that were added from search API data
+        const searchApiReferences = globalReferences.filter(ref => 
+            ref.source && ref.source.startsWith('Item:') && !ref.autoDetected
+        );
+        
+        const itemSpecificSearchRefs = new Map(); // URL -> Set of item indices
+        
+        // For each search API reference, find which items it actually belongs to
+        searchApiReferences.forEach(ref => {
+            const refProperty = ref.property;
+            const refUrl = ref.url;
+            const refContext = ref.context;
+            
+            fetchedData.forEach((item, itemIndex) => {
+                // Check if this item contains the reference in its data
+                if (refProperty && item[refProperty]) {
+                    const propertyValue = item[refProperty];
+                    
+                    // Check if this property contains the reference URL
+                    if (propertyContainsReference(propertyValue, refUrl, refContext)) {
+                        if (!itemSpecificSearchRefs.has(refUrl)) {
+                            itemSpecificSearchRefs.set(refUrl, new Set());
+                        }
+                        itemSpecificSearchRefs.get(refUrl).add(itemIndex);
+                    }
+                }
+            });
+        });
+        
+        return itemSpecificSearchRefs;
+    }
+    
+    // Helper function to check if a property value contains a reference
+    function propertyContainsReference(propertyValue, refUrl, refContext) {
+        const searchValues = [];
+        
+        if (Array.isArray(propertyValue)) {
+            propertyValue.forEach(v => {
+                if (typeof v === 'object' && v !== null) {
+                    if (v['@id']) searchValues.push(v['@id']);
+                    if (v['@value']) searchValues.push(v['@value']);
+                    if (v['o:label']) searchValues.push(v['o:label']);
+                } else if (typeof v === 'string') {
+                    searchValues.push(v);
+                }
+            });
+        } else if (typeof propertyValue === 'object' && propertyValue !== null) {
+            if (propertyValue['@id']) searchValues.push(propertyValue['@id']);
+            if (propertyValue['@value']) searchValues.push(propertyValue['@value']);
+            if (propertyValue['o:label']) searchValues.push(propertyValue['o:label']);
+        } else if (typeof propertyValue === 'string') {
+            searchValues.push(propertyValue);
+        }
+        
+        // Check if any value contains the reference URL or matches the context
+        return searchValues.some(value => {
+            const stringValue = value.toString();
+            return stringValue.includes(refUrl) || 
+                   (refContext && stringValue.includes(refContext)) ||
+                   stringValue === refUrl;
+        });
+    }
+    
+    // Helper function to get item-specific reference info
+    function getItemSpecificReferenceInfo(itemSpecificRefs) {
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const globalReferences = currentState.globalReferences || [];
+        
+        const referenceInfo = [];
+        
+        itemSpecificRefs.forEach((itemIndices, url) => {
+            const globalRef = globalReferences.find(ref => ref.url === url);
+            if (globalRef) {
+                referenceInfo.push({
+                    url: url,
+                    type: globalRef.type,
+                    source: 'Search API',
+                    itemIndices: itemIndices,
+                    itemCount: itemIndices.size,
+                    autoDetected: false,
+                    retrievedDate: globalRef.retrievedDate,
+                    addedAt: globalRef.addedAt
+                });
+            }
+        });
+        
+        return referenceInfo;
     }
 
     // Auto-detect references
