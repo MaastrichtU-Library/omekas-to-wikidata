@@ -10,8 +10,10 @@ export function setupDesignerStep(state) {
     const exampleItemSelector = document.getElementById('example-item-selector');
     const labelsContainer = document.getElementById('labels-container');
     const descriptionsContainer = document.getElementById('descriptions-container');
+    const aliasesContainer = document.getElementById('aliases-container');
     const addLabelLanguageBtn = document.getElementById('add-label-language');
     const addDescriptionLanguageBtn = document.getElementById('add-description-language');
+    const addAliasLanguageBtn = document.getElementById('add-alias-language');
     const referencesList = document.getElementById('references-list');
     const propertiesList = document.getElementById('properties-list');
     const unavailableProperties = document.getElementById('unavailable-properties');
@@ -23,8 +25,10 @@ export function setupDesignerStep(state) {
         exampleItemSelector: !!exampleItemSelector,
         labelsContainer: !!labelsContainer,
         descriptionsContainer: !!descriptionsContainer,
+        aliasesContainer: !!aliasesContainer,
         addLabelLanguageBtn: !!addLabelLanguageBtn,
         addDescriptionLanguageBtn: !!addDescriptionLanguageBtn,
+        addAliasLanguageBtn: !!addAliasLanguageBtn,
         referencesList: !!referencesList,
         propertiesList: !!propertiesList,
         unavailableProperties: !!unavailableProperties
@@ -76,6 +80,10 @@ export function setupDesignerStep(state) {
     
     if (addDescriptionLanguageBtn) {
         addDescriptionLanguageBtn.addEventListener('click', () => showLanguageModal('description'));
+    }
+    
+    if (addAliasLanguageBtn) {
+        addAliasLanguageBtn.addEventListener('click', () => showLanguageModal('alias'));
     }
     
     if (autoDetectReferencesBtn) {
@@ -197,19 +205,20 @@ export function setupDesignerStep(state) {
         if (!designerData.descriptionMappings) {
             designerData.descriptionMappings = {};
         }
+        if (!designerData.aliasMappings) {
+            designerData.aliasMappings = {};
+        }
         if (!designerData.supportedLanguages) {
             designerData.supportedLanguages = ['mul']; // Default to multilingual
         }
         
         state.updateState('designerData', designerData);
         
-        // If no languages configured yet, add default multilingual
+        // If no languages configured yet, add default multilingual for labels only
         if (Object.keys(designerData.labelMappings).length === 0) {
             addLanguageMapping('label', 'mul');
         }
-        if (Object.keys(designerData.descriptionMappings).length === 0) {
-            addLanguageMapping('description', 'mul');
-        }
+        // Descriptions and aliases start empty - user must add them explicitly
         
         // Render existing language mappings
         renderLanguageMappings();
@@ -253,7 +262,7 @@ export function setupDesignerStep(state) {
             className: 'modal-header'
         });
         
-        const modalTitle = createElement('h3', {}, `Add Language for ${type === 'label' ? 'Labels' : 'Descriptions'}`);
+        const modalTitle = createElement('h3', {}, `Add Language for ${type === 'label' ? 'Labels' : type === 'description' ? 'Descriptions' : 'Aliases'}`);
         modalHeader.appendChild(modalTitle);
         
         const closeBtn = createElement('button', {
@@ -335,7 +344,7 @@ export function setupDesignerStep(state) {
         // Add help text for multilingual option
         const mulHelpText = createElement('div', {
             className: 'help-text',
-            style: 'display: none; margin-top: 10px; padding: 10px; background-color: #e7f3ff; border-radius: 4px; font-size: 0.9em;'
+            style: 'display: none; margin-top: 8px; padding: 8px; background-color: #e7f3ff; border-radius: 4px; font-size: 0.85em;'
         }, 'The "mul" (multilingual) option creates a default label that applies to all languages. This is useful for proper names, technical terms, or universal concepts that don\'t need translation. Wikidata will automatically use this label when no language-specific label exists.');
         
         modalBody.appendChild(mulHelpText);
@@ -424,13 +433,16 @@ export function setupDesignerStep(state) {
         
         if (!designerData.labelMappings) designerData.labelMappings = {};
         if (!designerData.descriptionMappings) designerData.descriptionMappings = {};
+        if (!designerData.aliasMappings) designerData.aliasMappings = {};
         if (!designerData.supportedLanguages) designerData.supportedLanguages = [];
         
         // Add to the appropriate mapping
         if (type === 'label') {
             designerData.labelMappings[languageCode] = null; // Will be set when user selects property
-        } else {
+        } else if (type === 'description') {
             designerData.descriptionMappings[languageCode] = null;
+        } else if (type === 'alias') {
+            designerData.aliasMappings[languageCode] = null;
         }
         
         // Add to supported languages if not already there
@@ -453,13 +465,16 @@ export function setupDesignerStep(state) {
             delete designerData.labelMappings[languageCode];
         } else if (type === 'description' && designerData.descriptionMappings) {
             delete designerData.descriptionMappings[languageCode];
+        } else if (type === 'alias' && designerData.aliasMappings) {
+            delete designerData.aliasMappings[languageCode];
         }
         
         // Remove from supported languages if not used elsewhere
         const isUsedInLabels = designerData.labelMappings && designerData.labelMappings[languageCode];
         const isUsedInDescriptions = designerData.descriptionMappings && designerData.descriptionMappings[languageCode];
+        const isUsedInAliases = designerData.aliasMappings && designerData.aliasMappings[languageCode];
         
-        if (!isUsedInLabels && !isUsedInDescriptions && designerData.supportedLanguages) {
+        if (!isUsedInLabels && !isUsedInDescriptions && !isUsedInAliases && designerData.supportedLanguages) {
             designerData.supportedLanguages = designerData.supportedLanguages.filter(lang => lang !== languageCode);
         }
         
@@ -473,17 +488,22 @@ export function setupDesignerStep(state) {
     function renderLanguageMappings() {
         renderLanguageMappingsForType('label');
         renderLanguageMappingsForType('description');
+        renderLanguageMappingsForType('alias');
     }
     
     // Render language mappings for a specific type
     function renderLanguageMappingsForType(type) {
-        const container = type === 'label' ? labelsContainer : descriptionsContainer;
+        const container = type === 'label' ? labelsContainer : 
+                        type === 'description' ? descriptionsContainer : 
+                        aliasesContainer;
         if (!container) return;
         
         const currentState = state.getState();
         const mappings = type === 'label' ? 
             currentState.designerData?.labelMappings || {} : 
-            currentState.designerData?.descriptionMappings || {};
+            type === 'description' ? 
+            currentState.designerData?.descriptionMappings || {} :
+            currentState.designerData?.aliasMappings || {};
         
         container.innerHTML = '';
         
@@ -561,11 +581,6 @@ export function setupDesignerStep(state) {
                 onClick: () => removeLanguageMapping(type, languageCode)
             }, '×');
             
-            // Disable remove button if it's the only language
-            if (Object.keys(mappings).length === 1) {
-                removeBtn.disabled = true;
-                removeBtn.title = 'Cannot remove the only language';
-            }
             
             languageRow.appendChild(languageLabel);
             languageRow.appendChild(propertySelector);
@@ -871,7 +886,7 @@ export function setupDesignerStep(state) {
         referencesList.innerHTML = '';
         
         // Collect item-specific references (sameAs URLs)
-        const itemSpecificRefs = new Map(); // Map of URL -> Set of item indices
+        const itemSpecificSameAsRefs = new Map(); // Map of URL -> Set of item indices
         let totalItemsWithSameAs = 0;
         
         fetchedData.forEach((item, index) => {
@@ -896,10 +911,10 @@ export function setupDesignerStep(state) {
                     
                     if (url) {
                         itemHasSameAs = true;
-                        if (!itemSpecificRefs.has(url)) {
-                            itemSpecificRefs.set(url, new Set());
+                        if (!itemSpecificSameAsRefs.has(url)) {
+                            itemSpecificSameAsRefs.set(url, new Set());
                         }
-                        itemSpecificRefs.get(url).add(index);
+                        itemSpecificSameAsRefs.get(url).add(index);
                     }
                 });
                 
@@ -908,6 +923,51 @@ export function setupDesignerStep(state) {
                 }
             }
         });
+        
+        // Collect item-specific references from search API data
+        const itemSpecificSearchRefs = extractItemSpecificReferencesFromSearchData();
+        
+        // Combine both types of item-specific references
+        const itemSpecificRefs = new Map();
+        const itemSpecificRefInfo = [];
+        
+        // Add sameAs references
+        itemSpecificSameAsRefs.forEach((itemIndices, url) => {
+            itemSpecificRefs.set(url, itemIndices);
+            itemSpecificRefInfo.push({
+                url: url,
+                type: 'sameAs URL',
+                source: 'Auto-detected',
+                itemIndices: itemIndices,
+                itemCount: itemIndices.size,
+                autoDetected: true
+            });
+        });
+        
+        // Add search API references
+        itemSpecificSearchRefs.forEach((itemIndices, url) => {
+            if (!itemSpecificRefs.has(url)) {
+                itemSpecificRefs.set(url, itemIndices);
+                const globalRef = globalReferences.find(ref => ref.url === url);
+                if (globalRef) {
+                    itemSpecificRefInfo.push({
+                        url: url,
+                        type: globalRef.type,
+                        source: 'Search API',
+                        itemIndices: itemIndices,
+                        itemCount: itemIndices.size,
+                        autoDetected: false
+                    });
+                }
+            }
+        });
+        
+        // Count total items with any item-specific references
+        const totalItemsWithItemSpecificRefs = new Set();
+        itemSpecificRefs.forEach((itemIndices) => {
+            itemIndices.forEach(index => totalItemsWithItemSpecificRefs.add(index));
+        });
+        const totalItemsWithReferences = totalItemsWithItemSpecificRefs.size;
         
         // Create sections for different reference types
         const hasBothTypes = globalReferences.length > 0 && itemSpecificRefs.size > 0;
@@ -920,11 +980,24 @@ export function setupDesignerStep(state) {
             
             const sectionHeader = createElement('h4', {
                 className: 'reference-section-header'
-            }, 'Item-Specific References (Auto-detected)');
+            }, 'Item-Specific References');
+            
+            // Count references by source
+            const sameAsCount = itemSpecificRefInfo.filter(ref => ref.source === 'Auto-detected').length;
+            const searchApiCount = itemSpecificRefInfo.filter(ref => ref.source === 'Search API').length;
+            
+            let descriptionText = 'References that apply to specific items based on their data. ';
+            if (sameAsCount > 0 && searchApiCount > 0) {
+                descriptionText += `Includes ${sameAsCount} auto-detected sameAs URL${sameAsCount > 1 ? 's' : ''} and ${searchApiCount} search API reference${searchApiCount > 1 ? 's' : ''}.`;
+            } else if (sameAsCount > 0) {
+                descriptionText += `Found ${sameAsCount} auto-detected sameAs URL${sameAsCount > 1 ? 's' : ''} in ${totalItemsWithSameAs} out of ${fetchedData.length} items.`;
+            } else if (searchApiCount > 0) {
+                descriptionText += `Found ${searchApiCount} search API reference${searchApiCount > 1 ? 's' : ''} specific to individual items.`;
+            }
             
             const sectionDescription = createElement('p', {
                 className: 'reference-section-description'
-            }, `Found sameAs statements in ${totalItemsWithSameAs} out of ${fetchedData.length} items. Each item's sameAs URL is applied as a reference to that specific item's properties.`);
+            }, descriptionText);
             
             itemSpecificSection.appendChild(sectionHeader);
             itemSpecificSection.appendChild(sectionDescription);
@@ -940,30 +1013,56 @@ export function setupDesignerStep(state) {
             
             const refLabel = createElement('div', {
                 className: 'reference-label'
-            }, 'sameAs URLs (Item-specific)');
+            }, 'Item-Specific References');
             
             const refDetails = createElement('div', {
                 className: 'reference-details'
-            }, `${itemSpecificRefs.size} unique URL${itemSpecificRefs.size > 1 ? 's' : ''} across ${totalItemsWithSameAs} item${totalItemsWithSameAs > 1 ? 's' : ''}`);
+            }, `${itemSpecificRefs.size} unique URL${itemSpecificRefs.size > 1 ? 's' : ''} across ${totalItemsWithReferences} item${totalItemsWithReferences > 1 ? 's' : ''}`);
             
             refInfo.appendChild(refLabel);
             refInfo.appendChild(refDetails);
             
-            // Sample URLs
+            // Collapsible toggle for sample URLs
+            const samplesToggle = createElement('div', {
+                className: 'reference-samples-toggle collapsible',
+                onclick: (e) => {
+                    e.stopPropagation();
+                    const toggle = e.target;
+                    const samplesContainer = toggle.nextElementSibling;
+                    
+                    toggle.classList.toggle('expanded');
+                    samplesContainer.style.display = toggle.classList.contains('expanded') ? 'flex' : 'none';
+                }
+            }, `Show ${itemSpecificRefs.size} URL${itemSpecificRefs.size > 1 ? 's' : ''}`);
+            
+            // Sample URLs (initially hidden)
             const sampleUrls = createElement('div', {
-                className: 'reference-samples'
+                className: 'reference-samples',
+                style: 'display: none;'
             });
             
             let sampleCount = 0;
-            for (const [url, itemIndices] of itemSpecificRefs) {
+            for (const refInfo of itemSpecificRefInfo) {
                 if (sampleCount >= 2) break;
+                
+                const sampleContainer = createElement('div', {
+                    className: 'reference-sample-container'
+                });
+                
                 const sampleUrl = createElement('a', {
                     className: 'reference-sample-url',
-                    href: url,
+                    href: refInfo.url,
                     target: '_blank',
-                    title: `Used by ${itemIndices.size} item${itemIndices.size > 1 ? 's' : ''}`
-                }, url);
-                sampleUrls.appendChild(sampleUrl);
+                    title: `Used by ${refInfo.itemCount} item${refInfo.itemCount > 1 ? 's' : ''}`
+                }, refInfo.url);
+                
+                const sampleSource = createElement('div', {
+                    className: 'reference-sample-source'
+                }, `${refInfo.source} • ${refInfo.type}`);
+                
+                sampleContainer.appendChild(sampleUrl);
+                sampleContainer.appendChild(sampleSource);
+                sampleUrls.appendChild(sampleContainer);
                 sampleCount++;
             }
             
@@ -975,11 +1074,16 @@ export function setupDesignerStep(state) {
             }
             
             aggregatedRef.appendChild(refInfo);
+            aggregatedRef.appendChild(samplesToggle);
             aggregatedRef.appendChild(sampleUrls);
             
             // Status indicator
             const statusDiv = createElement('div', {
                 className: 'reference-status'
+            });
+            
+            const statusInfo = createElement('div', {
+                className: 'status-info'
             });
             
             const statusIcon = createElement('span', {
@@ -990,8 +1094,17 @@ export function setupDesignerStep(state) {
                 className: 'status-text'
             }, 'Applied to respective items');
             
-            statusDiv.appendChild(statusIcon);
-            statusDiv.appendChild(statusText);
+            statusInfo.appendChild(statusIcon);
+            statusInfo.appendChild(statusText);
+            statusDiv.appendChild(statusInfo);
+            
+            // Add View Details button
+            const viewDetailsBtn = createButton('View Details', {
+                className: 'btn btn-secondary btn-small',
+                onclick: () => showSameAsSummaryModal()
+            });
+            statusDiv.appendChild(viewDetailsBtn);
+            
             aggregatedRef.appendChild(statusDiv);
             
             itemSpecificSection.appendChild(aggregatedRef);
@@ -1280,33 +1393,9 @@ export function setupDesignerStep(state) {
                     displayLabel = specificItem[mapping.key];
                 }
             } else {
-                // For multi-item view, find first reconciled value
-                for (let i = 0; i < fetchedData.length; i++) {
-                    const item = fetchedData[i];
-                    const itemKey = `item-${i}`;
-                    const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
-                    
-                    if (reconciledData?.selectedMatch) {
-                        const match = reconciledData.selectedMatch;
-                        if (match.type === 'wikidata') {
-                            displayLabel = match.label;
-                            displayQID = match.id;
-                        } else {
-                            displayLabel = match.value || 'Custom value';
-                        }
-                        break;
-                    }
-                }
-                
-                // If no reconciled values found, show original
-                if (displayLabel === 'No value') {
-                    for (let item of fetchedData) {
-                        if (item[mapping.key]) {
-                            displayLabel = item[mapping.key];
-                            break;
-                        }
-                    }
-                }
+                // For multi-item view, show the mapping/key name instead of specific values
+                displayLabel = mapping.key;
+                displayQID = null;
             }
             
             // Build the compact value display: label (QID if exists) example [count]
@@ -1336,22 +1425,39 @@ export function setupDesignerStep(state) {
                 valueRow.appendChild(labelSpan);
             }
             
-            // 'example' text
-            const exampleText = createElement('span', {
-                className: 'example-text'
-            }, ' example');
-            valueRow.appendChild(exampleText);
+            // Check if this is a generic reference or has item-specific values
+            const hasItemSpecificValues = checkIfHasItemSpecificValues(mapping, fetchedData, reconciliationData);
             
-            // Value count (clickable to show modal)
-            const valueCountLink = createElement('a', {
-                href: '#',
-                className: 'value-count-link',
-                onClick: (e) => {
-                    e.preventDefault();
-                    showValuesModal(mapping, fetchedData, reconciliationData, specificItem);
+            if (!specificItem) {
+                // In multi-item view, always show fold/unfold button for items with values
+                if (itemsWithProperty > 0 && hasItemSpecificValues) {
+                    const foldButton = createElement('button', {
+                        className: 'fold-button',
+                        'data-folded': 'true',
+                        onClick: (e) => {
+                            e.preventDefault();
+                            const button = e.target;
+                            const isFolded = button.getAttribute('data-folded') === 'true';
+                            if (isFolded) {
+                                button.setAttribute('data-folded', 'false');
+                                button.textContent = '▼';
+                                // Show expanded values
+                                showExpandedValues(mapping, fetchedData, reconciliationData, propertyValueSection);
+                            } else {
+                                button.setAttribute('data-folded', 'true');
+                                button.textContent = '▶';
+                                // Hide expanded values
+                                hideExpandedValues(propertyValueSection);
+                            }
+                        }
+                    }, '▶');
+                    valueRow.appendChild(foldButton);
                 }
-            }, ` [${itemsWithProperty > 0 ? `${itemsWithProperty} value${itemsWithProperty === 1 ? '' : 's'}` : '0 values'}]`);
-            valueRow.appendChild(valueCountLink);
+                
+            } else {
+                // Specific item view: show only the specific value, no additional text or count
+                // The specific value is already displayed in the valueRow from the displayLabel/displayQID logic above
+            }
             
             statementMainValue.appendChild(valueRow);
             propertyValueSection.appendChild(statementMainValue);
@@ -1602,6 +1708,102 @@ export function setupDesignerStep(state) {
         modal.classList.remove('hidden');
     }
 
+    // Helper function to extract item-specific references from search API data
+    function extractItemSpecificReferencesFromSearchData() {
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const globalReferences = currentState.globalReferences || [];
+        
+        // Find global references that were added from search API data
+        const searchApiReferences = globalReferences.filter(ref => 
+            ref.source && ref.source.startsWith('Item:') && !ref.autoDetected
+        );
+        
+        const itemSpecificSearchRefs = new Map(); // URL -> Set of item indices
+        
+        // For each search API reference, find which items it actually belongs to
+        searchApiReferences.forEach(ref => {
+            const refProperty = ref.property;
+            const refUrl = ref.url;
+            const refContext = ref.context;
+            
+            fetchedData.forEach((item, itemIndex) => {
+                // Check if this item contains the reference in its data
+                if (refProperty && item[refProperty]) {
+                    const propertyValue = item[refProperty];
+                    
+                    // Check if this property contains the reference URL
+                    if (propertyContainsReference(propertyValue, refUrl, refContext)) {
+                        if (!itemSpecificSearchRefs.has(refUrl)) {
+                            itemSpecificSearchRefs.set(refUrl, new Set());
+                        }
+                        itemSpecificSearchRefs.get(refUrl).add(itemIndex);
+                    }
+                }
+            });
+        });
+        
+        return itemSpecificSearchRefs;
+    }
+    
+    // Helper function to check if a property value contains a reference
+    function propertyContainsReference(propertyValue, refUrl, refContext) {
+        const searchValues = [];
+        
+        if (Array.isArray(propertyValue)) {
+            propertyValue.forEach(v => {
+                if (typeof v === 'object' && v !== null) {
+                    if (v['@id']) searchValues.push(v['@id']);
+                    if (v['@value']) searchValues.push(v['@value']);
+                    if (v['o:label']) searchValues.push(v['o:label']);
+                } else if (typeof v === 'string') {
+                    searchValues.push(v);
+                }
+            });
+        } else if (typeof propertyValue === 'object' && propertyValue !== null) {
+            if (propertyValue['@id']) searchValues.push(propertyValue['@id']);
+            if (propertyValue['@value']) searchValues.push(propertyValue['@value']);
+            if (propertyValue['o:label']) searchValues.push(propertyValue['o:label']);
+        } else if (typeof propertyValue === 'string') {
+            searchValues.push(propertyValue);
+        }
+        
+        // Check if any value contains the reference URL or matches the context
+        return searchValues.some(value => {
+            const stringValue = value.toString();
+            return stringValue.includes(refUrl) || 
+                   (refContext && stringValue.includes(refContext)) ||
+                   stringValue === refUrl;
+        });
+    }
+    
+    // Helper function to get item-specific reference info
+    function getItemSpecificReferenceInfo(itemSpecificRefs) {
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const globalReferences = currentState.globalReferences || [];
+        
+        const referenceInfo = [];
+        
+        itemSpecificRefs.forEach((itemIndices, url) => {
+            const globalRef = globalReferences.find(ref => ref.url === url);
+            if (globalRef) {
+                referenceInfo.push({
+                    url: url,
+                    type: globalRef.type,
+                    source: 'Search API',
+                    itemIndices: itemIndices,
+                    itemCount: itemIndices.size,
+                    autoDetected: false,
+                    retrievedDate: globalRef.retrievedDate,
+                    addedAt: globalRef.addedAt
+                });
+            }
+        });
+        
+        return referenceInfo;
+    }
+
     // Auto-detect references
     function autoDetectReferences(showNotification = true) {
         const currentState = state.getState();
@@ -1757,7 +1959,7 @@ export function setupDesignerStep(state) {
         const referenceWarning = document.getElementById('reference-warning');
         if (referenceWarning) {
             const globalRefs = currentState.globalReferences?.length || 0;
-            const hasItemSpecificRefs = itemSpecificRefsAdded > 0 || totalItemsWithSameAs > 0;
+            const hasItemSpecificRefs = itemSpecificRefsAdded > 0 || itemsWithSameAs > 0;
             
             if (globalRefs === 0 && !hasItemSpecificRefs) {
                 referenceWarning.style.display = 'block';
@@ -1769,19 +1971,81 @@ export function setupDesignerStep(state) {
     
     // Show sameAs summary modal
     function showSameAsSummaryModal(itemsWithSameAs, totalItems, sampleUrls) {
+        // Get current item-specific reference information
+        const currentState = state.getState();
+        const fetchedData = currentState.fetchedData || [];
+        const itemSpecificSearchRefs = extractItemSpecificReferencesFromSearchData();
+        const itemSpecificRefInfo = [];
+        
+        // Collect sameAs references info
+        const sameAsRefs = new Map();
+        fetchedData.forEach((item, index) => {
+            if (item['schema:sameAs']) {
+                const sameAsValues = Array.isArray(item['schema:sameAs']) ? 
+                    item['schema:sameAs'] : [item['schema:sameAs']];
+                
+                sameAsValues.forEach(value => {
+                    let url = null;
+                    if (typeof value === 'string' && value.startsWith('http')) {
+                        url = value;
+                    } else if (typeof value === 'object' && value !== null && value['@id']) {
+                        const idValue = value['@id'];
+                        if (typeof idValue === 'string' && idValue.startsWith('http')) {
+                            url = idValue;
+                        }
+                    }
+                    
+                    if (url) {
+                        if (!sameAsRefs.has(url)) {
+                            sameAsRefs.set(url, new Set());
+                        }
+                        sameAsRefs.get(url).add(index);
+                    }
+                });
+            }
+        });
+        
+        // Add sameAs references to info array
+        sameAsRefs.forEach((itemIndices, url) => {
+            itemSpecificRefInfo.push({
+                url: url,
+                type: 'sameAs URL',
+                source: 'Auto-detected',
+                itemIndices: itemIndices,
+                itemCount: itemIndices.size,
+                autoDetected: true
+            });
+        });
+        
+        // Add search API references to info array
+        itemSpecificSearchRefs.forEach((itemIndices, url) => {
+            const globalReferences = currentState.globalReferences || [];
+            const globalRef = globalReferences.find(ref => ref.url === url);
+            if (globalRef) {
+                itemSpecificRefInfo.push({
+                    url: url,
+                    type: globalRef.type,
+                    source: 'Search API',
+                    itemIndices: itemIndices,
+                    itemCount: itemIndices.size,
+                    autoDetected: false
+                });
+            }
+        });
+        
         const modal = createElement('div', {
             className: 'modal-overlay active'
         });
         
         const modalContent = createElement('div', {
-            className: 'modal sameas-summary-modal'
+            className: 'modal item-specific-references-modal'
         });
         
         const modalHeader = createElement('div', {
             className: 'modal-header'
         });
         
-        const modalTitle = createElement('h3', {}, 'SameAs References Detected');
+        const modalTitle = createElement('h3', {}, 'Item-Specific References');
         
         const closeBtn = createButton('×', {
             className: 'modal-close',
@@ -1797,53 +2061,117 @@ export function setupDesignerStep(state) {
         
         // Summary section
         const summarySection = createElement('div', {
-            className: 'sameas-summary'
+            className: 'references-summary'
         });
         
-        const summaryTitle = createElement('h4', {}, 'Detection Results');
+        const summaryTitle = createElement('h4', {}, 'Overview');
         
-        const summaryText = createElement('p', {}, 
-            `Found sameAs statements in ${itemsWithSameAs} out of ${totalItems} items. ` +
-            `Each item's sameAs URL has been added as a reference to that specific item's properties.`
-        );
+        const sameAsCount = itemSpecificRefInfo.filter(ref => ref.source === 'Auto-detected').length;
+        const searchApiCount = itemSpecificRefInfo.filter(ref => ref.source === 'Search API').length;
+        
+        let summaryText = `Found ${itemSpecificRefInfo.length} item-specific reference${itemSpecificRefInfo.length > 1 ? 's' : ''} `;
+        if (sameAsCount > 0 && searchApiCount > 0) {
+            summaryText += `(${sameAsCount} auto-detected sameAs, ${searchApiCount} search API) `;
+        } else if (sameAsCount > 0) {
+            summaryText += `(${sameAsCount} auto-detected sameAs) `;
+        } else if (searchApiCount > 0) {
+            summaryText += `(${searchApiCount} search API) `;
+        }
+        summaryText += `across ${new Set(itemSpecificRefInfo.flatMap(ref => Array.from(ref.itemIndices))).size} items.`;
+        
+        const summaryTextEl = createElement('p', {}, summaryText);
         
         summarySection.appendChild(summaryTitle);
-        summarySection.appendChild(summaryText);
+        summarySection.appendChild(summaryTextEl);
         
-        // Sample URLs section
-        const samplesSection = createElement('div', {
-            className: 'sameas-samples'
+        // Categorized references section
+        const categorizedSection = createElement('div', {
+            className: 'categorized-references'
         });
         
-        const samplesTitle = createElement('h4', {}, 'Sample URLs Found');
+        // Filter and sort references by source
+        const autoDetectedRefs = itemSpecificRefInfo.filter(ref => ref.source === 'Auto-detected');
+        const searchApiRefs = itemSpecificRefInfo.filter(ref => ref.source === 'Search API');
         
-        const samplesList = createElement('ul', {
-            className: 'sameas-samples-list'
-        });
-        
-        // Show up to 3 sample URLs
-        Array.from(sampleUrls).slice(0, 3).forEach(url => {
-            const listItem = createElement('li', {});
-            const urlLink = createElement('a', {
-                href: url,
-                target: '_blank',
-                className: 'sameas-sample-link'
-            }, url);
-            listItem.appendChild(urlLink);
-            samplesList.appendChild(listItem);
-        });
-        
-        if (sampleUrls.size > 3) {
-            const moreItem = createElement('li', {
-                className: 'more-indicator'
-            }, `... and ${sampleUrls.size - 3} more`);
-            samplesList.appendChild(moreItem);
+        // Auto-detected sameAs references
+        if (autoDetectedRefs.length > 0) {
+            const sameAsSection = createElement('div', {
+                className: 'reference-category'
+            });
+            
+            const sameAsTitle = createElement('h4', {
+                className: 'category-title'
+            }, `Auto-detected sameAs References (${autoDetectedRefs.length})`);
+            
+            const sameAsList = createElement('div', {
+                className: 'reference-list'
+            });
+            
+            autoDetectedRefs.forEach(ref => {
+                const refItem = createElement('div', {
+                    className: 'reference-item-detail'
+                });
+                
+                const refUrl = createElement('a', {
+                    href: ref.url,
+                    target: '_blank',
+                    className: 'reference-url-link'
+                }, ref.url);
+                
+                const refMeta = createElement('div', {
+                    className: 'reference-meta'
+                }, `Used by ${ref.itemCount} item${ref.itemCount > 1 ? 's' : ''} • ${ref.type}`);
+                
+                refItem.appendChild(refUrl);
+                refItem.appendChild(refMeta);
+                sameAsList.appendChild(refItem);
+            });
+            
+            sameAsSection.appendChild(sameAsTitle);
+            sameAsSection.appendChild(sameAsList);
+            categorizedSection.appendChild(sameAsSection);
         }
         
-        samplesSection.appendChild(samplesTitle);
-        samplesSection.appendChild(samplesList);
+        // Search API references
+        if (searchApiRefs.length > 0) {
+            const searchApiSection = createElement('div', {
+                className: 'reference-category'
+            });
+            
+            const searchApiTitle = createElement('h4', {
+                className: 'category-title'
+            }, `Search API References (${searchApiRefs.length})`);
+            
+            const searchApiList = createElement('div', {
+                className: 'reference-list'
+            });
+            
+            searchApiRefs.forEach(ref => {
+                const refItem = createElement('div', {
+                    className: 'reference-item-detail'
+                });
+                
+                const refUrl = createElement('a', {
+                    href: ref.url,
+                    target: '_blank',
+                    className: 'reference-url-link'
+                }, ref.url);
+                
+                const refMeta = createElement('div', {
+                    className: 'reference-meta'
+                }, `Used by ${ref.itemCount} item${ref.itemCount > 1 ? 's' : ''} • ${ref.type}`);
+                
+                refItem.appendChild(refUrl);
+                refItem.appendChild(refMeta);
+                searchApiList.appendChild(refItem);
+            });
+            
+            searchApiSection.appendChild(searchApiTitle);
+            searchApiSection.appendChild(searchApiList);
+            categorizedSection.appendChild(searchApiSection);
+        }
         
-        // Global reference option section
+        // Global reference option section (simplified)
         const globalOptionSection = createElement('div', {
             className: 'global-option-section'
         });
@@ -1851,8 +2179,8 @@ export function setupDesignerStep(state) {
         const globalTitle = createElement('h4', {}, 'Optional: Create Global Reference');
         
         const globalDescription = createElement('p', {}, 
-            `You can optionally create a global reference that represents the sameAs pattern. ` +
-            `This will be applied to all properties of all items, in addition to the item-specific references.`
+            `You can create a global reference that applies to all properties of all items, ` +
+            `in addition to these item-specific references.`
         );
         
         const globalForm = createElement('div', {
@@ -1872,14 +2200,14 @@ export function setupDesignerStep(state) {
         const emptyOption = createElement('option', {
             value: '',
             selected: true
-        }, '-- Select a sample URL or enter custom --');
+        }, '-- Select a reference URL or enter custom --');
         urlSelect.appendChild(emptyOption);
         
-        // Add sample URLs as options
-        Array.from(sampleUrls).forEach(url => {
+        // Add all reference URLs as options
+        itemSpecificRefInfo.forEach(ref => {
             const option = createElement('option', {
-                value: url
-            }, url);
+                value: ref.url
+            }, `${ref.url} (${ref.source})`);
             urlSelect.appendChild(option);
         });
         
@@ -1902,8 +2230,8 @@ export function setupDesignerStep(state) {
         const descInput = createElement('input', {
             type: 'text',
             className: 'description-input',
-            placeholder: `e.g., "SameAs URLs (${itemsWithSameAs}/${totalItems} items have this)"`,
-            value: `SameAs URLs (${itemsWithSameAs}/${totalItems} items have this)`
+            placeholder: `e.g., "Item-specific references (${itemSpecificRefInfo.length} URLs)"`,
+            value: `Item-specific references (${itemSpecificRefInfo.length} URLs)`
         });
         
         descriptionGroup.appendChild(descLabel);
@@ -1917,7 +2245,7 @@ export function setupDesignerStep(state) {
         globalOptionSection.appendChild(globalForm);
         
         modalBody.appendChild(summarySection);
-        modalBody.appendChild(samplesSection);
+        modalBody.appendChild(categorizedSection);
         modalBody.appendChild(globalOptionSection);
         
         // Modal footer
@@ -3059,6 +3387,19 @@ export function setupDesignerStep(state) {
         showMessage(`Added "${selectedLabel}" statement to all ${fetchedData.length} items`, 'success');
     }
     
+    // Helper function to ensure all properties have initialized references arrays
+    function ensureReferencesArrays(reconciliationData) {
+        Object.values(reconciliationData).forEach(itemData => {
+            if (itemData.properties) {
+                Object.values(itemData.properties).forEach(propData => {
+                    if (!propData.references) {
+                        propData.references = [];
+                    }
+                });
+            }
+        });
+    }
+    
     // Check for issues
     function checkForIssues() {
         const issuesSection = document.querySelector('.issues-section');
@@ -3076,6 +3417,9 @@ export function setupDesignerStep(state) {
         const fetchedData = currentState.fetchedData || [];
         const reconciliationData = currentState.reconciliationData || {};
         
+        // Ensure all properties have references arrays
+        ensureReferencesArrays(reconciliationData);
+        
         // Check if any property has references
         let hasAnyReferences = false;
         for (const itemKey of Object.keys(reconciliationData)) {
@@ -3083,7 +3427,7 @@ export function setupDesignerStep(state) {
             if (itemData.properties) {
                 for (const propertyKey of Object.keys(itemData.properties)) {
                     const propData = itemData.properties[propertyKey];
-                    if (propData.references && propData.references.length > 0) {
+                    if (propData.references?.length > 0) {
                         hasAnyReferences = true;
                         break;
                     }
@@ -3287,6 +3631,9 @@ export function setupDesignerStep(state) {
         const globalReferences = currentState.globalReferences || [];
         const allReferences = [...oldReferences, ...globalReferences];
         
+        // Ensure all properties have references arrays
+        ensureReferencesArrays(reconciliationData);
+        
         // Check if any property has references
         let hasAnyReferences = false;
         for (const itemKey of Object.keys(reconciliationData)) {
@@ -3294,7 +3641,7 @@ export function setupDesignerStep(state) {
             if (itemData.properties) {
                 for (const propertyKey of Object.keys(itemData.properties)) {
                     const propData = itemData.properties[propertyKey];
-                    if (propData.references && propData.references.length > 0) {
+                    if (propData.references?.length > 0) {
                         hasAnyReferences = true;
                         break;
                     }
@@ -3326,6 +3673,9 @@ export function setupDesignerStep(state) {
         const globalReferences = currentState.globalReferences || [];
         const allReferences = [...oldReferences, ...globalReferences];
         
+        // Ensure all properties have references arrays
+        ensureReferencesArrays(reconciliationData);
+        
         // Check if any property has references
         let hasAnyReferences = false;
         for (const itemKey of Object.keys(reconciliationData)) {
@@ -3333,7 +3683,7 @@ export function setupDesignerStep(state) {
             if (itemData.properties) {
                 for (const propertyKey of Object.keys(itemData.properties)) {
                     const propData = itemData.properties[propertyKey];
-                    if (propData.references && propData.references.length > 0) {
+                    if (propData.references?.length > 0) {
                         hasAnyReferences = true;
                         break;
                     }
@@ -3344,5 +3694,94 @@ export function setupDesignerStep(state) {
         
         // Enable button if references exist either in properties or globally
         proceedToExportBtn.disabled = !hasAnyReferences && allReferences.length === 0;
+    }
+    
+    // Check if a property has item-specific values (not all the same)
+    function checkIfHasItemSpecificValues(mapping, fetchedData, reconciliationData) {
+        const values = new Set();
+        let hasAnyValue = false;
+        
+        fetchedData.forEach((item, index) => {
+            const itemKey = `item-${index}`;
+            const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+            
+            if (reconciledData?.selectedMatch) {
+                hasAnyValue = true;
+                const match = reconciledData.selectedMatch;
+                if (match.type === 'wikidata') {
+                    values.add(match.id);
+                } else {
+                    values.add(match.value);
+                }
+            } else if (item[mapping.key] !== undefined && item[mapping.key] !== null) {
+                hasAnyValue = true;
+                values.add(item[mapping.key]);
+            }
+        });
+        
+        // Return true if there are multiple different values (item-specific)
+        return hasAnyValue && values.size > 1;
+    }
+    
+    // Show expanded values for a property
+    function showExpandedValues(mapping, fetchedData, reconciliationData, containerElement) {
+        // Remove any existing expanded values
+        hideExpandedValues(containerElement);
+        
+        // Create expanded values container
+        const expandedContainer = createElement('div', {
+            className: 'expanded-values-container'
+        });
+        
+        fetchedData.forEach((item, index) => {
+            const itemKey = `item-${index}`;
+            const reconciledData = reconciliationData[itemKey]?.properties[mapping.key]?.reconciled?.[0];
+            const hasOriginalData = item[mapping.key] !== undefined && item[mapping.key] !== null;
+            
+            if (reconciledData || hasOriginalData) {
+                const itemRow = createElement('div', {
+                    className: 'expanded-item-row'
+                });
+                
+                const itemLabel = createElement('span', {
+                    className: 'expanded-item-label'
+                }, `Item ${index + 1}: `);
+                itemRow.appendChild(itemLabel);
+                
+                if (reconciledData?.selectedMatch) {
+                    const match = reconciledData.selectedMatch;
+                    if (match.type === 'wikidata') {
+                        const valueLink = createElement('a', {
+                            href: `https://www.wikidata.org/entity/${match.id}`,
+                            target: '_blank',
+                            className: 'expanded-value-link'
+                        }, `${match.label} (${match.id})`);
+                        itemRow.appendChild(valueLink);
+                    } else {
+                        const valueText = createElement('span', {
+                            className: 'expanded-value-text'
+                        }, match.value || 'Custom value');
+                        itemRow.appendChild(valueText);
+                    }
+                } else if (hasOriginalData) {
+                    const valueText = createElement('span', {
+                        className: 'expanded-value-text original'
+                    }, `Original: ${item[mapping.key]}`);
+                    itemRow.appendChild(valueText);
+                }
+                
+                expandedContainer.appendChild(itemRow);
+            }
+        });
+        
+        containerElement.appendChild(expandedContainer);
+    }
+    
+    // Hide expanded values
+    function hideExpandedValues(containerElement) {
+        const expandedContainer = containerElement.querySelector('.expanded-values-container');
+        if (expandedContainer) {
+            expandedContainer.remove();
+        }
     }
 }
