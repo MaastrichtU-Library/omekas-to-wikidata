@@ -6,6 +6,8 @@
 This is the entry point, where the tool determines whether:
 - The user starts a new project (via UI or pre-filled URL).
 - Or loads a saved project (from browser cache or imported file).
+- URL parameters can pre-configure source and skip directly to Step 1.
+- Browser cache auto-suggests reloading previous session.
 
 **Substeps (conditional UI):**
 - Confirm source URL or API endpoint.
@@ -34,44 +36,57 @@ This is the entry point, where the tool determines whether:
 - Show all linked data properties found.
 - Allow user to confirm or correct auto-mapped Wikidata properties.
 - Include pseudo-properties like label and description.
+- Mandatory mappings: 'label' pseudo-property always present.
+- Requires at least one 'instance of' or 'subclass of' fixed value.
 - Allow additions like:
   - Fixed values (e.g. "instance of museum")
   - Split mappings (map one input property to multiple Wikidata ones)
+  - One input property can map to multiple (2+) Wikidata properties
 
 ### Step 4 – Define Property Settings
 - For each mapped property:
   - Expected value type (QID, string, date…)
   - Qualifiers (e.g. language tags)
   - References required?
-- Auto-fill these from Wikidata property constraints + schema when available.
+- Auto-fill from Wikidata property constraints AND entity schemas.
+- Entity schemas can define required references.
 - Let user override or refine.
+
+### Step 4.5 – Reference Configuration
+- Define references for entire items or specific properties.
+- Track reference origins (e.g., from source URL).
+- Configure reference reuse within items.
+- Set reference values per item.
+- References unique to items but reusable across properties within same item.
 
 ---
 
 ## PHASE 3: Clean and Preprocess Values
 
 ### Step 5 – Data Cleaning & Transformation
-- Operates per property (not per record).
+- Property-centric view (all values for one property at once).
 - Features:
   - Find & replace / remove
   - RegEx tools for advanced users
-  - Highlight Wikidata regex constraints to validate values
+  - Shows Wikidata regex constraints for validation feedback
   - Preview effect on multiple records
 - Helpful for monolingual strings, URLs, bad formatting, etc.
+- Value type constraints actively guide user input.
 
 ---
 
 ## PHASE 4: Reconciliation
 
-### Step 6 – Reconcile Items (Entity-Level)
+### Step 6 – Duplicate Search / Item Reconciliation
 - Check if each record already exists in Wikidata
 - Reconciliation API helps match
 - If match found: choose action:
-  - Ignore new
-  - Add to existing
-  - Replace existing
-  - Merge and reuse references
+  - Ignore new item/value
+  - Replace existing with new
+  - Add new alongside existing
+  - Merge (reuse references only)
 - Let user define bulk default for known duplicates.
+- Apply choice as default to all existing items.
 
 ### Step 7 – Reconcile Values (Statement-Level)
 - For each property:
@@ -81,8 +96,11 @@ This is the entry point, where the tool determines whether:
     - Pick from suggestions
     - Manually set QID
     - Add monolingual language tag
+    - Direct string editing for individual values
     - Reuse references if available
-- Allow batch reconciliation for identical values across records.
+- Batch apply reconciliation to all identical values.
+- Value type constraints guide valid selections.
+- Option to add references to existing statements even if value is ignored.
 
 ---
 
