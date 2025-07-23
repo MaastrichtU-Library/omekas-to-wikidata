@@ -9,14 +9,13 @@
 - Use `git restore` (file) or `git revert` (commit) when the user says "undo"
 - When making changes make sure to keep the documentation up to date.
 - ALWAYS end by commiting the changes you have made!
-### Github Issues
-How to create edit view close open issues and update the JSON with all the issues (".issues/all_issues.json")
+### GitHub Issues Management
+The project uses an automated local synchronization system for GitHub issues with smart timestamp-based change detection.
 
-Commands:
+#### Basic GitHub Commands:
 ```bash
 # Create
 gh issue create --title "Title" --body "Body" --label "bug,documentation" --assignee "daanvr" --milestone "MVP"
-
 
 # Edit  
 gh issue edit NUMBER --title "Edited Title" --body "edited Body" --add-label "documentation" --remove-label "bug" --add-assignee "daanvr" --remove-assignee "daanvr" --milestone "MVP"
@@ -27,13 +26,32 @@ gh issue view NUMBER --json "number,title,body,state,labels,assignees,milestone,
 # Close and reopen
 gh issue close NUMBER
 gh issue reopen NUMBER
-
 ```
 
-Update the json with all the issues:
+#### Local Issue Synchronization:
 ```bash
-gh issue list --state all --json number,title,body,state,labels,createdAt,updatedAt,assignees,milestone,author,comments,closedAt,url,closed,stateReason,isPinned --limit 100 > .issues/all_issues.json
+# Full sync (initial setup or force refresh all issues)
+node .issues/sync-issues.js --full
+
+# Incremental sync (only changed issues since last sync)
+node .issues/sync-issues.js
+
+# Sync specific issue
+node .issues/sync-issues.js --issue 42
 ```
+
+#### Directory Structure:
+- `.issues/all_issues.json` - Complete GitHub issues data
+- `.issues/sync-metadata.json` - Timestamp tracking for efficient syncing
+- `.issues/issues/NUMBER.md` - Human-readable markdown files
+- `.issues/issues/NUMBER.json` - Complete issue data in JSON format
+- `.issues/README.md` - Full documentation
+
+#### Benefits:
+- **Smart Sync**: Only updates issues modified since last sync using `updatedAt` timestamps
+- **Dual Format**: Both human-readable (.md) and machine-readable (.json) files
+- **Automatic Cleanup**: Removes local files for deleted GitHub issues
+- **Offline Access**: Complete local archive of all issues
 
 
 ## Code Quality Guidelines
