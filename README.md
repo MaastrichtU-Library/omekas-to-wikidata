@@ -19,7 +19,7 @@ Developed as part of the 2025 project "Open Topstukken" ("Open Collection Highli
 
 The tool guides users through a 5-step process:
 
-1. **Input**: Configure Omeka S API endpoint and import JSON data
+1. **Input**: Configure Omeka S API endpoint and import JSON data (with automatic CORS handling)
 2. **Mapping**: Map JSON keys to Wikidata properties with load/save functionality
 3. **Reconciliation**: Match data values to existing Wikidata entities 
 4. **Designer**: Design complete Wikidata items with sources and qualifiers, supporting multilingual labels (mul)
@@ -63,6 +63,34 @@ In Step 2 (Mapping), you can save and load mapping configurations to reuse them 
   }
 }
 ```
+
+## CORS Proxy System
+
+The tool includes an automatic CORS (Cross-Origin Resource Sharing) proxy fallback system to handle Omeka S installations that don't have CORS headers configured.
+
+### How it works
+1. **Direct Access**: First attempts to fetch data directly from the Omeka S API
+2. **Proxy Fallback**: If CORS blocks the request, automatically tries proxy services in order:
+   - CORS Anywhere (Heroku-based)
+   - AllOrigins (reliable public proxy)
+   - JSONProxy (backup option)
+3. **Manual Input**: If all proxies fail, provides manual JSON input option
+4. **Administrator Guidance**: Includes copy-paste email template for requesting CORS configuration
+
+### For Omeka S Administrators
+
+To enable direct API access without proxies, add this to your `.htaccess` file:
+
+```apache
+# Enable CORS for API access
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Headers "origin, x-requested-with, content-type"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+</IfModule>
+```
+
+For production environments, replace `"*"` with specific trusted domains.
 
 # Technical information
 [Tool description](specs/Tool%20description.md)

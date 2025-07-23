@@ -94,6 +94,69 @@ button {
     cursor: pointer;
 }
 
+/* Manual JSON Input Styles */
+.input-alternatives {
+    margin-top: 10px;
+    text-align: center;
+    color: #666;
+}
+
+.alternative-text {
+    margin: 0 10px;
+    font-size: 14px;
+}
+
+.button-link {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+}
+
+.button-link:hover {
+    color: #1976d2;
+    text-decoration: none;
+}
+
+.manual-json-input {
+    background: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.manual-json-input h3 {
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.manual-json-input p {
+    margin-bottom: 15px;
+    color: #666;
+    font-size: 14px;
+}
+
+.manual-json-input textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    resize: vertical;
+}
+
+.manual-json-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
 /* Legacy class names for backward compatibility */
 .primary-button {
     background-color: var(--primary-color);

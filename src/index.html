@@ -66,11 +66,26 @@
                         <label for="api-url">API URL:</label>
                         <input type="text" id="api-url" value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&per_page=2" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
                         <button id="fetch-data" class="button button--primary primary-button">Fetch Data</button>
+                        <div class="input-alternatives">
+                            <span class="alternative-text">or</span>
+                            <button id="manual-json-button" class="button-link">📋 Enter JSON manually</button>
+                        </div>
                     </div>
                     
                     <!-- Advanced parameters removed for MVP simplicity -->
                     
                     <div id="loading" class="loading" style="display: none;">Loading data...</div>
+                    
+                    <!-- Manual JSON Input Area -->
+                    <div id="manual-json-area" class="manual-json-input" style="display: none;">
+                        <h3>Manual JSON Input</h3>
+                        <p>Copy JSON data from your Omeka S API endpoint and paste it below:</p>
+                        <textarea id="manual-json-textarea" placeholder="Paste your JSON data here..." rows="10"></textarea>
+                        <div class="manual-json-actions">
+                            <button id="process-manual-json-button" class="button button--primary">Process JSON Data</button>
+                            <button id="cancel-manual-json" class="button button--secondary">Cancel</button>
+                        </div>
+                    </div>
                     
                     <div class="json-viewer json-viewer-container">
                         <div class="json-viewer__header json-viewer-header">
