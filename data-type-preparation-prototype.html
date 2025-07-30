@@ -435,6 +435,9 @@
                                 </div>
                                 <button class="button button--secondary button--small">Add Rule</button>
                             </div>
+                            <div class="validation-info">
+                                <strong>Exact Matching:</strong> Case-sensitive, preserves all spaces and whitespace exactly as entered.
+                            </div>
                             <div id="find-replace-rules" class="find-replace-rules">
                                 <!-- Find/replace rules will appear here -->
                             </div>
@@ -1306,15 +1309,16 @@
             
             if (!findInput || !replaceInput) return;
             
-            const findText = findInput.value.trim();
+            // Get exact values - NO TRIMMING for precision
+            const findText = findInput.value;
             const replaceText = replaceInput.value;
             
-            if (!findText) {
-                alert('Please enter text to find');
+            if (findText === '') {
+                alert('Please enter text to find (empty string not allowed)');
                 return;
             }
             
-            // Add rule to state
+            // Add rule to state with exact matching
             transformationState.findReplaceRules.push({
                 find: findText,
                 replace: replaceText,
@@ -1345,7 +1349,10 @@
                 ruleDiv.style.cssText = 'background: #f8f9fa; padding: 8px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;';
                 
                 const ruleText = document.createElement('span');
-                ruleText.textContent = `"${rule.find}" → "${rule.replace}"`;
+                // Show whitespace visually for clarity
+                const findDisplay = rule.find.replace(/ /g, '·'); // Show spaces as middle dots
+                const replaceDisplay = rule.replace.replace(/ /g, '·');
+                ruleText.innerHTML = `<span title="Find: '${rule.find}'">"${findDisplay}"</span> → <span title="Replace: '${rule.replace}'">"${replaceDisplay}"</span>`;
                 ruleText.style.fontFamily = 'monospace';
                 
                 const removeBtn = document.createElement('button');
@@ -1424,10 +1431,10 @@
             return data.map(value => {
                 let transformed = value;
                 
-                // First apply find/replace rules
+                // First apply find/replace rules - EXACT MATCHING (case-sensitive, preserve all whitespace)
                 transformationState.findReplaceRules.forEach(rule => {
-                    const regex = new RegExp(rule.find, 'g');
-                    transformed = transformed.replace(regex, rule.replace);
+                    // Use split/join for exact string replacement (no regex interpretation)
+                    transformed = transformed.split(rule.find).join(rule.replace);
                 });
                 
                 // Apply template if specified and contains placeholders
