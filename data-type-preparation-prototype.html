@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Type Preparation Modal Prototype</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .description {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border-left: 4px solid #2196F3;
+        }
+
+        /* Modal styling matching existing patterns */
+        .modal-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Data type navigation */
+        .data-type-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 30px;
+            padding: 0 0 20px 0;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .data-type-tab {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .data-type-tab:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+
+        .data-type-tab.active {
+            border-color: #007bff;
+            background: #007bff;
+            color: white;
+        }
+
+        /* Data type sections */
+        .data-type-section {
+            display: none;
+        }
+
+        .data-type-section.active {
+            display: block;
+        }
+
+        .section-header {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .section-description {
+            color: #666;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+        }
+
+        /* Form sections */
+        .form-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
+
+        .form-section h4 {
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .form-section p {
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Input styling */
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .input-row .input-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        /* Button styling */
+        .button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .button--primary {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .button--secondary {
+            background: #6c757d;
+            color: white;
+            border-color: #6c757d;
+        }
+
+        .button--small {
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        .button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* Sample data display */
+        .sample-data {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .sample-data h5 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .sample-values {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .sample-value {
+            background: white;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-family: monospace;
+        }
+
+        /* Preview styling */
+        .preview-section {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .preview-section h5 {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+
+        .preview-values {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .preview-value {
+            background: white;
+            padding: 4px 8px;
+            border: 1px solid #c3e6c3;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-family: monospace;
+            color: #155724;
+        }
+
+        /* Advanced section styling */
+        .advanced-section {
+            border-top: 2px dashed #ddd;
+            margin-top: 20px;
+            padding-top: 20px;
+        }
+
+        .advanced-toggle {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: underline;
+            margin-bottom: 15px;
+        }
+
+        .advanced-content {
+            display: none;
+        }
+
+        .advanced-content.show {
+            display: block;
+        }
+
+        /* Validation styling */
+        .validation-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.85em;
+        }
+
+        .validation-success {
+            background: #d4edda;
+            border-color: #c3e6c3;
+            color: #155724;
+        }
+
+        .validation-error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        /* Collapsible sections */
+        .collapsible {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .collapsible-header {
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .collapsible-content {
+            display: none;
+            padding: 0 15px 15px 15px;
+        }
+
+        .collapsible.open .collapsible-content {
+            display: block;
+        }
+
+        .collapsible-arrow {
+            transition: transform 0.2s;
+        }
+
+        .collapsible.open .collapsible-arrow {
+            transform: rotate(90deg);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .data-type-nav {
+                flex-direction: column;
+            }
+            
+            .input-row {
+                flex-direction: column;
+            }
+            
+            .sample-values,
+            .preview-values {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Data Type Preparation Modal Prototype</h1>
+        
+        <div class="description">
+            <p><strong>Overview:</strong> This prototype demonstrates data preparation sections that would be added to the mapping modal for each Wikidata data type. These sections allow users to prepare and transform data before it goes to reconciliation, ensuring better matching and proper formatting.</p>
+            <p><strong>Usage:</strong> Click on the data type tabs below to explore the preparation options for each type. Each section shows transformation tools, validation, and preview functionality.</p>
+        </div>
+
+        <div class="modal-content">
+            <!-- Data Type Navigation -->
+            <div class="data-type-nav">
+                <div class="data-type-tab active" data-type="string">String</div>
+                <div class="data-type-tab" data-type="external-id">External Identifier</div>
+                <div class="data-type-tab" data-type="item">Item</div>
+                <div class="data-type-tab" data-type="quantity">Quantity</div>
+                <div class="data-type-tab" data-type="url">URL</div>
+                <div class="data-type-tab" data-type="commons-media">Commons Media</div>
+                <div class="data-type-tab" data-type="time">Point in Time</div>
+                <div class="data-type-tab" data-type="monolingualtext">Monolingual Text</div>
+                <div class="data-type-tab" data-type="metadata">Metadata</div>
+            </div>
+
+            <!-- String Data Type Section -->
+            <div class="data-type-section active" id="string-section">
+                <div class="section-header">
+                    <h3 class="section-title">String Data Type Preparation</h3>
+                    <p class="section-description">Configure text manipulation and composition for string properties. Use find/replace operations, add prefixes/suffixes, and compose strings using variables from your input data.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"The Mona Lisa"</span>
+                        <span class="sample-value">"Starry Night"</span>
+                        <span class="sample-value">"The Scream"</span>
+                        <span class="sample-value">"Girl with a Pearl Earring"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Basic Text Manipulation</h4>
+                    <p>Apply basic transformations to clean and format your text values.</p>
+                    
+                    <div class="input-group">
+                        <label for="string-prefix">Add Prefix:</label>
+                        <input type="text" id="string-prefix" placeholder="e.g., 'Title: '">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="string-suffix">Add Suffix:</label>
+                        <input type="text" id="string-suffix" placeholder="e.g., ' (artwork)'">
+                    </div>
+                    
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <span>Find & Replace Operations</span>
+                            <span class="collapsible-arrow">▶</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="find-text">Find:</label>
+                                    <input type="text" id="find-text" placeholder="Text to find">
+                                </div>
+                                <div class="input-group">
+                                    <label for="replace-text">Replace with:</label>
+                                    <input type="text" id="replace-text" placeholder="Replacement text">
+                                </div>
+                                <button class="button button--secondary button--small">Add Rule</button>
+                            </div>
+                            <div id="find-replace-rules" class="find-replace-rules">
+                                <!-- Find/replace rules will appear here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>String Composition</h4>
+                    <p>Compose strings using variables from your input data. Use {field_name} syntax to reference other fields.</p>
+                    
+                    <div class="input-group">
+                        <label for="string-template">Template:</label>
+                        <textarea id="string-template" placeholder="e.g., '{title} by {creator} ({date})'">{{title}}</textarea>
+                    </div>
+                    
+                    <div class="validation-info">
+                        <strong>Available Variables:</strong> {title}, {creator}, {date}, {publisher}, {description}
+                    </div>
+                </div>
+
+                <div class="advanced-section">
+                    <button class="advanced-toggle" onclick="toggleAdvanced('string')">▼ Advanced String Operations</button>
+                    <div class="advanced-content" id="string-advanced">
+                        <div class="form-section">
+                            <h4>Regular Expression Find & Replace</h4>
+                            <p>Use regex patterns for complex text transformations. <strong>Expert level tool.</strong></p>
+                            
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="regex-pattern">Regex Pattern:</label>
+                                    <input type="text" id="regex-pattern" placeholder="e.g., /^(.+),\s*(.+)$/">
+                                </div>
+                                <div class="input-group">
+                                    <label for="regex-replacement">Replacement:</label>
+                                    <input type="text" id="regex-replacement" placeholder="e.g., '$2 $1'">
+                                </div>
+                            </div>
+                            
+                            <div class="validation-info">
+                                <strong>Example:</strong> Pattern <code>/^(.+),\s*(.+)$/</code> with replacement <code>$2 $1</code> converts "Last, First" to "First Last"
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Transformed Values:</h5>
+                    <div class="preview-values" id="string-preview">
+                        <span class="preview-value">"The Mona Lisa"</span>
+                        <span class="preview-value">"Starry Night"</span>
+                        <span class="preview-value">"The Scream"</span>
+                        <span class="preview-value">"Girl with a Pearl Earring"</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- External Identifier Section -->
+            <div class="data-type-section" id="external-id-section">
+                <div class="section-header">
+                    <h3 class="section-title">External Identifier Data Type Preparation</h3>
+                    <p class="section-description">Clean and extract external identifiers from URLs or other formats. Remove unwanted prefixes, validate formats, and ensure compatibility with Wikidata constraints.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"https://viaf.org/viaf/24604287"</span>
+                        <span class="sample-value">"http://id.loc.gov/authorities/names/n79021164"</span>
+                        <span class="sample-value">"VIAF:24604287"</span>
+                        <span class="sample-value">"isbn:9780123456789"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Identifier Extraction</h4>
+                    <p>Extract clean identifiers from URLs or formatted strings.</p>
+                    
+                    <div class="input-group">
+                        <label for="extract-pattern">Extraction Pattern:</label>
+                        <select id="extract-pattern">
+                            <option value="">Select a pattern...</option>
+                            <option value="url-path">Extract from URL path (last segment)</option>
+                            <option value="after-colon">Extract after colon (:)</option>
+                            <option value="after-slash">Extract after last slash (/)</option>
+                            <option value="between">Extract between specific characters</option>
+                            <option value="regex">Custom regex pattern</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group" id="custom-extraction" style="display: none;">
+                        <label for="custom-pattern">Custom Pattern:</label>
+                        <input type="text" id="custom-pattern" placeholder="e.g., /viaf/(\d+)">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Format Validation</h4>
+                    <p>Validate identifier format against Wikidata property constraints.</p>
+                    
+                    <div class="input-group">
+                        <label for="format-regex">Expected Format (Regex):</label>
+                        <input type="text" id="format-regex" placeholder="e.g., ^\d+$ for numeric IDs" value="^\d+$">
+                    </div>
+                    
+                    <div class="validation-info" id="format-validation">
+                        <strong>Format Check:</strong> All values will be validated against this pattern before reconciliation.
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Extracted Identifiers:</h5>
+                    <div class="preview-values" id="external-id-preview">
+                        <span class="preview-value">24604287</span>
+                        <span class="preview-value">n79021164</span>
+                        <span class="preview-value">24604287</span>
+                        <span class="preview-value">9780123456789</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item (QID) Section -->
+            <div class="data-type-section" id="item-section">
+                <div class="section-header">
+                    <h3 class="section-title">Item Data Type Preparation</h3>
+                    <p class="section-description">Items are references to Wikidata entities (Q-IDs). Since items must be valid Wikidata entities, minimal preparation is needed. This section helps validate and clean Q-ID references.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"Q762"</span>
+                        <span class="sample-value">"Leonardo da Vinci"</span>
+                        <span class="sample-value">"Italian Renaissance polymath"</span>
+                        <span class="sample-value">"https://www.wikidata.org/wiki/Q762"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Q-ID Validation</h4>
+                    <p>Validate and extract Q-IDs from various formats. Items that aren't already Q-IDs will need reconciliation.</p>
+                    
+                    <div class="input-group">
+                        <label for="qid-extraction">Q-ID Extraction:</label>
+                        <select id="qid-extraction">
+                            <option value="auto">Auto-detect Q-IDs</option>
+                            <option value="url">Extract from Wikidata URLs</option>
+                            <option value="none">No extraction (use as-is)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="validation-info validation-success">
+                        <strong>Validation:</strong> 1 valid Q-ID found, 3 values will need reconciliation during the next step.
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Values:</h5>
+                    <div class="preview-values" id="item-preview">
+                        <span class="preview-value">Q762 ✓</span>
+                        <span class="preview-value">Leonardo da Vinci (needs reconciliation)</span>
+                        <span class="preview-value">Italian Renaissance polymath (needs reconciliation)</span>
+                        <span class="preview-value">Q762 ✓</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quantity Section -->
+            <div class="data-type-section" id="quantity-section">
+                <div class="section-header">
+                    <h3 class="section-title">Quantity Data Type Preparation</h3>
+                    <p class="section-description">Configure numeric values with units, precision, and bounds. Extract numbers from text and handle different unit formats for consistent Wikidata quantities.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"1503"</span>
+                        <span class="sample-value">"100 cm"</span>
+                        <span class="sample-value">"77.5"</span>
+                        <span class="sample-value">"500 million dollars"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Number Extraction</h4>
+                    <p>Extract numeric values from text and handle different formats.</p>
+                    
+                    <div class="input-group">
+                        <label for="number-extraction">Extraction Method:</label>
+                        <select id="number-extraction">
+                            <option value="auto">Auto-detect numbers</option>
+                            <option value="first">First number found</option>
+                            <option value="last">Last number found</option>
+                            <option value="custom">Custom regex pattern</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="decimal-places">Decimal Places:</label>
+                        <input type="number" id="decimal-places" min="0" max="10" value="2">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Unit Configuration</h4>
+                    <p>Specify the unit for these quantities. Units should be Wikidata item Q-IDs.</p>
+                    
+                    <div class="input-group">
+                        <label for="default-unit">Default Unit (Q-ID):</label>
+                        <input type="text" id="default-unit" placeholder="e.g., Q11573 for metre">
+                    </div>
+                    
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <span>Unit Detection Rules</span>
+                            <span class="collapsible-arrow">▶</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="unit-pattern">If text contains:</label>
+                                    <input type="text" id="unit-pattern" placeholder="e.g., 'cm', 'meter'">
+                                </div>
+                                <div class="input-group">
+                                    <label for="unit-qid">Use unit (Q-ID):</label>
+                                    <input type="text" id="unit-qid" placeholder="e.g., Q174728">
+                                </div>
+                                <button class="button button--secondary button--small">Add Rule</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Precision & Bounds</h4>
+                    <p>Set precision and upper/lower bounds for the quantities.</p>
+                    
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="precision">Precision:</label>
+                            <input type="number" id="precision" step="0.1" placeholder="e.g., 1">
+                        </div>
+                        <div class="input-group">
+                            <label for="upper-bound">Upper Bound:</label>
+                            <input type="number" id="upper-bound" step="any" placeholder="optional">
+                        </div>
+                        <div class="input-group">
+                            <label for="lower-bound">Lower Bound:</label>
+                            <input type="number" id="lower-bound" step="any" placeholder="optional">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Quantities:</h5>
+                    <div class="preview-values" id="quantity-preview">
+                        <span class="preview-value">1503</span>
+                        <span class="preview-value">100 (Q174728)</span>
+                        <span class="preview-value">77.50</span>
+                        <span class="preview-value">500000000</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL Section -->
+            <div class="data-type-section" id="url-section">
+                <div class="section-header">
+                    <h3 class="section-title">URL Data Type Preparation</h3>
+                    <p class="section-description">Validate and clean URL values. Add missing protocols, normalize formats, and ensure URLs meet Wikidata requirements.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"http://example.com"</span>
+                        <span class="sample-value">"https://museum.org/artwork/123"</span>
+                        <span class="sample-value">"example.org/page"</span>
+                        <span class="sample-value">"www.gallery.com/item"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>URL Normalization</h4>
+                    <p>Ensure all URLs have proper format and protocols.</p>
+                    
+                    <div class="input-group">
+                        <label for="default-protocol">Default Protocol:</label>
+                        <select id="default-protocol">
+                            <option value="https">https://</option>
+                            <option value="http">http://</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="add-www" checked>
+                            Add 'www.' if missing
+                        </label>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="remove-trailing-slash">
+                            Remove trailing slash
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>URL Validation</h4>
+                    <p>Validate URLs against format requirements and property constraints.</p>
+                    
+                    <div class="input-group">
+                        <label for="url-pattern">URL Pattern (Regex):</label>
+                        <input type="text" id="url-pattern" value="^https?://.+" placeholder="Validation pattern">
+                    </div>
+                    
+                    <div class="validation-info validation-success" id="url-validation">
+                        <strong>Validation:</strong> All URLs will be checked against the pattern before reconciliation.
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Normalized URLs:</h5>
+                    <div class="preview-values" id="url-preview">
+                        <span class="preview-value">http://example.com</span>
+                        <span class="preview-value">https://museum.org/artwork/123</span>
+                        <span class="preview-value">https://www.example.org/page</span>
+                        <span class="preview-value">https://www.gallery.com/item</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Commons Media Section -->
+            <div class="data-type-section" id="commons-media-section">
+                <div class="section-header">
+                    <h3 class="section-title">Commons Media File Data Type Preparation</h3>
+                    <p class="section-description">Prepare filenames for Wikimedia Commons media files. Extract filenames from URLs, validate extensions, and ensure proper formatting.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"Mona_Lisa.jpg"</span>
+                        <span class="sample-value">"Starry Night.png"</span>
+                        <span class="sample-value">"The_Scream_1893.jpg"</span>
+                        <span class="sample-value">"invalid-file"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Filename Processing</h4>
+                    <p>Extract and clean filenames for Commons media files.</p>
+                    
+                    <div class="input-group">
+                        <label for="filename-extraction">Filename Extraction:</label>
+                        <select id="filename-extraction">
+                            <option value="auto">Auto-detect filenames</option>
+                            <option value="url">Extract from URLs</option>
+                            <option value="none">Use as-is</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="replace-spaces" checked>
+                            Replace spaces with underscores
+                        </label>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="default-extension">Default Extension:</label>
+                        <select id="default-extension">
+                            <option value="">Don't add extension</option>
+                            <option value=".jpg">.jpg</option>
+                            <option value=".png">.png</option>
+                            <option value=".svg">.svg</option>
+                            <option value=".pdf">.pdf</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>File Validation</h4>
+                    <p>Validate file extensions against allowed Commons media types.</p>
+                    
+                    <div class="validation-info">
+                        <strong>Allowed Extensions:</strong> .jpg, .jpeg, .png, .gif, .svg, .pdf, .ogg, .mp3, .mp4, .webm
+                    </div>
+                    
+                    <div class="validation-info validation-error">
+                        <strong>Validation Issues:</strong> 1 file has no valid extension and may need manual correction.
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Filenames:</h5>
+                    <div class="preview-values" id="commons-media-preview">
+                        <span class="preview-value">Mona_Lisa.jpg ✓</span>
+                        <span class="preview-value">Starry_Night.png ✓</span>
+                        <span class="preview-value">The_Scream_1893.jpg ✓</span>
+                        <span class="preview-value">invalid-file ⚠️</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Point in Time Section -->
+            <div class="data-type-section" id="time-section">
+                <div class="section-header">
+                    <h3 class="section-title">Point in Time Data Type Preparation</h3>
+                    <p class="section-description">Analyze temporal data to determine precision and calendar system. Extract dates from various formats and set appropriate precision levels for Wikidata time values.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"1503"</span>
+                        <span class="sample-value">"1503-05"</span>
+                        <span class="sample-value">"1503-05-15"</span>
+                        <span class="sample-value">"1890s"</span>
+                        <span class="sample-value">"early 16th century"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Precision Detection</h4>
+                    <p>Automatically detect temporal precision from date formats.</p>
+                    
+                    <div class="validation-info">
+                        <strong>Auto-detected Precisions:</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>"1503" → Year precision</li>
+                            <li>"1503-05" → Month precision</li>
+                            <li>"1503-05-15" → Day precision</li>
+                            <li>"1890s" → Decade precision</li>
+                            <li>"early 16th century" → Year precision (estimated)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="default-precision">Override Precision:</label>
+                        <select id="default-precision">
+                            <option value="auto">Auto-detect</option>
+                            <option value="day">Day</option>
+                            <option value="month">Month</option>
+                            <option value="year">Year</option>
+                            <option value="decade">Decade</option>
+                            <option value="century">Century</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Calendar System</h4>
+                    <p>Specify the calendar system for these dates.</p>
+                    
+                    <div class="input-group">
+                        <label for="calendar-system">Calendar:</label>
+                        <select id="calendar-system">
+                            <option value="Q1985727">Proleptic Gregorian calendar (default)</option>
+                            <option value="Q1985786">Julian calendar</option>
+                            <option value="Q11184">Gregorian calendar</option>
+                        </select>
+                    </div>
+                    
+                    <div class="validation-info">
+                        <strong>Recommendation:</strong> Use Proleptic Gregorian calendar for most historical dates. Switch to Julian calendar only for dates before 1582 where historical accuracy requires it.
+                    </div>
+                </div>
+
+                <div class="advanced-section">
+                    <button class="advanced-toggle" onclick="toggleAdvanced('time')">▼ Advanced Date Processing</button>
+                    <div class="advanced-content" id="time-advanced">
+                        <div class="form-section">
+                            <h4>Custom Date Patterns</h4>
+                            <p>Define custom patterns for complex date formats.</p>
+                            
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="date-pattern">Date Pattern (Regex):</label>
+                                    <input type="text" id="date-pattern" placeholder="e.g., /(\d{4})s/">
+                                </div>
+                                <div class="input-group">
+                                    <label for="date-precision-custom">Precision:</label>
+                                    <select id="date-precision-custom">
+                                        <option value="decade">Decade</option>
+                                        <option value="year">Year</option>
+                                        <option value="century">Century</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Dates:</h5>
+                    <div class="preview-values" id="time-preview">
+                        <span class="preview-value">1503-01-01 (year precision)</span>
+                        <span class="preview-value">1503-05-01 (month precision)</span>
+                        <span class="preview-value">1503-05-15 (day precision)</span>
+                        <span class="preview-value">1890-01-01 (decade precision)</span>
+                        <span class="preview-value">1500-01-01 (year precision)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monolingual Text Section -->
+            <div class="data-type-section" id="monolingualtext-section">
+                <div class="section-header">
+                    <h3 class="section-title">Monolingual Text Data Type Preparation</h3>
+                    <p class="section-description">Configure text values with language specifications. Set default languages and apply text transformations while preserving language context.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"The Mona Lisa"</span>
+                        <span class="sample-value">"La Joconde"</span>
+                        <span class="sample-value">"La Gioconda"</span>
+                        <span class="sample-value">"Das Lächeln der Mona Lisa"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Language Configuration</h4>
+                    <p>Set the default language for these text values.</p>
+                    
+                    <div class="input-group">
+                        <label for="default-language">Default Language:</label>
+                        <select id="default-language">
+                            <option value="en">English (en)</option>
+                            <option value="fr">French (fr)</option>
+                            <option value="de">German (de)</option>
+                            <option value="it">Italian (it)</option>
+                            <option value="es">Spanish (es)</option>
+                            <option value="nl">Dutch (nl)</option>
+                            <option value="pt">Portuguese (pt)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <span>Language Detection Rules</span>
+                            <span class="collapsible-arrow">▶</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="text-contains">If text contains:</label>
+                                    <input type="text" id="text-contains" placeholder="e.g., 'La', 'Das'">
+                                </div>
+                                <div class="input-group">
+                                    <label for="use-language">Use language:</label>
+                                    <select id="use-language">
+                                        <option value="fr">French (fr)</option>
+                                        <option value="de">German (de)</option>
+                                        <option value="it">Italian (it)</option>
+                                        <option value="es">Spanish (es)</option>
+                                    </select>
+                                </div>
+                                <button class="button button--secondary button--small">Add Rule</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Text Processing</h4>
+                    <p>Apply text transformations while preserving language context.</p>
+                    
+                    <div class="input-group">
+                        <label for="mono-prefix">Add Prefix:</label>
+                        <input type="text" id="mono-prefix" placeholder="e.g., 'Title: '">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="mono-suffix">Add Suffix:</label>
+                        <input type="text" id="mono-suffix" placeholder="e.g., ' (artwork)'">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="title-case">
+                            Convert to Title Case
+                        </label>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Monolingual Text:</h5>
+                    <div class="preview-values" id="monolingualtext-preview">
+                        <span class="preview-value">"The Mona Lisa" @en</span>
+                        <span class="preview-value">"La Joconde" @fr</span>
+                        <span class="preview-value">"La Gioconda" @it</span>
+                        <span class="preview-value">"Das Lächeln der Mona Lisa" @de</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metadata Section -->
+            <div class="data-type-section" id="metadata-section">
+                <div class="section-header">
+                    <h3 class="section-title">Metadata Data Type Preparation</h3>
+                    <p class="section-description">Configure metadata fields (labels, descriptions, aliases) with multi-language support and dynamic composition. This custom data type helps prepare essential Wikidata metadata.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"Leonardo da Vinci painting"</span>
+                        <span class="sample-value">"Famous Renaissance artwork"</span>
+                        <span class="sample-value">"Mona Lisa, La Gioconda"</span>
+                        <span class="sample-value">"Portrait painting"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Metadata Type</h4>
+                    <p>Specify what type of metadata this represents.</p>
+                    
+                    <div class="input-group">
+                        <label for="metadata-type">Metadata Type:</label>
+                        <select id="metadata-type">
+                            <option value="label">Labels</option>
+                            <option value="description">Descriptions</option>
+                            <option value="alias">Aliases</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Template Composition</h4>
+                    <p>Create dynamic metadata using variables from your input data.</p>
+                    
+                    <div class="input-group">
+                        <label for="metadata-template">Metadata Template:</label>
+                        <textarea id="metadata-template" placeholder="e.g., '{title} by {creator}' or '{type} created in {date}'" rows="3">{{title}} by {{creator}}</textarea>
+                    </div>
+                    
+                    <div class="validation-info">
+                        <strong>Available Variables:</strong> {title}, {creator}, {date}, {type}, {publisher}, {location}, {material}
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Language Settings</h4>
+                    <p>Configure language-specific metadata generation.</p>
+                    
+                    <div class="input-group">
+                        <label for="metadata-language">Primary Language:</label>
+                        <select id="metadata-language">
+                            <option value="en">English (en)</option>
+                            <option value="fr">French (fr)</option>
+                            <option value="de">German (de)</option>
+                            <option value="it">Italian (it)</option>
+                            <option value="es">Spanish (es)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <span>Multi-language Templates</span>
+                            <span class="collapsible-arrow">▶</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="alt-language">Language:</label>
+                                    <select id="alt-language">
+                                        <option value="fr">French</option>
+                                        <option value="de">German</option>
+                                        <option value="it">Italian</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="alt-template">Template:</label>
+                                    <input type="text" id="alt-template" placeholder="e.g., '{title} par {creator}'">
+                                </div>
+                                <button class="button button--secondary button--small">Add Language</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Alias Processing</h4>
+                    <p>Configure how aliases are split and processed (only for alias metadata type).</p>
+                    
+                    <div class="input-group">
+                        <label for="alias-separator">Alias Separator:</label>
+                        <input type="text" id="alias-separator" value="," placeholder="e.g., ',' or ';'">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="trim-aliases" checked>
+                            Trim whitespace from aliases
+                        </label>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Generated Metadata:</h5>
+                    <div class="preview-values" id="metadata-preview">
+                        <span class="preview-value">"Mona Lisa by Leonardo da Vinci" @en</span>
+                        <span class="preview-value">"Starry Night by Vincent van Gogh" @en</span>
+                        <span class="preview-value">"The Scream by Edvard Munch" @en</span>
+                        <span class="preview-value">"Girl with a Pearl Earring by Johannes Vermeer" @en</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state for managing transformations
+        const transformationState = {
+            currentType: 'string',
+            transforms: {},
+            sampleData: {
+                'string': ['The Mona Lisa', 'Starry Night', 'The Scream', 'Girl with a Pearl Earring'],
+                'external-id': ['https://viaf.org/viaf/24604287', 'http://id.loc.gov/authorities/names/n79021164', 'VIAF:24604287', 'isbn:9780123456789'],
+                'item': ['Q762', 'Leonardo da Vinci', 'Italian Renaissance polymath', 'https://www.wikidata.org/wiki/Q762'],
+                'quantity': ['1503', '100 cm', '77.5', '500 million dollars'],
+                'url': ['http://example.com', 'https://museum.org/artwork/123', 'example.org/page', 'www.gallery.com/item'],
+                'commons-media': ['Mona_Lisa.jpg', 'Starry Night.png', 'The_Scream_1893.jpg', 'invalid-file'],
+                'time': ['1503', '1503-05', '1503-05-15', '1890s', 'early 16th century'],
+                'monolingualtext': ['The Mona Lisa', 'La Joconde', 'La Gioconda', 'Das Lächeln der Mona Lisa'],
+                'metadata': ['Leonardo da Vinci painting', 'Famous Renaissance artwork', 'Mona Lisa, La Gioconda', 'Portrait painting']
+            }
+        };
+
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            setupDataTypeNavigation();
+            setupCollapsibleSections();
+            initializeInputHandlers();
+            updatePreviews();
+        });
+
+        // Setup navigation between data types
+        function setupDataTypeNavigation() {
+            const tabs = document.querySelectorAll('.data-type-tab');
+            const sections = document.querySelectorAll('.data-type-section');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const dataType = tab.getAttribute('data-type');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update active section
+                    sections.forEach(s => s.classList.remove('active'));
+                    const targetSection = document.getElementById(`${dataType}-section`);
+                    if (targetSection) {
+                        targetSection.classList.add('active');
+                    }
+                    
+                    transformationState.currentType = dataType;
+                    updatePreviews();
+                });
+            });
+        }
+
+        // Setup collapsible sections
+        function setupCollapsibleSections() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+            
+            collapsibles.forEach(collapsible => {
+                const header = collapsible.querySelector('.collapsible-header');
+                header.addEventListener('click', () => {
+                    collapsible.classList.toggle('open');
+                });
+            });
+        }
+
+        // Initialize input handlers for real-time preview
+        function initializeInputHandlers() {
+            // String manipulation handlers
+            const stringPrefix = document.getElementById('string-prefix');
+            const stringSuffix = document.getElementById('string-suffix');
+            const stringTemplate = document.getElementById('string-template');
+            
+            if (stringPrefix) stringPrefix.addEventListener('input', updatePreviews);
+            if (stringSuffix) stringSuffix.addEventListener('input', updatePreviews);
+            if (stringTemplate) stringTemplate.addEventListener('input', updatePreviews);
+
+            // External ID handlers
+            const extractPattern = document.getElementById('extract-pattern');
+            if (extractPattern) {
+                extractPattern.addEventListener('change', function() {
+                    const customExtraction = document.getElementById('custom-extraction');
+                    if (this.value === 'regex' || this.value === 'between') {
+                        customExtraction.style.display = 'block';
+                    } else {
+                        customExtraction.style.display = 'none';
+                    }
+                    updatePreviews();
+                });
+            }
+
+            // URL handlers
+            const defaultProtocol = document.getElementById('default-protocol');
+            const addWww = document.getElementById('add-www');
+            const removeTrailingSlash = document.getElementById('remove-trailing-slash');
+            
+            if (defaultProtocol) defaultProtocol.addEventListener('change', updatePreviews);
+            if (addWww) addWww.addEventListener('change', updatePreviews);
+            if (removeTrailingSlash) removeTrailingSlash.addEventListener('change', updatePreviews);
+
+            // Commons media handlers
+            const filenameExtraction = document.getElementById('filename-extraction');
+            const replaceSpaces = document.getElementById('replace-spaces');
+            const defaultExtension = document.getElementById('default-extension');
+            
+            if (filenameExtraction) filenameExtraction.addEventListener('change', updatePreviews);
+            if (replaceSpaces) replaceSpaces.addEventListener('change', updatePreviews);
+            if (defaultExtension) defaultExtension.addEventListener('change', updatePreviews);
+
+            // Monolingual text handlers
+            const defaultLanguage = document.getElementById('default-language');
+            const monoPrefix = document.getElementById('mono-prefix');
+            const monoSuffix = document.getElementById('mono-suffix');
+            const titleCase = document.getElementById('title-case');
+            
+            if (defaultLanguage) defaultLanguage.addEventListener('change', updatePreviews);
+            if (monoPrefix) monoPrefix.addEventListener('input', updatePreviews);
+            if (monoSuffix) monoSuffix.addEventListener('input', updatePreviews);
+            if (titleCase) titleCase.addEventListener('change', updatePreviews);
+
+            // Metadata handlers
+            const metadataTemplate = document.getElementById('metadata-template');
+            const metadataLanguage = document.getElementById('metadata-language');
+            const metadataType = document.getElementById('metadata-type');
+            
+            if (metadataTemplate) metadataTemplate.addEventListener('input', updatePreviews);
+            if (metadataLanguage) metadataLanguage.addEventListener('change', updatePreviews);
+            if (metadataType) metadataType.addEventListener('change', updatePreviews);
+
+            // Quantity handlers
+            const numberExtraction = document.getElementById('number-extraction');
+            const decimalPlaces = document.getElementById('decimal-places');
+            
+            if (numberExtraction) numberExtraction.addEventListener('change', updatePreviews);
+            if (decimalPlaces) decimalPlaces.addEventListener('input', updatePreviews);
+        }
+
+        // Update preview sections with transformed data
+        function updatePreviews() {
+            const currentType = transformationState.currentType;
+            const sampleData = transformationState.sampleData[currentType] || [];
+            
+            let transformedData = [...sampleData];
+            
+            // Apply transformations based on current type
+            switch (currentType) {
+                case 'string':
+                    transformedData = transformStringData(transformedData);
+                    break;
+                case 'external-id':
+                    transformedData = transformExternalIdData(transformedData);
+                    break;
+                case 'item':
+                    transformedData = transformItemData(transformedData);
+                    break;
+                case 'quantity':
+                    transformedData = transformQuantityData(transformedData);
+                    break;
+                case 'url':
+                    transformedData = transformUrlData(transformedData);
+                    break;
+                case 'commons-media':
+                    transformedData = transformCommonsMediaData(transformedData);
+                    break;
+                case 'time':
+                    transformedData = transformTimeData(transformedData);
+                    break;
+                case 'monolingualtext':
+                    transformedData = transformMonolingualTextData(transformedData);
+                    break;
+                case 'metadata':
+                    transformedData = transformMetadataData(transformedData);
+                    break;
+            }
+            
+            // Update the preview section
+            const previewContainer = document.getElementById(`${currentType}-preview`);
+            if (previewContainer) {
+                previewContainer.innerHTML = '';
+                transformedData.forEach(value => {
+                    const span = document.createElement('span');
+                    span.className = 'preview-value';
+                    span.textContent = typeof value === 'object' ? value.display : `"${value}"`;
+                    previewContainer.appendChild(span);
+                });
+            }
+        }
+
+        // Transform string data based on current settings
+        function transformStringData(data) {
+            const prefix = document.getElementById('string-prefix')?.value || '';
+            const suffix = document.getElementById('string-suffix')?.value || '';
+            const template = document.getElementById('string-template')?.value || '';
+            
+            return data.map(value => {
+                let transformed = value;
+                
+                // Apply template if specified and contains placeholders
+                if (template && template.includes('{')) {
+                    // Simple template replacement (in real implementation, this would use actual data)
+                    transformed = template.replace(/\{title\}/g, value)
+                                         .replace(/\{creator\}/g, 'Unknown Artist')
+                                         .replace(/\{date\}/g, '1500s');
+                } else {
+                    // Apply prefix and suffix
+                    if (prefix) transformed = prefix + transformed;
+                    if (suffix) transformed = transformed + suffix;
+                }
+                
+                return transformed;
+            });
+        }
+
+        // Transform external ID data based on current settings
+        function transformExternalIdData(data) {
+            const pattern = document.getElementById('extract-pattern')?.value || '';
+            
+            return data.map(value => {
+                let transformed = value;
+                
+                switch (pattern) {
+                    case 'url-path':
+                        const urlMatch = value.match(/\/([^\/]+)$/);
+                        if (urlMatch) transformed = urlMatch[1];
+                        break;
+                    case 'after-colon':
+                        const colonMatch = value.match(/:(.+)$/);
+                        if (colonMatch) transformed = colonMatch[1];
+                        break;
+                    case 'after-slash':
+                        const slashMatch = value.match(/\/([^\/]+)$/);
+                        if (slashMatch) transformed = slashMatch[1];
+                        break;
+                }
+                
+                return transformed;
+            });
+        }
+
+        // Transform item data based on current settings
+        function transformItemData(data) {
+            const extraction = document.getElementById('qid-extraction')?.value || 'auto';
+            
+            return data.map(value => {
+                let transformed = value;
+                let isValidQid = false;
+                
+                // Check if already a valid Q-ID
+                if (/^Q\d+$/.test(value)) {
+                    isValidQid = true;
+                } else if (extraction === 'url' && value.includes('wikidata.org')) {
+                    const qidMatch = value.match(/Q\d+/);
+                    if (qidMatch) {
+                        transformed = qidMatch[0];
+                        isValidQid = true;
+                    }
+                } else if (extraction === 'auto') {
+                    const qidMatch = value.match(/Q\d+/);
+                    if (qidMatch) {
+                        transformed = qidMatch[0];
+                        isValidQid = true;
+                    }
+                }
+                
+                return {
+                    display: isValidQid ? `${transformed} ✓` : `${transformed} (needs reconciliation)`,
+                    value: transformed,
+                    isValid: isValidQid
+                };
+            });
+        }
+
+        // Transform quantity data based on current settings
+        function transformQuantityData(data) {
+            const extraction = document.getElementById('number-extraction')?.value || 'auto';
+            const decimalPlaces = parseInt(document.getElementById('decimal-places')?.value || '2');
+            
+            return data.map(value => {
+                let transformed = value;
+                let numberValue = null;
+                
+                // Extract number based on method
+                switch (extraction) {
+                    case 'auto':
+                    case 'first':
+                        const firstMatch = value.match(/(\d+(?:\.\d+)?)/);
+                        if (firstMatch) numberValue = parseFloat(firstMatch[1]);
+                        break;
+                    case 'last':
+                        const allMatches = value.match(/(\d+(?:\.\d+)?)/g);
+                        if (allMatches && allMatches.length > 0) {
+                            numberValue = parseFloat(allMatches[allMatches.length - 1]);
+                        }
+                        break;
+                }
+                
+                if (numberValue !== null) {
+                    transformed = numberValue.toFixed(decimalPlaces);
+                    
+                    // Add unit detection
+                    if (value.includes('cm') || value.includes('centimeter')) {
+                        transformed += ' (Q174728)';
+                    } else if (value.includes('million')) {
+                        transformed = (numberValue * 1000000).toString();
+                    }
+                }
+                
+                return transformed;
+            });
+        }
+
+        // Transform URL data based on current settings
+        function transformUrlData(data) {
+            const protocol = document.getElementById('default-protocol')?.value || 'https';
+            const addWww = document.getElementById('add-www')?.checked || false;
+            const removeSlash = document.getElementById('remove-trailing-slash')?.checked || false;
+            
+            return data.map(value => {
+                let transformed = value;
+                
+                // Add protocol if missing
+                if (!transformed.match(/^https?:\/\//)) {
+                    transformed = `${protocol}://${transformed}`;
+                }
+                
+                // Add www if missing and requested
+                if (addWww && !transformed.includes('://www.') && !transformed.includes('://localhost')) {
+                    transformed = transformed.replace(/^(https?:\/\/)/, '$1www.');
+                }
+                
+                // Remove trailing slash if requested
+                if (removeSlash && transformed.endsWith('/')) {
+                    transformed = transformed.slice(0, -1);
+                }
+                
+                return transformed;
+            });
+        }
+
+        // Transform commons media data based on current settings
+        function transformCommonsMediaData(data) {
+            const extraction = document.getElementById('filename-extraction')?.value || 'auto';
+            const replaceSpaces = document.getElementById('replace-spaces')?.checked || false;
+            const defaultExtension = document.getElementById('default-extension')?.value || '';
+            
+            return data.map(value => {
+                let transformed = value;
+                let hasValidExtension = false;
+                
+                // Extract filename from URL if needed
+                if (extraction === 'url' && value.includes('/')) {
+                    const urlMatch = value.match(/\/([^\/]+)$/);
+                    if (urlMatch) transformed = urlMatch[1];
+                }
+                
+                // Replace spaces with underscores
+                if (replaceSpaces) {
+                    transformed = transformed.replace(/\s+/g, '_');
+                }
+                
+                // Check for valid extension
+                const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.pdf', '.ogg', '.mp3', '.mp4', '.webm'];
+                hasValidExtension = validExtensions.some(ext => transformed.toLowerCase().includes(ext));
+                
+                // Add default extension if none found
+                if (!hasValidExtension && defaultExtension) {
+                    transformed += defaultExtension;
+                    hasValidExtension = true;
+                }
+                
+                return {
+                    display: hasValidExtension ? `${transformed} ✓` : `${transformed} ⚠️`,
+                    value: transformed,
+                    isValid: hasValidExtension
+                };
+            });
+        }
+
+        // Transform time data based on current settings
+        function transformTimeData(data) {
+            const precision = document.getElementById('default-precision')?.value || 'auto';
+            
+            return data.map(value => {
+                let transformed = value;
+                let detectedPrecision = 'year';
+                
+                // Auto-detect precision
+                if (precision === 'auto') {
+                    if (/^\d{4}$/.test(value)) {
+                        detectedPrecision = 'year';
+                        transformed = `${value}-01-01`;
+                    } else if (/^\d{4}-\d{1,2}$/.test(value)) {
+                        detectedPrecision = 'month';
+                        transformed = `${value}-01`;
+                    } else if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(value)) {
+                        detectedPrecision = 'day';
+                    } else if (/\d{3}[0-9][sS]$/.test(value)) {
+                        detectedPrecision = 'decade';
+                        const decade = value.match(/\d{3}/)[0];
+                        transformed = `${decade}0-01-01`;
+                    } else if (value.includes('century')) {
+                        detectedPrecision = 'year';
+                        // Simple extraction for "16th century" -> 1500
+                        const centuryMatch = value.match(/(\d+)th century/);
+                        if (centuryMatch) {
+                            const century = parseInt(centuryMatch[1]);
+                            transformed = `${(century - 1) * 100 + 1}-01-01`;
+                        }
+                    }
+                } else {
+                    detectedPrecision = precision;
+                }
+                
+                return {
+                    display: `${transformed} (${detectedPrecision} precision)`,
+                    value: transformed,
+                    precision: detectedPrecision
+                };
+            });
+        }
+
+        // Transform monolingual text data based on current settings
+        function transformMonolingualTextData(data) {
+            const defaultLang = document.getElementById('default-language')?.value || 'en';
+            const prefix = document.getElementById('mono-prefix')?.value || '';
+            const suffix = document.getElementById('mono-suffix')?.value || '';
+            const titleCase = document.getElementById('title-case')?.checked || false;
+            
+            return data.map(value => {
+                let transformed = value;
+                let detectedLang = defaultLang;
+                
+                // Simple language detection based on content
+                if (value.toLowerCase().includes('la ')) {
+                    detectedLang = 'fr';
+                } else if (value.toLowerCase().includes('das ') || value.toLowerCase().includes('der ')) {
+                    detectedLang = 'de';
+                } else if (value.toLowerCase().includes('la ') && value.toLowerCase().includes('gioconda')) {
+                    detectedLang = 'it';
+                }
+                
+                // Apply transformations
+                if (prefix) transformed = prefix + transformed;
+                if (suffix) transformed = transformed + suffix;
+                
+                if (titleCase) {
+                    transformed = transformed.replace(/\w\S*/g, (txt) => 
+                        txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+                }
+                
+                return {
+                    display: `"${transformed}" @${detectedLang}`,
+                    value: transformed,
+                    language: detectedLang
+                };
+            });
+        }
+
+        // Transform metadata data based on current settings
+        function transformMetadataData(data) {
+            const template = document.getElementById('metadata-template')?.value || '{title}';
+            const language = document.getElementById('metadata-language')?.value || 'en';
+            const type = document.getElementById('metadata-type')?.value || 'label';
+            
+            // Mock data for template variables
+            const mockVariables = {
+                'title': ['Mona Lisa', 'Starry Night', 'The Scream', 'Girl with a Pearl Earring'],
+                'creator': ['Leonardo da Vinci', 'Vincent van Gogh', 'Edvard Munch', 'Johannes Vermeer'],
+                'date': ['1503', '1889', '1893', '1665'],
+                'type': ['painting', 'painting', 'painting', 'painting'],
+                'material': ['oil on poplar', 'oil on canvas', 'oil on cardboard', 'oil on canvas']
+            };
+            
+            return data.map((value, index) => {
+                let transformed = template;
+                
+                // Replace template variables with mock data
+                Object.keys(mockVariables).forEach(key => {
+                    const regex = new RegExp(`\\{\\{?${key}\\}?\\}`, 'g');
+                    const replacement = mockVariables[key][index] || mockVariables[key][0] || value;
+                    transformed = transformed.replace(regex, replacement);
+                });
+                
+                // If no template variables found, use original value
+                if (transformed === template && !template.includes('{')) {
+                    transformed = value;
+                }
+                
+                return {
+                    display: `"${transformed}" @${language}`,
+                    value: transformed,
+                    language: language,
+                    type: type
+                };
+            });
+        }
+
+        // Toggle advanced sections
+        function toggleAdvanced(type) {
+            const content = document.getElementById(`${type}-advanced`);
+            const toggle = content.previousElementSibling;
+            
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                toggle.textContent = toggle.textContent.replace('▲', '▼');
+            } else {
+                content.classList.add('show');
+                toggle.textContent = toggle.textContent.replace('▼', '▲');
+            }
+        }
+    </script>
+</body>
+</html>
