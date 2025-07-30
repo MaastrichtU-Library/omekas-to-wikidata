@@ -1813,7 +1813,6 @@ export function setupMappingStep(state) {
         state.updateMappings([], mappedKeys, ignoredKeys); // Clear non-linked keys, load mapped and ignored
         
         // Clear existing manual properties and add loaded ones
-        const currentState = state.getState();
         currentState.mappings.manualProperties = [];
         manualProperties.forEach(prop => {
             state.addManualProperty(prop);
