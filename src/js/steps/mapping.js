@@ -1276,7 +1276,7 @@ export function setupMappingStep(state) {
             const wikidataSection = createElement('div', {
                 className: 'suggestion-section'
             });
-            wikidataSection.innerHTML = '<h5>Wikidata Properties</h5>';
+            wikidataSection.innerHTML = '<h5>Select a Wikidata property</h5>';
             
             wikidataResults.forEach(property => {
                 const formattedProperty = {
