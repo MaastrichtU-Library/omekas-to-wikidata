@@ -465,7 +465,7 @@
                             <label for="replace-text">Replace with:</label>
                             <input type="text" id="replace-text" placeholder="Replacement text">
                         </div>
-                        <button class="button button--secondary button--small">Add Rule</button>
+                        <button id="add-find-replace-rule" class="button button--secondary button--small">Add Rule</button>
                     </div>
                     <div id="find-replace-rules" class="find-replace-rules">
                         <!-- Find/replace rules will appear here -->
@@ -1315,13 +1315,11 @@
 
         // Setup find/replace functionality
         function setupFindReplaceHandlers() {
-            // Find the "Add Rule" button in the find/replace section
-            const addRuleButtons = document.querySelectorAll('.collapsible-content button');
-            addRuleButtons.forEach(button => {
-                if (button.textContent.trim() === 'Add Rule') {
-                    button.addEventListener('click', addFindReplaceRule);
-                }
-            });
+            // Find the "Add Rule" button by ID
+            const addRuleButton = document.getElementById('add-find-replace-rule');
+            if (addRuleButton) {
+                addRuleButton.addEventListener('click', addFindReplaceRule);
+            }
         }
 
         // Add a new find/replace rule
