@@ -496,16 +496,22 @@
                             <div class="input-row">
                                 <div class="input-group">
                                     <label for="regex-pattern">Regex Pattern:</label>
-                                    <input type="text" id="regex-pattern" placeholder="e.g., /^(.+),\s*(.+)$/">
+                                    <input type="text" id="regex-pattern" placeholder="e.g., ^(.+),\s*(.+)$">
                                 </div>
                                 <div class="input-group">
                                     <label for="regex-replacement">Replacement:</label>
-                                    <input type="text" id="regex-replacement" placeholder="e.g., '$2 $1'">
+                                    <input type="text" id="regex-replacement" placeholder="e.g., $2 $1">
                                 </div>
+                                <button id="add-regex-rule" class="button button--secondary button--small">Add Regex Rule</button>
                             </div>
                             
                             <div class="validation-info">
-                                <strong>Example:</strong> Pattern <code>/^(.+),\s*(.+)$/</code> with replacement <code>$2 $1</code> converts "Last, First" to "First Last"
+                                <strong>Example:</strong> Pattern <code>^(.+),\s*(.+)$</code> with replacement <code>$2 $1</code> converts "Last, First" to "First Last"<br>
+                                <strong>Rules applied in order</strong> - drag to reorder.
+                            </div>
+                            
+                            <div id="regex-rules" class="find-replace-rules">
+                                <!-- Regex rules will appear here -->
                             </div>
                         </div>
                     </div>
@@ -1212,6 +1218,7 @@
             currentType: 'string',
             transforms: {},
             findReplaceRules: [],
+            regexRules: [],
             sampleData: {
                 'string': ['The Mona Lisa', 'Starry Night', 'The Scream', 'Girl with a Pearl Earring'],
                 'external-id': ['https://viaf.org/viaf/24604287', 'http://id.loc.gov/authorities/names/n79021164', 'VIAF:24604287', 'isbn:9780123456789'],
@@ -1236,6 +1243,7 @@
             setupCollapsibleSections();
             initializeInputHandlers();
             setupFindReplaceHandlers();
+            setupRegexHandlers();
             updatePreviews();
         });
 
@@ -1359,6 +1367,190 @@
             if (addRuleButton) {
                 addRuleButton.addEventListener('click', addFindReplaceRule);
             }
+        }
+
+        // Setup regex functionality
+        function setupRegexHandlers() {
+            // Find the "Add Regex Rule" button by ID
+            const addRegexButton = document.getElementById('add-regex-rule');
+            if (addRegexButton) {
+                addRegexButton.addEventListener('click', addRegexRule);
+            }
+        }
+
+        // Add a new regex rule
+        function addRegexRule() {
+            const patternInput = document.getElementById('regex-pattern');
+            const replacementInput = document.getElementById('regex-replacement');
+            
+            if (!patternInput || !replacementInput) return;
+            
+            // Get exact values - NO TRIMMING for precision
+            const pattern = patternInput.value;
+            const replacement = replacementInput.value;
+            
+            if (pattern === '') {
+                alert('Please enter a regex pattern (empty pattern not allowed)');
+                return;
+            }
+            
+            // Test if the regex is valid
+            try {
+                new RegExp(pattern);
+            } catch (e) {
+                alert('Invalid regex pattern: ' + e.message);
+                return;
+            }
+            
+            // Add rule to state with exact matching
+            transformationState.regexRules.push({
+                pattern: pattern,
+                replacement: replacement,
+                id: Date.now()
+            });
+            
+            // Clear inputs
+            patternInput.value = '';
+            replacementInput.value = '';
+            
+            // Update the rules display
+            updateRegexRulesDisplay();
+            
+            // Update preview
+            updatePreviews();
+        }
+
+        // Update the display of regex rules
+        function updateRegexRulesDisplay() {
+            const rulesContainer = document.getElementById('regex-rules');
+            if (!rulesContainer) return;
+            
+            rulesContainer.innerHTML = '';
+            
+            if (transformationState.regexRules.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = 'color: #666; font-style: italic; padding: 20px; text-align: center; background: #f8f9fa; border-radius: 4px; margin: 5px 0;';
+                placeholder.textContent = 'No regex rules yet. Add regex patterns above to see them here.';
+                rulesContainer.appendChild(placeholder);
+                return;
+            }
+            
+            transformationState.regexRules.forEach((rule, index) => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'find-replace-rule';
+                ruleDiv.draggable = true;
+                ruleDiv.dataset.ruleId = rule.id;
+                ruleDiv.style.cssText = 'background: #f8f9fa; padding: 8px; margin: 5px 0; border-radius: 4px; display: flex; align-items: center; gap: 8px;';
+                
+                // Order number
+                const orderSpan = document.createElement('span');
+                orderSpan.className = 'rule-order';
+                orderSpan.textContent = index + 1;
+                
+                // Drag handle
+                const dragHandle = document.createElement('span');
+                dragHandle.className = 'drag-handle';
+                dragHandle.innerHTML = '⋮⋮';
+                dragHandle.title = 'Drag to reorder';
+                
+                // Rule text
+                const ruleText = document.createElement('span');
+                ruleText.style.cssText = 'flex: 1; font-family: monospace;';
+                ruleText.innerHTML = `<span title="Pattern: /${rule.pattern}/">/${rule.pattern}/</span> → <span title="Replacement: '${rule.replacement}'">"${rule.replacement}"</span>`;
+                
+                // Remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.className = 'button button--small';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer;';
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    transformationState.regexRules = transformationState.regexRules.filter(r => r.id !== rule.id);
+                    updateRegexRulesDisplay();
+                    updatePreviews();
+                });
+                
+                // Add drag event listeners for regex rules
+                ruleDiv.addEventListener('dragstart', handleRegexDragStart);
+                ruleDiv.addEventListener('dragover', handleRegexDragOver);
+                ruleDiv.addEventListener('drop', handleRegexDrop);
+                ruleDiv.addEventListener('dragend', handleRegexDragEnd);
+                
+                ruleDiv.appendChild(orderSpan);
+                ruleDiv.appendChild(dragHandle);
+                ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(removeBtn);
+                rulesContainer.appendChild(ruleDiv);
+            });
+        }
+
+        // Regex drag and drop functionality
+        let draggedRegexElement = null;
+
+        function handleRegexDragStart(e) {
+            draggedRegexElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.outerHTML);
+        }
+
+        function handleRegexDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            
+            if (this === draggedRegexElement) return;
+            
+            e.dataTransfer.dropEffect = 'move';
+            
+            // Add visual feedback
+            const rulesContainer = this.parentNode;
+            rulesContainer.classList.add('drag-over');
+            
+            return false;
+        }
+
+        function handleRegexDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            if (this !== draggedRegexElement) {
+                const draggedId = parseInt(draggedRegexElement.dataset.ruleId);
+                const targetId = parseInt(this.dataset.ruleId);
+                
+                // Find the indexes
+                const draggedIndex = transformationState.regexRules.findIndex(r => r.id === draggedId);
+                const targetIndex = transformationState.regexRules.findIndex(r => r.id === targetId);
+                
+                if (draggedIndex !== -1 && targetIndex !== -1) {
+                    // Remove the dragged item and insert it at the new position
+                    const draggedRule = transformationState.regexRules.splice(draggedIndex, 1)[0];
+                    transformationState.regexRules.splice(targetIndex, 0, draggedRule);
+                    
+                    // Update display and preview
+                    updateRegexRulesDisplay();
+                    updatePreviews();
+                }
+            }
+            
+            // Remove visual feedback
+            const rulesContainer = this.parentNode;
+            rulesContainer.classList.remove('drag-over');
+            
+            return false;
+        }
+
+        function handleRegexDragEnd(e) {
+            this.classList.remove('dragging');
+            
+            // Remove visual feedback from all elements
+            const rulesContainer = document.getElementById('regex-rules');
+            if (rulesContainer) {
+                rulesContainer.classList.remove('drag-over');
+            }
+            
+            draggedRegexElement = null;
         }
 
         // Add a new find/replace rule
@@ -1593,6 +1785,17 @@
                 transformationState.findReplaceRules.forEach(rule => {
                     // Use split/join for exact string replacement (no regex interpretation)
                     transformed = transformed.split(rule.find).join(rule.replace);
+                });
+                
+                // Then apply regex rules
+                transformationState.regexRules.forEach(rule => {
+                    try {
+                        const regex = new RegExp(rule.pattern, 'g');
+                        transformed = transformed.replace(regex, rule.replacement);
+                    } catch (e) {
+                        // Skip invalid regex patterns
+                        console.warn('Invalid regex pattern:', rule.pattern, e);
+                    }
                 });
                 
                 // Apply template if specified and contains placeholders
