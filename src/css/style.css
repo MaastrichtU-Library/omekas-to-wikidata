@@ -1051,6 +1051,23 @@ main {
     font-style: italic;
 }
 
+/* Sample value pre element styling */
+pre.sample-value {
+    padding: 0.75rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    color: #333;
+    margin: 0.5rem 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
 .property-suggestion-item.selected .property-description {
     color: rgba(255, 255, 255, 0.9);
 }
