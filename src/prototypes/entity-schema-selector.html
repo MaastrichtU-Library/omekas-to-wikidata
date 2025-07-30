@@ -799,23 +799,22 @@
                     console.log('Namespace search response:', data);
 
                     if (data.query && data.query.search && data.query.search.length > 0) {
-                        // Extract E-IDs from titles and fetch their details
-                        const entityIds = data.query.search
-                            .map(item => item.title.replace('EntitySchema:', ''))
-                            .filter(id => id.match(/^E\d+$/))
-                            .slice(0, 10);
-
-                        if (entityIds.length > 0) {
-                            console.log('Found Entity Schema IDs:', entityIds);
+                        // Create results from search snippets first (faster)
+                        schemaResults = data.query.search
+                            .filter(item => item.title.match(/^EntitySchema:E\d+$/))
+                            .slice(0, 10)
+                            .map(item => {
+                                const id = item.title.replace('EntitySchema:', '');
+                                const snippet = item.snippet ? item.snippet.replace(/<[^>]+>/g, '') : '';
+                                return {
+                                    id: id,
+                                    label: item.title.replace('EntitySchema:', '') || `Entity Schema ${id}`,
+                                    description: snippet || `Entity Schema ${id}`,
+                                    shexCode: null // Will be loaded on selection
+                                };
+                            });
                             
-                            // Fetch details for all found schemas using REST API
-                            const schemaPromises = entityIds.map(id => fetchEntitySchemaDirectly(id));
-                            const schemaDetails = await Promise.allSettled(schemaPromises);
-                            
-                            schemaResults = schemaDetails
-                                .filter(result => result.status === 'fulfilled' && result.value)
-                                .map(result => result.value);
-                        }
+                        console.log('Found Entity Schema results:', schemaResults);
                     }
                 }
 
@@ -833,55 +832,59 @@
             }
         }
 
-        // Fetch entity schema details using the modern REST API
+        // Fetch entity schema details using working endpoints
         async function fetchEntitySchemaDirectly(schemaId) {
             try {
-                // Try REST API first (modern approach)
-                const restUrl = `https://www.wikidata.org/w/rest.php/wikibase/v1/entity-schemas/${schemaId}`;
-                console.log('Trying REST API:', restUrl);
+                // Method 1: Get raw ShEx code from Special:EntitySchemaText
+                console.log('Fetching raw ShEx for:', schemaId);
+                const shexUrl = `https://www.wikidata.org/wiki/Special:EntitySchemaText/${schemaId}`;
                 
-                const restResponse = await fetch(restUrl, {
-                    headers: {
-                        'User-Agent': 'EntitySchemaSelector/1.0 (Prototype)',
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (restResponse.ok) {
-                    const restData = await restResponse.json();
-                    console.log('REST API response:', restData);
+                const shexResponse = await fetch(shexUrl);
+                let shexCode = null;
+                
+                if (shexResponse.ok) {
+                    shexCode = await shexResponse.text();
+                    console.log('Raw ShEx fetched successfully');
+                    
+                    // Extract label and description from ShEx code if available
+                    const labelMatch = shexCode.match(/#\s*([^\n]+)/);
+                    const label = labelMatch ? labelMatch[1].trim() : `Entity Schema ${schemaId}`;
                     
                     return {
                         id: schemaId,
-                        label: restData.labels?.en || restData.labels?.en?.value || 'No label',
-                        description: restData.descriptions?.en || restData.descriptions?.en?.value || 'No description available',
-                        shexCode: restData.shex || null
+                        label: label,
+                        description: `Entity Schema ${schemaId}`,
+                        shexCode: shexCode
                     };
                 }
-            } catch (e) {
-                console.log('REST API failed, trying fallback:', e);
-            }
-
-            // Fallback to traditional wbgetentities API
-            try {
-                const entityUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${schemaId}&format=json&origin=*&props=labels|descriptions|schematext`;
-                console.log('Trying wbgetentities fallback:', entityUrl);
                 
-                const response = await fetch(entityUrl);
-                const data = await response.json();
-                console.log('wbgetentities response:', data);
+                // Method 2: Try to get basic info from EntitySchema page
+                console.log('Trying EntitySchema page for:', schemaId);
+                const pageUrl = `https://www.wikidata.org/w/api.php?action=query&titles=EntitySchema:${schemaId}&format=json&origin=*&prop=extracts&exintro=true&explaintext=true`;
                 
-                if (data.entities && data.entities[schemaId] && !data.entities[schemaId].missing) {
-                    const entity = data.entities[schemaId];
-                    return {
-                        id: schemaId,
-                        label: entity.labels?.en?.value || 'No label',
-                        description: entity.descriptions?.en?.value || 'No description available',
-                        shexCode: entity.schematext || null
-                    };
+                const pageResponse = await fetch(pageUrl);
+                if (pageResponse.ok) {
+                    const pageData = await pageResponse.json();
+                    console.log('Page data:', pageData);
+                    
+                    const pages = pageData.query?.pages;
+                    if (pages) {
+                        const pageId = Object.keys(pages)[0];
+                        const page = pages[pageId];
+                        
+                        if (!page.missing) {
+                            return {
+                                id: schemaId,
+                                label: page.title?.replace('EntitySchema:', '') || `Entity Schema ${schemaId}`,
+                                description: page.extract || `Entity Schema ${schemaId}`,
+                                shexCode: null
+                            };
+                        }
+                    }
                 }
+                
             } catch (e) {
-                console.error('Fallback API also failed:', e);
+                console.error('Error fetching schema:', e);
             }
 
             return null;
@@ -1021,49 +1024,52 @@
         function displayEntityData(entity, schemaId) {
             const loadedDataContent = document.getElementById('loaded-data-content');
             
-            const label = entity.labels?.en?.value || 'No label available';
-            const description = entity.descriptions?.en?.value || 'No description available';
+            const label = entity.labels?.en?.value || entity.label || 'No label available';
+            const description = entity.descriptions?.en?.value || entity.description || 'No description available';
             
-            // Mock data for demonstration - in real implementation this would come from ShEx parsing
-            const mockRequiredProperties = [
-                { id: 'P31', label: 'instance of', description: 'that class of which this subject is a particular example' },
-                { id: 'P1476', label: 'title', description: 'published name of a work' },
-                { id: 'P50', label: 'author', description: 'main creator(s) of a written work' }
-            ];
-            
-            const mockOptionalProperties = [
-                { id: 'P577', label: 'publication date', description: 'date or point in time when a work was first published' },
-                { id: 'P123', label: 'publisher', description: 'organization or person responsible for publishing' },
-                { id: 'P407', label: 'language of work or name', description: 'language associated with this creative work' },
-                { id: 'P136', label: 'genre', description: 'creative work\'s genre or an artist\'s field of work' },
-                { id: 'P953', label: 'full work available at URL', description: 'URL of a web page where the full text of this work is available' },
-                { id: 'P2578', label: 'studies', description: 'the object is an academic study of this subject' }
-            ];
-
-            // Use real ShEx code if available, otherwise use mock data
+            // Parse properties from real ShEx code if available
             const actualShexCode = entity.shexCode;
-            const mockShExCode = `# Entity Schema ${schemaId}: ${label}
-PREFIX wd: <http://www.wikidata.org/entity/>
-PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-
-start = @<${schemaId}>
-
-<${schemaId}> {
-  # Required properties
-  wdt:P31 @<wd:Q571> ;  # instance of -> book
-  wdt:P1476 xsd:string ;  # title
-  wdt:P50 @<wd:Q5>+ ;  # author (one or more)
-  
-  # Optional properties  
-  wdt:P577 xsd:dateTime? ;  # publication date
-  wdt:P123 @<wd:Q2085381>? ;  # publisher
-  wdt:P407 @<wd:Q34770>* ;  # language of work
-  wdt:P136 @<wd:Q483394>* ;  # genre
-  wdt:P953 xsd:anyURI* ;  # full work available at URL
-  wdt:P2578 @<wd:Q35120>* ;  # studies
-}`;
-
-            const displayShexCode = actualShexCode || mockShExCode;
+            let requiredProperties = [];
+            let optionalProperties = [];
+            
+            if (actualShexCode) {
+                // Parse ShEx to extract properties
+                const propertyMatches = actualShexCode.match(/wdt:(\w+)\s+([^;]+);?\s*(?:#\s*(.*))?/g);
+                
+                if (propertyMatches) {
+                    propertyMatches.forEach(match => {
+                        const propMatch = match.match(/wdt:(\w+)\s+([^;]+);?\s*(?:#\s*(.*))?/);
+                        if (propMatch) {
+                            const propertyId = propMatch[1];
+                            const constraint = propMatch[2].trim();
+                            const comment = propMatch[3] ? propMatch[3].trim() : '';
+                            
+                            const property = {
+                                id: propertyId,
+                                label: comment || propertyId,
+                                description: `Constraint: ${constraint}`
+                            };
+                            
+                            // Determine if required (no ? or *)
+                            if (constraint.includes('?') || constraint.includes('*')) {
+                                optionalProperties.push(property);
+                            } else {
+                                requiredProperties.push(property);
+                            }
+                        }
+                    });
+                }
+            }
+            
+            // Fallback if no properties were parsed
+            if (requiredProperties.length === 0 && optionalProperties.length === 0) {
+                requiredProperties = [
+                    { id: 'P31', label: 'instance of', description: 'that class of which this subject is a particular example' }
+                ];
+                optionalProperties = [
+                    { id: 'P1476', label: 'title', description: 'published name of a work' }
+                ];
+            }
             
             let html = `
                 <div class="schema-data">
@@ -1075,11 +1081,11 @@ start = @<${schemaId}>
 
                 <div class="schema-details">
                     <div class="property-section">
-                        <h5>Required Properties (${mockRequiredProperties.length})</h5>
+                        <h5>Required Properties (${requiredProperties.length})</h5>
                         <div class="property-list">
             `;
 
-            mockRequiredProperties.forEach(property => {
+            requiredProperties.forEach(property => {
                 html += `
                     <div class="property-item-enhanced">
                         <span class="property-id">${property.id}</span>
@@ -1094,11 +1100,11 @@ start = @<${schemaId}>
                     </div>
 
                     <div class="property-section">
-                        <h5>Optional Properties (${mockOptionalProperties.length})</h5>
+                        <h5>Optional Properties (${optionalProperties.length})</h5>
                         <div class="property-list">
             `;
 
-            mockOptionalProperties.forEach(property => {
+            optionalProperties.forEach(property => {
                 html += `
                     <div class="property-item-enhanced">
                         <span class="property-id">${property.id}</span>
@@ -1114,11 +1120,11 @@ start = @<${schemaId}>
 
                     <div class="collapsible">
                         <div class="collapsible-header">
-                            <h5>ShEx Schema Code ${actualShexCode ? '(Real)' : '(Mock Data)'}</h5>
+                            <h5>ShEx Schema Code ${actualShexCode ? '(Real Data from Wikidata)' : '(No ShEx Available)'}</h5>
                             <span class="collapsible-toggle">▼</span>
                         </div>
                         <div class="collapsible-content">
-                            <div class="schema-code">${displayShexCode}</div>
+                            <div class="schema-code">${actualShexCode || 'No ShEx schema code available for this Entity Schema.'}</div>
                         </div>
                     </div>
                 </div>
