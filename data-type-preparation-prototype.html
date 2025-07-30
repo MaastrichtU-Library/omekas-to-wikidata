@@ -1420,6 +1420,32 @@
             updatePreviews();
         }
 
+        // Edit a regex rule
+        function editRegexRule(ruleId) {
+            const rule = transformationState.regexRules.find(r => r.id === ruleId);
+            if (!rule) return;
+            
+            const patternInput = document.getElementById('regex-pattern');
+            const replacementInput = document.getElementById('regex-replacement');
+            
+            if (!patternInput || !replacementInput) return;
+            
+            // Populate the input fields with the current rule values
+            patternInput.value = rule.pattern;
+            replacementInput.value = rule.replacement;
+            
+            // Remove the old rule
+            transformationState.regexRules = transformationState.regexRules.filter(r => r.id !== ruleId);
+            
+            // Update displays
+            updateRegexRulesDisplay();
+            updatePreviews();
+            
+            // Focus on the pattern input for immediate editing
+            patternInput.focus();
+            patternInput.select();
+        }
+
         // Update the display of regex rules
         function updateRegexRulesDisplay() {
             const rulesContainer = document.getElementById('regex-rules');
@@ -1458,6 +1484,17 @@
                 ruleText.style.cssText = 'flex: 1; font-family: monospace;';
                 ruleText.innerHTML = `<span title="Pattern: /${rule.pattern}/">/${rule.pattern}/</span> → <span title="Replacement: '${rule.replacement}'">"${rule.replacement}"</span>`;
                 
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '✏️';
+                editBtn.className = 'button button--small';
+                editBtn.style.cssText = 'background: #007bff; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer; margin-right: 4px;';
+                editBtn.title = 'Edit rule';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editRegexRule(rule.id);
+                });
+                
                 // Remove button
                 const removeBtn = document.createElement('button');
                 removeBtn.textContent = '×';
@@ -1479,6 +1516,7 @@
                 ruleDiv.appendChild(orderSpan);
                 ruleDiv.appendChild(dragHandle);
                 ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(editBtn);
                 ruleDiv.appendChild(removeBtn);
                 rulesContainer.appendChild(ruleDiv);
             });
@@ -1587,6 +1625,32 @@
             updatePreviews();
         }
 
+        // Edit a find/replace rule
+        function editFindReplaceRule(ruleId) {
+            const rule = transformationState.findReplaceRules.find(r => r.id === ruleId);
+            if (!rule) return;
+            
+            const findInput = document.getElementById('find-text');
+            const replaceInput = document.getElementById('replace-text');
+            
+            if (!findInput || !replaceInput) return;
+            
+            // Populate the input fields with the current rule values
+            findInput.value = rule.find;
+            replaceInput.value = rule.replace;
+            
+            // Remove the old rule
+            transformationState.findReplaceRules = transformationState.findReplaceRules.filter(r => r.id !== ruleId);
+            
+            // Update displays
+            updateFindReplaceRulesDisplay();
+            updatePreviews();
+            
+            // Focus on the find input for immediate editing
+            findInput.focus();
+            findInput.select();
+        }
+
         // Update the display of find/replace rules
         function updateFindReplaceRulesDisplay() {
             const rulesContainer = document.getElementById('find-replace-rules');
@@ -1628,6 +1692,17 @@
                 const replaceDisplay = rule.replace.replace(/ /g, '·');
                 ruleText.innerHTML = `<span title="Find: '${rule.find}'">"${findDisplay}"</span> → <span title="Replace: '${rule.replace}'">"${replaceDisplay}"</span>`;
                 
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '✏️';
+                editBtn.className = 'button button--small';
+                editBtn.style.cssText = 'background: #007bff; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer; margin-right: 4px;';
+                editBtn.title = 'Edit rule';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editFindReplaceRule(rule.id);
+                });
+                
                 // Remove button
                 const removeBtn = document.createElement('button');
                 removeBtn.textContent = '×';
@@ -1649,6 +1724,7 @@
                 ruleDiv.appendChild(orderSpan);
                 ruleDiv.appendChild(dragHandle);
                 ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(editBtn);
                 ruleDiv.appendChild(removeBtn);
                 rulesContainer.appendChild(ruleDiv);
             });
