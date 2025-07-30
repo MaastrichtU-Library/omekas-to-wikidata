@@ -143,6 +143,12 @@ export function setupMappingStep(state) {
         }
     }
     
+    // Helper function to convert camelCase to spaced words
+    function convertCamelCaseToSpaces(text) {
+        // Insert space before uppercase letters that are preceded by lowercase letters or digits
+        return text.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+    }
+    
     // Helper function to extract readable sample values from Omeka S structures
     function extractSampleValue(value) {
         if (value === null || value === undefined) {
@@ -1013,6 +1019,9 @@ export function setupMappingStep(state) {
                 if (searchTerm.includes(':')) {
                     searchTerm = searchTerm.split(':').pop();
                 }
+                
+                // Convert camelCase to spaced words
+                searchTerm = convertCamelCaseToSpaces(searchTerm);
                 
                 // Set the search input value
                 searchInput.value = searchTerm;
