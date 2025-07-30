@@ -479,28 +479,28 @@ export function setupMappingStep(state) {
         const totalKeys = mappings.nonLinkedKeys.length + mappings.mappedKeys.length + mappings.ignoredKeys.length;
         const manualPropertiesCount = mappings.manualProperties?.length || 0;
         
-        // Update Non-linked Keys section
-        const nonLinkedSection = document.querySelector('.key-sections .section:nth-child(1) summary');
+        // Update Manual Properties section (now first)
+        const manualPropertiesSection = document.querySelector('.key-sections .section:nth-child(1) summary');
+        if (manualPropertiesSection) {
+            manualPropertiesSection.innerHTML = `<span class="section-title">Additional Custom Wikidata Properties</span><span class="section-count">(${manualPropertiesCount})</span>`;
+        }
+        
+        // Update Non-linked Keys section (now second)
+        const nonLinkedSection = document.querySelector('.key-sections .section:nth-child(2) summary');
         if (nonLinkedSection) {
             nonLinkedSection.innerHTML = `<span class="section-title">Non-linked Keys</span><span class="section-count">(${mappings.nonLinkedKeys.length}/${totalKeys})</span>`;
         }
         
-        // Update Mapped Keys section
-        const mappedSection = document.querySelector('.key-sections .section:nth-child(2) summary');
+        // Update Mapped Keys section (now third)
+        const mappedSection = document.querySelector('.key-sections .section:nth-child(3) summary');
         if (mappedSection) {
             mappedSection.innerHTML = `<span class="section-title">Mapped Keys</span><span class="section-count">(${mappings.mappedKeys.length}/${totalKeys})</span>`;
         }
         
-        // Update Ignored Keys section
-        const ignoredSection = document.querySelector('.key-sections .section:nth-child(3) summary');
+        // Update Ignored Keys section (now fourth)
+        const ignoredSection = document.querySelector('.key-sections .section:nth-child(4) summary');
         if (ignoredSection) {
             ignoredSection.innerHTML = `<span class="section-title">Ignored Keys</span><span class="section-count">(${mappings.ignoredKeys.length}/${totalKeys})</span>`;
-        }
-        
-        // Update Manual Properties section
-        const manualPropertiesSection = document.querySelector('.key-sections .section:nth-child(4) summary');
-        if (manualPropertiesSection) {
-            manualPropertiesSection.innerHTML = `<span class="section-title">Manual Properties</span><span class="section-count">(${manualPropertiesCount})</span>`;
         }
     }
     
@@ -595,56 +595,64 @@ export function setupMappingStep(state) {
         listElement.innerHTML = '';
         
         if (!manualProperties.length) {
-            const placeholder = createListItem('No manual properties added yet', { isPlaceholder: true });
+            const placeholder = createListItem('No additional properties added yet', { isPlaceholder: true });
             listElement.appendChild(placeholder);
             return;
         }
         
         manualProperties.forEach(manualProp => {
-            // Create manual property display
-            const propertyDisplay = createElement('div', {
-                className: 'manual-property-item-compact'
+            // Create a flex container for the manual property item
+            const li = createElement('li', {
+                className: 'manual-property-item'
             });
             
-            const propertyName = createElement('span', {
-                className: 'property-name-compact'
+            // Left side - property information
+            const propertyInfo = createElement('div', {
+                className: 'manual-property-info'
+            });
+            
+            const propertyName = createElement('div', {
+                className: 'property-name'
             }, `${manualProp.property.label} (${manualProp.property.id})`);
-            propertyDisplay.appendChild(propertyName);
+            propertyInfo.appendChild(propertyName);
+            
+            // Property details row
+            const propertyDetails = createElement('div', {
+                className: 'property-details'
+            });
             
             // Show default value if available
             if (manualProp.defaultValue) {
                 const defaultValueInfo = createElement('span', {
                     className: 'default-value-info'
-                }, ` → ${manualProp.defaultValue}`);
-                propertyDisplay.appendChild(defaultValueInfo);
+                }, `Default: ${manualProp.defaultValue}`);
+                propertyDetails.appendChild(defaultValueInfo);
+            } else {
+                const noDefaultInfo = createElement('span', {
+                    className: 'no-default-info'
+                }, 'No default value');
+                propertyDetails.appendChild(noDefaultInfo);
             }
             
             // Show required indicator
             if (manualProp.isRequired) {
                 const requiredIndicator = createElement('span', {
                     className: 'required-indicator'
-                }, ' (required)');
-                propertyDisplay.appendChild(requiredIndicator);
+                }, ' • Required');
+                propertyDetails.appendChild(requiredIndicator);
             }
             
-            // Create list item with remove functionality
-            const liOptions = {
-                className: 'clickable manual-property-item-clickable-compact',
-                onClick: () => removeManualPropertyFromUI(manualProp.property.id),
-                dataset: { propertyId: manualProp.property.id },
-                title: 'Click to remove this manual property'
-            };
+            propertyInfo.appendChild(propertyDetails);
+            li.appendChild(propertyInfo);
             
-            const li = createListItem(propertyDisplay, liOptions);
-            
-            // Add remove button
+            // Right side - remove button
             const removeBtn = createElement('button', {
-                className: 'remove-manual-property-btn',
+                className: 'remove-manual-property-btn-small',
                 onClick: (e) => {
                     e.stopPropagation();
                     removeManualPropertyFromUI(manualProp.property.id);
                 },
-                title: 'Remove manual property'
+                title: 'Remove additional property'
             }, '×');
             li.appendChild(removeBtn);
             
@@ -656,7 +664,7 @@ export function setupMappingStep(state) {
     function removeManualPropertyFromUI(propertyId) {
         state.removeManualProperty(propertyId);
         populateLists();
-        showMessage('Manual property removed', 'success', 2000);
+        showMessage('Additional property removed', 'success', 2000);
     }
     
     // Function to open a mapping modal for a key
@@ -1312,7 +1320,7 @@ export function setupMappingStep(state) {
             
             // Open modal
             modalUI.openModal(
-                'Add Manual Property',
+                'Add Additional Custom Wikidata Property',
                 modalContent,
                 buttons
             );
@@ -1686,7 +1694,7 @@ export function setupMappingStep(state) {
         // Refresh the UI
         populateLists();
         
-        showMessage(`Added manual property: ${property.label} (${property.id})`, 'success', 3000);
+        showMessage(`Added additional property: ${property.label} (${property.id})`, 'success', 3000);
     }
     
     // Generate mapping data for saving
