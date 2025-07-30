@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikidata Property Constraint Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .property-test {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        .property-id {
+            font-weight: bold;
+            color: #0066cc;
+            font-size: 1.1em;
+        }
+        .datatype {
+            background: #e7f3ff;
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin: 5px 0;
+            display: inline-block;
+        }
+        .constraint {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 3px;
+            margin: 5px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .regex {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 5px;
+            border: 1px solid #dee2e6;
+            word-break: break-all;
+            font-size: 0.9em;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .modal-mockup {
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .modal-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .readonly-notice {
+            background: #fafafa;
+            border-left: 2px solid #e0e0e0;
+            color: #6c757d;
+            padding: 8px 12px;
+            margin: 15px 0 5px 0;
+            font-size: 0.85em;
+            font-style: italic;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        select {
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Wikidata Property Constraint API Test</h1>
+        <p>Testing both datatype and constraint APIs with your sample properties:</p>
+        <p><strong>Properties to test:</strong> P31, P1476, P1680, P276, P50, P98, P123, P577, P291, P407, P2635, P195, P217, P973, P275, P6108, P8091, P243</p>
+        
+        <button onclick="testAllProperties()">Test All Properties</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <div class="container">
+        <h2>Modal Mockup - How it would look in the mapping modal</h2>
+        <div class="modal-mockup">
+            <div class="modal-header">Map Property: "title"</div>
+            
+            <div style="margin: 15px 0;">
+                <label>Wikidata Property:</label>
+                <select onchange="showMockConstraints(this.value)">
+                    <option value="">Select property...</option>
+                    <option value="P31">P31 (instance of)</option>
+                    <option value="P1476">P1476 (title)</option>
+                    <option value="P1680">P1680 (subtitle)</option>
+                    <option value="P276">P276 (location)</option>
+                    <option value="P50">P50 (author)</option>
+                    <option value="P98">P98 (editor)</option>
+                    <option value="P123">P123 (publisher)</option>
+                    <option value="P577">P577 (publication date)</option>
+                    <option value="P291">P291 (place of publication)</option>
+                    <option value="P407">P407 (language of work or name)</option>
+                    <option value="P2635">P2635 (number of parts of this work)</option>
+                    <option value="P195">P195 (collection)</option>
+                    <option value="P217">P217 (inventory number)</option>
+                    <option value="P973">P973 (described at URL)</option>
+                    <option value="P275">P275 (copyright license)</option>
+                    <option value="P6108">P6108 (IIIF manifest)</option>
+                    <option value="P8091">P8091 (royalty free image)</option>
+                    <option value="P243">P243 (OCLC control number)</option>
+                </select>
+            </div>
+
+            <div id="mockConstraints" style="display: none;">
+                <div style="margin: 10px 0;">
+                    <strong>Wikidata expects:</strong> <span id="mockDatatype" style="color: #495057;"></span>
+                </div>
+                
+                <div id="mockRegexSection" style="display: none; margin: 10px 0;">
+                    <strong>Format requirements:</strong> <span id="mockRegex" style="color: #495057;"></span>
+                </div>
+
+                <div class="readonly-notice">
+                    This information is automatically retrieved from Wikidata and cannot be changed.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const testProperties = ['P31', 'P1476', 'P1680', 'P276', 'P50', 'P98', 'P123', 'P577', 'P291', 'P407', 'P2635', 'P195', 'P217', 'P973', 'P275', 'P6108', 'P8091', 'P243'];
+        
+        async function getPropertyInfo(propertyId) {
+            try {
+                const response = await fetch(`https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${propertyId}&props=datatype|labels|descriptions&languages=en&format=json&origin=*`);
+                const data = await response.json();
+                const entity = data.entities[propertyId];
+                return {
+                    datatype: entity?.datatype || 'unknown',
+                    label: entity?.labels?.en?.value || 'No label',
+                    description: entity?.descriptions?.en?.value || 'No description'
+                };
+            } catch (error) {
+                console.error(`Error fetching property info for ${propertyId}:`, error);
+                return {
+                    datatype: 'error',
+                    label: 'Error',
+                    description: 'Failed to fetch property information'
+                };
+            }
+        }
+
+        async function getPropertyConstraints(propertyId) {
+            try {
+                const response = await fetch(`https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=${propertyId}&property=P2302&format=json&origin=*`);
+                const data = await response.json();
+                
+                const constraints = [];
+                const claims = data.claims?.P2302 || [];
+                
+                for (const claim of claims) {
+                    // Skip deprecated constraints
+                    if (claim.rank === 'deprecated') {
+                        console.log(`Skipping deprecated constraint for ${propertyId}`);
+                        continue;
+                    }
+                    
+                    const constraintTypeId = claim.mainsnak?.datavalue?.value?.['numeric-id'];
+                    
+                    // Format constraint (Q21502404)
+                    if (constraintTypeId === 21502404) {
+                        const regexQualifiers = claim.qualifiers?.P1793 || [];
+                        for (const regexQualifier of regexQualifiers) {
+                            constraints.push({
+                                type: 'format',
+                                regex: regexQualifier.datavalue?.value,
+                                rank: claim.rank
+                            });
+                        }
+                    }
+                    
+                    // Value type constraint (Q21503250)
+                    if (constraintTypeId === 21503250) {
+                        const classQualifiers = claim.qualifiers?.P2308 || [];
+                        for (const classQualifier of classQualifiers) {
+                            constraints.push({
+                                type: 'value-type',
+                                class: classQualifier.datavalue?.value?.['numeric-id'],
+                                rank: claim.rank
+                            });
+                        }
+                    }
+                }
+                
+                return constraints;
+            } catch (error) {
+                console.error(`Error fetching constraints for ${propertyId}:`, error);
+                return [];
+            }
+        }
+
+        async function testProperty(propertyId) {
+            const resultsDiv = document.getElementById('results');
+            const propertyDiv = document.createElement('div');
+            propertyDiv.className = 'property-test';
+            propertyDiv.innerHTML = `
+                <div class="property-id">${propertyId}</div>
+                <div class="loading">Loading property information and constraints...</div>
+            `;
+            resultsDiv.appendChild(propertyDiv);
+
+            // Get property info (datatype, label, description)
+            const propertyInfo = await getPropertyInfo(propertyId);
+            
+            // Get constraints
+            const constraints = await getPropertyConstraints(propertyId);
+            
+            let constraintsHtml = '';
+            if (constraints.length > 0) {
+                constraintsHtml = '<div class="constraint"><strong>Active constraints found:</strong><br>';
+                constraints.forEach(constraint => {
+                    const rankInfo = constraint.rank ? ` <span style="color: #6c757d; font-size: 0.8em;">(${constraint.rank})</span>` : '';
+                    if (constraint.type === 'format') {
+                        constraintsHtml += `<div>Format regex${rankInfo}: <div class="regex">${constraint.regex}</div></div>`;
+                    } else if (constraint.type === 'value-type') {
+                        constraintsHtml += `<div>Value type constraint${rankInfo}: Q${constraint.class}</div>`;
+                    }
+                });
+                constraintsHtml += '</div>';
+            } else {
+                constraintsHtml = '<div style="color: #6c757d; font-style: italic;">No format constraints found</div>';
+            }
+
+            propertyDiv.innerHTML = `
+                <div class="property-id">
+                    <a href="https://www.wikidata.org/wiki/Property:${propertyId}" target="_blank" style="text-decoration: none; color: #0066cc;">
+                        ${propertyId}
+                    </a>
+                    - ${propertyInfo.label}
+                </div>
+                <div style="color: #6c757d; font-size: 0.9em; margin: 5px 0;">${propertyInfo.description}</div>
+                <div class="datatype">Datatype: ${propertyInfo.datatype === 'time' ? 'point in time' : propertyInfo.datatype.replace('wikibase-item', 'Wikidata item')}</div>
+                ${constraintsHtml}
+            `;
+        }
+
+        async function testAllProperties() {
+            document.getElementById('results').innerHTML = '';
+            
+            for (const propertyId of testProperties) {
+                await testProperty(propertyId);
+                // Small delay to avoid overwhelming the API
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Mock data for the modal demonstration
+        const mockData = {
+            'P31': { datatype: 'Wikidata item', hasRegex: false },
+            'P1476': { datatype: 'monolingual text', hasRegex: true, regexDescription: 'Must not contain HTML tags like &lt;br&gt;, &lt;i&gt;, &lt;em&gt;, &lt;p&gt;' },
+            'P1680': { datatype: 'monolingual text', hasRegex: false },
+            'P276': { datatype: 'Wikidata item', hasRegex: false },
+            'P50': { datatype: 'Wikidata item', hasRegex: false },
+            'P98': { datatype: 'Wikidata item', hasRegex: false },
+            'P123': { datatype: 'Wikidata item', hasRegex: false },
+            'P577': { datatype: 'point in time', hasRegex: false },
+            'P291': { datatype: 'Wikidata item', hasRegex: false },
+            'P407': { datatype: 'Wikidata item', hasRegex: false },
+            'P2635': { datatype: 'quantity', hasRegex: false },
+            'P195': { datatype: 'Wikidata item', hasRegex: false },
+            'P217': { datatype: 'string', hasRegex: false },
+            'P973': { datatype: 'URL', hasRegex: false },
+            'P275': { datatype: 'Wikidata item', hasRegex: false },
+            'P6108': { datatype: 'URL', hasRegex: false },
+            'P8091': { datatype: 'external identifier', hasRegex: false },
+            'P243': { datatype: 'external identifier', hasRegex: true, regexDescription: 'Must be a valid OCLC number format' }
+        };
+
+        function showMockConstraints(propertyId) {
+            const constraintsDiv = document.getElementById('mockConstraints');
+            const datatypeDiv = document.getElementById('mockDatatype');
+            const regexSection = document.getElementById('mockRegexSection');
+            const regexDiv = document.getElementById('mockRegex');
+
+            if (propertyId && mockData[propertyId]) {
+                const data = mockData[propertyId];
+                datatypeDiv.textContent = data.datatype;
+                
+                if (data.hasRegex) {
+                    regexDiv.innerHTML = data.regexDescription;
+                    regexSection.style.display = 'block';
+                } else {
+                    regexSection.style.display = 'none';
+                }
+                
+                constraintsDiv.style.display = 'block';
+            } else {
+                constraintsDiv.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
