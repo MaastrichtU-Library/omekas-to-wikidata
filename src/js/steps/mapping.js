@@ -821,7 +821,8 @@ export function setupMappingStep(state) {
         
         // Description section
         const descriptionSection = createElement('div', {
-            className: 'metadata-description-section'
+            className: 'metadata-description-section',
+            style: 'margin-bottom: 20px;'
         });
         descriptionSection.innerHTML = `
             <p>${manualProp.property.description}</p>
@@ -833,7 +834,7 @@ export function setupMappingStep(state) {
             className: 'default-value-section'
         });
         defaultValueSection.innerHTML = `
-            <h4>Default Value</h4>
+            <h4>Default Value (Optional)</h4>
             <div class="default-value-description">
                 This value will be pre-filled for all items. You can modify individual values during reconciliation.
             </div>
@@ -1613,7 +1614,7 @@ export function setupMappingStep(state) {
             className: 'default-value-section'
         });
         defaultValueSection.innerHTML = `
-            <h4>Default Value</h4>
+            <h4>Default Value (Optional)</h4>
             <div class="default-value-description">
                 This value will be pre-filled for all items. You can modify individual values during reconciliation.
             </div>
