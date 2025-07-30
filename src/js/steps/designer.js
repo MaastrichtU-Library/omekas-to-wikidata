@@ -2387,11 +2387,17 @@ export function setupDesignerStep(state) {
         });
         
         const modal = createElement('div', {
-            className: 'modal-overlay active'
+            className: 'modal-overlay active',
+            onClick: (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            }
         });
         
         const modalContent = createElement('div', {
-            className: 'modal item-specific-references-modal'
+            className: 'modal item-specific-references-modal',
+            onClick: (e) => e.stopPropagation()
         });
         
         const modalHeader = createElement('div', {
