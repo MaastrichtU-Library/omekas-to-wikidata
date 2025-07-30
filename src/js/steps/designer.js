@@ -285,9 +285,8 @@ export function setupDesignerStep(state) {
             className: 'language-select'
         });
         
-        // Common languages
+        // Common languages - removed confusing 'mul' option
         const commonLanguages = [
-            { code: 'mul', name: 'Multilingual (default for all languages)' },
             { code: 'en', name: 'English' },
             { code: 'es', name: 'Spanish' },
             { code: 'fr', name: 'French' },
@@ -309,7 +308,7 @@ export function setupDesignerStep(state) {
         commonLanguages.forEach(lang => {
             const option = createElement('option', { 
                 value: lang.code,
-                selected: lang.code === 'mul' // Default to multilingual
+                selected: lang.code === 'en' // Default to English
             }, `${lang.name} (${lang.code})`);
             languageSelect.appendChild(option);
         });
@@ -341,31 +340,23 @@ export function setupDesignerStep(state) {
         modalBody.appendChild(languageGroup);
         modalBody.appendChild(customGroup);
         
-        // Add help text for multilingual option
-        const mulHelpText = createElement('div', {
+        // Add help text for language selection
+        const languageHelpText = createElement('div', {
             className: 'help-text',
-            style: 'display: none; margin-top: 8px; padding: 8px; background-color: #e7f3ff; border-radius: 4px; font-size: 0.85em;'
-        }, 'The "mul" (multilingual) option creates a default label that applies to all languages. This is useful for proper names, technical terms, or universal concepts that don\'t need translation. Wikidata will automatically use this label when no language-specific label exists.');
+            style: 'margin-top: 8px; padding: 8px; background-color: #f0f8ff; border-radius: 4px; font-size: 0.85em;'
+        }, 'Select the language for labels, descriptions, and aliases. This determines which language will be used when creating entries in Wikidata. You can add multiple languages by creating additional mappings.');
         
-        modalBody.appendChild(mulHelpText);
+        modalBody.appendChild(languageHelpText);
         
-        // Show/hide custom input and help text based on selection
+        // Show/hide custom input based on selection
         languageSelect.addEventListener('change', () => {
             if (languageSelect.value === 'custom') {
                 customGroup.style.display = 'block';
                 customInput.focus();
-                mulHelpText.style.display = 'none';
-            } else if (languageSelect.value === 'mul') {
-                customGroup.style.display = 'none';
-                mulHelpText.style.display = 'block';
             } else {
                 customGroup.style.display = 'none';
-                mulHelpText.style.display = 'none';
             }
         });
-        
-        // Show help text by default since "mul" is selected
-        mulHelpText.style.display = 'block';
         
         // Modal footer
         const modalFooter = createElement('div', {

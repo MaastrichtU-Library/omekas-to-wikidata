@@ -3,6 +3,8 @@
  * Determines appropriate input types based on Wikidata properties and Entity Schema
  */
 
+import { createLanguageSelector, formatMonolingualValue } from './languages.js';
+
 /**
  * Common Wikidata property types and their expected input types
  */
@@ -198,13 +200,14 @@ export function getInputFieldConfig(propertyType) {
         },
         
         'monolingualtext': {
-            type: 'text',
+            type: 'monolingualtext',
             placeholder: 'Enter text...',
             allowCustom: true,
             requiresReconciliation: false,
             validation: null,
             description: 'Text with language specification',
-            language: true
+            language: true,
+            requiresLanguage: true
         },
         
         'commons-media': {
@@ -334,6 +337,28 @@ export function createInputHTML(propertyType, value = '', propertyName = '') {
             `;
             break;
             
+        case 'monolingualtext':
+            // Parse existing value if it's a monolingual object
+            const monoValue = formatMonolingualValue(value);
+            html += `
+                <div class="monolingualtext-input-group">
+                    <input type="text" 
+                           id="${inputId}" 
+                           class="text-input monolingualtext-input" 
+                           placeholder="${config.placeholder}"
+                           value="${monoValue.text}"
+                           data-requires-language="true">
+                    <div class="language-selector-wrapper">
+                        ${createLanguageSelector(monoValue.language, 'language-select monolingualtext-language').outerHTML}
+                    </div>
+                </div>
+                <div class="language-requirement-hint">
+                    <span class="hint-icon">ℹ️</span>
+                    <span class="hint-text">Language specification is required for this property</span>
+                </div>
+            `;
+            break;
+            
         default: // text, external-id, etc.
             html += `
                 <input type="text" 
@@ -341,16 +366,6 @@ export function createInputHTML(propertyType, value = '', propertyName = '') {
                        class="text-input" 
                        placeholder="${config.placeholder}"
                        value="${value}">
-                ${config.language ? `
-                    <select class="language-select">
-                        <option value="en">English</option>
-                        <option value="de">German</option>
-                        <option value="fr">French</option>
-                        <option value="es">Spanish</option>
-                        <option value="it">Italian</option>
-                        <option value="nl">Dutch</option>
-                    </select>
-                ` : ''}
             `;
             break;
     }

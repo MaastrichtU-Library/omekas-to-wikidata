@@ -9,6 +9,7 @@ import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput
 import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
+import { getLanguageName } from '../utils/languages.js';
 
 export function setupReconciliationStep(state) {
     
@@ -921,11 +922,36 @@ export function setupReconciliationStep(state) {
     }
     
     /**
+     * Get mapped property information including language settings
+     */
+    function getMappedPropertyInfo(property) {
+        const currentState = state.getState();
+        if (!currentState.mappings || !currentState.mappings.mappedKeys) return null;
+        
+        // Find the mapped key that corresponds to this property
+        const mappedKey = currentState.mappings.mappedKeys.find(mk => {
+            return mk.property && (mk.property.id === property || mk.key === property);
+        });
+        
+        if (mappedKey && mappedKey.property) {
+            return {
+                ...mappedKey.property,
+                language: mappedKey.language // Include language if set
+            };
+        }
+        
+        return null;
+    }
+    
+    /**
      * Create modal content for reconciliation with simplified design based on Q&A requirements
      */
     async function createReconciliationModalContent(itemId, property, valueIndex, value) {
+        // Get mapped property info including language for monolingual text
+        const mappedProperty = getMappedPropertyInfo(property);
+        
         // Detect property type for dynamic input fields
-        const propertyType = detectPropertyType(property);
+        const propertyType = mappedProperty?.datatype || detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
         
         // Get property information for display (now async)
@@ -1418,8 +1444,18 @@ export function setupReconciliationStep(state) {
         const container = document.querySelector('.primary-recommendations');
         if (!container) return;
         
+        // Get current property context if available
+        const property = currentReconciliationCell?.property;
+        const mappedProperty = property ? getMappedPropertyInfo(property) : null;
+        
+        // For monolingual text, include the mapped language in the value
+        let inputValue = value;
+        if (propertyType === 'monolingualtext' && mappedProperty?.language) {
+            inputValue = { text: value, language: mappedProperty.language };
+        }
+        
         const inputConfig = getInputFieldConfig(propertyType);
-        const customInputHTML = createInputHTML(propertyType, value);
+        const customInputHTML = createInputHTML(propertyType, inputValue);
         
         container.innerHTML = `
             <div class="non-wikidata-input">
@@ -2602,7 +2638,13 @@ export function setupReconciliationStep(state) {
                 }, 100);
             } else {
                 // For non-Wikidata properties, show custom input directly
-                const customInputHTML = createInputHTML(newType, value, property);
+                // Get mapped property info for language
+                const mappedProp = getMappedPropertyInfo(property);
+                let inputValue = value;
+                if (newType === 'monolingualtext' && mappedProp?.language) {
+                    inputValue = { text: value, language: mappedProp.language };
+                }
+                const customInputHTML = createInputHTML(newType, inputValue, property);
                 primaryRecommendations.innerHTML = `
                     <div class="non-wikidata-input">
                         <h5>Enter ${inputConfig.description}</h5>

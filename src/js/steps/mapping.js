@@ -4,6 +4,7 @@
  */
 import { eventSystem } from '../events.js';
 import { showMessage, createElement, createListItem, createDownloadLink } from '../ui/components.js';
+import { createLanguageSelector, getLanguageName } from '../utils/languages.js';
 export function setupMappingStep(state) {
     // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
@@ -457,9 +458,16 @@ export function setupMappingStep(state) {
             
             // Show property info for mapped keys immediately after key name
             if (type === 'mapped' && keyData.property) {
+                let propertyInfoText = ` → ${keyData.property.id}: ${keyData.property.label}`;
+                
+                // Add language info for monolingual text properties
+                if (keyData.property.datatype === 'monolingualtext' && keyData.language) {
+                    propertyInfoText += ` (${getLanguageName(keyData.language)})`;
+                }
+                
                 const propertyInfo = createElement('span', {
                     className: 'property-info'
-                }, ` → ${keyData.property.id}: ${keyData.property.label}`);
+                }, propertyInfoText);
                 keyDisplay.appendChild(propertyInfo);
             }
             
@@ -569,6 +577,9 @@ export function setupMappingStep(state) {
         const container = createElement('div', {
             className: 'mapping-modal-content'
         });
+        
+        // Store keyData for later use
+        window.currentMappingKeyData = keyData;
         
         // Key information section
         const keyInfo = createElement('div', {
@@ -819,10 +830,42 @@ export function setupMappingStep(state) {
             const response = await fetch(wikidataUrl);
             const data = await response.json();
             
-            displayPropertySuggestions(data.search || [], autoSuggestions, container);
+            // Enhance search results with datatype information
+            const enhancedResults = await enhancePropertiesWithDatatype(data.search || []);
+            
+            displayPropertySuggestions(enhancedResults, autoSuggestions, container);
         } catch (error) {
             console.error('Error searching Wikidata properties:', error);
             container.innerHTML = '<div class="error">Error searching properties. Please try again.</div>';
+        }
+    }
+    
+    // Fetch property details including datatype
+    async function enhancePropertiesWithDatatype(properties) {
+        if (properties.length === 0) return [];
+        
+        const propertyIds = properties.map(p => p.id).join('|');
+        const detailsUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${propertyIds}&props=datatype|labels|descriptions&languages=en&format=json&origin=*`;
+        
+        try {
+            const response = await fetch(detailsUrl);
+            const data = await response.json();
+            
+            return properties.map(prop => {
+                const entity = data.entities[prop.id];
+                if (entity) {
+                    return {
+                        ...prop,
+                        datatype: entity.datatype || 'unknown',
+                        label: entity.labels?.en?.value || prop.label,
+                        description: entity.descriptions?.en?.value || prop.description
+                    };
+                }
+                return prop;
+            });
+        } catch (error) {
+            console.error('Error fetching property details:', error);
+            return properties;
         }
     }
     
@@ -878,7 +921,8 @@ export function setupMappingStep(state) {
                 const formattedProperty = {
                     id: property.id,
                     label: property.label,
-                    description: property.description || 'No description available'
+                    description: property.description || 'No description available',
+                    datatype: property.datatype || 'unknown'
                 };
                 const item = createPropertySuggestionItem(formattedProperty, false);
                 wikidataSection.appendChild(item);
@@ -899,10 +943,15 @@ export function setupMappingStep(state) {
             onClick: () => selectProperty(property)
         });
         
+        const datatypeIndicator = property.datatype === 'monolingualtext' 
+            ? '<span class="datatype-indicator monolingual">🌐 Text with language</span>' 
+            : '';
+        
         item.innerHTML = `
             <div class="property-main">
                 <span class="property-id">${property.id}</span>
                 <span class="property-label">${property.label}</span>
+                ${datatypeIndicator}
             </div>
             <div class="property-description">${property.description}</div>
         `;
@@ -945,14 +994,42 @@ export function setupMappingStep(state) {
         const detailsContainer = document.getElementById('selected-property-details');
         
         if (selectedContainer && detailsContainer) {
-            detailsContainer.innerHTML = `
+            let propertyDetailsHTML = `
                 <div class="selected-property-info">
                     <span class="property-id">${property.id}</span>
                     <span class="property-label">${property.label}</span>
                     <div class="property-description">${property.description}</div>
                 </div>
             `;
+            
+            // Add language selector for monolingual text properties
+            if (property.datatype === 'monolingualtext') {
+                propertyDetailsHTML += `
+                    <div class="language-selection-section">
+                        <h5>🌐 Language Selection Required</h5>
+                        <p class="language-help-text">This property requires a language to be specified for the text value.</p>
+                        <div class="language-selector-container">
+                            <label for="mapping-language-select">Select language for this mapping:</label>
+                            ${createLanguageSelector(window.currentMappingKeyData?.language || 'en', 'mapping-language-select').outerHTML}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            detailsContainer.innerHTML = propertyDetailsHTML;
             selectedContainer.style.display = 'block';
+            
+            // Store language selection handler
+            if (property.datatype === 'monolingualtext') {
+                const languageSelect = detailsContainer.querySelector('#mapping-language-select');
+                if (languageSelect) {
+                    languageSelect.addEventListener('change', (e) => {
+                        window.currentMappingLanguage = e.target.value;
+                    });
+                    // Set initial value
+                    window.currentMappingLanguage = languageSelect.value;
+                }
+            }
         }
     }
     
@@ -1022,6 +1099,11 @@ export function setupMappingStep(state) {
             property: property,
             mappedAt: new Date().toISOString()
         };
+        
+        // Add language information for monolingual text properties
+        if (property.datatype === 'monolingualtext' && window.currentMappingLanguage) {
+            mappedKey.language = window.currentMappingLanguage;
+        }
         
         // Use moveKeyToCategory to handle the movement properly
         moveKeyToCategory(mappedKey, 'mapped');

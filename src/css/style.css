@@ -4512,3 +4512,122 @@ main {
     color: #666;
     font-style: italic;
 }
+
+/* Monolingual text input styles */
+.monolingualtext-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.monolingualtext-input {
+    flex: 1;
+    min-width: 200px;
+}
+
+.language-selector-wrapper {
+    flex: 0 0 auto;
+    min-width: 200px;
+}
+
+.monolingualtext-language {
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.monolingualtext-language:focus {
+    color: #495057;
+    background-color: #fff;
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.language-requirement-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.language-requirement-hint .hint-icon {
+    color: #0066cc;
+}
+
+/* Dynamic input container improvements */
+.dynamic-input-container[data-property-type="monolingualtext"] {
+    width: 100%;
+}
+
+.dynamic-input-container[data-property-type="monolingualtext"] .input-description {
+    margin-bottom: 0.5rem;
+    font-style: italic;
+    color: #666;
+}
+
+/* Language selection in mapping modal */
+.language-selection-section {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f0f8ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 0.25rem;
+}
+
+.language-selection-section h5 {
+    margin: 0 0 0.5rem 0;
+    color: #0066cc;
+    font-size: 1rem;
+}
+
+.language-help-text {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    color: #555;
+}
+
+.language-selector-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.language-selector-container label {
+    font-weight: 500;
+    color: #333;
+}
+
+#mapping-language-select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+
+/* Datatype indicator in property suggestions */
+.datatype-indicator {
+    margin-left: 0.5rem;
+    padding: 0.125rem 0.5rem;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.datatype-indicator.monolingual {
+    background-color: #f0f8ff;
+    color: #0066cc;
+}
