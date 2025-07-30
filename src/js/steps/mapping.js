@@ -397,7 +397,8 @@ export function setupMappingStep(state) {
         // Update section counts
         updateSectionCounts(finalState.mappings);
         
-        // Auto-add P31 (instance of) if not already mapped or present as manual property
+        // Auto-add metadata fields and P31 (instance of) if not already mapped or present as manual property
+        autoAddMetadataFields(finalState);
         autoAddInstanceOfProperty(finalState);
         
         // Auto-open mapped keys section if there are mapped keys
@@ -414,6 +415,62 @@ export function setupMappingStep(state) {
         // Enable continue button if there are mapped keys
         if (proceedToReconciliationBtn) {
             proceedToReconciliationBtn.disabled = !finalState.mappings.mappedKeys.length;
+        }
+    }
+    
+    // Auto-add metadata fields (label, description, aliases) if not already present
+    async function autoAddMetadataFields(currentState) {
+        const metadataFields = [
+            {
+                id: 'label',
+                label: 'label',
+                description: 'Human-readable name of the item',
+                datatype: 'monolingualtext',
+                datatypeLabel: 'Monolingual text',
+                isMetadata: true
+            },
+            {
+                id: 'description',
+                label: 'description',
+                description: 'Short description of the item',
+                datatype: 'monolingualtext',
+                datatypeLabel: 'Monolingual text',
+                isMetadata: true
+            },
+            {
+                id: 'aliases',
+                label: 'aliases',
+                description: 'Alternative names for the item',
+                datatype: 'monolingualtext',
+                datatypeLabel: 'Monolingual text',
+                isMetadata: true
+            }
+        ];
+        
+        for (const field of metadataFields) {
+            // Check if this metadata field is already in manual properties
+            const hasField = currentState.mappings.manualProperties.some(prop => 
+                prop.property.id === field.id && prop.property.isMetadata
+            );
+            
+            if (!hasField) {
+                const metadataProperty = {
+                    property: field,
+                    defaultValue: '',
+                    isRequired: false,
+                    isMetadata: true,
+                    cannotRemove: true // Make it non-removable like P31
+                };
+                
+                state.addManualProperty(metadataProperty);
+            }
+        }
+        
+        // Refresh the manual properties display
+        const manualPropertiesList = document.getElementById('manual-properties');
+        if (manualPropertiesList) {
+            populateManualPropertiesList(manualPropertiesList, state.getState().mappings.manualProperties);
+            updateSectionCounts(state.getState().mappings);
         }
     }
     
@@ -445,7 +502,8 @@ export function setupMappingStep(state) {
                         ...propertyData
                     },
                     defaultValue: '', // User needs to provide a value
-                    isRequired: true
+                    isRequired: true,
+                    cannotRemove: true // Make it non-removable
                 };
                 
                 state.addManualProperty(p31Property);
@@ -469,7 +527,8 @@ export function setupMappingStep(state) {
                         datatypeLabel: 'Item'
                     },
                     defaultValue: '',
-                    isRequired: true
+                    isRequired: true,
+                    cannotRemove: true
                 };
                 
                 state.addManualProperty(p31Property);
@@ -488,7 +547,7 @@ export function setupMappingStep(state) {
         // Update Manual Properties section (now first)
         const manualPropertiesSection = document.querySelector('.key-sections .section:nth-child(1) summary');
         if (manualPropertiesSection) {
-            manualPropertiesSection.innerHTML = `<span class="section-title">Additional Custom Wikidata Properties</span><span class="section-count">(${manualPropertiesCount})</span>`;
+            manualPropertiesSection.innerHTML = `<span class="section-title">Extra Wikidata properties and metadata</span><span class="section-count">(${manualPropertiesCount})</span>`;
         }
         
         // Update Non-linked Keys section (now second)
@@ -613,9 +672,12 @@ export function setupMappingStep(state) {
             });
             
             // Property name and ID
+            const propertyDisplayText = manualProp.property.isMetadata 
+                ? `${manualProp.property.label} (metadata)`
+                : `${manualProp.property.label} (${manualProp.property.id})`;
             const propertyName = createElement('span', {
                 className: 'key-name-compact'
-            }, `${manualProp.property.label} (${manualProp.property.id})`);
+            }, propertyDisplayText);
             keyDisplay.appendChild(propertyName);
             
             // Property info section showing default value and required status
@@ -634,16 +696,18 @@ export function setupMappingStep(state) {
             }, infoText);
             keyDisplay.appendChild(propertyInfo);
             
-            // Remove button styled like frequency badges
-            const removeBtn = createElement('button', {
-                className: 'key-frequency remove-manual-property-btn',
-                onClick: (e) => {
-                    e.stopPropagation();
-                    removeManualPropertyFromUI(manualProp.property.id);
-                },
-                title: 'Remove this additional property'
-            }, '×');
-            keyDisplay.appendChild(removeBtn);
+            // Remove button styled like frequency badges (only if removable)
+            if (!manualProp.cannotRemove) {
+                const removeBtn = createElement('button', {
+                    className: 'key-frequency remove-manual-property-btn',
+                    onClick: (e) => {
+                        e.stopPropagation();
+                        removeManualPropertyFromUI(manualProp.property.id);
+                    },
+                    title: 'Remove this additional property'
+                }, '×');
+                keyDisplay.appendChild(removeBtn);
+            }
             
             // Create list item with standard styling and behavior
             const li = createListItem(keyDisplay, {
@@ -704,6 +768,15 @@ export function setupMappingStep(state) {
     
     // Remove manual property from UI and state
     function removeManualPropertyFromUI(propertyId) {
+        // Check if this property can be removed
+        const currentState = state.getState();
+        const property = currentState.mappings.manualProperties.find(p => p.property.id === propertyId);
+        
+        if (property && property.cannotRemove) {
+            showMessage('This property cannot be removed', 'warning', 2000);
+            return;
+        }
+        
         state.removeManualProperty(propertyId);
         populateLists();
         showMessage('Additional property removed', 'success', 2000);
