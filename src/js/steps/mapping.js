@@ -994,6 +994,27 @@ export function setupMappingStep(state) {
             searchInput.value = `${keyData.property.id}: ${keyData.property.label}`;
         } else {
             window.currentMappingSelectedProperty = null;
+            
+            // Pre-fill search with key name (without schema prefix) and auto-search
+            if (keyData && keyData.key) {
+                let searchTerm = keyData.key;
+                
+                // Remove schema prefix if present (everything before and including ':')
+                if (searchTerm.includes(':')) {
+                    searchTerm = searchTerm.split(':').pop();
+                }
+                
+                // Set the search input value
+                searchInput.value = searchTerm;
+                
+                // Automatically perform the search if the term is meaningful
+                if (searchTerm.trim().length >= 2) {
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        searchWikidataProperties(searchTerm.trim(), suggestionsContainer);
+                    }, 100);
+                }
+            }
         }
         
         searchInput.addEventListener('input', (e) => {
