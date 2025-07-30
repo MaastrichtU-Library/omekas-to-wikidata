@@ -4580,12 +4580,13 @@ pre.sample-value {
 
 /* Manual Properties Styling */
 .manual-properties-description {
-    padding: 12px 0;
+    padding: 12px;
     color: #666;
     font-size: 0.9em;
     line-height: 1.4;
     border-bottom: 1px solid #eee;
     margin-bottom: 15px;
+    text-align: center;
 }
 
 .manual-properties-actions {
