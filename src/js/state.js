@@ -152,6 +152,13 @@ export function setupState() {
         // Show modal
         modal.style.display = 'flex';
         
+        // Prevent modal content from closing the modal when clicked
+        const modalContent = modal.querySelector('.modal');
+        const handleContentClick = (e) => e.stopPropagation();
+        if (modalContent) {
+            modalContent.addEventListener('click', handleContentClick);
+        }
+        
         // Handle button clicks
         const handleRestore = () => {
             modal.style.display = 'none';
@@ -165,13 +172,26 @@ export function setupState() {
             cleanup();
         };
         
+        const handleOverlayClick = (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                clearPersistedState();
+                cleanup();
+            }
+        };
+        
         const cleanup = () => {
             restoreBtn.removeEventListener('click', handleRestore);
             freshBtn.removeEventListener('click', handleFresh);
+            modal.removeEventListener('click', handleOverlayClick);
+            if (modalContent) {
+                modalContent.removeEventListener('click', handleContentClick);
+            }
         };
         
         restoreBtn.addEventListener('click', handleRestore);
         freshBtn.addEventListener('click', handleFresh);
+        modal.addEventListener('click', handleOverlayClick);
     }
     
     /**
