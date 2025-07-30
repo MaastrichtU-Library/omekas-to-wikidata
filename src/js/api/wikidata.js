@@ -77,6 +77,9 @@ export async function getPropertyConstraints(propertyId) {
             other: []
         };
         
+        // Collect all Q-numbers that need labels
+        const qNumbersToFetch = new Set();
+        
         // Process each constraint claim
         for (const claim of claims) {
             // Skip deprecated constraints
@@ -121,13 +124,16 @@ export async function getPropertyConstraints(propertyId) {
                 for (const classQualifier of classQualifiers) {
                     const classId = classQualifier.datavalue?.value?.['numeric-id'];
                     if (classId) {
-                        classIds.push(`Q${classId}`);
+                        const qId = `Q${classId}`;
+                        classIds.push(qId);
+                        qNumbersToFetch.add(qId);
                     }
                 }
                 
                 if (classIds.length > 0) {
                     constraints.valueType.push({
                         classes: classIds,
+                        classLabels: {}, // Will be filled below
                         rank: claim.rank || 'normal'
                     });
                 }
@@ -139,6 +145,25 @@ export async function getPropertyConstraints(propertyId) {
                     rank: claim.rank || 'normal',
                     qualifiers: claim.qualifiers
                 });
+            }
+        }
+        
+        // Fetch labels for all Q-numbers in value type constraints
+        if (qNumbersToFetch.size > 0) {
+            try {
+                const labels = await fetchEntityLabels(Array.from(qNumbersToFetch));
+                
+                // Update value type constraints with labels
+                constraints.valueType.forEach(constraint => {
+                    constraint.classes.forEach(qId => {
+                        if (labels[qId]) {
+                            constraint.classLabels[qId] = labels[qId];
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('Error fetching entity labels for constraints:', error);
+                // Continue without labels - constraints will work but show Q-numbers
             }
         }
         
@@ -154,6 +179,59 @@ export async function getPropertyConstraints(propertyId) {
             valueType: [],
             other: []
         };
+    }
+}
+
+/**
+ * Fetches labels for multiple Wikidata entities
+ * @param {Array<string>} entityIds - Array of entity IDs (e.g., ['Q5', 'Q215627'])
+ * @returns {Promise<Object>} Object mapping entity ID to label
+ */
+export async function fetchEntityLabels(entityIds) {
+    if (!entityIds || entityIds.length === 0) {
+        return {};
+    }
+    
+    try {
+        // Wikidata API can handle multiple entities at once (up to 50)
+        const chunks = [];
+        for (let i = 0; i < entityIds.length; i += 50) {
+            chunks.push(entityIds.slice(i, i + 50));
+        }
+        
+        const allLabels = {};
+        
+        for (const chunk of chunks) {
+            const ids = chunk.join('|');
+            const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${ids}&props=labels&languages=en&format=json&origin=*`;
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Extract labels from response
+            for (const [entityId, entityData] of Object.entries(data.entities)) {
+                if (entityData && entityData.labels && entityData.labels.en) {
+                    allLabels[entityId] = entityData.labels.en.value;
+                } else {
+                    // Fallback to entity ID if no label found
+                    allLabels[entityId] = entityId;
+                }
+            }
+        }
+        
+        return allLabels;
+    } catch (error) {
+        console.error('Error fetching entity labels:', error);
+        // Return fallback mapping
+        const fallbackLabels = {};
+        entityIds.forEach(id => {
+            fallbackLabels[id] = id;
+        });
+        return fallbackLabels;
     }
 }
 

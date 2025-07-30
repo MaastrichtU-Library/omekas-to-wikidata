@@ -4557,6 +4557,11 @@ pre.sample-value {
     color: #495057;
 }
 
+.constraint-value-types {
+    margin: 10px 0;
+    color: #495057;
+}
+
 .constraint-error {
     color: #dc3545;
     font-style: italic;

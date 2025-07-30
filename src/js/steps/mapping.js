@@ -1165,6 +1165,24 @@ export function setupMappingStep(state) {
                 }
             }
             
+            // Show value type constraints if any
+            if (propertyData.constraints.valueType.length > 0) {
+                const valueTypeDescriptions = propertyData.constraints.valueType
+                    .filter(c => c.rank !== 'deprecated')
+                    .map(constraint => {
+                        // Convert Q-numbers to human-readable labels
+                        const classLabels = constraint.classes.map(qId => {
+                            return constraint.classLabels[qId] || qId;
+                        });
+                        return classLabels.join(', ');
+                    })
+                    .join('; ');
+                
+                if (valueTypeDescriptions) {
+                    constraintHtml += `<div class="constraint-value-types"><strong>Must be:</strong> ${valueTypeDescriptions}</div>`;
+                }
+            }
+            
             contentDiv.innerHTML = constraintHtml;
             
         } catch (error) {
@@ -1556,6 +1574,24 @@ export function setupMappingStep(state) {
                 
                 if (formatDescriptions) {
                     constraintHtml += `<div class="constraint-format"><strong>Format requirements:</strong> ${formatDescriptions}</div>`;
+                }
+            }
+            
+            // Show value type constraints if any
+            if (propertyData.constraints.valueType.length > 0) {
+                const valueTypeDescriptions = propertyData.constraints.valueType
+                    .filter(c => c.rank !== 'deprecated')
+                    .map(constraint => {
+                        // Convert Q-numbers to human-readable labels
+                        const classLabels = constraint.classes.map(qId => {
+                            return constraint.classLabels[qId] || qId;
+                        });
+                        return classLabels.join(', ');
+                    })
+                    .join('; ');
+                
+                if (valueTypeDescriptions) {
+                    constraintHtml += `<div class="constraint-value-types"><strong>Must be:</strong> ${valueTypeDescriptions}</div>`;
                 }
             }
             
