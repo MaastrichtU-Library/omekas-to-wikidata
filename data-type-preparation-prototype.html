@@ -347,6 +347,101 @@
             transform: rotate(90deg);
         }
 
+        /* Unit search styling */
+        .unit-search-container {
+            position: relative;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .search-result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-family: monospace;
+        }
+
+        .search-result-item:hover {
+            background: #f0f8ff;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .selected-unit {
+            margin-top: 8px;
+            padding: 6px 10px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: monospace;
+        }
+
+        .remove-unit {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .unit-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .unit-suggestion {
+            padding: 4px 8px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .unit-suggestion:hover {
+            background: #e0e0e0;
+        }
+
+        .unit-rules-list {
+            min-height: 40px;
+        }
+
+        .unit-rule {
+            background: #f8f9fa;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: monospace;
+        }
+
         /* Drag and drop styling */
         .find-replace-rule {
             cursor: move;
@@ -702,12 +797,33 @@
 
                 <div class="form-section">
                     <h4>Unit Configuration</h4>
-                    <p>Specify the unit for these quantities. Units should be Wikidata item Q-IDs.</p>
+                    <p>Search for and select units using Wikidata Q-IDs. Common units are suggested below.</p>
                     
                     <div class="input-group">
-                        <label for="default-unit">Default Unit (Q-ID):</label>
-                        <input type="text" id="default-unit" placeholder="e.g., Q11573 for metre">
+                        <label for="unit-search">Search for Unit:</label>
+                        <div class="unit-search-container">
+                            <input type="text" id="unit-search" placeholder="Type unit name or Q-ID (e.g., 'meter', 'Q11573')">
+                            <div id="unit-search-results" class="search-results" style="display: none;"></div>
+                        </div>
+                        <div class="selected-unit" id="selected-default-unit" style="display: none;">
+                            <span class="unit-label"></span>
+                            <button type="button" class="remove-unit">×</button>
+                        </div>
                     </div>
+                    
+                    <div class="common-units">
+                        <h5>Common Units:</h5>
+                        <div class="unit-suggestions">
+                            <button type="button" class="unit-suggestion" data-qid="Q11573" data-label="metre">metre (Q11573)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q174728" data-label="centimetre">centimetre (Q174728)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q3710" data-label="foot">foot (Q3710)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q41803" data-label="gram">gram (Q41803)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q199" data-label="1">1 (Q199)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q180154" data-label="second">second (Q180154)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q4916" data-label="euro">euro (Q4916)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q4917" data-label="US dollar">US dollar (Q4917)</button>
+                        </div>
+                    </div></div>
                     
                     <div class="collapsible">
                         <div class="collapsible-header">
@@ -718,13 +834,24 @@
                             <div class="input-row">
                                 <div class="input-group">
                                     <label for="unit-pattern">If text contains:</label>
-                                    <input type="text" id="unit-pattern" placeholder="e.g., 'cm', 'meter'">
+                                    <input type="text" id="unit-pattern" placeholder="e.g., 'cm', 'meter', 'kg'">
                                 </div>
                                 <div class="input-group">
-                                    <label for="unit-qid">Use unit (Q-ID):</label>
-                                    <input type="text" id="unit-qid" placeholder="e.g., Q174728">
+                                    <label for="rule-unit-search">Use unit:</label>
+                                    <div class="unit-search-container">
+                                        <input type="text" id="rule-unit-search" placeholder="Search for unit...">
+                                        <div id="rule-unit-search-results" class="search-results" style="display: none;"></div>
+                                    </div>
+                                    <div class="selected-unit" id="selected-rule-unit" style="display: none;">
+                                        <span class="unit-label"></span>
+                                        <button type="button" class="remove-unit">×</button>
+                                    </div>
                                 </div>
-                                <button class="button button--secondary button--small">Add Rule</button>
+                                <button id="add-unit-rule" class="button button--secondary button--small">Add Rule</button>
+                            </div>
+                            
+                            <div id="unit-detection-rules" class="unit-rules-list" style="margin-top: 15px;">
+                                <!-- Unit detection rules will appear here -->
                             </div>
                         </div>
                     </div>
@@ -1219,6 +1346,8 @@
             transforms: {},
             findReplaceRules: [],
             regexRules: [],
+            defaultUnit: null,
+            unitDetectionRules: [],
             sampleData: {
                 'string': ['The Mona Lisa', 'Starry Night', 'The Scream', 'Girl with a Pearl Earring'],
                 'external-id': ['https://viaf.org/viaf/24604287', 'http://id.loc.gov/authorities/names/n79021164', 'VIAF:24604287', 'isbn:9780123456789'],
@@ -1237,6 +1366,165 @@
             }
         };
 
+        // Unit database - common Wikidata units with Q-IDs
+        const unitDatabase = [
+            { qid: 'Q11573', label: 'metre', aliases: ['meter', 'm', 'meters', 'metres'] },
+            { qid: 'Q174728', label: 'centimetre', aliases: ['centimeter', 'cm', 'centimeters', 'centimetres'] },
+            { qid: 'Q218593', label: 'millimetre', aliases: ['millimeter', 'mm', 'millimeters', 'millimetres'] },
+            { qid: 'Q828224', label: 'kilometre', aliases: ['kilometer', 'km', 'kilometers', 'kilometres'] },
+            { qid: 'Q3710', label: 'foot', aliases: ['ft', 'feet'] },
+            { qid: 'Q218593', label: 'inch', aliases: ['in', 'inches', '"'] },
+            { qid: 'Q5881', label: 'yard', aliases: ['yd', 'yards'] },
+            { qid: 'Q253276', label: 'mile', aliases: ['mi', 'miles'] },
+            
+            { qid: 'Q41803', label: 'gram', aliases: ['g', 'grams', 'gramme'] },
+            { qid: 'Q11570', label: 'kilogram', aliases: ['kg', 'kilograms', 'kilo'] },
+            { qid: 'Q41803', label: 'milligram', aliases: ['mg', 'milligrams'] },
+            { qid: 'Q48013', label: 'ounce', aliases: ['oz', 'ounces'] },
+            { qid: 'Q134628', label: 'pound', aliases: ['lb', 'lbs', 'pounds'] },
+            { qid: 'Q191118', label: 'ton', aliases: ['t', 'tons', 'tonne', 'tonnes'] },
+            
+            { qid: 'Q180154', label: 'second', aliases: ['s', 'sec', 'seconds'] },
+            { qid: 'Q7727', label: 'minute', aliases: ['min', 'minutes'] },
+            { qid: 'Q25235', label: 'hour', aliases: ['h', 'hr', 'hours'] },
+            { qid: 'Q573', label: 'day', aliases: ['d', 'days'] },
+            { qid: 'Q23387', label: 'week', aliases: ['w', 'weeks'] },
+            { qid: 'Q5151', label: 'month', aliases: ['months'] },
+            { qid: 'Q577', label: 'year', aliases: ['y', 'yr', 'years'] },
+            
+            { qid: 'Q25343', label: 'square metre', aliases: ['m²', 'm2', 'square meter', 'sq m'] },
+            { qid: 'Q25270', label: 'square centimetre', aliases: ['cm²', 'cm2', 'square centimeter'] },
+            { qid: 'Q35852', label: 'hectare', aliases: ['ha', 'hectares'] },
+            { qid: 'Q232291', label: 'acre', aliases: ['acres'] },
+            
+            { qid: 'Q25517', label: 'cubic metre', aliases: ['m³', 'm3', 'cubic meter'] },
+            { qid: 'Q11582', label: 'litre', aliases: ['l', 'liter', 'litres', 'liters'] },
+            { qid: 'Q828224', label: 'millilitre', aliases: ['ml', 'milliliter'] },
+            { qid: 'Q191118', label: 'gallon', aliases: ['gal', 'gallons'] },
+            
+            { qid: 'Q4916', label: 'euro', aliases: ['€', 'EUR', 'euros'] },
+            { qid: 'Q4917', label: 'US dollar', aliases: ['$', 'USD', 'dollar', 'dollars'] },
+            { qid: 'Q25224', label: 'pound sterling', aliases: ['£', 'GBP', 'pounds'] },
+            { qid: 'Q8146', label: 'yen', aliases: ['¥', 'JPY'] },
+            
+            { qid: 'Q199', label: '1', aliases: ['dimensionless', 'unitless', 'count', 'number', 'piece', 'pieces'] },
+            { qid: 'Q11573', label: 'percent', aliases: ['%', 'percentage'] },
+            { qid: 'Q25377', label: 'degree Celsius', aliases: ['°C', 'celsius', 'centigrade'] },
+            { qid: 'Q25267', label: 'degree Fahrenheit', aliases: ['°F', 'fahrenheit'] },
+            { qid: 'Q11579', label: 'kelvin', aliases: ['K'] }
+        ];
+
+        // Unit search functionality
+        function searchUnits(query) {
+            if (!query || query.length < 1) return [];
+            
+            const lowerQuery = query.toLowerCase().trim();
+            
+            // Direct Q-ID match
+            if (lowerQuery.match(/^q\d+$/)) {
+                const exactMatch = unitDatabase.find(unit => unit.qid.toLowerCase() === lowerQuery);
+                if (exactMatch) return [exactMatch];
+            }
+            
+            // Search in labels and aliases
+            const matches = unitDatabase.filter(unit => {
+                return unit.label.toLowerCase().includes(lowerQuery) ||
+                       unit.aliases.some(alias => alias.toLowerCase().includes(lowerQuery)) ||
+                       unit.qid.toLowerCase().includes(lowerQuery);
+            });
+            
+            // Sort by relevance (exact matches first, then starts with, then contains)
+            return matches.sort((a, b) => {
+                const aExact = a.label.toLowerCase() === lowerQuery || a.aliases.some(alias => alias.toLowerCase() === lowerQuery);
+                const bExact = b.label.toLowerCase() === lowerQuery || b.aliases.some(alias => alias.toLowerCase() === lowerQuery);
+                
+                if (aExact && !bExact) return -1;
+                if (!aExact && bExact) return 1;
+                
+                const aStarts = a.label.toLowerCase().startsWith(lowerQuery) || a.aliases.some(alias => alias.toLowerCase().startsWith(lowerQuery));
+                const bStarts = b.label.toLowerCase().startsWith(lowerQuery) || b.aliases.some(alias => alias.toLowerCase().startsWith(lowerQuery));
+                
+                if (aStarts && !bStarts) return -1;
+                if (!aStarts && bStarts) return 1;
+                
+                return a.label.localeCompare(b.label);
+            }).slice(0, 8); // Limit to 8 results
+        }
+
+        // Setup unit search for a specific input/results pair
+        function setupUnitSearch(inputId, resultsId, selectionId, onSelect) {
+            const input = document.getElementById(inputId);
+            const results = document.getElementById(resultsId);
+            const selection = document.getElementById(selectionId);
+            
+            if (!input || !results || !selection) return;
+            
+            let debounceTimer;
+            
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    const query = this.value;
+                    
+                    if (query.length < 1) {
+                        results.style.display = 'none';
+                        return;
+                    }
+                    
+                    const matches = searchUnits(query);
+                    
+                    if (matches.length === 0) {
+                        results.innerHTML = '<div class="search-result-item" style="color: #666;">No units found</div>';
+                        results.style.display = 'block';
+                        return;
+                    }
+                    
+                    results.innerHTML = matches.map(unit => 
+                        `<div class="search-result-item" data-qid="${unit.qid}" data-label="${unit.label}">
+                            ${unit.label} (${unit.qid})
+                            ${unit.aliases.length > 0 ? '<br><small style="color: #666;">Also: ' + unit.aliases.slice(0, 3).join(', ') + '</small>' : ''}
+                        </div>`
+                    ).join('');
+                    
+                    results.style.display = 'block';
+                    
+                    // Add click handlers
+                    results.querySelectorAll('.search-result-item[data-qid]').forEach(item => {
+                        item.addEventListener('click', function() {
+                            const qid = this.dataset.qid;
+                            const label = this.dataset.label;
+                            selectUnit(input, results, selection, qid, label, onSelect);
+                        });
+                    });
+                }, 200);
+            });
+            
+            // Hide results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !results.contains(e.target)) {
+                    results.style.display = 'none';
+                }
+            });
+        }
+
+        // Select a unit and update UI
+        function selectUnit(input, results, selection, qid, label, onSelect) {
+            input.value = '';
+            results.style.display = 'none';
+            
+            selection.querySelector('.unit-label').textContent = `${label} (${qid})`;
+            selection.style.display = 'flex';
+            
+            // Setup remove button
+            const removeBtn = selection.querySelector('.remove-unit');
+            removeBtn.onclick = function() {
+                selection.style.display = 'none';
+                if (onSelect) onSelect(null);
+            };
+            
+            if (onSelect) onSelect({ qid, label });
+        }
+
         // Initialize the interface
         document.addEventListener('DOMContentLoaded', function() {
             setupDataTypeNavigation();
@@ -1244,6 +1532,7 @@
             initializeInputHandlers();
             setupFindReplaceHandlers();
             setupRegexHandlers();
+            setupUnitSearchHandlers();
             updatePreviews();
         });
 
@@ -1376,6 +1665,124 @@
             if (addRegexButton) {
                 addRegexButton.addEventListener('click', addRegexRule);
             }
+        }
+
+        // Setup unit search functionality
+        function setupUnitSearchHandlers() {
+            // Setup main unit search
+            setupUnitSearch('unit-search', 'unit-search-results', 'selected-default-unit', function(unit) {
+                transformationState.defaultUnit = unit;
+                updatePreviews();
+            });
+            
+            // Setup unit detection rule search
+            setupUnitSearch('rule-unit-search', 'rule-unit-search-results', 'selected-rule-unit', null);
+            
+            // Handle unit suggestions (common units)
+            document.querySelectorAll('.unit-suggestion').forEach(button => {
+                button.addEventListener('click', function() {
+                    const qid = this.dataset.qid;
+                    const label = this.dataset.label;
+                    const input = document.getElementById('unit-search');
+                    const results = document.getElementById('unit-search-results');
+                    const selection = document.getElementById('selected-default-unit');
+                    
+                    selectUnit(input, results, selection, qid, label, function(unit) {
+                        transformationState.defaultUnit = unit;
+                        updatePreviews();
+                    });
+                });
+            });
+            
+            // Handle unit detection rule addition
+            const addUnitRuleButton = document.getElementById('add-unit-rule');
+            if (addUnitRuleButton) {
+                addUnitRuleButton.addEventListener('click', addUnitDetectionRule);
+            }
+        }
+
+        // Add a unit detection rule
+        function addUnitDetectionRule() {
+            const patternInput = document.getElementById('unit-pattern');
+            const selectedUnit = document.getElementById('selected-rule-unit');
+            
+            if (!patternInput || !selectedUnit) return;
+            
+            const pattern = patternInput.value.trim();
+            
+            if (pattern === '') {
+                alert('Please enter a text pattern to match');
+                return;
+            }
+            
+            if (selectedUnit.style.display === 'none') {
+                alert('Please select a unit');
+                return;
+            }
+            
+            const unitLabel = selectedUnit.querySelector('.unit-label').textContent;
+            const unitMatch = unitLabel.match(/\\(([^)]+)\\)$/);
+            const unitQid = unitMatch ? unitMatch[1] : '';
+            const unitName = unitLabel.replace(/ \\([^)]+\\)$/, '');
+            
+            if (!unitQid) {
+                alert('Invalid unit selection');
+                return;
+            }
+            
+            // Add rule to state
+            transformationState.unitDetectionRules.push({
+                pattern: pattern,
+                unit: { qid: unitQid, label: unitName },
+                id: Date.now()
+            });
+            
+            // Clear inputs
+            patternInput.value = '';
+            selectedUnit.style.display = 'none';
+            
+            // Update display
+            updateUnitDetectionRulesDisplay();
+            updatePreviews();
+        }
+
+        // Update the display of unit detection rules
+        function updateUnitDetectionRulesDisplay() {
+            const rulesContainer = document.getElementById('unit-detection-rules');
+            if (!rulesContainer) return;
+            
+            rulesContainer.innerHTML = '';
+            
+            if (transformationState.unitDetectionRules.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = 'color: #666; font-style: italic; padding: 20px; text-align: center; background: #f8f9fa; border-radius: 4px; margin: 5px 0;';
+                placeholder.textContent = 'No unit detection rules yet. Add rules above to see them here.';
+                rulesContainer.appendChild(placeholder);
+                return;
+            }
+            
+            transformationState.unitDetectionRules.forEach((rule, index) => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'unit-rule';
+                
+                const ruleText = document.createElement('span');
+                ruleText.style.cssText = 'flex: 1;';
+                ruleText.innerHTML = `If text contains "<strong>${rule.pattern}</strong>" → use <strong>${rule.unit.label} (${rule.unit.qid})</strong>`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.className = 'button button--small';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer;';
+                removeBtn.addEventListener('click', function() {
+                    transformationState.unitDetectionRules = transformationState.unitDetectionRules.filter(r => r.id !== rule.id);
+                    updateUnitDetectionRulesDisplay();
+                    updatePreviews();
+                });
+                
+                ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(removeBtn);
+                rulesContainer.appendChild(ruleDiv);
+            });
         }
 
         // Add a new regex rule
@@ -2022,6 +2429,7 @@
             return data.map(value => {
                 let transformed = value;
                 let numberValue = null;
+                let detectedUnit = null;
                 
                 // Extract number based on method
                 switch (extraction) {
@@ -2039,14 +2447,39 @@
                 }
                 
                 if (numberValue !== null) {
-                    transformed = numberValue.toFixed(decimalPlaces);
+                    // Apply decimal places formatting
+                    let formattedNumber = numberValue.toFixed(decimalPlaces);
                     
-                    // Add unit detection
-                    if (value.includes('cm') || value.includes('centimeter')) {
-                        transformed += ' (Q174728)';
-                    } else if (value.includes('million')) {
-                        transformed = (numberValue * 1000000).toString();
+                    // Handle special multipliers (million, billion, etc.)
+                    if (value.toLowerCase().includes('million')) {
+                        formattedNumber = (numberValue * 1000000).toFixed(decimalPlaces);
+                    } else if (value.toLowerCase().includes('billion')) {
+                        formattedNumber = (numberValue * 1000000000).toFixed(decimalPlaces);
+                    } else if (value.toLowerCase().includes('thousand')) {
+                        formattedNumber = (numberValue * 1000).toFixed(decimalPlaces);
                     }
+                    
+                    // Check unit detection rules
+                    for (const rule of transformationState.unitDetectionRules) {
+                        if (value.toLowerCase().includes(rule.pattern.toLowerCase())) {
+                            detectedUnit = rule.unit;
+                            break;
+                        }
+                    }
+                    
+                    // Use default unit if no specific unit detected
+                    if (!detectedUnit && transformationState.defaultUnit) {
+                        detectedUnit = transformationState.defaultUnit;
+                    }
+                    
+                    // Format the final result
+                    transformed = formattedNumber;
+                    if (detectedUnit) {
+                        transformed += ` (${detectedUnit.qid})`;
+                    }
+                } else {
+                    // If no number found, show original value with indication
+                    transformed = `${value} (no number detected)`;
                 }
                 
                 return transformed;
