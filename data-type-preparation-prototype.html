@@ -590,44 +590,69 @@
             <div class="data-type-section" id="item-section">
                 <div class="section-header">
                     <h3 class="section-title">Item Data Type Preparation</h3>
-                    <p class="section-description">Items are references to Wikidata entities (Q-IDs). Since items must be valid Wikidata entities, minimal preparation is needed. This section helps validate and clean Q-ID references.</p>
+                    <p class="section-description">Items are Wikidata entity references (Q-IDs). Automatic QID detection searches the entire linked data structure, not just display values, to avoid unnecessary reconciliation.</p>
                 </div>
 
                 <div class="sample-data">
-                    <h5>Sample Values from Your Data:</h5>
+                    <h5>Sample Linked Data Structures:</h5>
                     <div class="sample-values">
+                        <span class="sample-value">{"@id": "https://www.wikidata.org/wiki/Q20007257", "o:label": "CC-BY 4.0"}</span>
+                        <span class="sample-value">{"@id": "https://viaf.org/viaf/24604287", "o:label": "Leonardo da Vinci"}</span>
                         <span class="sample-value">"Q762"</span>
-                        <span class="sample-value">"Leonardo da Vinci"</span>
-                        <span class="sample-value">"Italian Renaissance polymath"</span>
-                        <span class="sample-value">"https://www.wikidata.org/wiki/Q762"</span>
+                        <span class="sample-value">"Renaissance artist"</span>
                     </div>
                 </div>
 
                 <div class="form-section">
-                    <h4>Q-ID Validation</h4>
-                    <p>Validate and extract Q-IDs from various formats. Items that aren't already Q-IDs will need reconciliation.</p>
+                    <h4>Automatic QID Detection</h4>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">Searches for Q-IDs in @id URLs, property values, and display text. Found QIDs skip reconciliation entirely.</p>
                     
                     <div class="input-group">
-                        <label for="qid-extraction">Q-ID Extraction:</label>
-                        <select id="qid-extraction">
-                            <option value="auto">Auto-detect Q-IDs</option>
-                            <option value="url">Extract from Wikidata URLs</option>
-                            <option value="none">No extraction (use as-is)</option>
-                        </select>
+                        <label>
+                            <input type="checkbox" id="search-linked-data" checked>
+                            Search entire linked data structure for QIDs
+                        </label>
                     </div>
                     
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="extract-from-urls" checked>
+                            Extract QIDs from Wikidata URLs (@id fields)
+                        </label>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="validate-qids" checked>
+                            Validate QID format (Q + numbers only)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Detection Results</h4>
                     <div class="validation-info validation-success">
-                        <strong>Validation:</strong> 1 valid Q-ID found, 3 values will need reconciliation during the next step.
+                        <strong>Auto-detection found:</strong> 2 valid QIDs that will skip reconciliation, 2 values need reconciliation.
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <h5 style="margin-bottom: 10px; color: #333;">Detection Details:</h5>
+                        <div style="font-family: monospace; font-size: 0.85em; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+                            <div style="color: #28a745;">✓ Q20007257 ← extracted from @id URL</div>
+                            <div style="color: #28a745;">✓ Q762 ← found in display value</div>
+                            <div style="color: #ffc107;">⚠ "Leonardo da Vinci" ← needs reconciliation</div>
+                            <div style="color: #ffc107;">⚠ "Renaissance artist" ← needs reconciliation</div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="preview-section">
-                    <h5>Preview of Processed Values:</h5>
+                    <h5>Preview of Pre-matched Items:</h5>
                     <div class="preview-values" id="item-preview">
-                        <span class="preview-value">Q762 ✓</span>
+                        <span class="preview-value">Q20007257 ✓ (CC-BY 4.0)</span>
                         <span class="preview-value">Leonardo da Vinci (needs reconciliation)</span>
-                        <span class="preview-value">Italian Renaissance polymath (needs reconciliation)</span>
                         <span class="preview-value">Q762 ✓</span>
+                        <span class="preview-value">Renaissance artist (needs reconciliation)</span>
                     </div>
                 </div>
             </div>
@@ -1190,7 +1215,12 @@
             sampleData: {
                 'string': ['The Mona Lisa', 'Starry Night', 'The Scream', 'Girl with a Pearl Earring'],
                 'external-id': ['https://viaf.org/viaf/24604287', 'http://id.loc.gov/authorities/names/n79021164', 'VIAF:24604287', 'isbn:9780123456789'],
-                'item': ['Q762', 'Leonardo da Vinci', 'Italian Renaissance polymath', 'https://www.wikidata.org/wiki/Q762'],
+                'item': [
+                    '{"@id": "https://www.wikidata.org/wiki/Q20007257", "o:label": "CC-BY 4.0"}',
+                    '{"@id": "https://viaf.org/viaf/24604287", "o:label": "Leonardo da Vinci"}', 
+                    'Q762',
+                    'Renaissance artist'
+                ],
                 'quantity': ['1503', '100 cm', '77.5', '500 million dollars'],
                 'url': ['http://example.com', 'https://museum.org/artwork/123', 'example.org/page', 'www.gallery.com/item'],
                 'commons-media': ['Mona_Lisa.jpg', 'Starry Night.png', 'The_Scream_1893.jpg', 'invalid-file'],
@@ -1304,6 +1334,15 @@
             if (metadataTemplate) metadataTemplate.addEventListener('input', updatePreviews);
             if (metadataLanguage) metadataLanguage.addEventListener('change', updatePreviews);
             if (metadataType) metadataType.addEventListener('change', updatePreviews);
+
+            // Item handlers
+            const searchLinkedData = document.getElementById('search-linked-data');
+            const extractFromUrls = document.getElementById('extract-from-urls');
+            const validateQids = document.getElementById('validate-qids');
+            
+            if (searchLinkedData) searchLinkedData.addEventListener('change', updatePreviews);
+            if (extractFromUrls) extractFromUrls.addEventListener('change', updatePreviews);
+            if (validateQids) validateQids.addEventListener('change', updatePreviews);
 
             // Quantity handlers
             const numberExtraction = document.getElementById('number-extraction');
@@ -1607,36 +1646,92 @@
             });
         }
 
-        // Transform item data based on current settings
+        // Transform item data with intelligent QID detection
         function transformItemData(data) {
-            const extraction = document.getElementById('qid-extraction')?.value || 'auto';
+            const searchLinkedData = document.getElementById('search-linked-data')?.checked ?? true;
+            const extractFromUrls = document.getElementById('extract-from-urls')?.checked ?? true;
+            const validateQids = document.getElementById('validate-qids')?.checked ?? true;
             
             return data.map(value => {
-                let transformed = value;
-                let isValidQid = false;
+                let extractedQid = null;
+                let displayLabel = '';
+                let source = '';
                 
-                // Check if already a valid Q-ID
-                if (/^Q\d+$/.test(value)) {
-                    isValidQid = true;
-                } else if (extraction === 'url' && value.includes('wikidata.org')) {
-                    const qidMatch = value.match(/Q\d+/);
-                    if (qidMatch) {
-                        transformed = qidMatch[0];
-                        isValidQid = true;
+                try {
+                    // Try to parse as JSON (linked data structure)
+                    if (value.startsWith('{') && searchLinkedData) {
+                        const linkedData = JSON.parse(value);
+                        displayLabel = linkedData['o:label'] || linkedData['label'] || '';
+                        
+                        // Extract QID from @id URL
+                        if (linkedData['@id'] && extractFromUrls) {
+                            const urlMatch = linkedData['@id'].match(/Q\d+/);
+                            if (urlMatch) {
+                                extractedQid = urlMatch[0];
+                                source = 'extracted from @id URL';
+                            }
+                        }
+                        
+                        // Search all properties for QIDs
+                        if (!extractedQid && searchLinkedData) {
+                            const jsonStr = JSON.stringify(linkedData);
+                            const qidMatch = jsonStr.match(/Q\d+/);
+                            if (qidMatch) {
+                                extractedQid = qidMatch[0];
+                                source = 'found in linked data';
+                            }
+                        }
                     }
-                } else if (extraction === 'auto') {
-                    const qidMatch = value.match(/Q\d+/);
-                    if (qidMatch) {
-                        transformed = qidMatch[0];
-                        isValidQid = true;
+                } catch (e) {
+                    // Not JSON, treat as simple string
+                }
+                
+                // If not found in linked data, check the display value directly
+                if (!extractedQid) {
+                    if (/^Q\d+$/.test(value.trim())) {
+                        extractedQid = value.trim();
+                        source = 'found in display value';
+                    } else {
+                        // Look for QID anywhere in the string
+                        const qidMatch = value.match(/Q\d+/);
+                        if (qidMatch) {
+                            extractedQid = qidMatch[0];
+                            source = 'extracted from text';
+                        }
                     }
                 }
                 
-                return {
-                    display: isValidQid ? `${transformed} ✓` : `${transformed} (needs reconciliation)`,
-                    value: transformed,
-                    isValid: isValidQid
-                };
+                // Validate QID format if requested
+                const isValidQid = extractedQid && (!validateQids || /^Q\d+$/.test(extractedQid));
+                
+                if (isValidQid) {
+                    const displayText = displayLabel ? `${extractedQid} ✓ (${displayLabel})` : `${extractedQid} ✓`;
+                    return {
+                        display: displayText,
+                        value: extractedQid,
+                        isValid: true,
+                        source: source,
+                        label: displayLabel
+                    };
+                } else {
+                    // Extract display text for reconciliation
+                    let displayText = value;
+                    try {
+                        if (value.startsWith('{')) {
+                            const linkedData = JSON.parse(value);
+                            displayText = linkedData['o:label'] || linkedData['label'] || value;
+                        }
+                    } catch (e) {
+                        // Use original value
+                    }
+                    
+                    return {
+                        display: `${displayText} (needs reconciliation)`,
+                        value: displayText,
+                        isValid: false,
+                        source: 'no QID found'
+                    };
+                }
             });
         }
 
