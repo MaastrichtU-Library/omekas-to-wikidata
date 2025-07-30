@@ -1599,12 +1599,12 @@ export function setupMappingStep(state) {
             <div class="classification-options" style="line-height: 1.8;">
                 <div style="margin-bottom: 8px;">
                     <label style="cursor: pointer;">
-                        <input type="radio" name="classification-type" value="P31" checked style="margin-right: 6px;">Instance of (P31) - This item is an example of this class
+                        <input type="radio" name="classification-type" value="P31" checked style="margin-right: 6px; width: auto;">Instance of (P31) - This item is an example of this class
                     </label>
                 </div>
                 <div>
                     <label style="cursor: pointer;">
-                        <input type="radio" name="classification-type" value="P279" style="margin-right: 6px;">Subclass of (P279) - This item type is a subtype of this class
+                        <input type="radio" name="classification-type" value="P279" style="margin-right: 6px; width: auto;">Subclass of (P279) - This item type is a subtype of this class
                     </label>
                 </div>
             </div>
