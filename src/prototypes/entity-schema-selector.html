@@ -270,20 +270,28 @@
         }
 
         .property-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
         .property-item-enhanced {
             background: white;
-            padding: 8px 12px;
+            padding: 12px 16px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 0.9em;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .property-item-enhanced:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .property-item-enhanced .property-id {
@@ -1074,7 +1082,7 @@
             let html = `
                 <div class="schema-data">
                     <h4>Entity Schema Information</h4>
-                    <p><strong>ID:</strong> ${schemaId}</p>
+                    <p><strong>ID:</strong> <a href="https://www.wikidata.org/wiki/EntitySchema:${schemaId}" target="_blank" style="color: #007bff; text-decoration: underline;">${schemaId}</a></p>
                     <p><strong>Label:</strong> ${label}</p>
                     <p><strong>Description:</strong> ${description}</p>
                 </div>
@@ -1087,7 +1095,7 @@
 
             requiredProperties.forEach(property => {
                 html += `
-                    <div class="property-item-enhanced">
+                    <div class="property-item-enhanced" onclick="window.open('https://www.wikidata.org/wiki/Property:${property.id}', '_blank')">
                         <span class="property-id">${property.id}</span>
                         <span class="property-label">${property.label}</span>
                         <span class="required-indicator">Required</span>
@@ -1106,7 +1114,7 @@
 
             optionalProperties.forEach(property => {
                 html += `
-                    <div class="property-item-enhanced">
+                    <div class="property-item-enhanced" onclick="window.open('https://www.wikidata.org/wiki/Property:${property.id}', '_blank')">
                         <span class="property-id">${property.id}</span>
                         <span class="property-label">${property.label}</span>
                         <span class="optional-indicator">Optional</span>
@@ -1129,25 +1137,6 @@
                     </div>
                 </div>
 
-                <div class="schema-data" style="background: ${actualShexCode ? '#d4edda' : '#fff3cd'}; border-left: 4px solid ${actualShexCode ? '#28a745' : '#ffc107'};">
-                    <h4>${actualShexCode ? 'Live Data Source' : 'Prototype Note'}</h4>
-                    ${actualShexCode ? 
-                        `<p>This data was retrieved from Wikidata using:</p>
-                        <ul style="margin-top: 10px; padding-left: 20px;">
-                            <li><strong>Search:</strong> MediaWiki API namespace 640 (Entity Schemas)</li>
-                            <li><strong>Details:</strong> Wikibase REST API v1 (/entity-schemas/{id})</li>
-                            <li><strong>ShEx Code:</strong> Special:EntitySchemaText endpoint</li>
-                            <li><strong>Properties:</strong> Parsed from real ShEx definitions</li>
-                        </ul>` :
-                        `<p>Showing demonstration data. In the production implementation:</p>
-                        <ul style="margin-top: 10px; padding-left: 20px;">
-                            <li>ShEx would be parsed to extract required/optional properties</li>
-                            <li>Property constraints would be cross-referenced with Wikidata</li>
-                            <li>Cardinality rules would be analyzed (+, ?, *, etc.)</li>
-                            <li>Real-time validation would be available</li>
-                        </ul>`
-                    }
-                </div>
             `;
 
             loadedDataContent.innerHTML = html;
