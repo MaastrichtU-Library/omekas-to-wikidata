@@ -1597,13 +1597,13 @@ export function setupMappingStep(state) {
         classificationSection.innerHTML = `
             <h4>Classification Type</h4>
             <div class="classification-options">
-                <label style="display: flex; align-items: center; margin-bottom: 10px; cursor: pointer;">
-                    <input type="radio" name="classification-type" value="P31" checked style="margin-right: 8px;">
-                    <span>Instance of (P31) - This item is an example of this class</span>
+                <label style="display: block; margin-bottom: 10px; cursor: pointer;">
+                    <input type="radio" name="classification-type" value="P31" checked style="margin-right: 8px; vertical-align: middle;">
+                    Instance of (P31) - This item is an example of this class
                 </label>
-                <label style="display: flex; align-items: center; cursor: pointer;">
-                    <input type="radio" name="classification-type" value="P279" style="margin-right: 8px;">
-                    <span>Subclass of (P279) - This item type is a subtype of this class</span>
+                <label style="display: block; cursor: pointer;">
+                    <input type="radio" name="classification-type" value="P279" style="margin-right: 8px; vertical-align: middle;">
+                    Subclass of (P279) - This item type is a subtype of this class
                 </label>
             </div>
         `;
