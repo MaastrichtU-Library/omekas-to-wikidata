@@ -405,43 +405,22 @@
                 </div>
 
                 <div class="form-section">
-                    <h4>Basic Text Manipulation</h4>
-                    <p>Apply basic transformations to clean and format your text values.</p>
+                    <h4>Find & Replace Operations</h4>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">Case-sensitive, preserves all spaces and whitespace exactly as entered.</p>
                     
-                    <div class="input-group">
-                        <label for="string-prefix">Add Prefix:</label>
-                        <input type="text" id="string-prefix" placeholder="e.g., 'Title: '">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="string-suffix">Add Suffix:</label>
-                        <input type="text" id="string-suffix" placeholder="e.g., ' (artwork)'">
-                    </div>
-                    
-                    <div class="collapsible">
-                        <div class="collapsible-header">
-                            <span>Find & Replace Operations</span>
-                            <span class="collapsible-arrow">▶</span>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="find-text">Find:</label>
+                            <input type="text" id="find-text" placeholder="Text to find">
                         </div>
-                        <div class="collapsible-content">
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label for="find-text">Find:</label>
-                                    <input type="text" id="find-text" placeholder="Text to find">
-                                </div>
-                                <div class="input-group">
-                                    <label for="replace-text">Replace with:</label>
-                                    <input type="text" id="replace-text" placeholder="Replacement text">
-                                </div>
-                                <button class="button button--secondary button--small">Add Rule</button>
-                            </div>
-                            <div class="validation-info">
-                                <strong>Exact Matching:</strong> Case-sensitive, preserves all spaces and whitespace exactly as entered.
-                            </div>
-                            <div id="find-replace-rules" class="find-replace-rules">
-                                <!-- Find/replace rules will appear here -->
-                            </div>
+                        <div class="input-group">
+                            <label for="replace-text">Replace with:</label>
+                            <input type="text" id="replace-text" placeholder="Replacement text">
                         </div>
+                        <button class="button button--secondary button--small">Add Rule</button>
+                    </div>
+                    <div id="find-replace-rules" class="find-replace-rules">
+                        <!-- Find/replace rules will appear here -->
                     </div>
                 </div>
 
@@ -1222,13 +1201,8 @@
 
         // Initialize input handlers for real-time preview
         function initializeInputHandlers() {
-            // String manipulation handlers
-            const stringPrefix = document.getElementById('string-prefix');
-            const stringSuffix = document.getElementById('string-suffix');
+            // String composition handler
             const stringTemplate = document.getElementById('string-template');
-            
-            if (stringPrefix) stringPrefix.addEventListener('input', updatePreviews);
-            if (stringSuffix) stringSuffix.addEventListener('input', updatePreviews);
             if (stringTemplate) stringTemplate.addEventListener('input', updatePreviews);
 
             // External ID handlers
@@ -1424,8 +1398,6 @@
 
         // Transform string data based on current settings
         function transformStringData(data) {
-            const prefix = document.getElementById('string-prefix')?.value || '';
-            const suffix = document.getElementById('string-suffix')?.value || '';
             const template = document.getElementById('string-template')?.value || '';
             
             return data.map(value => {
@@ -1456,10 +1428,6 @@
                     });
                     
                     transformed = templatedValue;
-                } else {
-                    // Apply prefix and suffix when not using template
-                    if (prefix) transformed = prefix + transformed;
-                    if (suffix) transformed = transformed + suffix;
                 }
                 
                 return transformed;
