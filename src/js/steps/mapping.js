@@ -1596,15 +1596,17 @@ export function setupMappingStep(state) {
         });
         classificationSection.innerHTML = `
             <h4>Classification Type</h4>
-            <div class="classification-options">
-                <label style="display: block; margin-bottom: 10px; cursor: pointer;">
-                    <input type="radio" name="classification-type" value="P31" checked style="margin-right: 8px; vertical-align: middle;">
-                    Instance of (P31) - This item is an example of this class
-                </label>
-                <label style="display: block; cursor: pointer;">
-                    <input type="radio" name="classification-type" value="P279" style="margin-right: 8px; vertical-align: middle;">
-                    Subclass of (P279) - This item type is a subtype of this class
-                </label>
+            <div class="classification-options" style="line-height: 1.8;">
+                <div style="margin-bottom: 8px;">
+                    <label style="cursor: pointer;">
+                        <input type="radio" name="classification-type" value="P31" checked style="margin-right: 6px;">Instance of (P31) - This item is an example of this class
+                    </label>
+                </div>
+                <div>
+                    <label style="cursor: pointer;">
+                        <input type="radio" name="classification-type" value="P279" style="margin-right: 6px;">Subclass of (P279) - This item type is a subtype of this class
+                    </label>
+                </div>
             </div>
         `;
         container.appendChild(classificationSection);
