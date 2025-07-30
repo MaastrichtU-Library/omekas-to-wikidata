@@ -726,44 +726,128 @@ export function setupMappingStep(state) {
         import('../ui/modal-ui.js').then(({ setupModalUI }) => {
             const modalUI = setupModalUI();
             
-            // Create modal content for editing (reuse the add modal but pre-populate)
-            const modalContent = createAddManualPropertyModalContent(manualProp);
-            
-            // Create buttons
-            const buttons = [
-                {
-                    text: 'Cancel',
-                    type: 'secondary',
-                    keyboardShortcut: 'Escape',
-                    callback: () => {
-                        modalUI.closeModal();
-                    }
-                },
-                {
-                    text: 'Update Property',
-                    type: 'primary',
-                    keyboardShortcut: 'Enter',
-                    callback: () => {
-                        const { selectedProperty, defaultValue, isRequired } = getManualPropertyFromModal();
-                        if (selectedProperty) {
-                            // Remove the old property and add the updated one
-                            state.removeManualProperty(manualProp.property.id);
-                            addManualPropertyToState(selectedProperty, defaultValue, isRequired);
+            // Check if this is a metadata field
+            if (manualProp.property.isMetadata) {
+                // Create simplified modal content for metadata
+                const modalContent = createMetadataEditModalContent(manualProp);
+                
+                // Create buttons for metadata
+                const buttons = [
+                    {
+                        text: 'Cancel',
+                        type: 'secondary',
+                        keyboardShortcut: 'Escape',
+                        callback: () => {
                             modalUI.closeModal();
-                        } else {
-                            showMessage('Please select a Wikidata property first.', 'warning', 3000);
+                        }
+                    },
+                    {
+                        text: 'Update',
+                        type: 'primary',
+                        keyboardShortcut: 'Enter',
+                        callback: () => {
+                            const defaultValueInput = document.getElementById('metadata-default-value-input');
+                            const defaultValue = defaultValueInput ? defaultValueInput.value.trim() : '';
+                            
+                            // Update the metadata property
+                            const updatedProp = {
+                                ...manualProp,
+                                defaultValue
+                            };
+                            
+                            // Remove and re-add to update
+                            state.removeManualProperty(manualProp.property.id);
+                            state.addManualProperty(updatedProp);
+                            
+                            populateLists();
+                            modalUI.closeModal();
+                            showMessage(`Updated ${manualProp.property.label}`, 'success', 2000);
                         }
                     }
-                }
-            ];
-            
-            // Open modal
-            modalUI.openModal(
-                'Edit Additional Custom Wikidata Property',
-                modalContent,
-                buttons
-            );
+                ];
+                
+                // Open modal with metadata-specific title
+                modalUI.openModal(
+                    manualProp.property.label.charAt(0).toUpperCase() + manualProp.property.label.slice(1),
+                    modalContent,
+                    buttons
+                );
+            } else {
+                // Regular property - use existing flow
+                const modalContent = createAddManualPropertyModalContent(manualProp);
+                
+                const buttons = [
+                    {
+                        text: 'Cancel',
+                        type: 'secondary',
+                        keyboardShortcut: 'Escape',
+                        callback: () => {
+                            modalUI.closeModal();
+                        }
+                    },
+                    {
+                        text: 'Update Property',
+                        type: 'primary',
+                        keyboardShortcut: 'Enter',
+                        callback: () => {
+                            const { selectedProperty, defaultValue, isRequired } = getManualPropertyFromModal();
+                            if (selectedProperty) {
+                                // Remove the old property and add the updated one
+                                state.removeManualProperty(manualProp.property.id);
+                                addManualPropertyToState(selectedProperty, defaultValue, isRequired);
+                                modalUI.closeModal();
+                            } else {
+                                showMessage('Please select a Wikidata property first.', 'warning', 3000);
+                            }
+                        }
+                    }
+                ];
+                
+                // Open modal
+                modalUI.openModal(
+                    'Edit Additional Custom Wikidata Property',
+                    modalContent,
+                    buttons
+                );
+            }
         });
+    }
+    
+    // Create modal content for metadata fields
+    function createMetadataEditModalContent(manualProp) {
+        const container = createElement('div', {
+            className: 'metadata-edit-modal-content'
+        });
+        
+        // Description section
+        const descriptionSection = createElement('div', {
+            className: 'metadata-description-section'
+        });
+        descriptionSection.innerHTML = `
+            <p>${manualProp.property.description}</p>
+        `;
+        container.appendChild(descriptionSection);
+        
+        // Default value section
+        const defaultValueSection = createElement('div', {
+            className: 'default-value-section'
+        });
+        defaultValueSection.innerHTML = `
+            <h4>Default Value</h4>
+            <div class="default-value-description">
+                This value will be pre-filled for all items. You can modify individual values during reconciliation.
+            </div>
+            <div class="default-value-input-container">
+                <input type="text" id="metadata-default-value-input" 
+                       placeholder="Enter a default value..." 
+                       class="default-value-input"
+                       value="${manualProp.defaultValue || ''}">
+                <div class="input-help">Enter a text value for ${manualProp.property.label}</div>
+            </div>
+        `;
+        container.appendChild(defaultValueSection);
+        
+        return container;
     }
     
     // Remove manual property from UI and state
