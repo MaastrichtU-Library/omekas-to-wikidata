@@ -84,6 +84,13 @@
             font-weight: 600;
             color: #007bff;
             font-size: 1.1em;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+
+        .schema-id:hover {
+            color: #0056b3;
         }
 
         .schema-label {
@@ -240,6 +247,132 @@
         .property-label {
             font-weight: 500;
             color: #333;
+        }
+
+        /* Enhanced schema details */
+        .schema-details {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .property-section {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .property-section h5 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1em;
+        }
+
+        .property-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px;
+        }
+
+        .property-item-enhanced {
+            background: white;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .property-item-enhanced .property-id {
+            font-weight: 600;
+            color: #007bff;
+            font-size: 0.85em;
+        }
+
+        .property-item-enhanced .property-label {
+            color: #333;
+            font-size: 0.85em;
+        }
+
+        .required-indicator {
+            background: #dc3545;
+            color: white;
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .optional-indicator {
+            background: #28a745;
+            color: white;
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        /* Collapsible sections */
+        .collapsible {
+            background: #f1f1f1;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .collapsible-header {
+            background: #e9ecef;
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 6px 6px 0 0;
+            transition: background-color 0.2s;
+        }
+
+        .collapsible-header:hover {
+            background: #dee2e6;
+        }
+
+        .collapsible-header h5 {
+            margin: 0;
+            color: #333;
+        }
+
+        .collapsible-toggle {
+            font-size: 1.2em;
+            color: #666;
+            transition: transform 0.2s;
+        }
+
+        .collapsible.expanded .collapsible-toggle {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-content {
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            display: none;
+        }
+
+        .collapsible.expanded .collapsible-content {
+            display: block;
+        }
+
+        .schema-code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            overflow-x: auto;
+            white-space: pre-wrap;
         }
 
         /* Modal Styles */
@@ -478,12 +611,22 @@
             element.dataset.schemaId = schema.id;
             
             element.innerHTML = `
-                <div class="schema-id">${schema.id}</div>
+                <div class="schema-id" data-schema-id="${schema.id}">${schema.id}</div>
                 <div class="schema-label">${schema.label}</div>
                 <div class="schema-description">${schema.description}</div>
             `;
 
-            element.addEventListener('click', () => selectSchema(schema));
+            // Make the whole card clickable for selection
+            element.addEventListener('click', (e) => {
+                // If clicking on schema ID, show details; otherwise select schema
+                if (e.target.classList.contains('schema-id')) {
+                    e.stopPropagation();
+                    showSchemaDetails(schema);
+                } else {
+                    selectSchema(schema);
+                }
+            });
+            
             return element;
         }
 
@@ -632,16 +775,73 @@
                     return;
                 }
 
-                // Search using Wikidata API
-                const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&type=item&format=json&origin=*&limit=10`;
-                
-                const response = await fetch(searchUrl);
-                const data = await response.json();
+                let schemaResults = [];
 
-                // Filter results to only include entity schemas (starting with E)
-                const schemaResults = data.search?.filter(item => 
-                    item.id && item.id.match(/^E\d+$/)
-                ) || [];
+                // If query looks like an E-identifier, search directly
+                if (query.match(/^E\d+$/i)) {
+                    const entityUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${query.toUpperCase()}&format=json&origin=*&props=labels|descriptions`;
+                    
+                    try {
+                        const response = await fetch(entityUrl);
+                        const data = await response.json();
+                        
+                        if (data.entities && data.entities[query.toUpperCase()] && !data.entities[query.toUpperCase()].missing) {
+                            const entity = data.entities[query.toUpperCase()];
+                            schemaResults = [{
+                                id: query.toUpperCase(),
+                                label: entity.labels?.en?.value || 'No label',
+                                description: entity.descriptions?.en?.value || 'No description available'
+                            }];
+                        }
+                    } catch (e) {
+                        console.log('Direct entity lookup failed, trying search');
+                    }
+                }
+
+                // If no direct results or not an E-identifier, do a text search
+                if (schemaResults.length === 0) {
+                    // First try searching for EntitySchemas specifically
+                    let searchUrl = `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + ' haswbstatement:P31=Q16335138')}&format=json&origin=*&srlimit=10`;
+                    
+                    let response = await fetch(searchUrl);
+                    let data = await response.json();
+                    
+                    if (data.query && data.query.search && data.query.search.length > 0) {
+                        // Get entity details for the search results
+                        const entityIds = data.query.search
+                            .map(item => item.title)
+                            .filter(title => title.match(/^E\d+$/))
+                            .slice(0, 10)
+                            .join('|');
+                        
+                        if (entityIds) {
+                            const entityUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${entityIds}&format=json&origin=*&props=labels|descriptions`;
+                            const entityResponse = await fetch(entityUrl);
+                            const entityData = await entityResponse.json();
+                            
+                            schemaResults = Object.keys(entityData.entities || {})
+                                .filter(id => id.match(/^E\d+$/) && !entityData.entities[id].missing)
+                                .map(id => ({
+                                    id: id,
+                                    label: entityData.entities[id].labels?.en?.value || 'No label',
+                                    description: entityData.entities[id].descriptions?.en?.value || 'No description available'
+                                }));
+                        }
+                    }
+                    
+                    // If still no results, try a broader search
+                    if (schemaResults.length === 0) {
+                        searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&type=item&format=json&origin=*&limit=20`;
+                        
+                        response = await fetch(searchUrl);
+                        data = await response.json();
+
+                        // Filter results to only include entity schemas (starting with E)
+                        schemaResults = data.search?.filter(item => 
+                            item.id && item.id.match(/^E\d+$/)
+                        ) || [];
+                    }
+                }
 
                 // Cache results
                 schemaCache.set(query, schemaResults);
@@ -678,19 +878,26 @@
                     <div class="schema-description">${result.description || 'No description available'}</div>
                 `;
 
-                resultElement.addEventListener('click', () => {
+                resultElement.addEventListener('click', (e) => {
                     const schema = {
                         id: result.id,
                         label: result.label || 'Unknown',
                         description: result.description || 'No description available'
                     };
-                    selectSchema(schema);
                     
-                    // Add selected class to clicked item
-                    document.querySelectorAll('.search-result-item').forEach(el => {
-                        el.classList.remove('selected');
-                    });
-                    resultElement.classList.add('selected');
+                    // If clicking on schema ID, show details; otherwise select schema
+                    if (e.target.classList.contains('schema-id')) {
+                        e.stopPropagation();
+                        showSchemaDetails(schema);
+                    } else {
+                        selectSchema(schema);
+                        
+                        // Add selected class to clicked item
+                        document.querySelectorAll('.search-result-item').forEach(el => {
+                            el.classList.remove('selected');
+                        });
+                        resultElement.classList.add('selected');
+                    }
                 });
 
                 resultsEl.appendChild(resultElement);
@@ -745,65 +952,142 @@
             }
         }
 
+        async function showSchemaDetails(schema) {
+            // This function shows detailed schema information in a popup or expanded view
+            const modal = document.getElementById('schema-modal');
+            if (!modal.classList.contains('visible')) {
+                openModal();
+            }
+            
+            // Select the schema to load its data
+            selectSchema(schema);
+        }
+
+        function setupCollapsible(element) {
+            const header = element.querySelector('.collapsible-header');
+            header.addEventListener('click', () => {
+                element.classList.toggle('expanded');
+            });
+        }
+
         function displayEntityData(entity, schemaId) {
             const loadedDataContent = document.getElementById('loaded-data-content');
             
             const label = entity.labels?.en?.value || 'No label available';
             const description = entity.descriptions?.en?.value || 'No description available';
             
+            // Mock data for demonstration - in real implementation this would come from ShEx parsing
+            const mockRequiredProperties = [
+                { id: 'P31', label: 'instance of', description: 'that class of which this subject is a particular example' },
+                { id: 'P1476', label: 'title', description: 'published name of a work' },
+                { id: 'P50', label: 'author', description: 'main creator(s) of a written work' }
+            ];
+            
+            const mockOptionalProperties = [
+                { id: 'P577', label: 'publication date', description: 'date or point in time when a work was first published' },
+                { id: 'P123', label: 'publisher', description: 'organization or person responsible for publishing' },
+                { id: 'P407', label: 'language of work or name', description: 'language associated with this creative work' },
+                { id: 'P136', label: 'genre', description: 'creative work\'s genre or an artist\'s field of work' },
+                { id: 'P953', label: 'full work available at URL', description: 'URL of a web page where the full text of this work is available' },
+                { id: 'P2578', label: 'studies', description: 'the object is an academic study of this subject' }
+            ];
+
+            const mockShExCode = `# Entity Schema ${schemaId}: ${label}
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+
+start = @<${schemaId}>
+
+<${schemaId}> {
+  # Required properties
+  wdt:P31 @<wd:Q571> ;  # instance of -> book
+  wdt:P1476 xsd:string ;  # title
+  wdt:P50 @<wd:Q5>+ ;  # author (one or more)
+  
+  # Optional properties  
+  wdt:P577 xsd:dateTime? ;  # publication date
+  wdt:P123 @<wd:Q2085381>? ;  # publisher
+  wdt:P407 @<wd:Q34770>* ;  # language of work
+  wdt:P136 @<wd:Q483394>* ;  # genre
+  wdt:P953 xsd:anyURI* ;  # full work available at URL
+  wdt:P2578 @<wd:Q35120>* ;  # studies
+}`;
+            
             let html = `
                 <div class="schema-data">
-                    <h4>Entity Information</h4>
+                    <h4>Entity Schema Information</h4>
                     <p><strong>ID:</strong> ${schemaId}</p>
                     <p><strong>Label:</strong> ${label}</p>
                     <p><strong>Description:</strong> ${description}</p>
                 </div>
+
+                <div class="schema-details">
+                    <div class="property-section">
+                        <h5>Required Properties (${mockRequiredProperties.length})</h5>
+                        <div class="property-list">
             `;
 
-            // Show some claims if available
-            if (entity.claims && Object.keys(entity.claims).length > 0) {
+            mockRequiredProperties.forEach(property => {
                 html += `
-                    <div class="schema-data">
-                        <h4>Properties (${Object.keys(entity.claims).length})</h4>
-                        <div class="schema-properties">
-                `;
-
-                Object.keys(entity.claims).slice(0, 12).forEach(propertyId => {
-                    html += `
-                        <div class="property-item">
-                            <div class="property-id">${propertyId}</div>
-                            <div class="property-label">Property</div>
-                        </div>
-                    `;
-                });
-
-                if (Object.keys(entity.claims).length > 12) {
-                    html += `<div class="property-item">... and ${Object.keys(entity.claims).length - 12} more</div>`;
-                }
-
-                html += `
-                        </div>
+                    <div class="property-item-enhanced">
+                        <span class="property-id">${property.id}</span>
+                        <span class="property-label">${property.label}</span>
+                        <span class="required-indicator">Required</span>
                     </div>
                 `;
-            }
+            });
 
-            // Add note about what would be shown in real implementation
             html += `
-                <div class="schema-data" style="background: #e7f3ff; border-left: 4px solid #2196F3;">
-                    <h4>In Production Implementation</h4>
-                    <p>This prototype shows basic entity information. The full implementation would display:</p>
+                        </div>
+                    </div>
+
+                    <div class="property-section">
+                        <h5>Optional Properties (${mockOptionalProperties.length})</h5>
+                        <div class="property-list">
+            `;
+
+            mockOptionalProperties.forEach(property => {
+                html += `
+                    <div class="property-item-enhanced">
+                        <span class="property-id">${property.id}</span>
+                        <span class="property-label">${property.label}</span>
+                        <span class="optional-indicator">Optional</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                        </div>
+                    </div>
+
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <h5>ShEx Schema Code</h5>
+                            <span class="collapsible-toggle">▼</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="schema-code">${mockShExCode}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="schema-data" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+                    <h4>Prototype Note</h4>
+                    <p>This is demonstration data. In the production implementation, this information would be:</p>
                     <ul style="margin-top: 10px; padding-left: 20px;">
-                        <li><strong>ShEx Schema:</strong> Shape Expression defining the entity structure</li>
-                        <li><strong>Required Properties:</strong> Properties that must be present</li>
-                        <li><strong>Optional Properties:</strong> Properties that may be present</li>
-                        <li><strong>Property Constraints:</strong> Data type and format requirements</li>
-                        <li><strong>Cardinality Rules:</strong> How many values each property can have</li>
-                        <li><strong>Related Schemas:</strong> Parent and child entity schemas</li>
+                        <li>Parsed from actual Wikidata EntitySchema ShEx definitions</li>
+                        <li>Retrieved via EntitySchema API endpoints</li>
+                        <li>Dynamically analyzed for required vs optional properties</li>
+                        <li>Cross-referenced with property constraint information</li>
                     </ul>
                 </div>
             `;
 
             loadedDataContent.innerHTML = html;
+            
+            // Setup collapsible functionality
+            const collapsibles = loadedDataContent.querySelectorAll('.collapsible');
+            collapsibles.forEach(setupCollapsible);
         }
     </script>
 </body>
