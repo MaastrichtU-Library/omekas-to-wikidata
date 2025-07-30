@@ -601,6 +601,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeSuggestedSchemas();
             setupEventListeners();
+            // Fetch real labels for suggested schemas in background
+            enhanceSuggestedSchemasWithRealData();
         });
 
         function initializeSuggestedSchemas() {
@@ -658,6 +660,59 @@
                     closeModal();
                 }
             });
+        }
+
+        // Enhance suggested schemas with real data from Wikidata
+        async function enhanceSuggestedSchemasWithRealData() {
+            console.log('Enhancing suggested schemas with real data...');
+            
+            for (let i = 0; i < suggestedSchemas.length; i++) {
+                const schema = suggestedSchemas[i];
+                try {
+                    const realData = await fetchEntitySchemaDirectly(schema.id);
+                    if (realData && realData.label !== `Entity Schema ${schema.id}`) {
+                        // Update the schema with real data
+                        suggestedSchemas[i] = {
+                            ...schema,
+                            label: realData.label,
+                            description: realData.description
+                        };
+                        
+                        // Update the UI element
+                        const schemaElement = document.querySelector(`[data-schema-id="${schema.id}"]`);
+                        if (schemaElement) {
+                            const parentCard = schemaElement.closest('.schema-suggestion');
+                            if (parentCard) {
+                                // Update the content
+                                parentCard.innerHTML = `
+                                    <div class="schema-id" data-schema-id="${schema.id}">${schema.id}</div>
+                                    <div class="schema-label">${realData.label}</div>
+                                    <div class="schema-description">${realData.description}</div>
+                                `;
+                                
+                                // Re-attach event listeners
+                                parentCard.addEventListener('click', (e) => {
+                                    if (e.target.classList.contains('schema-id')) {
+                                        e.stopPropagation();
+                                        showSchemaDetails(suggestedSchemas[i]);
+                                    } else {
+                                        selectSchema(suggestedSchemas[i]);
+                                    }
+                                });
+                            }
+                        }
+                        
+                        console.log(`Updated ${schema.id} with real data:`, realData);
+                    }
+                } catch (error) {
+                    console.log(`Failed to enhance ${schema.id}:`, error);
+                }
+                
+                // Add small delay to avoid overwhelming the API
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            
+            console.log('Finished enhancing suggested schemas');
         }
 
         function openModal() {
@@ -840,62 +895,118 @@
             }
         }
 
-        // Fetch entity schema details using working endpoints
+        // Fetch entity schema details using proper MediaWiki API
         async function fetchEntitySchemaDirectly(schemaId) {
             try {
-                // Method 1: Get raw ShEx code from Special:EntitySchemaText
-                console.log('Fetching raw ShEx for:', schemaId);
-                const shexUrl = `https://www.wikidata.org/wiki/Special:EntitySchemaText/${schemaId}`;
+                console.log('Fetching Entity Schema details for:', schemaId);
                 
-                const shexResponse = await fetch(shexUrl);
-                let shexCode = null;
+                // Method 1: Use MediaWiki parse API to get structured data
+                const parseUrl = `https://www.wikidata.org/w/api.php?action=parse&page=EntitySchema:${schemaId}&format=json&origin=*&prop=text|displaytitle`;
                 
-                if (shexResponse.ok) {
-                    shexCode = await shexResponse.text();
-                    console.log('Raw ShEx fetched successfully');
+                console.log('Trying parse API:', parseUrl);
+                const parseResponse = await fetch(parseUrl);
+                
+                let label = `Entity Schema ${schemaId}`;
+                let description = `Entity Schema ${schemaId}`;
+                
+                if (parseResponse.ok) {
+                    const parseData = await parseResponse.json();
+                    console.log('Parse API response:', parseData);
                     
-                    // Extract label and description from ShEx code if available
-                    const labelMatch = shexCode.match(/#\s*([^\n]+)/);
-                    const label = labelMatch ? labelMatch[1].trim() : `Entity Schema ${schemaId}`;
-                    
-                    return {
-                        id: schemaId,
-                        label: label,
-                        description: `Entity Schema ${schemaId}`,
-                        shexCode: shexCode
-                    };
-                }
-                
-                // Method 2: Try to get basic info from EntitySchema page
-                console.log('Trying EntitySchema page for:', schemaId);
-                const pageUrl = `https://www.wikidata.org/w/api.php?action=query&titles=EntitySchema:${schemaId}&format=json&origin=*&prop=extracts&exintro=true&explaintext=true`;
-                
-                const pageResponse = await fetch(pageUrl);
-                if (pageResponse.ok) {
-                    const pageData = await pageResponse.json();
-                    console.log('Page data:', pageData);
-                    
-                    const pages = pageData.query?.pages;
-                    if (pages) {
-                        const pageId = Object.keys(pages)[0];
-                        const page = pages[pageId];
+                    if (parseData.parse) {
+                        // Extract label from displaytitle or parse the HTML
+                        if (parseData.parse.displaytitle) {
+                            label = parseData.parse.displaytitle.replace(/<[^>]*>/g, '');
+                        }
                         
-                        if (!page.missing) {
-                            return {
-                                id: schemaId,
-                                label: page.title?.replace('EntitySchema:', '') || `Entity Schema ${schemaId}`,
-                                description: page.extract || `Entity Schema ${schemaId}`,
-                                shexCode: null
-                            };
+                        // Try to extract label and description from the parsed HTML
+                        if (parseData.parse.text && parseData.parse.text['*']) {
+                            const htmlContent = parseData.parse.text['*'];
+                            
+                            // Look for label pattern in the HTML
+                            const labelMatch = htmlContent.match(/<th[^>]*>Label<\/th>\s*<td[^>]*>([^<]+)<\/td>/i) ||
+                                             htmlContent.match(/<span[^>]*class="[^"]*wb-itemlink-label[^"]*"[^>]*>([^<]+)<\/span>/i);
+                            
+                            if (labelMatch) {
+                                label = labelMatch[1].trim();
+                            }
+                            
+                            // Look for description pattern in the HTML
+                            const descMatch = htmlContent.match(/<th[^>]*>Description<\/th>\s*<td[^>]*>([^<]+)<\/td>/i) ||
+                                            htmlContent.match(/<span[^>]*class="[^"]*wb-itemlink-description[^"]*"[^>]*>([^<]+)<\/span>/i);
+                            
+                            if (descMatch) {
+                                description = descMatch[1].trim();
+                            }
                         }
                     }
                 }
                 
+                // Method 2: Get raw ShEx code from Special:EntitySchemaText
+                console.log('Fetching raw ShEx for:', schemaId);
+                const shexUrl = `https://www.wikidata.org/wiki/Special:EntitySchemaText/${schemaId}`;
+                
+                let shexCode = null;
+                try {
+                    const shexResponse = await fetch(shexUrl);
+                    if (shexResponse.ok) {
+                        shexCode = await shexResponse.text();
+                        console.log('Raw ShEx fetched successfully');
+                    }
+                } catch (e) {
+                    console.log('Could not fetch ShEx code:', e);
+                }
+                
+                // Method 3: Try to get better info from EntitySchema page content  
+                const contentUrl = `https://www.wikidata.org/w/api.php?action=query&titles=EntitySchema:${schemaId}&format=json&origin=*&prop=revisions&rvprop=content&rvlimit=1`;
+                
+                try {
+                    console.log('Trying content API:', contentUrl);
+                    const contentResponse = await fetch(contentUrl);
+                    if (contentResponse.ok) {
+                        const contentData = await contentResponse.json();
+                        console.log('Content API response:', contentData);
+                        
+                        const pages = contentData.query?.pages;
+                        if (pages) {
+                            const pageId = Object.keys(pages)[0];
+                            const page = pages[pageId];
+                            
+                            if (!page.missing && page.revisions && page.revisions[0]) {
+                                const content = page.revisions[0]['*'];
+                                
+                                // Try to extract label and description from the wiki content
+                                // Look for label patterns like |label=something or similar
+                                const labelPattern = /\|label\s*=\s*([^\|\}]+)/i;
+                                const descPattern = /\|description\s*=\s*([^\|\}]+)/i;
+                                
+                                const labelMatch = content.match(labelPattern);
+                                const descMatch = content.match(descPattern);
+                                
+                                if (labelMatch) {
+                                    label = labelMatch[1].trim();
+                                }
+                                if (descMatch) {
+                                    description = descMatch[1].trim();
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log('Content API failed:', e);
+                }
+                
+                return {
+                    id: schemaId,
+                    label: label,
+                    description: description,
+                    shexCode: shexCode
+                };
+                
             } catch (e) {
                 console.error('Error fetching schema:', e);
+                return null;
             }
-
-            return null;
         }
 
         function displaySearchResults(results) {
@@ -980,20 +1091,18 @@
                     
                     // Create enhanced entity data with ShEx
                     const enhancedEntity = {
-                        labels: { en: { value: schemaDetails.label } },
-                        descriptions: { en: { value: schemaDetails.description } },
-                        claims: {},
+                        label: schemaDetails.label,
+                        description: schemaDetails.description,
                         shexCode: rawShex
                     };
                     
                     displayEntityData(enhancedEntity, schemaId);
                 } else {
-                    console.warn('Schema details not found, showing mock data');
-                    // Still display the mock data for demonstration
+                    console.warn('Schema details not found, showing fallback data');
+                    // Show fallback data
                     displayEntityData({
-                        labels: { en: { value: selectedSchema?.label || 'Unknown Entity Schema' } },
-                        descriptions: { en: { value: selectedSchema?.description || 'No description available' } },
-                        claims: {},
+                        label: selectedSchema?.label || 'Unknown Entity Schema',
+                        description: selectedSchema?.description || 'No description available',
                         shexCode: null
                     }, schemaId);
                 }
@@ -1001,11 +1110,10 @@
             } catch (error) {
                 console.error('Error loading schema data:', error);
                 
-                // Show the mock data even if API fails
+                // Show fallback data even if API fails
                 displayEntityData({
-                    labels: { en: { value: selectedSchema?.label || 'Unknown Entity Schema' } },
-                    descriptions: { en: { value: selectedSchema?.description || 'No description available' } },
-                    claims: {},
+                    label: selectedSchema?.label || 'Unknown Entity Schema',
+                    description: selectedSchema?.description || 'No description available',
                     shexCode: null
                 }, schemaId);
             }
@@ -1032,8 +1140,9 @@
         function displayEntityData(entity, schemaId) {
             const loadedDataContent = document.getElementById('loaded-data-content');
             
-            const label = entity.labels?.en?.value || entity.label || 'No label available';
-            const description = entity.descriptions?.en?.value || entity.description || 'No description available';
+            // Handle both old format (labels.en.value) and new format (direct label property)
+            const label = entity.label || entity.labels?.en?.value || 'No label available';
+            const description = entity.description || entity.descriptions?.en?.value || 'No description available';
             
             // Parse properties from real ShEx code if available
             const actualShexCode = entity.shexCode;
