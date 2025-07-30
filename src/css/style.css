@@ -4610,6 +4610,14 @@ pre.sample-value {
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.manual-property-item.clickable:hover {
+    background: #f8f9fa;
+    border-color: #c0c4c7;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
 }
 
 .manual-property-info {
@@ -4617,11 +4625,17 @@ pre.sample-value {
     min-width: 0;
 }
 
+.manual-property-info .property-name-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-size: 0.9em;
+}
+
 .manual-property-info .property-name {
     font-weight: 600;
     color: #333;
-    margin-bottom: 6px;
-    font-size: 0.95em;
 }
 
 .manual-property-info .property-details {
@@ -4647,27 +4661,31 @@ pre.sample-value {
 }
 
 .remove-manual-property-btn-small {
-    background: #dc3545;
+    background: #6c757d;
     color: white;
     border: none;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    font-size: 14px;
-    line-height: 1;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    line-height: 20px;
     cursor: pointer;
     flex-shrink: 0;
     margin-left: 15px;
     transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
 }
 
 .remove-manual-property-btn-small:hover {
-    background: #c82333;
+    background: #545b62;
 }
 
 .remove-manual-property-btn-small:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+    box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.25);
 }
 
 /* Manual property indicators in other steps */

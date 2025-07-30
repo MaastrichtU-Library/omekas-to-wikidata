@@ -603,7 +603,9 @@ export function setupMappingStep(state) {
         manualProperties.forEach(manualProp => {
             // Create a flex container for the manual property item
             const li = createElement('li', {
-                className: 'manual-property-item'
+                className: 'manual-property-item clickable',
+                onClick: () => openManualPropertyEditModal(manualProp),
+                title: 'Click to edit this additional property'
             });
             
             // Left side - property information
@@ -611,38 +613,38 @@ export function setupMappingStep(state) {
                 className: 'manual-property-info'
             });
             
-            const propertyName = createElement('div', {
-                className: 'property-name'
-            }, `${manualProp.property.label} (${manualProp.property.id})`);
-            propertyInfo.appendChild(propertyName);
-            
-            // Property details row
-            const propertyDetails = createElement('div', {
-                className: 'property-details'
+            // Property name with details on same line
+            const propertyNameRow = createElement('div', {
+                className: 'property-name-row'
             });
             
-            // Show default value if available
+            const propertyName = createElement('span', {
+                className: 'property-name'
+            }, `${manualProp.property.label} (${manualProp.property.id})`);
+            propertyNameRow.appendChild(propertyName);
+            
+            // Add default value info on same line
             if (manualProp.defaultValue) {
                 const defaultValueInfo = createElement('span', {
                     className: 'default-value-info'
-                }, `Default: ${manualProp.defaultValue}`);
-                propertyDetails.appendChild(defaultValueInfo);
+                }, ` • Default: ${manualProp.defaultValue}`);
+                propertyNameRow.appendChild(defaultValueInfo);
             } else {
                 const noDefaultInfo = createElement('span', {
                     className: 'no-default-info'
-                }, 'No default value');
-                propertyDetails.appendChild(noDefaultInfo);
+                }, ' • No default value');
+                propertyNameRow.appendChild(noDefaultInfo);
             }
             
-            // Show required indicator
+            // Show required indicator on same line
             if (manualProp.isRequired) {
                 const requiredIndicator = createElement('span', {
                     className: 'required-indicator'
                 }, ' • Required');
-                propertyDetails.appendChild(requiredIndicator);
+                propertyNameRow.appendChild(requiredIndicator);
             }
             
-            propertyInfo.appendChild(propertyDetails);
+            propertyInfo.appendChild(propertyNameRow);
             li.appendChild(propertyInfo);
             
             // Right side - remove button
@@ -657,6 +659,52 @@ export function setupMappingStep(state) {
             li.appendChild(removeBtn);
             
             listElement.appendChild(li);
+        });
+    }
+    
+    // Function to open edit modal for manual property
+    function openManualPropertyEditModal(manualProp) {
+        // Import modal functionality
+        import('../ui/modal-ui.js').then(({ setupModalUI }) => {
+            const modalUI = setupModalUI();
+            
+            // Create modal content for editing (reuse the add modal but pre-populate)
+            const modalContent = createAddManualPropertyModalContent(manualProp);
+            
+            // Create buttons
+            const buttons = [
+                {
+                    text: 'Cancel',
+                    type: 'secondary',
+                    keyboardShortcut: 'Escape',
+                    callback: () => {
+                        modalUI.closeModal();
+                    }
+                },
+                {
+                    text: 'Update Property',
+                    type: 'primary',
+                    keyboardShortcut: 'Enter',
+                    callback: () => {
+                        const { selectedProperty, defaultValue, isRequired } = getManualPropertyFromModal();
+                        if (selectedProperty) {
+                            // Remove the old property and add the updated one
+                            state.removeManualProperty(manualProp.property.id);
+                            addManualPropertyToState(selectedProperty, defaultValue, isRequired);
+                            modalUI.closeModal();
+                        } else {
+                            showMessage('Please select a Wikidata property first.', 'warning', 3000);
+                        }
+                    }
+                }
+            ];
+            
+            // Open modal
+            modalUI.openModal(
+                'Edit Additional Custom Wikidata Property',
+                modalContent,
+                buttons
+            );
         });
     }
     
@@ -1328,7 +1376,7 @@ export function setupMappingStep(state) {
     }
     
     // Create the content for the add manual property modal
-    function createAddManualPropertyModalContent() {
+    function createAddManualPropertyModalContent(existingProperty = null) {
         const container = createElement('div', {
             className: 'manual-property-modal-content'
         });
@@ -1391,20 +1439,35 @@ export function setupMappingStep(state) {
         container.appendChild(defaultValueSection);
         
         // Setup search functionality
-        setTimeout(() => setupManualPropertySearch(), 100);
+        setTimeout(() => setupManualPropertySearch(existingProperty), 100);
         
         return container;
     }
     
     // Setup search functionality for manual property modal
-    function setupManualPropertySearch() {
+    function setupManualPropertySearch(existingProperty = null) {
         const searchInput = document.getElementById('manual-property-search-input');
         const suggestionsContainer = document.getElementById('manual-property-suggestions');
         let searchTimeout;
         
         if (!searchInput) return;
         
-        window.currentManualPropertySelected = null;
+        // Pre-populate if editing existing property
+        if (existingProperty) {
+            window.currentManualPropertySelected = existingProperty.property;
+            selectManualProperty(existingProperty.property);
+            searchInput.value = `${existingProperty.property.id}: ${existingProperty.property.label}`;
+            
+            // Pre-populate default value
+            setTimeout(() => {
+                const defaultValueInput = document.getElementById('default-value-input');
+                if (defaultValueInput && existingProperty.defaultValue) {
+                    defaultValueInput.value = existingProperty.defaultValue;
+                }
+            }, 200);
+        } else {
+            window.currentManualPropertySelected = null;
+        }
         
         searchInput.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
