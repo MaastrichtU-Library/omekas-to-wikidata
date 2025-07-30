@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Property Constraints Implementation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .property-id {
+            font-weight: bold;
+            color: #0066cc;
+            font-size: 1.1em;
+        }
+        .constraint-datatype {
+            margin: 10px 0;
+            color: #495057;
+        }
+        .constraint-format {
+            margin: 10px 0;
+            color: #495057;
+        }
+        .constraint-info-notice {
+            background: #fafafa;
+            border-left: 2px solid #e0e0e0;
+            color: #6c757d;
+            padding: 8px 12px;
+            margin: 15px 0 5px 0;
+            font-size: 0.85em;
+            font-style: italic;
+        }
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Property Constraints Implementation</h1>
+    <button onclick="testProperties()">Test Sample Properties</button>
+    <div id="results"></div>
+
+    <script type="module">
+        import { getCompletePropertyData } from './src/js/api/wikidata.js';
+
+        const testProperties = ['P31', 'P1476', 'P577', 'P50', 'P243'];
+
+        async function testProperty(propertyId) {
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-container';
+            testDiv.innerHTML = `
+                <div class="property-id">${propertyId}</div>
+                <div class="loading">Loading property data...</div>
+            `;
+            resultsDiv.appendChild(testDiv);
+
+            try {
+                const propertyData = await getCompletePropertyData(propertyId);
+                
+                let constraintHtml = `
+                    <div class="property-id">${propertyData.id}</div>
+                    <h3>${propertyData.label}</h3>
+                    <p>${propertyData.description}</p>
+                    <div class="constraint-datatype"><strong>Wikidata expects:</strong> ${propertyData.datatypeLabel}</div>
+                `;
+
+                if (propertyData.constraints.format.length > 0) {
+                    const formatDescriptions = propertyData.constraints.format
+                        .filter(c => c.rank !== 'deprecated')
+                        .map(c => c.description)
+                        .join('; ');
+                    
+                    if (formatDescriptions) {
+                        constraintHtml += `<div class="constraint-format"><strong>Format requirements:</strong> ${formatDescriptions}</div>`;
+                    }
+                }
+
+                constraintHtml += `
+                    <div class="constraint-info-notice">
+                        This information is automatically retrieved from Wikidata and cannot be changed.
+                    </div>
+                `;
+
+                testDiv.innerHTML = constraintHtml;
+
+            } catch (error) {
+                console.error(`Error testing ${propertyId}:`, error);
+                testDiv.innerHTML = `
+                    <div class="property-id">${propertyId}</div>
+                    <div class="error">Error: ${error.message}</div>
+                `;
+            }
+        }
+
+        window.testProperties = async function() {
+            document.getElementById('results').innerHTML = '';
+            
+            for (const propertyId of testProperties) {
+                await testProperty(propertyId);
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+        };
+    </script>
+</body>
+</html>

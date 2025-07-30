@@ -4,6 +4,7 @@
  */
 import { eventSystem } from '../events.js';
 import { showMessage, createElement, createListItem, createDownloadLink } from '../ui/components.js';
+import { getCompletePropertyData } from '../api/wikidata.js';
 export function setupMappingStep(state) {
     // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
@@ -600,6 +601,13 @@ export function setupMappingStep(state) {
             <div id="selected-property" class="selected-property" style="display: none;">
                 <h4>Selected Property</h4>
                 <div id="selected-property-details"></div>
+                <div id="property-constraints" class="property-constraints" style="display: none;">
+                    <div class="constraint-loading" style="display: none;">Loading constraint information...</div>
+                    <div class="constraint-content"></div>
+                    <div class="constraint-info-notice">
+                        This information is automatically retrieved from Wikidata and cannot be changed.
+                    </div>
+                </div>
             </div>
         `;
         container.appendChild(searchSection);
@@ -785,7 +793,7 @@ export function setupMappingStep(state) {
         if (keyData && keyData.property) {
             window.currentMappingSelectedProperty = keyData.property;
             selectProperty(keyData.property);
-            searchInput.value = keyData.property.label;
+            searchInput.value = `${keyData.property.id}: ${keyData.property.label}`;
         } else {
             window.currentMappingSelectedProperty = null;
         }
@@ -911,7 +919,7 @@ export function setupMappingStep(state) {
     }
     
     // Select a property
-    function selectProperty(property) {
+    async function selectProperty(property) {
         // Remove selection from other items
         document.querySelectorAll('.property-suggestion-item').forEach(item => {
             item.classList.remove('selected');
@@ -953,6 +961,62 @@ export function setupMappingStep(state) {
                 </div>
             `;
             selectedContainer.style.display = 'block';
+        }
+        
+        // Fetch and display constraints
+        await displayPropertyConstraints(property.id);
+    }
+    
+    // Display property constraints
+    async function displayPropertyConstraints(propertyId) {
+        const constraintsContainer = document.getElementById('property-constraints');
+        const loadingDiv = constraintsContainer?.querySelector('.constraint-loading');
+        const contentDiv = constraintsContainer?.querySelector('.constraint-content');
+        
+        if (!constraintsContainer || !loadingDiv || !contentDiv) return;
+        
+        // Show container and loading state
+        constraintsContainer.style.display = 'block';
+        loadingDiv.style.display = 'block';
+        contentDiv.innerHTML = '';
+        
+        try {
+            // Fetch complete property data with constraints
+            const propertyData = await getCompletePropertyData(propertyId);
+            
+            // Update the selected property with complete data
+            window.currentMappingSelectedProperty = {
+                ...window.currentMappingSelectedProperty,
+                ...propertyData
+            };
+            
+            // Hide loading
+            loadingDiv.style.display = 'none';
+            
+            // Build constraint display
+            let constraintHtml = '';
+            
+            // Always show datatype
+            constraintHtml += `<div class="constraint-datatype"><strong>Wikidata expects:</strong> ${propertyData.datatypeLabel}</div>`;
+            
+            // Show format constraints if any
+            if (propertyData.constraints.format.length > 0) {
+                const formatDescriptions = propertyData.constraints.format
+                    .filter(c => c.rank !== 'deprecated')
+                    .map(c => c.description)
+                    .join('; ');
+                
+                if (formatDescriptions) {
+                    constraintHtml += `<div class="constraint-format"><strong>Format requirements:</strong> ${formatDescriptions}</div>`;
+                }
+            }
+            
+            contentDiv.innerHTML = constraintHtml;
+            
+        } catch (error) {
+            console.error('Error fetching property constraints:', error);
+            loadingDiv.style.display = 'none';
+            contentDiv.innerHTML = '<div class="constraint-error">Unable to load constraint information</div>';
         }
     }
     
@@ -1055,7 +1119,11 @@ export function setupMappingStep(state) {
                         id: key.property.id,
                         label: key.property.label,
                         description: key.property.description,
-                        datatype: key.property.datatype
+                        datatype: key.property.datatype,
+                        datatypeLabel: key.property.datatypeLabel,
+                        constraints: key.property.constraints,
+                        constraintsFetched: key.property.constraintsFetched,
+                        constraintsError: key.property.constraintsError
                     } : null,
                     mappedAt: key.mappedAt
                 })),

@@ -4529,3 +4529,46 @@ pre.sample-value {
     color: #666;
     font-style: italic;
 }
+
+/* Property Constraints Styling */
+.property-constraints {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.constraint-loading {
+    color: #6c757d;
+    font-style: italic;
+    padding: 10px 0;
+}
+
+.constraint-content {
+    margin-bottom: 10px;
+}
+
+.constraint-datatype {
+    margin: 10px 0;
+    color: #495057;
+}
+
+.constraint-format {
+    margin: 10px 0;
+    color: #495057;
+}
+
+.constraint-error {
+    color: #dc3545;
+    font-style: italic;
+    margin: 10px 0;
+}
+
+.constraint-info-notice {
+    background: #fafafa;
+    border-left: 2px solid #e0e0e0;
+    color: #6c757d;
+    padding: 8px 12px;
+    margin: 15px 0 5px 0;
+    font-size: 0.85em;
+    font-style: italic;
+}
