@@ -601,62 +601,50 @@ export function setupMappingStep(state) {
         }
         
         manualProperties.forEach(manualProp => {
-            // Create a flex container for the manual property item
-            const li = createElement('li', {
-                className: 'manual-property-item clickable',
-                onClick: () => openManualPropertyEditModal(manualProp),
-                title: 'Click to edit this additional property'
+            // Create the main display content using the same pattern as other key lists
+            const keyDisplay = createElement('div', {
+                className: 'key-item-compact'
             });
             
-            // Left side - property information
-            const propertyInfo = createElement('div', {
-                className: 'manual-property-info'
-            });
-            
-            // Property name with details on same line
-            const propertyNameRow = createElement('div', {
-                className: 'property-name-row'
-            });
-            
+            // Property name and ID
             const propertyName = createElement('span', {
-                className: 'property-name'
+                className: 'key-name-compact'
             }, `${manualProp.property.label} (${manualProp.property.id})`);
-            propertyNameRow.appendChild(propertyName);
+            keyDisplay.appendChild(propertyName);
             
-            // Add default value info on same line
+            // Property info section showing default value and required status
+            let infoText = '';
             if (manualProp.defaultValue) {
-                const defaultValueInfo = createElement('span', {
-                    className: 'default-value-info'
-                }, ` • Default: ${manualProp.defaultValue}`);
-                propertyNameRow.appendChild(defaultValueInfo);
+                infoText = `Default: ${manualProp.defaultValue}`;
             } else {
-                const noDefaultInfo = createElement('span', {
-                    className: 'no-default-info'
-                }, ' • No default value');
-                propertyNameRow.appendChild(noDefaultInfo);
+                infoText = 'No default value';
             }
-            
-            // Show required indicator on same line
             if (manualProp.isRequired) {
-                const requiredIndicator = createElement('span', {
-                    className: 'required-indicator'
-                }, ' • Required');
-                propertyNameRow.appendChild(requiredIndicator);
+                infoText += ' • Required';
             }
             
-            propertyInfo.appendChild(propertyNameRow);
-            li.appendChild(propertyInfo);
+            const propertyInfo = createElement('span', {
+                className: 'property-info'
+            }, infoText);
+            keyDisplay.appendChild(propertyInfo);
             
-            // Right side - remove button
+            // Remove button styled like frequency badges
             const removeBtn = createElement('button', {
-                className: 'remove-manual-property-btn-small',
+                className: 'key-frequency remove-manual-property-btn',
                 onClick: (e) => {
                     e.stopPropagation();
                     removeManualPropertyFromUI(manualProp.property.id);
                 },
-                title: 'Remove additional property'
+                title: 'Remove this additional property'
             }, '×');
-            li.appendChild(removeBtn);
+            keyDisplay.appendChild(removeBtn);
+            
+            // Create list item with standard styling and behavior
+            const li = createListItem(keyDisplay, {
+                className: 'clickable key-item-clickable-compact',
+                onClick: () => openManualPropertyEditModal(manualProp),
+                title: 'Click to edit this additional property'
+            });
             
             listElement.appendChild(li);
         });
