@@ -1156,6 +1156,7 @@
         const transformationState = {
             currentType: 'string',
             transforms: {},
+            findReplaceRules: [],
             sampleData: {
                 'string': ['The Mona Lisa', 'Starry Night', 'The Scream', 'Girl with a Pearl Earring'],
                 'external-id': ['https://viaf.org/viaf/24604287', 'http://id.loc.gov/authorities/names/n79021164', 'VIAF:24604287', 'isbn:9780123456789'],
@@ -1174,6 +1175,7 @@
             setupDataTypeNavigation();
             setupCollapsibleSections();
             initializeInputHandlers();
+            setupFindReplaceHandlers();
             updatePreviews();
         });
 
@@ -1286,6 +1288,82 @@
             if (decimalPlaces) decimalPlaces.addEventListener('input', updatePreviews);
         }
 
+        // Setup find/replace functionality
+        function setupFindReplaceHandlers() {
+            // Find the "Add Rule" button in the find/replace section
+            const addRuleButtons = document.querySelectorAll('.collapsible-content button');
+            addRuleButtons.forEach(button => {
+                if (button.textContent.trim() === 'Add Rule') {
+                    button.addEventListener('click', addFindReplaceRule);
+                }
+            });
+        }
+
+        // Add a new find/replace rule
+        function addFindReplaceRule() {
+            const findInput = document.getElementById('find-text');
+            const replaceInput = document.getElementById('replace-text');
+            
+            if (!findInput || !replaceInput) return;
+            
+            const findText = findInput.value.trim();
+            const replaceText = replaceInput.value;
+            
+            if (!findText) {
+                alert('Please enter text to find');
+                return;
+            }
+            
+            // Add rule to state
+            transformationState.findReplaceRules.push({
+                find: findText,
+                replace: replaceText,
+                id: Date.now()
+            });
+            
+            // Clear inputs
+            findInput.value = '';
+            replaceInput.value = '';
+            
+            // Update the rules display
+            updateFindReplaceRulesDisplay();
+            
+            // Update preview
+            updatePreviews();
+        }
+
+        // Update the display of find/replace rules
+        function updateFindReplaceRulesDisplay() {
+            const rulesContainer = document.getElementById('find-replace-rules');
+            if (!rulesContainer) return;
+            
+            rulesContainer.innerHTML = '';
+            
+            transformationState.findReplaceRules.forEach(rule => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'find-replace-rule';
+                ruleDiv.style.cssText = 'background: #f8f9fa; padding: 8px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;';
+                
+                const ruleText = document.createElement('span');
+                ruleText.textContent = `"${rule.find}" → "${rule.replace}"`;
+                ruleText.style.fontFamily = 'monospace';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.className = 'button button--small';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer;';
+                removeBtn.addEventListener('click', () => {
+                    transformationState.findReplaceRules = transformationState.findReplaceRules.filter(r => r.id !== rule.id);
+                    updateFindReplaceRulesDisplay();
+                    updatePreviews();
+                });
+                
+                ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(removeBtn);
+                rulesContainer.appendChild(ruleDiv);
+            });
+        }
+
         // Update preview sections with transformed data
         function updatePreviews() {
             const currentType = transformationState.currentType;
@@ -1346,14 +1424,33 @@
             return data.map(value => {
                 let transformed = value;
                 
+                // First apply find/replace rules
+                transformationState.findReplaceRules.forEach(rule => {
+                    const regex = new RegExp(rule.find, 'g');
+                    transformed = transformed.replace(regex, rule.replace);
+                });
+                
                 // Apply template if specified and contains placeholders
                 if (template && template.includes('{')) {
-                    // Simple template replacement (in real implementation, this would use actual data)
-                    transformed = template.replace(/\{title\}/g, value)
-                                         .replace(/\{creator\}/g, 'Unknown Artist')
-                                         .replace(/\{date\}/g, '1500s');
+                    // Mock data for template variables
+                    const mockData = {
+                        'title': transformed, // Use the current value as title
+                        'creator': 'Unknown Artist',
+                        'date': '1500s',
+                        'publisher': 'Art Gallery',
+                        'description': 'Famous artwork'
+                    };
+                    
+                    // Replace template variables
+                    let templatedValue = template;
+                    Object.keys(mockData).forEach(key => {
+                        const regex = new RegExp(`\\{\\{?${key}\\}?\\}`, 'g');
+                        templatedValue = templatedValue.replace(regex, mockData[key]);
+                    });
+                    
+                    transformed = templatedValue;
                 } else {
-                    // Apply prefix and suffix
+                    // Apply prefix and suffix when not using template
                     if (prefix) transformed = prefix + transformed;
                     if (suffix) transformed = transformed + suffix;
                 }
