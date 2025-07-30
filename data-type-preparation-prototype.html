@@ -442,6 +442,64 @@
             font-family: monospace;
         }
 
+        /* Validation styling */
+        .validation-rule {
+            background: #f8f9fa;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: monospace;
+        }
+
+        .preview-value {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .validation-indicator {
+            font-size: 16px;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .validation-pass {
+            color: #28a745;
+        }
+
+        .validation-fail {
+            color: #dc3545;
+        }
+
+        .validation-summary {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .validation-summary.show {
+            display: block;
+        }
+
+        .validation-summary.all-pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .validation-summary.some-fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
         /* Drag and drop styling */
         .find-replace-rule {
             cursor: move;
@@ -607,6 +665,35 @@
                             
                             <div id="regex-rules" class="find-replace-rules">
                                 <!-- Regex rules will appear here -->
+                            </div>
+                        </div>
+                        
+                        <div class="form-section">
+                            <h4>Validation Rules</h4>
+                            <p>Add validation patterns to check if values meet specific requirements. Values will show ✓ or ✗ in preview.</p>
+                            
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="validation-pattern">Validation Pattern (Regex):</label>
+                                    <input type="text" id="validation-pattern" placeholder="e.g., ^[A-Z][a-z]+$ (starts with capital)">
+                                </div>
+                                <div class="input-group">
+                                    <label for="validation-description">Description:</label>
+                                    <input type="text" id="validation-description" placeholder="e.g., Must start with capital letter">
+                                </div>
+                                <button id="add-validation-rule" class="button button--secondary button--small">Add Validation</button>
+                            </div>
+                            
+                            <div class="validation-info">
+                                <strong>Common Patterns:</strong><br>
+                                • Email: <code>^[^\s@]+@[^\s@]+\.[^\s@]+$</code><br>
+                                • Only letters: <code>^[A-Za-z\s]+$</code><br>
+                                • Numbers only: <code>^\d+$</code><br>
+                                • Date (YYYY-MM-DD): <code>^\d{4}-\d{2}-\d{2}$</code>
+                            </div>
+                            
+                            <div id="validation-rules" class="find-replace-rules">
+                                <!-- Validation rules will appear here -->
                             </div>
                         </div>
                     </div>
@@ -1346,6 +1433,7 @@
             transforms: {},
             findReplaceRules: [],
             regexRules: [],
+            validationRules: [],
             defaultUnit: null,
             unitDetectionRules: [],
             sampleData: {
@@ -1533,6 +1621,7 @@
             setupFindReplaceHandlers();
             setupRegexHandlers();
             setupUnitSearchHandlers();
+            setupValidationHandlers();
             updatePreviews();
         });
 
@@ -1699,6 +1788,159 @@
             if (addUnitRuleButton) {
                 addUnitRuleButton.addEventListener('click', addUnitDetectionRule);
             }
+        }
+
+        // Setup validation functionality
+        function setupValidationHandlers() {
+            const addValidationButton = document.getElementById('add-validation-rule');
+            if (addValidationButton) {
+                addValidationButton.addEventListener('click', addValidationRule);
+            }
+        }
+
+        // Add a validation rule
+        function addValidationRule() {
+            const patternInput = document.getElementById('validation-pattern');
+            const descriptionInput = document.getElementById('validation-description');
+            
+            if (!patternInput || !descriptionInput) return;
+            
+            const pattern = patternInput.value.trim();
+            const description = descriptionInput.value.trim();
+            
+            if (pattern === '') {
+                alert('Please enter a validation pattern');
+                return;
+            }
+            
+            if (description === '') {
+                alert('Please enter a description for this validation rule');
+                return;
+            }
+            
+            // Test if the regex is valid
+            try {
+                new RegExp(pattern);
+            } catch (e) {
+                alert('Invalid regex pattern: ' + e.message);
+                return;
+            }
+            
+            // Add rule to state
+            transformationState.validationRules.push({
+                pattern: pattern,
+                description: description,
+                id: Date.now()
+            });
+            
+            // Clear inputs
+            patternInput.value = '';
+            descriptionInput.value = '';
+            
+            // Update display
+            updateValidationRulesDisplay();
+            updatePreviews();
+        }
+
+        // Update the display of validation rules
+        function updateValidationRulesDisplay() {
+            const rulesContainer = document.getElementById('validation-rules');
+            if (!rulesContainer) return;
+            
+            rulesContainer.innerHTML = '';
+            
+            if (transformationState.validationRules.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = 'color: #666; font-style: italic; padding: 20px; text-align: center; background: #f8f9fa; border-radius: 4px; margin: 5px 0;';
+                placeholder.textContent = 'No validation rules yet. Add patterns above to validate string values.';
+                rulesContainer.appendChild(placeholder);
+                return;
+            }
+            
+            transformationState.validationRules.forEach((rule, index) => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'validation-rule';
+                
+                const ruleText = document.createElement('span');
+                ruleText.style.cssText = 'flex: 1;';
+                ruleText.innerHTML = `<strong>${rule.description}</strong><br><code>/${rule.pattern}/</code>`;
+                
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '✏️';
+                editBtn.className = 'button button--small';
+                editBtn.style.cssText = 'background: #007bff; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer; margin-right: 4px;';
+                editBtn.title = 'Edit validation rule';
+                editBtn.addEventListener('click', function() {
+                    editValidationRule(rule.id);
+                });
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.className = 'button button--small';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer;';
+                removeBtn.addEventListener('click', function() {
+                    transformationState.validationRules = transformationState.validationRules.filter(r => r.id !== rule.id);
+                    updateValidationRulesDisplay();
+                    updatePreviews();
+                });
+                
+                ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(editBtn);
+                ruleDiv.appendChild(removeBtn);
+                rulesContainer.appendChild(ruleDiv);
+            });
+        }
+
+        // Edit a validation rule
+        function editValidationRule(ruleId) {
+            const rule = transformationState.validationRules.find(r => r.id === ruleId);
+            if (!rule) return;
+            
+            const patternInput = document.getElementById('validation-pattern');
+            const descriptionInput = document.getElementById('validation-description');
+            
+            if (!patternInput || !descriptionInput) return;
+            
+            // Populate the input fields with the current rule values
+            patternInput.value = rule.pattern;
+            descriptionInput.value = rule.description;
+            
+            // Remove the old rule
+            transformationState.validationRules = transformationState.validationRules.filter(r => r.id !== ruleId);
+            
+            // Update displays
+            updateValidationRulesDisplay();
+            updatePreviews();
+            
+            // Focus on the pattern input for immediate editing
+            patternInput.focus();
+            patternInput.select();
+        }
+
+        // Validate a value against all validation rules
+        function validateValue(value) {
+            if (transformationState.validationRules.length === 0) {
+                return { isValid: null, failedRules: [] }; // No validation rules
+            }
+            
+            const failedRules = [];
+            
+            for (const rule of transformationState.validationRules) {
+                try {
+                    const regex = new RegExp(rule.pattern);
+                    if (!regex.test(value)) {
+                        failedRules.push(rule);
+                    }
+                } catch (e) {
+                    // Skip invalid regex patterns
+                    continue;
+                }
+            }
+            
+            return {
+                isValid: failedRules.length === 0,
+                failedRules: failedRules
+            };
         }
 
         // Add a unit detection rule
@@ -2248,12 +2490,62 @@
             const previewContainer = document.getElementById(`${currentType}-preview`);
             if (previewContainer) {
                 previewContainer.innerHTML = '';
+                
+                let validationStats = { total: 0, passed: 0, failed: 0 };
+                
                 transformedData.forEach(value => {
                     const span = document.createElement('span');
                     span.className = 'preview-value';
-                    span.textContent = typeof value === 'object' ? value.display : `"${value}"`;
+                    
+                    // Handle objects with validation information (primarily strings)
+                    if (typeof value === 'object' && value.validation !== undefined) {
+                        span.textContent = value.display;
+                        
+                        // Add validation indicator if validation rules exist
+                        if (value.validation.isValid !== null) {
+                            validationStats.total++;
+                            
+                            const indicator = document.createElement('span');
+                            indicator.className = 'validation-indicator';
+                            
+                            if (value.validation.isValid) {
+                                indicator.textContent = '✓';
+                                indicator.className += ' validation-pass';
+                                indicator.title = 'Passes all validation rules';
+                                validationStats.passed++;
+                            } else {
+                                indicator.textContent = '✗';
+                                indicator.className += ' validation-fail';
+                                const failedRuleDescriptions = value.validation.failedRules.map(r => r.description).join(', ');
+                                indicator.title = `Failed validation: ${failedRuleDescriptions}`;
+                                validationStats.failed++;
+                            }
+                            
+                            span.appendChild(indicator);
+                        }
+                    } else {
+                        // Handle simple string values or other data types
+                        span.textContent = typeof value === 'object' ? value.display : `"${value}"`;
+                    }
+                    
                     previewContainer.appendChild(span);
                 });
+                
+                // Add validation summary for strings
+                if (currentType === 'string' && validationStats.total > 0) {
+                    const summary = document.createElement('div');
+                    summary.className = 'validation-summary show';
+                    
+                    if (validationStats.failed === 0) {
+                        summary.className += ' all-pass';
+                        summary.textContent = `✓ All ${validationStats.total} values pass validation`;
+                    } else {
+                        summary.className += ' some-fail';
+                        summary.textContent = `${validationStats.failed} of ${validationStats.total} values failed validation`;
+                    }
+                    
+                    previewContainer.appendChild(summary);
+                }
             }
         }
 
@@ -2302,7 +2594,14 @@
                     transformed = templatedValue;
                 }
                 
-                return transformed;
+                // Add validation information
+                const validation = validateValue(transformed);
+                
+                return {
+                    value: transformed,
+                    validation: validation,
+                    display: `"${transformed}"`
+                };
             });
         }
 
