@@ -724,6 +724,16 @@ export function setupMappingStep(state) {
                     }
                 },
                 {
+                    text: 'Ignore and Next',
+                    type: 'secondary',
+                    keyboardShortcut: 'x',
+                    callback: () => {
+                        moveKeyToCategory(keyData, 'ignored');
+                        modalUI.closeModal();
+                        moveToNextUnmappedKey();
+                    }
+                },
+                {
                     text: 'Confirm',
                     type: 'secondary',
                     keyboardShortcut: 'c',
