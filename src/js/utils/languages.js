@@ -3,6 +3,8 @@
  * Provides comprehensive language support for monolingual text properties
  */
 
+import { createElement } from '../ui/components.js';
+
 /**
  * Comprehensive list of languages supported by Wikidata
  * Based on common Wikidata languages and ISO 639 codes
@@ -97,23 +99,22 @@ export function getLanguageName(code) {
  * @returns {HTMLSelectElement} Language selector element
  */
 export function createLanguageSelector(selectedCode = 'en', className = 'language-select') {
-    const select = document.createElement('select');
-    select.className = className;
+    const select = createElement('select', { className });
     
     // Add a placeholder option
-    const placeholderOption = document.createElement('option');
-    placeholderOption.value = '';
-    placeholderOption.textContent = 'Select language...';
-    placeholderOption.disabled = true;
-    placeholderOption.selected = !selectedCode;
+    const placeholderOption = createElement('option', {
+        value: '',
+        disabled: true,
+        selected: !selectedCode
+    }, 'Select language...');
     select.appendChild(placeholderOption);
     
     // Add all language options
     WIKIDATA_LANGUAGES.forEach(lang => {
-        const option = document.createElement('option');
-        option.value = lang.code;
-        option.textContent = `${lang.name} (${lang.code})`;
-        option.selected = lang.code === selectedCode;
+        const option = createElement('option', {
+            value: lang.code,
+            selected: lang.code === selectedCode
+        }, `${lang.name} (${lang.code})`);
         select.appendChild(option);
     });
     

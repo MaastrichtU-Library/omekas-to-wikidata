@@ -794,11 +794,13 @@ export function setupMappingStep(state) {
         
         // Pre-populate if this key is already mapped
         if (keyData && keyData.property) {
-            window.currentMappingSelectedProperty = keyData.property;
+            currentMappingContext.selectedProperty = keyData.property;
+            currentMappingContext.selectedLanguage = keyData.language || 'en';
             selectProperty(keyData.property);
             searchInput.value = keyData.property.label;
         } else {
-            window.currentMappingSelectedProperty = null;
+            currentMappingContext.selectedProperty = null;
+            currentMappingContext.selectedLanguage = null;
         }
         
         searchInput.addEventListener('input', (e) => {
@@ -974,8 +976,8 @@ export function setupMappingStep(state) {
             }
         }
         
-        // Store selected property
-        window.currentMappingSelectedProperty = property;
+        // Store selected property in mapping context
+        currentMappingContext.selectedProperty = property;
         
         // Update search input with selected property label
         const searchInput = document.getElementById('property-search-input');
@@ -1010,7 +1012,7 @@ export function setupMappingStep(state) {
                         <p class="language-help-text">This property requires a language to be specified for the text value.</p>
                         <div class="language-selector-container">
                             <label for="mapping-language-select">Select language for this mapping:</label>
-                            ${createLanguageSelector(window.currentMappingKeyData?.language || 'en', 'mapping-language-select').outerHTML}
+                            ${createLanguageSelector(currentMappingContext.keyData?.language || 'en', 'mapping-language-select').outerHTML}
                         </div>
                     </div>
                 `;
@@ -1024,10 +1026,10 @@ export function setupMappingStep(state) {
                 const languageSelect = detailsContainer.querySelector('#mapping-language-select');
                 if (languageSelect) {
                     languageSelect.addEventListener('change', (e) => {
-                        window.currentMappingLanguage = e.target.value;
+                        currentMappingContext.selectedLanguage = e.target.value;
                     });
                     // Set initial value
-                    window.currentMappingLanguage = languageSelect.value;
+                    currentMappingContext.selectedLanguage = languageSelect.value;
                 }
             }
         }
@@ -1035,7 +1037,7 @@ export function setupMappingStep(state) {
     
     // Get selected property from modal
     function getSelectedPropertyFromModal() {
-        return window.currentMappingSelectedProperty;
+        return currentMappingContext.selectedProperty;
     }
     
     // Move key to a specific category
@@ -1101,8 +1103,8 @@ export function setupMappingStep(state) {
         };
         
         // Add language information for monolingual text properties
-        if (property.datatype === 'monolingualtext' && window.currentMappingLanguage) {
-            mappedKey.language = window.currentMappingLanguage;
+        if (property.datatype === 'monolingualtext' && currentMappingContext.selectedLanguage) {
+            mappedKey.language = currentMappingContext.selectedLanguage;
         }
         
         // Use moveKeyToCategory to handle the movement properly
