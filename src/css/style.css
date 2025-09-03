@@ -4658,3 +4658,226 @@ pre.sample-value {
     color: #dc3545;
     font-weight: bold;
 }
+
+/* ========================================
+   Mapping Modal - Collapsible Stages
+   ======================================== */
+
+.mapping-stage {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    background: white;
+    box-shadow: var(--box-shadow);
+    transition: all 0.3s ease;
+}
+
+.mapping-stage[open] {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stage-summary {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 1.1em;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+}
+
+.stage-summary:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.stage-summary::marker {
+    font-size: 1.2em;
+    color: var(--primary-color);
+}
+
+.stage-summary::-webkit-details-marker {
+    color: var(--primary-color);
+}
+
+/* Closed state styling */
+.mapping-stage:not([open]) .stage-summary {
+    border-radius: 8px;
+    border-bottom: none;
+}
+
+.stage-content {
+    padding: 20px;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stage-specific styling */
+#stage-1-property-selection {
+    border-color: #2196f3;
+}
+
+#stage-1-property-selection .stage-summary {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-bottom-color: #2196f3;
+}
+
+#stage-2-datatype-config {
+    border-color: #4caf50;
+}
+
+#stage-2-datatype-config .stage-summary {
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+    border-bottom-color: #4caf50;
+}
+
+/* Data Type Configuration Styles */
+.datatype-info {
+    background: #f9f9f9;
+    border-radius: 6px;
+    padding: 16px;
+}
+
+.datatype-display {
+    margin-bottom: 16px;
+}
+
+.datatype-display h4 {
+    color: var(--text-color);
+    margin-bottom: 12px;
+    font-size: 1.1em;
+}
+
+.detected-datatype {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 16px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.datatype-loading {
+    color: #666;
+    font-style: italic;
+}
+
+.datatype-result {
+    width: 100%;
+}
+
+.datatype-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.datatype-name {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.datatype-code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.datatype-constraints {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.constraint-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    color: #555;
+    padding: 4px 0;
+}
+
+.datatype-description {
+    background: #f0f8ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 6px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.datatype-info h5 {
+    color: var(--primary-color);
+    margin-bottom: 8px;
+}
+
+.datatype-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--danger-color);
+    text-align: center;
+}
+
+.error-message {
+    font-weight: 600;
+}
+
+.error-details {
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* Future stages placeholder styling */
+.mapping-stage.future-stage {
+    opacity: 0.6;
+    border-color: #ccc;
+    border-style: dashed;
+}
+
+.mapping-stage.future-stage .stage-summary {
+    background: linear-gradient(135deg, #f8f8f8 0%, #eeeeee 100%);
+    color: #666;
+}
+
+/* Enhanced responsive design for stages */
+@media (max-width: 768px) {
+    .stage-content {
+        padding: 16px;
+    }
+    
+    .stage-summary {
+        padding: 12px 16px;
+        font-size: 1em;
+    }
+    
+    .datatype-main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .constraint-item {
+        font-size: 0.85em;
+    }
+}

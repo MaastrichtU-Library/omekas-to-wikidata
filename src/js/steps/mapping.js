@@ -869,6 +869,9 @@ export function setupMappingStep(state) {
     
     // Function to open a mapping modal for a key
     function openMappingModal(keyData) {
+        // Store keyData globally for modal title updates
+        window.currentMappingKeyData = keyData;
+        
         // Import modal functionality
         import('../ui/modal-ui.js').then(({ setupModalUI }) => {
             const modalUI = setupModalUI();
@@ -943,6 +946,22 @@ export function setupMappingStep(state) {
             className: 'mapping-modal-content'
         });
         
+        // Stage 1: Key Information and Property Selection (Collapsible)
+        const stage1Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'stage-1-property-selection',
+            open: true // Open by default
+        });
+        
+        const stage1Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 1: Property Selection');
+        stage1Section.appendChild(stage1Summary);
+        
+        const stage1Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
         // Key information section
         const keyInfo = createElement('div', {
             className: 'key-info'
@@ -960,7 +979,7 @@ export function setupMappingStep(state) {
             <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
             <div><strong>Sample Value:</strong> ${sampleValueHtml}</div>
         `;
-        container.appendChild(keyInfo);
+        stage1Content.appendChild(keyInfo);
         
         // Property search section
         const searchSection = createElement('div', {
@@ -982,7 +1001,44 @@ export function setupMappingStep(state) {
                 </div>
             </div>
         `;
-        container.appendChild(searchSection);
+        stage1Content.appendChild(searchSection);
+        stage1Section.appendChild(stage1Content);
+        container.appendChild(stage1Section);
+        
+        // Stage 2: Data Type Configuration (Initially hidden)
+        const stage2Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'stage-2-datatype-config'
+        });
+        
+        const stage2Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 2: Data Type Configuration');
+        stage2Section.appendChild(stage2Summary);
+        
+        const stage2Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Data type information section
+        const dataTypeInfo = createElement('div', {
+            className: 'datatype-info',
+            id: 'datatype-info-section'
+        });
+        dataTypeInfo.innerHTML = `
+            <div class="datatype-display">
+                <h4>Detected Data Type</h4>
+                <div id="detected-datatype" class="detected-datatype">
+                    <div class="datatype-loading">Select a property to detect data type...</div>
+                </div>
+            </div>
+            <div class="datatype-description" id="datatype-description" style="display: none;">
+                <p>Additional configuration options will be available here in future versions.</p>
+            </div>
+        `;
+        stage2Content.appendChild(dataTypeInfo);
+        stage2Section.appendChild(stage2Content);
+        container.appendChild(stage2Section);
         
         // Setup search functionality and pre-populate if mapped
         setTimeout(() => setupPropertySearch(keyData), 100);
@@ -1359,8 +1415,124 @@ export function setupMappingStep(state) {
             selectedContainer.style.display = 'block';
         }
         
-        // Fetch and display constraints
+        // Fetch and display constraints (existing flow)
         await displayPropertyConstraints(property.id);
+        
+        // NEW: Transition to Stage 2 after property selection
+        await transitionToDataTypeConfiguration(property);
+    }
+    
+    // New function to handle transition to Stage 2
+    async function transitionToDataTypeConfiguration(property) {
+        // Update modal title to show the mapping relationship
+        updateModalTitle(property);
+        
+        // Collapse Stage 1 and expand Stage 2
+        const stage1 = document.getElementById('stage-1-property-selection');
+        const stage2 = document.getElementById('stage-2-datatype-config');
+        
+        if (stage1 && stage2) {
+            // Collapse stage 1 with animation
+            stage1.open = false;
+            
+            // Open stage 2 after a brief delay for better UX
+            setTimeout(() => {
+                stage2.open = true;
+            }, 300);
+        }
+        
+        // Display data type information in Stage 2
+        await displayDataTypeConfiguration(property);
+    }
+    
+    // Update the modal title to show the mapping relationship
+    function updateModalTitle(property) {
+        const modalTitle = document.getElementById('modal-title');
+        if (modalTitle && window.currentMappingKeyData) {
+            const keyName = window.currentMappingKeyData.key || 'Key';
+            modalTitle.textContent = `${keyName} → ${property.label} (${property.id})`;
+        }
+    }
+    
+    // Display data type configuration in Stage 2
+    async function displayDataTypeConfiguration(property) {
+        const datatypeContainer = document.getElementById('detected-datatype');
+        const descriptionContainer = document.getElementById('datatype-description');
+        
+        if (!datatypeContainer) return;
+        
+        // Show loading state
+        datatypeContainer.innerHTML = '<div class="datatype-loading">Loading data type information...</div>';
+        
+        try {
+            // Fetch complete property data if not already available
+            let propertyData = property;
+            if (!property.constraints || !property.constraintsFetched) {
+                propertyData = await getCompletePropertyData(property.id);
+                // Update the stored property with complete data
+                window.currentMappingSelectedProperty = propertyData;
+            }
+            
+            // Display the detected data type
+            const datatypeDisplay = `
+                <div class="datatype-result">
+                    <div class="datatype-main">
+                        <span class="datatype-name">${propertyData.datatypeLabel}</span>
+                        <span class="datatype-code">(${propertyData.datatype})</span>
+                    </div>
+                    <div class="datatype-constraints">
+                        ${formatConstraintsForDisplay(propertyData.constraints)}
+                    </div>
+                </div>
+            `;
+            
+            datatypeContainer.innerHTML = datatypeDisplay;
+            
+            // Show description section with future expansion notice
+            if (descriptionContainer) {
+                descriptionContainer.style.display = 'block';
+                descriptionContainer.innerHTML = `
+                    <div class="datatype-info">
+                        <h5>Data Type: ${propertyData.datatypeLabel}</h5>
+                        <p>This property expects values of type "<strong>${propertyData.datatypeLabel}</strong>". 
+                           Additional transformation and validation components will be available here in future versions.</p>
+                    </div>
+                `;
+            }
+            
+        } catch (error) {
+            console.error('Error displaying data type configuration:', error);
+            datatypeContainer.innerHTML = `
+                <div class="datatype-error">
+                    <span class="error-message">Unable to load data type information</span>
+                    <div class="error-details">${error.message}</div>
+                </div>
+            `;
+        }
+    }
+    
+    // Format constraints for display in Stage 2
+    function formatConstraintsForDisplay(constraints) {
+        if (!constraints) return '';
+        
+        let constraintText = '';
+        
+        // Format constraints
+        if (constraints.format && constraints.format.length > 0) {
+            constraintText += '<div class="constraint-item">📝 Format requirements apply</div>';
+        }
+        
+        // Value type constraints
+        if (constraints.valueType && constraints.valueType.length > 0) {
+            constraintText += '<div class="constraint-item">🔗 Value type restrictions apply</div>';
+        }
+        
+        // Other constraints
+        if (constraints.other && constraints.other.length > 0) {
+            constraintText += '<div class="constraint-item">⚙️ Additional constraints apply</div>';
+        }
+        
+        return constraintText || '<div class="constraint-item">✅ No special constraints</div>';
     }
     
     // Display property constraints
