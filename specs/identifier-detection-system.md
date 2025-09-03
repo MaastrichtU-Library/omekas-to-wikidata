@@ -4,6 +4,8 @@
 
 The Identifier Detection System is designed to extract, analyze, and utilize various types of identifiers from Omeka S API responses to improve Wikidata integration, reconciliation accuracy, and duplicate detection. The system operates on two distinct levels: item-level identifiers and value-level identifiers.
 
+**Automatic Processing**: Identifier detection is fully automatic and occurs when the user first navigates to the Mapping stage. Users have no control over whether detection happens - it is always executed.
+
 ## Core Principles
 
 1. **No Data Enrichment**: The system does not enrich or modify source data
@@ -103,6 +105,34 @@ These identifiers represent specific values (people, places, concepts) and are u
   - Extract from URIs like `http://www.wikidata.org/entity/Q7925880`
   - Use regex: `wikidata\.org\/(?:wiki\/|entity\/)([QP]\d+)`
 - **Integration**: **Automatic reconciliation** - these override all other reconciliation methods
+
+## Workflow Integration
+
+### Timing and Triggers
+Identifier detection is triggered **upon first navigation to the Mapping stage**. This timing is critical because:
+- Some identifiers result in new properties being added to the mapping
+- Detection results can affect both Mapping and Reconciliation stages
+- All identifier information must be available before users begin property mapping
+
+### Impact on Mapping Stage
+- **Item-Level Identifiers**: When matched to existing Wikidata items, their corresponding properties (P8091 for ARK, P243 for OCLC) are automatically added to the mapping
+- **New Properties**: These detected identifier properties appear in the property mapping interface
+- **Automatic Addition**: Properties are added without user intervention and marked with "detected identifier" labels
+
+### Impact on Reconciliation Stage
+- **Existing Item Detection**: If item-level identifiers match existing Wikidata items, this is indicated in the row header
+- **Pre-reconciled Values**: Value-level identifiers (VIAF, GeoNames, Language codes, QIDs) that match Wikidata entities are shown as "already reconciled" and can skip manual reconciliation
+- **QID Override**: Direct Wikidata QID references automatically reconcile and override all other reconciliation methods
+- **Default Reconciliation**: VIAF, GeoNames, and Language code matches default to their matched entities
+
+### Data Flow
+1. **Detection Phase**: Extract all identifiers from Omeka S JSON
+2. **Matching Phase**: Query Wikidata for all identifier types in parallel
+3. **Integration Phase**: 
+   - Add item-level identifier properties to mapping
+   - Store value-level matches for reconciliation use
+   - Update main JSON with all identifier information
+4. **UI Updates**: Reflect changes in both Mapping and Reconciliation interfaces
 
 ## Technical Implementation Strategy
 
@@ -205,7 +235,7 @@ SELECT ?item WHERE {
 #### Item-Level Integration
 - **Duplicate Detection**: If ARK or OCLC matches existing Wikidata item, flag as potential duplicate
 - **Automatic Property Addition**: Add detected ARK/OCLC identifiers to matched items with "detected identifier" label
-- **Value Type Detection**: Automatically determine appropriate value type for identifier properties
+- **Value Type Detection**: Integration with value type detection system (being developed in separate branch)
 
 #### Value-Level Integration
 - **Reconciliation Override**: 
@@ -213,27 +243,81 @@ SELECT ?item WHERE {
   2. **VIAF/GeoNames/Language codes**: Default to matched entity when found
 - **No Manual Review**: When value-level identifier matches, use automatically
 - **Multiple Matches**: Handle cases where multiple value-level identifiers exist
+- **Conflict Resolution UI**: Display conflicting matches with red information blocks for user selection
 
 ### Storage and State Management
 
-#### Identifier Cache Structure
+#### Main JSON Integration
+All identifier information is stored in the main project JSON that is:
+- Exported when the user saves the project
+- Imported when the user loads a project
+- Persists across browser sessions through the existing save/load mechanism
+
+#### Identifier Data Structure in Main JSON
 ```javascript
 {
-  detectedIdentifiers: {
-    [omekaItemId]: {
-      itemLevel: { ark: "...", oclc: "..." },
-      valueLevel: { viaf: [...], geonames: [...], ... }
-    }
-  },
-  wikidataMatches: {
-    [identifier]: {
-      wikidataItem: "Q12345",
-      property: "P8091",
-      matchType: "exact"
+  // Existing project data...
+  identifierDetection: {
+    detectedIdentifiers: {
+      [omekaItemId]: {
+        itemLevel: { 
+          ark: {
+            value: "ark:/27364/d1n4b0E",
+            wikidataMatch: "Q12345" // if matched
+          },
+          oclc: {
+            value: "65042490",
+            wikidataMatch: "Q67890" // if matched
+          }
+        },
+        valueLevel: {
+          viaf: [
+            {
+              fieldName: "schema:author", 
+              value: "172840804",
+              wikidataMatch: "Q7925880"
+            }
+          ],
+          geonames: [
+            {
+              fieldName: "schema:locationCreated",
+              value: "2759794", 
+              wikidataMatch: "Q727"
+            }
+          ],
+          iso639: [
+            {
+              fieldName: "schema:inLanguage",
+              value: "nl",
+              wikidataMatch: "Q7411"
+            }
+          ],
+          wikidataQids: [
+            {
+              fieldName: "schema:license",
+              value: "Q20007257"
+            }
+          ]
+        }
+      }
+    },
+    conflicts: {
+      [omekaItemId]: {
+        [fieldName]: [
+          { identifier: "viaf:123456", wikidataMatch: "Q111" },
+          { identifier: "geonames:789012", wikidataMatch: "Q222" }
+        ]
+      }
     }
   }
 }
 ```
+
+#### Value-Level Data for Reconciliation
+Value-level identifier matches are stored with their field context and used during the reconciliation step to:
+- Pre-populate reconciliation results
+- Skip manual reconciliation for matched values
+- Provide context for user decisions on conflicts
 
 ### String Manipulation Requirements
 
@@ -302,9 +386,42 @@ SELECT ?item WHERE {
 - No results found
 
 ### Reconciliation Conflicts
-- Multiple identifiers pointing to different Wikidata items
-- Identifier exists but entity doesn't match expected type
-- Circular references between identifiers
+- **Multiple Identifiers → Different Wikidata Items**: Display all conflicting matches to user with red information block
+- **Multiple Identifiers of Same Type**: Show all options, treat as conflict requiring user selection
+- **Identifier exists but entity doesn't match expected type**: Display type mismatch warning
+- **User Conflict Resolution**: Provide interface for users to select correct match from conflicting options
+
+### API Error Handling
+- Use existing top-right error message system for Wikidata API failures
+- No progress feedback required - detection happens transparently
+- Graceful degradation: continue with available results if some API calls fail
+
+## User Interface Specifications
+
+### Mapping Stage UI Changes
+- **New Properties**: Item-level identifier properties (P8091, P243) appear automatically in property list
+- **Detected Identifier Labels**: Clear visual indicators for automatically detected properties
+- **Item Status Indicators**: Visual cues in row headers when item-level identifiers match existing Wikidata items
+
+### Reconciliation Stage UI Changes
+- **Pre-reconciled Values**: Values with identifier matches show "already reconciled" status
+- **Skip Options**: Pre-reconciled values can be skipped in reconciliation workflow
+- **Conflict Display**: Red information blocks for conflicting identifier matches
+- **Multiple Choice UI**: Interface for users to select correct match from multiple options
+- **Context Information**: Display why conflicts occurred and what data sources are involved
+
+### Conflict Resolution Interface
+```
+⚠️ Multiple matches found for [Field Name]
+┌──────────────────────────────────────────────────┐
+│ • VIAF 172840804 → Victor van Vriesland (Q7925880) │
+│ • GeoNames 2759794 → Amsterdam (Q727)             │
+│                                                 │
+│ [Select: Victor van Vriesland] [Select: Amsterdam] │
+│ [Skip this field] [Manual reconciliation]         │
+└──────────────────────────────────────────────────┘
+ℹ️ This conflict suggests data quality issues in source
+```
 
 ## Success Metrics
 
@@ -323,12 +440,34 @@ SELECT ?item WHERE {
 - False positive rate for duplicate detection
 - Time saved in manual duplicate checking
 
+## Testing Strategy
+
+### Logic Prototype Development
+- **Input**: Use provided Omeka S JSON sample data
+- **Processing**: Implement identifier detection logic
+- **Output**: Show detected matches and their corresponding Wikidata items
+- **Validation**: Verify extraction accuracy and matching results
+- **Conflict Testing**: Test scenarios with multiple/conflicting identifiers
+
+### Test Scenarios
+1. **Single Identifier per Type**: Verify basic extraction and matching
+2. **Multiple Identifiers Same Type**: Test conflict resolution UI
+3. **Cross-Type Conflicts**: Different identifier types pointing to different entities  
+4. **API Failures**: Test graceful degradation with service unavailability
+5. **Malformed Identifiers**: Validate error handling for invalid formats
+6. **Large Dataset**: Performance testing with multiple items
+
 ## Future Considerations
+
+### Value Type Detection Integration
+- **Status**: Being developed in separate repository branch
+- **Future Integration**: Will enhance automatic value type determination for identifier properties
+- **Current Approach**: Manual value type specification until integration available
 
 ### Scalability
 - Batch processing for large collections
 - Caching strategies for frequently accessed identifiers
-- Database indexing for identifier lookups
+- Memory optimization for identifier storage
 
 ### Maintenance
 - Regular validation of identifier formats
@@ -342,4 +481,4 @@ SELECT ?item WHERE {
 
 ---
 
-*This specification defines the complete identifier detection system requirements and implementation strategy. No data enrichment, hierarchical confidence scoring, or gap analysis features are included per project requirements.*
+*This specification defines the complete identifier detection system requirements and implementation strategy. The system operates automatically upon entering the Mapping stage, integrates with the main project JSON for data persistence, and provides user interfaces for conflict resolution. No data enrichment, hierarchical confidence scoring, gap analysis, progress feedback, or user control features are included per project requirements.*
