@@ -254,6 +254,7 @@ export function setupExportStep(state) {
         const currentState = state.getState();
         const reconciliationData = currentState.reconciliationData;
         const mappedKeys = currentState.mappings?.mappedKeys || [];
+        const manualProperties = currentState.mappings?.manualProperties || [];
         
         // Combine old-style references with new global references
         // Note: We don't filter by enabled anymore since we now use property-specific references
@@ -332,9 +333,20 @@ export function setupExportStep(state) {
                 Object.keys(itemData.properties).forEach(propertyKey => {
                     const propertyData = itemData.properties[propertyKey];
                     
-                    // Find the corresponding mapping to get the Wikidata property ID
-                    const mapping = mappedKeys.find(m => m.key === propertyKey);
-                    const wikidataPropertyId = mapping?.property?.id || propertyKey;
+                    // Determine if this is a manual property or mapped property
+                    let wikidataPropertyId;
+                    let isManualProperty = false;
+                    
+                    // Check if this is a manual property first
+                    const manualProperty = manualProperties.find(mp => mp.property.id === propertyKey);
+                    if (manualProperty) {
+                        wikidataPropertyId = manualProperty.property.id;
+                        isManualProperty = true;
+                    } else {
+                        // Find the corresponding mapping to get the Wikidata property ID
+                        const mapping = mappedKeys.find(m => m.key === propertyKey);
+                        wikidataPropertyId = mapping?.property?.id || propertyKey;
+                    }
                     
                     // Process each reconciled value
                     propertyData.reconciled.forEach(reconciledValue => {

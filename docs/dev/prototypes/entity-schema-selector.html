@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entity Schema Selector Prototype</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .description {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .schema-selector-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        /* Suggested Schemas */
+        .suggested-schemas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .schema-suggestion {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .schema-suggestion:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+
+        .schema-suggestion.selected {
+            border-color: #007bff;
+            background: #e7f3ff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .schema-id {
+            font-weight: 600;
+            color: #007bff;
+            font-size: 1.1em;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+
+        .schema-id:hover {
+            color: #0056b3;
+        }
+
+        .schema-label {
+            font-weight: 500;
+            color: #333;
+            margin: 5px 0;
+        }
+
+        .schema-description {
+            font-size: 0.9em;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        /* Search Section */
+        .search-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            margin-bottom: 15px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .search-status {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .search-results {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .search-result-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: #f8f9fa;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Selected Schema Display */
+        .selected-schema-display {
+            background: #e8f5e8;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .selected-schema-display.visible {
+            display: block;
+        }
+
+        .selected-schema-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .selected-schema-info h3 {
+            color: #28a745;
+            margin-bottom: 5px;
+        }
+
+        .clear-selection {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .clear-selection:hover {
+            background: #c82333;
+        }
+
+        /* Loaded Data Display */
+        .loaded-data-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .schema-data {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .schema-data h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .schema-properties {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .property-item {
+            background: white;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .property-id {
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        .property-label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        /* Enhanced schema details */
+        .schema-details {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .property-section {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .property-section h5 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1em;
+        }
+
+        .property-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .property-item-enhanced {
+            background: white;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .property-item-enhanced:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .property-item-enhanced .property-id {
+            font-weight: 600;
+            color: #007bff;
+            font-size: 0.85em;
+        }
+
+        .property-item-enhanced .property-label {
+            color: #333;
+            font-size: 0.85em;
+        }
+
+        .required-indicator {
+            background: #dc3545;
+            color: white;
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .optional-indicator {
+            background: #28a745;
+            color: white;
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        /* Collapsible sections */
+        .collapsible {
+            background: #f1f1f1;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .collapsible-header {
+            background: #e9ecef;
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 6px 6px 0 0;
+            transition: background-color 0.2s;
+        }
+
+        .collapsible-header:hover {
+            background: #dee2e6;
+        }
+
+        .collapsible-header h5 {
+            margin: 0;
+            color: #333;
+        }
+
+        .collapsible-toggle {
+            font-size: 1.2em;
+            color: #666;
+            transition: transform 0.2s;
+        }
+
+        .collapsible.expanded .collapsible-toggle {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-content {
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            display: none;
+        }
+
+        .collapsible.expanded .collapsible-content {
+            display: block;
+        }
+
+        .schema-code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-actions {
+            margin-top: 30px;
+            text-align: right;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-left: 10px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .suggested-schemas {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                padding: 20px;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Entity Schema Selector Prototype</h1>
+        
+        <div class="description">
+            <strong>About:</strong> This prototype demonstrates the entity schema selection functionality that will be integrated into the main application. 
+            Entity schemas define the expected structure and properties for Wikidata items of a specific type.
+        </div>
+
+        <!-- Trigger Modal Button -->
+        <div style="text-align: center; margin-bottom: 30px;">
+            <button class="btn btn-primary" id="open-modal-btn">Open Entity Schema Selector Modal</button>
+        </div>
+
+        <!-- Selected Schema Display (outside modal) -->
+        <div class="selected-schema-display" id="main-selected-display">
+            <div class="selected-schema-header">
+                <div class="selected-schema-info">
+                    <h3 id="main-selected-title">No schema selected</h3>
+                    <div id="main-selected-description"></div>
+                </div>
+                <button class="clear-selection" id="main-clear-btn" style="display: none;">Clear Selection</button>
+            </div>
+        </div>
+
+        <!-- Loaded Data Display -->
+        <div class="loaded-data-section" id="main-loaded-data" style="display: none;">
+            <h3>Loaded Entity Schema Data</h3>
+            <div id="main-data-content"></div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="schema-modal">
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close">&times;</button>
+            
+            <h2>Select Entity Schema</h2>
+            
+            <!-- Suggested Schemas Section -->
+            <div class="schema-selector-section">
+                <div class="section-title">Suggested Entity Schemas</div>
+                <div class="suggested-schemas" id="suggested-schemas">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Search Section -->
+            <div class="search-section">
+                <div class="section-title">Search Entity Schemas</div>
+                <input type="text" class="search-input" id="schema-search" placeholder="Search for entity schemas (e.g., E471, book, person)...">
+                <div class="search-status" id="search-status"></div>
+                <div class="search-results" id="search-results" style="display: none;"></div>
+            </div>
+
+            <!-- Selected Schema Display -->
+            <div class="selected-schema-display" id="selected-schema-display">
+                <div class="selected-schema-header">
+                    <div class="selected-schema-info">
+                        <h3 id="selected-schema-title">No schema selected</h3>
+                        <div id="selected-schema-description"></div>
+                    </div>
+                    <button class="clear-selection" id="clear-selection">Clear Selection</button>
+                </div>
+            </div>
+
+            <!-- Loaded Data Display -->
+            <div class="loaded-data-section" id="loaded-data-section" style="display: none;">
+                <h4>Entity Schema Details</h4>
+                <div id="loaded-data-content"></div>
+            </div>
+
+            <!-- Modal Actions -->
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="confirm-btn" disabled>Confirm Selection</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Suggested entity schemas with real Wikidata entity schema IDs
+        const suggestedSchemas = [
+            {
+                id: 'E10',
+                label: 'Human',
+                description: 'Individual human beings, both contemporary and historical'
+            },
+            {
+                id: 'E270',
+                label: 'Building',
+                description: 'Structures that have been built by humans'
+            },
+            {
+                id: 'E471',
+                label: 'Individual copy of a book',
+                description: 'Individual copies of books or written works'
+            },
+            {
+                id: 'E161',
+                label: 'Book',
+                description: 'Books and written publications'
+            },
+            {
+                id: 'E202',
+                label: 'Cultural heritage site',
+                description: 'Sites of cultural or historical significance'
+            },
+            {
+                id: 'E74',
+                label: 'Organization',
+                description: 'Organized groups of people with common purposes'
+            }
+        ];
+
+        let selectedSchema = null;
+        let searchTimeout = null;
+        let schemaCache = new Map();
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSuggestedSchemas();
+            setupEventListeners();
+            // Fetch real labels for suggested schemas in background
+            enhanceSuggestedSchemasWithRealData();
+        });
+
+        function initializeSuggestedSchemas() {
+            const container = document.getElementById('suggested-schemas');
+            container.innerHTML = '';
+
+            suggestedSchemas.forEach(schema => {
+                const schemaElement = createSchemaElement(schema);
+                container.appendChild(schemaElement);
+            });
+        }
+
+        function createSchemaElement(schema) {
+            const element = document.createElement('div');
+            element.className = 'schema-suggestion';
+            element.dataset.schemaId = schema.id;
+            
+            element.innerHTML = `
+                <div class="schema-id" data-schema-id="${schema.id}">${schema.id}</div>
+                <div class="schema-label">${schema.label}</div>
+                <div class="schema-description">${schema.description}</div>
+            `;
+
+            // Make the whole card clickable for selection
+            element.addEventListener('click', (e) => {
+                // If clicking on schema ID, show details; otherwise select schema
+                if (e.target.classList.contains('schema-id')) {
+                    e.stopPropagation();
+                    showSchemaDetails(schema);
+                } else {
+                    selectSchema(schema);
+                }
+            });
+            
+            return element;
+        }
+
+        function setupEventListeners() {
+            // Modal controls
+            document.getElementById('open-modal-btn').addEventListener('click', openModal);
+            document.getElementById('modal-close').addEventListener('click', closeModal);
+            document.getElementById('cancel-btn').addEventListener('click', closeModal);
+            document.getElementById('confirm-btn').addEventListener('click', confirmSelection);
+            
+            // Clear selection buttons
+            document.getElementById('clear-selection').addEventListener('click', clearSelection);
+            document.getElementById('main-clear-btn').addEventListener('click', clearMainSelection);
+
+            // Search functionality
+            document.getElementById('schema-search').addEventListener('input', handleSearch);
+
+            // Close modal when clicking overlay
+            document.getElementById('schema-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
+                }
+            });
+        }
+
+        // Enhance suggested schemas with real data from Wikidata
+        async function enhanceSuggestedSchemasWithRealData() {
+            console.log('Enhancing suggested schemas with real data...');
+            
+            for (let i = 0; i < suggestedSchemas.length; i++) {
+                const schema = suggestedSchemas[i];
+                try {
+                    const realData = await fetchEntitySchemaDirectly(schema.id);
+                    if (realData && realData.label !== `Entity Schema ${schema.id}`) {
+                        // Update the schema with real data
+                        suggestedSchemas[i] = {
+                            ...schema,
+                            label: realData.label,
+                            description: realData.description
+                        };
+                        
+                        // Update the UI element
+                        const schemaElement = document.querySelector(`[data-schema-id="${schema.id}"]`);
+                        if (schemaElement) {
+                            const parentCard = schemaElement.closest('.schema-suggestion');
+                            if (parentCard) {
+                                // Update the content
+                                parentCard.innerHTML = `
+                                    <div class="schema-id" data-schema-id="${schema.id}">${schema.id}</div>
+                                    <div class="schema-label">${realData.label}</div>
+                                    <div class="schema-description">${realData.description}</div>
+                                `;
+                                
+                                // Re-attach event listeners
+                                parentCard.addEventListener('click', (e) => {
+                                    if (e.target.classList.contains('schema-id')) {
+                                        e.stopPropagation();
+                                        showSchemaDetails(suggestedSchemas[i]);
+                                    } else {
+                                        selectSchema(suggestedSchemas[i]);
+                                    }
+                                });
+                            }
+                        }
+                        
+                        console.log(`Updated ${schema.id} with real data:`, realData);
+                    }
+                } catch (error) {
+                    console.log(`Failed to enhance ${schema.id}:`, error);
+                }
+                
+                // Add small delay to avoid overwhelming the API
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            
+            console.log('Finished enhancing suggested schemas');
+        }
+
+        function openModal() {
+            document.getElementById('schema-modal').classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('schema-modal').classList.remove('visible');
+            document.body.style.overflow = '';
+        }
+
+        function selectSchema(schema) {
+            // Clear previous selections
+            document.querySelectorAll('.schema-suggestion').forEach(el => {
+                el.classList.remove('selected');
+            });
+            document.querySelectorAll('.search-result-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Select current schema
+            const suggestionElement = document.querySelector(`[data-schema-id="${schema.id}"]`);
+            if (suggestionElement) {
+                suggestionElement.classList.add('selected');
+            }
+
+            selectedSchema = schema;
+            updateSelectedSchemaDisplay(schema);
+            document.getElementById('confirm-btn').disabled = false;
+
+            // Load schema data
+            loadSchemaData(schema.id);
+        }
+
+        function updateSelectedSchemaDisplay(schema) {
+            const display = document.getElementById('selected-schema-display');
+            const title = document.getElementById('selected-schema-title');
+            const description = document.getElementById('selected-schema-description');
+
+            title.textContent = `${schema.id}: ${schema.label}`;
+            description.textContent = schema.description;
+            display.classList.add('visible');
+        }
+
+        function clearSelection() {
+            selectedSchema = null;
+            
+            // Clear visual selections
+            document.querySelectorAll('.schema-suggestion').forEach(el => {
+                el.classList.remove('selected');
+            });
+            document.querySelectorAll('.search-result-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Hide selected display
+            document.getElementById('selected-schema-display').classList.remove('visible');
+            document.getElementById('loaded-data-section').style.display = 'none';
+            document.getElementById('confirm-btn').disabled = true;
+        }
+
+        function clearMainSelection() {
+            document.getElementById('main-selected-display').classList.remove('visible');
+            document.getElementById('main-loaded-data').style.display = 'none';
+            document.getElementById('main-clear-btn').style.display = 'none';
+        }
+
+        function confirmSelection() {
+            if (selectedSchema) {
+                // Update main display
+                const mainDisplay = document.getElementById('main-selected-display');
+                const mainTitle = document.getElementById('main-selected-title');
+                const mainDescription = document.getElementById('main-selected-description');
+                const mainClearBtn = document.getElementById('main-clear-btn');
+
+                mainTitle.textContent = `Selected: ${selectedSchema.id} - ${selectedSchema.label}`;
+                mainDescription.textContent = selectedSchema.description;
+                mainDisplay.classList.add('visible');
+                mainClearBtn.style.display = 'block';
+
+                // Copy loaded data to main display if available
+                const modalDataContent = document.getElementById('loaded-data-content');
+                const mainDataContent = document.getElementById('main-data-content');
+                const mainDataSection = document.getElementById('main-loaded-data');
+
+                if (modalDataContent.innerHTML.trim()) {
+                    mainDataContent.innerHTML = modalDataContent.innerHTML;
+                    mainDataSection.style.display = 'block';
+                }
+
+                closeModal();
+            }
+        }
+
+        function handleSearch(e) {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            const statusEl = document.getElementById('search-status');
+            const resultsEl = document.getElementById('search-results');
+
+            if (query.length < 2) {
+                statusEl.textContent = '';
+                resultsEl.style.display = 'none';
+                return;
+            }
+
+            statusEl.textContent = 'Searching...';
+            
+            searchTimeout = setTimeout(() => {
+                searchEntitySchemas(query);
+            }, 300);
+        }
+
+        async function searchEntitySchemas(query) {
+            const statusEl = document.getElementById('search-status');
+            const resultsEl = document.getElementById('search-results');
+
+            try {
+                // Check cache first
+                if (schemaCache.has(query)) {
+                    displaySearchResults(schemaCache.get(query));
+                    return;
+                }
+
+                let schemaResults = [];
+
+                // Method 1: Direct lookup if query looks like an E-identifier
+                if (query.match(/^E\d+$/i)) {
+                    try {
+                        const directResult = await fetchEntitySchemaDirectly(query.toUpperCase());
+                        if (directResult) {
+                            schemaResults = [directResult];
+                        }
+                    } catch (e) {
+                        console.error('Direct entity lookup failed:', e);
+                    }
+                }
+
+                // Method 2: Search in Entity Schema namespace (640) for text queries
+                if (schemaResults.length === 0) {
+                    const searchUrl = `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=640&srlimit=20&format=json&origin=*`;
+                    
+                    console.log('Searching Entity Schema namespace:', searchUrl);
+                    const response = await fetch(searchUrl);
+                    const data = await response.json();
+                    console.log('Namespace search response:', data);
+
+                    if (data.query && data.query.search && data.query.search.length > 0) {
+                        // Create results from search snippets first (faster)
+                        schemaResults = data.query.search
+                            .filter(item => item.title.match(/^EntitySchema:E\d+$/))
+                            .slice(0, 10)
+                            .map(item => {
+                                const id = item.title.replace('EntitySchema:', '');
+                                const snippet = item.snippet ? item.snippet.replace(/<[^>]+>/g, '') : '';
+                                return {
+                                    id: id,
+                                    label: item.title.replace('EntitySchema:', '') || `Entity Schema ${id}`,
+                                    description: snippet || `Entity Schema ${id}`,
+                                    shexCode: null // Will be loaded on selection
+                                };
+                            });
+                            
+                        console.log('Found Entity Schema results:', schemaResults);
+                    }
+                }
+
+                console.log('Final schema results:', schemaResults);
+
+                // Cache results
+                schemaCache.set(query, schemaResults);
+                
+                displaySearchResults(schemaResults);
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                statusEl.textContent = `Search failed: ${error.message}. Please try again.`;
+                resultsEl.style.display = 'none';
+            }
+        }
+
+        // Fetch entity schema details using proper MediaWiki API
+        async function fetchEntitySchemaDirectly(schemaId) {
+            try {
+                console.log('Fetching Entity Schema details for:', schemaId);
+                
+                // Method 1: Use MediaWiki parse API to get structured data
+                const parseUrl = `https://www.wikidata.org/w/api.php?action=parse&page=EntitySchema:${schemaId}&format=json&origin=*&prop=text|displaytitle`;
+                
+                console.log('Trying parse API:', parseUrl);
+                const parseResponse = await fetch(parseUrl);
+                
+                let label = `Entity Schema ${schemaId}`;
+                let description = `Entity Schema ${schemaId}`;
+                
+                if (parseResponse.ok) {
+                    const parseData = await parseResponse.json();
+                    console.log('Parse API response:', parseData);
+                    
+                    if (parseData.parse) {
+                        // Extract label from displaytitle or parse the HTML
+                        if (parseData.parse.displaytitle) {
+                            label = parseData.parse.displaytitle.replace(/<[^>]*>/g, '');
+                        }
+                        
+                        // Try to extract label and description from the parsed HTML
+                        if (parseData.parse.text && parseData.parse.text['*']) {
+                            const htmlContent = parseData.parse.text['*'];
+                            
+                            // Look for label pattern in the HTML
+                            const labelMatch = htmlContent.match(/<th[^>]*>Label<\/th>\s*<td[^>]*>([^<]+)<\/td>/i) ||
+                                             htmlContent.match(/<span[^>]*class="[^"]*wb-itemlink-label[^"]*"[^>]*>([^<]+)<\/span>/i);
+                            
+                            if (labelMatch) {
+                                label = labelMatch[1].trim();
+                            }
+                            
+                            // Look for description pattern in the HTML
+                            const descMatch = htmlContent.match(/<th[^>]*>Description<\/th>\s*<td[^>]*>([^<]+)<\/td>/i) ||
+                                            htmlContent.match(/<span[^>]*class="[^"]*wb-itemlink-description[^"]*"[^>]*>([^<]+)<\/span>/i);
+                            
+                            if (descMatch) {
+                                description = descMatch[1].trim();
+                            }
+                        }
+                    }
+                }
+                
+                // Method 2: Get raw ShEx code from Special:EntitySchemaText
+                console.log('Fetching raw ShEx for:', schemaId);
+                const shexUrl = `https://www.wikidata.org/wiki/Special:EntitySchemaText/${schemaId}`;
+                
+                let shexCode = null;
+                try {
+                    const shexResponse = await fetch(shexUrl);
+                    if (shexResponse.ok) {
+                        shexCode = await shexResponse.text();
+                        console.log('Raw ShEx fetched successfully');
+                    }
+                } catch (e) {
+                    console.log('Could not fetch ShEx code:', e);
+                }
+                
+                // Method 3: Try to get better info from EntitySchema page content  
+                const contentUrl = `https://www.wikidata.org/w/api.php?action=query&titles=EntitySchema:${schemaId}&format=json&origin=*&prop=revisions&rvprop=content&rvlimit=1`;
+                
+                try {
+                    console.log('Trying content API:', contentUrl);
+                    const contentResponse = await fetch(contentUrl);
+                    if (contentResponse.ok) {
+                        const contentData = await contentResponse.json();
+                        console.log('Content API response:', contentData);
+                        
+                        const pages = contentData.query?.pages;
+                        if (pages) {
+                            const pageId = Object.keys(pages)[0];
+                            const page = pages[pageId];
+                            
+                            if (!page.missing && page.revisions && page.revisions[0]) {
+                                const content = page.revisions[0]['*'];
+                                
+                                // Try to extract label and description from the wiki content
+                                // Look for label patterns like |label=something or similar
+                                const labelPattern = /\|label\s*=\s*([^\|\}]+)/i;
+                                const descPattern = /\|description\s*=\s*([^\|\}]+)/i;
+                                
+                                const labelMatch = content.match(labelPattern);
+                                const descMatch = content.match(descPattern);
+                                
+                                if (labelMatch) {
+                                    label = labelMatch[1].trim();
+                                }
+                                if (descMatch) {
+                                    description = descMatch[1].trim();
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log('Content API failed:', e);
+                }
+                
+                return {
+                    id: schemaId,
+                    label: label,
+                    description: description,
+                    shexCode: shexCode
+                };
+                
+            } catch (e) {
+                console.error('Error fetching schema:', e);
+                return null;
+            }
+        }
+
+        function displaySearchResults(results) {
+            const statusEl = document.getElementById('search-status');
+            const resultsEl = document.getElementById('search-results');
+
+            if (results.length === 0) {
+                statusEl.textContent = 'No entity schemas found.';
+                resultsEl.style.display = 'none';
+                return;
+            }
+
+            statusEl.textContent = `Found ${results.length} entity schema${results.length !== 1 ? 's' : ''}`;
+            resultsEl.innerHTML = '';
+            resultsEl.style.display = 'block';
+
+            results.forEach(result => {
+                const resultElement = document.createElement('div');
+                resultElement.className = 'search-result-item';
+                resultElement.innerHTML = `
+                    <div class="schema-id">${result.id}</div>
+                    <div class="schema-label">${result.label || 'No label'}</div>
+                    <div class="schema-description">${result.description || 'No description available'}</div>
+                `;
+
+                resultElement.addEventListener('click', (e) => {
+                    const schema = {
+                        id: result.id,
+                        label: result.label || 'Unknown',
+                        description: result.description || 'No description available'
+                    };
+                    
+                    // If clicking on schema ID, show details; otherwise select schema
+                    if (e.target.classList.contains('schema-id')) {
+                        e.stopPropagation();
+                        showSchemaDetails(schema);
+                    } else {
+                        selectSchema(schema);
+                        
+                        // Add selected class to clicked item
+                        document.querySelectorAll('.search-result-item').forEach(el => {
+                            el.classList.remove('selected');
+                        });
+                        resultElement.classList.add('selected');
+                    }
+                });
+
+                resultsEl.appendChild(resultElement);
+            });
+        }
+
+        async function loadSchemaData(schemaId) {
+            const loadedDataSection = document.getElementById('loaded-data-section');
+            const loadedDataContent = document.getElementById('loaded-data-content');
+
+            loadedDataSection.style.display = 'block';
+            loadedDataContent.innerHTML = '<div class="loading-spinner">Loading entity schema data...</div>';
+
+            try {
+                console.log('Loading schema data for:', schemaId);
+                
+                // Fetch schema details using our new API function
+                const schemaDetails = await fetchEntitySchemaDirectly(schemaId);
+                
+                if (schemaDetails) {
+                    // Also try to fetch raw ShEx from Special:EntitySchemaText
+                    let rawShex = schemaDetails.shexCode;
+                    if (!rawShex) {
+                        try {
+                            const shexUrl = `https://www.wikidata.org/wiki/Special:EntitySchemaText/${schemaId}`;
+                            console.log('Fetching raw ShEx:', shexUrl);
+                            
+                            const shexResponse = await fetch(shexUrl);
+                            if (shexResponse.ok) {
+                                rawShex = await shexResponse.text();
+                                console.log('Raw ShEx fetched successfully');
+                            }
+                        } catch (e) {
+                            console.log('Could not fetch raw ShEx:', e);
+                        }
+                    }
+                    
+                    // Create enhanced entity data with ShEx
+                    const enhancedEntity = {
+                        label: schemaDetails.label,
+                        description: schemaDetails.description,
+                        shexCode: rawShex
+                    };
+                    
+                    displayEntityData(enhancedEntity, schemaId);
+                } else {
+                    console.warn('Schema details not found, showing fallback data');
+                    // Show fallback data
+                    displayEntityData({
+                        label: selectedSchema?.label || 'Unknown Entity Schema',
+                        description: selectedSchema?.description || 'No description available',
+                        shexCode: null
+                    }, schemaId);
+                }
+
+            } catch (error) {
+                console.error('Error loading schema data:', error);
+                
+                // Show fallback data even if API fails
+                displayEntityData({
+                    label: selectedSchema?.label || 'Unknown Entity Schema',
+                    description: selectedSchema?.description || 'No description available',
+                    shexCode: null
+                }, schemaId);
+            }
+        }
+
+        async function showSchemaDetails(schema) {
+            // This function shows detailed schema information in a popup or expanded view
+            const modal = document.getElementById('schema-modal');
+            if (!modal.classList.contains('visible')) {
+                openModal();
+            }
+            
+            // Select the schema to load its data
+            selectSchema(schema);
+        }
+
+        function setupCollapsible(element) {
+            const header = element.querySelector('.collapsible-header');
+            header.addEventListener('click', () => {
+                element.classList.toggle('expanded');
+            });
+        }
+
+        function displayEntityData(entity, schemaId) {
+            const loadedDataContent = document.getElementById('loaded-data-content');
+            
+            // Handle both old format (labels.en.value) and new format (direct label property)
+            const label = entity.label || entity.labels?.en?.value || 'No label available';
+            const description = entity.description || entity.descriptions?.en?.value || 'No description available';
+            
+            // Parse properties from real ShEx code if available
+            const actualShexCode = entity.shexCode;
+            let requiredProperties = [];
+            let optionalProperties = [];
+            
+            if (actualShexCode) {
+                // Parse ShEx to extract properties
+                const propertyMatches = actualShexCode.match(/wdt:(\w+)\s+([^;]+);?\s*(?:#\s*(.*))?/g);
+                
+                if (propertyMatches) {
+                    propertyMatches.forEach(match => {
+                        const propMatch = match.match(/wdt:(\w+)\s+([^;]+);?\s*(?:#\s*(.*))?/);
+                        if (propMatch) {
+                            const propertyId = propMatch[1];
+                            const constraint = propMatch[2].trim();
+                            const comment = propMatch[3] ? propMatch[3].trim() : '';
+                            
+                            const property = {
+                                id: propertyId,
+                                label: comment || propertyId,
+                                description: `Constraint: ${constraint}`
+                            };
+                            
+                            // Determine if required (no ? or *)
+                            if (constraint.includes('?') || constraint.includes('*')) {
+                                optionalProperties.push(property);
+                            } else {
+                                requiredProperties.push(property);
+                            }
+                        }
+                    });
+                }
+            }
+            
+            // Fallback if no properties were parsed
+            if (requiredProperties.length === 0 && optionalProperties.length === 0) {
+                requiredProperties = [
+                    { id: 'P31', label: 'instance of', description: 'that class of which this subject is a particular example' }
+                ];
+                optionalProperties = [
+                    { id: 'P1476', label: 'title', description: 'published name of a work' }
+                ];
+            }
+            
+            let html = `
+                <div class="schema-data">
+                    <h4>Entity Schema Information</h4>
+                    <p><strong>ID:</strong> <a href="https://www.wikidata.org/wiki/EntitySchema:${schemaId}" target="_blank" style="color: #007bff; text-decoration: underline;">${schemaId}</a></p>
+                    <p><strong>Label:</strong> ${label}</p>
+                    <p><strong>Description:</strong> ${description}</p>
+                </div>
+
+                <div class="schema-details">
+                    <div class="property-section">
+                        <h5>Required Properties (${requiredProperties.length})</h5>
+                        <div class="property-list">
+            `;
+
+            requiredProperties.forEach(property => {
+                html += `
+                    <div class="property-item-enhanced" onclick="window.open('https://www.wikidata.org/wiki/Property:${property.id}', '_blank')">
+                        <span class="property-id">${property.id}</span>
+                        <span class="property-label">${property.label}</span>
+                        <span class="required-indicator">Required</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                        </div>
+                    </div>
+
+                    <div class="property-section">
+                        <h5>Optional Properties (${optionalProperties.length})</h5>
+                        <div class="property-list">
+            `;
+
+            optionalProperties.forEach(property => {
+                html += `
+                    <div class="property-item-enhanced" onclick="window.open('https://www.wikidata.org/wiki/Property:${property.id}', '_blank')">
+                        <span class="property-id">${property.id}</span>
+                        <span class="property-label">${property.label}</span>
+                        <span class="optional-indicator">Optional</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                        </div>
+                    </div>
+
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <h5>ShEx Schema Code ${actualShexCode ? '(Real Data from Wikidata)' : '(No ShEx Available)'}</h5>
+                            <span class="collapsible-toggle">▼</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="schema-code">${actualShexCode || 'No ShEx schema code available for this Entity Schema.'}</div>
+                        </div>
+                    </div>
+                </div>
+
+            `;
+
+            loadedDataContent.innerHTML = html;
+            
+            // Setup collapsible functionality
+            const collapsibles = loadedDataContent.querySelectorAll('.collapsible');
+            collapsibles.forEach(setupCollapsible);
+        }
+    </script>
+</body>
+</html>
