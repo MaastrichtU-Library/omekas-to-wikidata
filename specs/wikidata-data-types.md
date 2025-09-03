@@ -18,7 +18,14 @@ This document provides a comprehensive specification of Wikidata data types, the
 
 Based on the official Wikidata data types documentation and practical usage patterns, we support the following data types in order of priority and usage frequency:
 
-### 1. String
+### 1. Item (Wikidata Item)
+- **Description**: Link to a Wikidata item (QID)
+- **Format**: `Q` followed by numeric ID (e.g., `Q5` for human)
+- **Use Cases**: References to entities, concepts, objects
+- **Validation**: QID format validation, existence verification
+- **Components**: QID Detection & Search, Common Items, Reconciliation
+
+### 2. String
 - **Description**: Chain of characters, numbers and symbols that don't need translation
 - **Maximum Length**: 1,500 characters
 - **Example**: `B123`, `90928390-XLE`, `u29238`
@@ -26,20 +33,13 @@ Based on the official Wikidata data types documentation and practical usage patt
 - **Validation**: Character length, pattern matching
 - **Components**: Find & Replace, Regex Validation
 
-### 2. External Identifier
+### 3. External Identifier
 - **Description**: String representing an identifier used in an external system
 - **Maximum Length**: 1,500 characters
 - **Display**: Shows as external link if formatter URL is defined
 - **Examples**: ISBN numbers, ORCID IDs, museum catalog numbers
 - **Validation**: Pattern validation, prefix/suffix handling
 - **Components**: Find & Replace, Regex Validation, Prefix/Suffix Management
-
-### 3. Item (Wikidata Item)
-- **Description**: Link to a Wikidata item (QID)
-- **Format**: `Q` followed by numeric ID (e.g., `Q5` for human)
-- **Use Cases**: References to entities, concepts, objects
-- **Validation**: QID format validation, existence verification
-- **Components**: QID Detection & Search, Common Items, Reconciliation
 
 ### 4. Quantity
 - **Description**: Decimal number with unit of measurement and optional bounds
@@ -93,18 +93,23 @@ Based on the official Wikidata data types documentation and practical usage patt
 - **Description**: Entity metadata including labels, descriptions, and aliases (not an official Wikidata data type)
 - **Purpose**: Handle entity metadata that doesn't fit standard property values
 - **Types**:
-  - `label`: Primary name/title of the entity
-  - `description`: Brief description of the entity
-  - `alias`: Alternative names or synonyms
-- **Language Support**: Multi-language values with language codes
+  - `label`: Primary name/title of the entity (can use multilingual string for universal default)
+  - `description`: Brief description of the entity (requires language specification)
+  - `alias`: Alternative names or synonyms (requires language specification)
+- **Language Requirements**:
+  - **Labels**: Can use multilingual string (same string used as default for all languages) OR specific language code
+  - **Descriptions**: Always require specific language code (e.g., `en`, `de`, `fr`)
+  - **Aliases**: Always require specific language code (e.g., `en`, `de`, `fr`)
 - **Maximum Length**: 250 characters (labels), 250 characters (descriptions), no limit (aliases)
 - **Examples**: 
-  - Label: "Leonardo da Vinci"
-  - Description: "Italian polymath of the Renaissance"
-  - Aliases: "Leonardo di ser Piero da Vinci", "Leonardo"
+  - Label (multilingual): "Leonardo da Vinci" (universal default)
+  - Label (language-specific): "Leonardo da Vinci" (en), "Léonard de Vinci" (fr)
+  - Description: "Italian polymath of the Renaissance" (en)
+  - Aliases: "Leonardo di ser Piero da Vinci", "Leonardo" (en)
 - **Use Cases**: Entity creation, metadata cleanup, multilingual content management
-- **Validation**: Language code validation, length limits, duplicate detection
+- **Validation**: Language code validation (except multilingual labels), length limits, duplicate detection
 - **Components**: Find & Replace, Language Selection, Metadata Type Selection
+- **Note**: More similar to Monolingual Text than String due to language requirements
 
 ---
 
@@ -118,7 +123,7 @@ Components are reusable UI/logic blocks that can be applied to multiple data typ
 - **Used By**: String, External Identifier, URL, Commons Media, Point in Time, Monolingual Text, Geographic Coordinates
 - **Purpose**: Text transformation and cleanup
 - **Features**:
-  - Case-sensitive replacement
+  - optional Case-sensitive replacement
   - Multiple rules with order precedence
   - Rule editing and reordering
   - Preview functionality
@@ -214,6 +219,22 @@ Components are reusable UI/logic blocks that can be applied to multiple data typ
 
 ## Validation & Transformation
 
+### Transformation Sequencing
+
+**Critical Principle**: All transformations are applied **in sequential order**, and **order matters**. Components must support:
+
+- **Sequential Processing**: Transformations are applied one after another in user-defined order
+- **Dynamic Reordering**: Users can drag-and-drop components to change execution order
+- **Multiple Instances**: Multiple instances of the same component type can be added (e.g., three different Find & Replace operations)
+- **Chain Dependencies**: Later components receive the output of earlier components
+
+**Example Transformation Chain**:
+1. Find & Replace #1: Remove "Dr. " prefix
+2. Find & Replace #2: Replace "&" with "and" 
+3. Find & Replace #3: Standardize spacing
+4. Regex Validation: Validate final format
+5. Language Selection: Assign language code
+
 ### Validation Stages
 
 1. **Format Validation**: Ensure data matches expected format
@@ -223,11 +244,19 @@ Components are reusable UI/logic blocks that can be applied to multiple data typ
 ### Transformation Pipeline
 
 1. **Input Preprocessing**: Clean and normalize input data
-2. **Pattern Matching**: Apply find/replace rules
+2. **Component Chain Execution**: Apply components sequentially in user-defined order
 3. **Format Detection**: Identify data format automatically
 4. **Value Extraction**: Extract relevant values from text
-5. **Validation**: Apply validation rules
+5. **Validation**: Apply validation rules after each transformation step
 6. **Output Formatting**: Format for Wikidata consumption
+
+### Component Management
+
+- **Add Components**: Users can add multiple instances of any component
+- **Reorder Components**: Drag-and-drop interface for changing execution order
+- **Remove Components**: Individual components can be removed from the chain
+- **Clone Components**: Duplicate existing component configurations
+- **Conditional Components**: Components can be enabled/disabled without removal
 
 ### Error Handling
 
@@ -235,6 +264,7 @@ Components are reusable UI/logic blocks that can be applied to multiple data typ
 - **Partial Success**: Handle partially valid data
 - **Fallback Options**: Provide alternative approaches
 - **User Feedback**: Interactive error resolution
+- **Chain Debugging**: Show intermediate results between component steps
 
 ---
 
@@ -312,9 +342,9 @@ DataTypeManager
 
 | Data Type | Find & Replace | Regex | QID Search | Unit Search | Date Format | Language | URL Norm | File Valid | Prefix/Suffix | Precision | Coord Format | Metadata Type |
 |-----------|----------------|-------|------------|-------------|-------------|----------|----------|------------|---------------|-----------|--------------|---------------|
+| Item | - | - | ✓ | - | - | - | - | - | - | - | - | - |
 | String | ✓ | ✓ | - | - | - | - | - | - | - | - | - | - |
 | External ID | ✓ | ✓ | - | - | - | - | - | - | ✓ | - | - | - |
-| Item | - | - | ✓ | - | - | - | - | - | - | - | - | - |
 | Quantity | - | - | - | ✓ | - | - | - | - | - | ✓ | - | - |
 | URL | ✓ | - | - | - | - | - | ✓ | - | - | - | - | - |
 | Commons Media | ✓ | - | - | - | - | - | - | ✓ | - | - | - | - |
