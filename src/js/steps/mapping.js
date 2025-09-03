@@ -1005,15 +1005,15 @@ export function setupMappingStep(state) {
         stage1Section.appendChild(stage1Content);
         container.appendChild(stage1Section);
         
-        // Stage 2: Data Type Configuration (Initially hidden)
+        // Stage 2: Value Type Detection (Initially hidden)
         const stage2Section = createElement('details', {
             className: 'mapping-stage',
-            id: 'stage-2-datatype-config'
+            id: 'stage-2-value-type-detection'
         });
         
         const stage2Summary = createElement('summary', {
             className: 'stage-summary'
-        }, 'Stage 2: Data Type Configuration');
+        }, 'Stage 2: Value Type Detection');
         stage2Section.appendChild(stage2Summary);
         
         const stage2Content = createElement('div', {
@@ -1039,6 +1039,42 @@ export function setupMappingStep(state) {
         stage2Content.appendChild(dataTypeInfo);
         stage2Section.appendChild(stage2Content);
         container.appendChild(stage2Section);
+        
+        // Stage 3: Value manipulation (Initially hidden)
+        const stage3Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'stage-3-value-manipulation'
+        });
+        
+        const stage3Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 3: Value manipulation');
+        stage3Section.appendChild(stage3Summary);
+        
+        const stage3Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Value manipulation section (placeholder for future functionality)
+        const valueManipulationInfo = createElement('div', {
+            className: 'value-manipulation-info',
+            id: 'value-manipulation-section'
+        });
+        valueManipulationInfo.innerHTML = `
+            <div class="future-stage-placeholder">
+                <h4>Value Transformation & Validation</h4>
+                <p>Advanced value manipulation tools will be available here in future versions:</p>
+                <ul>
+                    <li>Data transformation rules</li>
+                    <li>Format validation</li>
+                    <li>Value normalization</li>
+                    <li>Custom mapping logic</li>
+                </ul>
+            </div>
+        `;
+        stage3Content.appendChild(valueManipulationInfo);
+        stage3Section.appendChild(stage3Content);
+        container.appendChild(stage3Section);
         
         // Setup search functionality and pre-populate if mapped
         setTimeout(() => setupPropertySearch(keyData), 100);
@@ -1429,7 +1465,7 @@ export function setupMappingStep(state) {
         
         // Collapse Stage 1 and expand Stage 2
         const stage1 = document.getElementById('stage-1-property-selection');
-        const stage2 = document.getElementById('stage-2-datatype-config');
+        const stage2 = document.getElementById('stage-2-value-type-detection');
         
         if (stage1 && stage2) {
             // Collapse stage 1 with animation

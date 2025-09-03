@@ -4978,7 +4978,53 @@ pre.sample-value {
     color: #666;
 }
 
-/* Future stages placeholder styling */
+/* Stage 3: Value manipulation */
+#stage-3-value-manipulation {
+    border-color: #ff9800;
+}
+
+#stage-3-value-manipulation .stage-summary {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border-bottom-color: #ff9800;
+}
+
+/* Value manipulation content */
+.value-manipulation-info {
+    background: #f9f9f9;
+    border-radius: 6px;
+    padding: 16px;
+}
+
+.future-stage-placeholder {
+    text-align: center;
+    padding: 20px;
+}
+
+.future-stage-placeholder h4 {
+    color: #ff9800;
+    margin-bottom: 12px;
+    font-size: 1.1em;
+}
+
+.future-stage-placeholder p {
+    color: #666;
+    margin-bottom: 16px;
+    font-style: italic;
+}
+
+.future-stage-placeholder ul {
+    display: inline-block;
+    text-align: left;
+    color: #777;
+    font-size: 0.9em;
+    line-height: 1.6;
+}
+
+.future-stage-placeholder li {
+    margin-bottom: 4px;
+}
+
+/* Future stages fallback styling */
 .mapping-stage.future-stage {
     opacity: 0.6;
     border-color: #ccc;
@@ -5028,5 +5074,13 @@ pre.sample-value {
     
     .technical-details-section {
         justify-content: center;
+    }
+    
+    .future-stage-placeholder {
+        padding: 16px;
+    }
+    
+    .future-stage-placeholder ul {
+        font-size: 0.85em;
     }
 }
