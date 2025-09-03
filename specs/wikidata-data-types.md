@@ -16,7 +16,7 @@ This document provides a comprehensive specification of Wikidata data types, the
 
 ## Core Data Types
 
-Based on the official Wikidata data types documentation, we support the following data types in order of priority and usage frequency:
+Based on the official Wikidata data types documentation and practical usage patterns, we support the following data types in order of priority and usage frequency:
 
 ### 1. String
 - **Description**: Chain of characters, numbers and symbols that don't need translation
@@ -88,6 +88,23 @@ Based on the official Wikidata data types documentation, we support the followin
   - `globe`: Celestial body (defaults to Earth - Q2)
 - **Formats**: Decimal degrees, Degrees-Minutes-Seconds (DMS)
 - **Components**: Coordinate Format Detection, Precision Management, Globe Selection
+
+### 10. Metadata
+- **Description**: Entity metadata including labels, descriptions, and aliases (not an official Wikidata data type)
+- **Purpose**: Handle entity metadata that doesn't fit standard property values
+- **Types**:
+  - `label`: Primary name/title of the entity
+  - `description`: Brief description of the entity
+  - `alias`: Alternative names or synonyms
+- **Language Support**: Multi-language values with language codes
+- **Maximum Length**: 250 characters (labels), 250 characters (descriptions), no limit (aliases)
+- **Examples**: 
+  - Label: "Leonardo da Vinci"
+  - Description: "Italian polymath of the Renaissance"
+  - Aliases: "Leonardo di ser Piero da Vinci", "Leonardo"
+- **Use Cases**: Entity creation, metadata cleanup, multilingual content management
+- **Validation**: Language code validation, length limits, duplicate detection
+- **Components**: Find & Replace, Language Selection, Metadata Type Selection
 
 ---
 
@@ -185,6 +202,14 @@ Components are reusable UI/logic blocks that can be applied to multiple data typ
   - Automatic bounds calculation
   - Manual bounds override
 
+#### Metadata Type Selection (Metadata)
+- **Purpose**: Specify metadata type and language
+- **Features**:
+  - Metadata type selection (label, description, alias)
+  - Language code specification
+  - Multi-language support
+  - Duplicate detection and merging
+
 ---
 
 ## Validation & Transformation
@@ -237,7 +262,7 @@ DataTypeManager
 
 ```javascript
 {
-  "dataType": "string|external-id|item|quantity|...",
+  "dataType": "string|external-id|item|quantity|metadata|...",
   "components": [
     {
       "type": "find-replace",
@@ -254,11 +279,19 @@ DataTypeManager
           {"pattern": "^[A-Z]+$", "description": "Uppercase only"}
         ]
       }
+    },
+    {
+      "type": "metadata-type-selection",
+      "config": {
+        "metadataType": "label|description|alias",
+        "language": "en",
+        "allowMultipleLanguages": true
+      }
     }
   ],
   "validation": {
     "required": true,
-    "maxLength": 1500,
+    "maxLength": 250, // 250 for labels/descriptions, unlimited for aliases
     "customRules": []
   }
 }
@@ -277,17 +310,18 @@ DataTypeManager
 
 ### Shared Component Matrix
 
-| Data Type | Find & Replace | Regex | QID Search | Unit Search | Date Format | Language | URL Norm | File Valid | Prefix/Suffix | Precision | Coord Format |
-|-----------|----------------|-------|------------|-------------|-------------|----------|----------|------------|---------------|-----------|--------------|
-| String | ✓ | ✓ | - | - | - | - | - | - | - | - | - |
-| External ID | ✓ | ✓ | - | - | - | - | - | - | ✓ | - | - |
-| Item | - | - | ✓ | - | - | - | - | - | - | - | - |
-| Quantity | - | - | - | ✓ | - | - | - | - | - | ✓ | - |
-| URL | ✓ | - | - | - | - | - | ✓ | - | - | - | - |
-| Commons Media | ✓ | - | - | - | - | - | - | ✓ | - | - | - |
-| Point in Time | ✓ | - | - | - | ✓ | - | - | - | - | - | - |
-| Monolingual Text | ✓ | - | - | - | - | ✓ | - | - | - | - | - |
-| Geographic Coordinates | ✓ | - | - | - | - | - | - | - | - | ✓ | ✓ |
+| Data Type | Find & Replace | Regex | QID Search | Unit Search | Date Format | Language | URL Norm | File Valid | Prefix/Suffix | Precision | Coord Format | Metadata Type |
+|-----------|----------------|-------|------------|-------------|-------------|----------|----------|------------|---------------|-----------|--------------|---------------|
+| String | ✓ | ✓ | - | - | - | - | - | - | - | - | - | - |
+| External ID | ✓ | ✓ | - | - | - | - | - | - | ✓ | - | - | - |
+| Item | - | - | ✓ | - | - | - | - | - | - | - | - | - |
+| Quantity | - | - | - | ✓ | - | - | - | - | - | ✓ | - | - |
+| URL | ✓ | - | - | - | - | - | ✓ | - | - | - | - | - |
+| Commons Media | ✓ | - | - | - | - | - | - | ✓ | - | - | - | - |
+| Point in Time | ✓ | - | - | - | ✓ | - | - | - | - | - | - | - |
+| Monolingual Text | ✓ | - | - | - | - | ✓ | - | - | - | - | - | - |
+| Geographic Coordinates | ✓ | - | - | - | - | - | - | - | - | ✓ | ✓ | - |
+| Metadata | ✓ | - | - | - | - | ✓ | - | - | - | - | - | ✓ |
 
 ### Component Interfaces
 
@@ -313,6 +347,18 @@ class FindReplaceComponent extends BaseComponent {
   transform(input) {
     // Apply all rules in order
   }
+}
+
+// Example: Metadata Type Selection Component
+class MetadataTypeSelectionComponent extends BaseComponent {
+  constructor(config = { metadataType: 'label', language: 'en' }) {
+    super(config);
+  }
+  
+  setMetadataType(type) {} // 'label', 'description', 'alias'
+  setLanguage(languageCode) {}
+  validateMetadata(value) {}
+  formatForWikidata(value) {}
 }
 ```
 
