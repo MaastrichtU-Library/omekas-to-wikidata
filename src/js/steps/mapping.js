@@ -1555,7 +1555,7 @@ export function setupMappingStep(state) {
         return summaries[datatype] || 'Values follow Wikidata specifications for this data type';
     }
     
-    // Create expandable constraints section
+    // Create compact constraints section
     function createConstraintsSection(constraints) {
         if (!constraints) return null;
         
@@ -1564,42 +1564,39 @@ export function setupMappingStep(state) {
                               (constraints.other && constraints.other.length > 0);
         
         if (!hasConstraints) {
-            const noConstraints = createElement('div', {
-                className: 'no-constraints'
-            }, '✅ No special constraints or restrictions');
-            return noConstraints;
+            return null; // Don't show anything if no constraints
         }
         
         const constraintsSection = createElement('div', {
             className: 'constraints-section'
         });
         
-        // Value type restrictions
+        // Value type restrictions - more user-friendly
         if (constraints.valueType && constraints.valueType.length > 0) {
-            const valueTypeSection = createExpandableConstraint(
-                '🔗 Value type restrictions',
-                'These items must be instances or subclasses of specific types',
-                formatValueTypeConstraints(constraints.valueType)
+            const valueTypeSection = createCompactConstraint(
+                'Value restrictions',
+                'Your values must link to specific types of items',
+                formatValueTypeConstraintsCompact(constraints.valueType)
             );
             constraintsSection.appendChild(valueTypeSection);
         }
         
-        // Format requirements
+        // Format requirements - simplified
         if (constraints.format && constraints.format.length > 0) {
-            const formatSection = createExpandableConstraint(
-                '📝 Format requirements', 
-                'Values must match specific patterns or formats',
-                formatFormatConstraints(constraints.format)
+            const formatSection = createCompactConstraint(
+                'Format rules',
+                'Your text values must follow a specific format',
+                formatFormatConstraintsCompact(constraints.format)
             );
             constraintsSection.appendChild(formatSection);
         }
         
-        // Other constraints
+        // Other constraints - only show if important
         if (constraints.other && constraints.other.length > 0) {
-            const otherSection = createExpandableConstraint(
-                '⚙️ Additional constraints',
-                'Other validation rules may apply',
-                formatOtherConstraints(constraints.other)
+            const otherSection = createCompactConstraint(
+                'Other requirements',
+                'Additional validation rules apply',
+                formatOtherConstraintsCompact(constraints.other)
             );
             constraintsSection.appendChild(otherSection);
         }
@@ -1607,97 +1604,84 @@ export function setupMappingStep(state) {
         return constraintsSection;
     }
     
-    // Create an expandable constraint section
-    function createExpandableConstraint(title, summary, details) {
+    // Create a compact constraint section
+    function createCompactConstraint(title, explanation, details) {
         const container = createElement('details', {
-            className: 'constraint-expandable'
+            className: 'constraint-compact'
         });
         
         const summaryEl = createElement('summary', {
-            className: 'constraint-summary'
+            className: 'constraint-compact-summary'
         });
-        summaryEl.innerHTML = `
-            <span class="constraint-title">${title}</span>
-            <span class="constraint-description">${summary}</span>
-        `;
+        summaryEl.innerHTML = `<span class="constraint-compact-title">${title}</span>`;
         container.appendChild(summaryEl);
         
         const detailsEl = createElement('div', {
-            className: 'constraint-details'
+            className: 'constraint-compact-details'
         });
-        detailsEl.innerHTML = details;
+        detailsEl.innerHTML = `
+            <div class="constraint-explanation">${explanation}</div>
+            ${details}
+        `;
         container.appendChild(detailsEl);
         
         return container;
     }
     
-    // Format value type constraints with specific details
-    function formatValueTypeConstraints(valueTypeConstraints) {
+    // Format value type constraints - compact and user-friendly
+    function formatValueTypeConstraintsCompact(valueTypeConstraints) {
         if (!valueTypeConstraints || valueTypeConstraints.length === 0) {
-            return '<p>No value type restrictions found.</p>';
+            return '<p>No restrictions found.</p>';
         }
         
-        let html = '<div class="constraint-list">';
+        let html = '<div class="constraint-simple-list">';
+        let allTypes = [];
         
-        valueTypeConstraints.forEach((constraint, index) => {
-            html += '<div class="constraint-item-detail">';
-            html += '<h6>Allowed Types:</h6>';
-            html += '<ul>';
-            
+        valueTypeConstraints.forEach(constraint => {
             constraint.classes.forEach(classId => {
                 const label = constraint.classLabels[classId] || classId;
-                html += `<li><code>${classId}</code> - ${label}</li>`;
+                allTypes.push(label);
             });
-            
-            html += '</ul>';
-            html += '</div>';
         });
+        
+        // Show only first few types to keep it compact
+        const displayTypes = allTypes.slice(0, 3);
+        const hasMore = allTypes.length > 3;
+        
+        html += '<p><strong>Must be:</strong> ';
+        html += displayTypes.join(', ');
+        if (hasMore) {
+            html += ` <em>and ${allTypes.length - 3} others</em>`;
+        }
+        html += '</p>';
         
         html += '</div>';
         return html;
     }
     
-    // Format format constraints with patterns
-    function formatFormatConstraints(formatConstraints) {
+    // Format format constraints - simplified
+    function formatFormatConstraintsCompact(formatConstraints) {
         if (!formatConstraints || formatConstraints.length === 0) {
-            return '<p>No format requirements found.</p>';
+            return '<p>No format rules found.</p>';
         }
         
-        let html = '<div class="constraint-list">';
+        let html = '<div class="constraint-simple-list">';
         
         formatConstraints.forEach((constraint, index) => {
-            html += '<div class="constraint-item-detail">';
-            html += `<h6>Pattern:</h6>`;
-            html += `<code class="regex-pattern">${constraint.regex}</code>`;
-            html += `<p><strong>Description:</strong> ${constraint.description}</p>`;
-            html += '</div>';
+            html += `<p><strong>Rule ${index + 1}:</strong> ${constraint.description}</p>`;
         });
         
         html += '</div>';
         return html;
     }
     
-    // Format other constraints
-    function formatOtherConstraints(otherConstraints) {
+    // Format other constraints - minimal
+    function formatOtherConstraintsCompact(otherConstraints) {
         if (!otherConstraints || otherConstraints.length === 0) {
-            return '<p>No additional constraints found.</p>';
+            return '<p>No additional requirements found.</p>';
         }
         
-        let html = '<div class="constraint-list">';
-        
-        otherConstraints.forEach((constraint, index) => {
-            html += '<div class="constraint-item-detail">';
-            html += `<h6>Constraint Type:</h6>`;
-            html += `<p><code>${constraint.type}</code></p>`;
-            if (constraint.qualifiers && Object.keys(constraint.qualifiers).length > 0) {
-                html += '<h6>Details:</h6>';
-                html += '<pre>' + JSON.stringify(constraint.qualifiers, null, 2) + '</pre>';
-            }
-            html += '</div>';
-        });
-        
-        html += '</div>';
-        return html;
+        return `<p>This property has <strong>${otherConstraints.length}</strong> additional validation rule${otherConstraints.length > 1 ? 's' : ''}.</p>`;
     }
     
     // Open modal with raw JSON data
