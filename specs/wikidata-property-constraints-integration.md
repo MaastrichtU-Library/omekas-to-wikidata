@@ -13,8 +13,7 @@ This document provides comprehensive guidance on implementing Wikidata property 
 5. [Validation Framework](#validation-framework)
 6. [UI Enhancement Strategies](#ui-enhancement-strategies)
 7. [Error Handling](#error-handling)
-8. [Performance Considerations](#performance-considerations)
-9. [Example Implementations](#example-implementations)
+8. [Example Implementations](#example-implementations)
 
 ## API Implementation
 
@@ -331,67 +330,12 @@ class ConstraintEnhancedField {
 }
 ```
 
-### 2. Batch Property Loading
-
-```javascript
-class PropertyConstraintManager {
-    constructor() {
-        this.cache = new Map();
-        this.loadingPromises = new Map();
-    }
-    
-    async getPropertyConstraints(propertyId) {
-        if (this.cache.has(propertyId)) {
-            return this.cache.get(propertyId);
-        }
-        
-        if (this.loadingPromises.has(propertyId)) {
-            return this.loadingPromises.get(propertyId);
-        }
-        
-        const promise = this.loadProperty(propertyId);
-        this.loadingPromises.set(propertyId, promise);
-        
-        try {
-            const result = await promise;
-            this.cache.set(propertyId, result);
-            return result;
-        } finally {
-            this.loadingPromises.delete(propertyId);
-        }
-    }
-    
-    async loadMultipleProperties(propertyIds) {
-        const BATCH_SIZE = 10; // Wikidata API limit
-        const results = new Map();
-        
-        for (let i = 0; i < propertyIds.length; i += BATCH_SIZE) {
-            const batch = propertyIds.slice(i, i + BATCH_SIZE);
-            const batchPromises = batch.map(id => this.getPropertyConstraints(id));
-            const batchResults = await Promise.allSettled(batchPromises);
-            
-            batch.forEach((id, index) => {
-                if (batchResults[index].status === 'fulfilled') {
-                    results.set(id, batchResults[index].value);
-                }
-            });
-        }
-        
-        return results;
-    }
-}
-```
-
-### 3. Dynamic Form Generation
+### 2. Dynamic Form Generation
 
 ```javascript
 class ConstraintBasedFormBuilder {
-    constructor(propertyManager) {
-        this.propertyManager = propertyManager;
-    }
-    
     async createField(propertyId, container) {
-        const propertyData = await this.propertyManager.getPropertyConstraints(propertyId);
+        const propertyData = await fetchPropertyData(propertyId);
         const field = this.createBaseField(propertyData);
         
         // Apply constraint-based enhancements
@@ -438,12 +382,8 @@ class ConstraintBasedFormBuilder {
 
 ```javascript
 class WikidataPropertyValidator {
-    constructor(propertyManager) {
-        this.propertyManager = propertyManager;
-    }
-    
     async validateProperty(propertyId, value, options = {}) {
-        const propertyData = await this.propertyManager.getPropertyConstraints(propertyId);
+        const propertyData = await fetchPropertyData(propertyId);
         const results = {
             valid: true,
             errors: [],
@@ -478,11 +418,11 @@ class WikidataPropertyValidator {
     async validateConstraint(value, constraint, options) {
         switch (constraint.type) {
             case 'Format constraint':
-                return this.validateFormat(value, constraint);
+                return validateFormat(value, constraint);
             case 'Allowed values constraint':
-                return this.validateAllowedValues(value, constraint);
+                return validateAllowedValues(value, constraint);
             case 'Value type constraint':
-                return this.validateValueType(value, constraint);
+                return validateValueType(value, constraint);
             case 'Single value constraint':
                 return this.validateSingleValue(value, constraint, options.existingValues);
             default:
@@ -768,89 +708,6 @@ class ErrorHandlingWrapper {
 }
 ```
 
-## Performance Considerations
-
-### Caching Strategy
-
-```javascript
-class ConstraintCache {
-    constructor(ttlMs = 1000 * 60 * 60) { // 1 hour default TTL
-        this.cache = new Map();
-        this.ttl = ttlMs;
-    }
-    
-    set(key, value) {
-        this.cache.set(key, {
-            value: value,
-            timestamp: Date.now()
-        });
-    }
-    
-    get(key) {
-        const item = this.cache.get(key);
-        if (!item) return null;
-        
-        if (Date.now() - item.timestamp > this.ttl) {
-            this.cache.delete(key);
-            return null;
-        }
-        
-        return item.value;
-    }
-    
-    clear() {
-        this.cache.clear();
-    }
-    
-    size() {
-        return this.cache.size;
-    }
-}
-```
-
-### Batch Processing
-
-```javascript
-class BatchConstraintLoader {
-    constructor(maxConcurrent = 5) {
-        this.maxConcurrent = maxConcurrent;
-        this.queue = [];
-        this.active = 0;
-    }
-    
-    async loadConstraints(propertyIds) {
-        const promises = propertyIds.map(id => this.queueLoad(id));
-        return Promise.all(promises);
-    }
-    
-    queueLoad(propertyId) {
-        return new Promise((resolve, reject) => {
-            this.queue.push({ propertyId, resolve, reject });
-            this.processQueue();
-        });
-    }
-    
-    async processQueue() {
-        if (this.active >= this.maxConcurrent || this.queue.length === 0) {
-            return;
-        }
-        
-        this.active++;
-        const { propertyId, resolve, reject } = this.queue.shift();
-        
-        try {
-            const result = await fetchPropertyData(propertyId);
-            resolve(result);
-        } catch (error) {
-            reject(error);
-        } finally {
-            this.active--;
-            this.processQueue();
-        }
-    }
-}
-```
-
 ## Example Implementations
 
 ### Complete Form Integration
@@ -861,7 +718,7 @@ class WikidataPropertyField extends HTMLElement {
     constructor() {
         super();
         this.propertyId = this.getAttribute('property-id');
-        this.validator = new WikidataPropertyValidator(new PropertyConstraintManager());
+        this.validator = new WikidataPropertyValidator();
     }
     
     async connectedCallback() {
@@ -869,7 +726,7 @@ class WikidataPropertyField extends HTMLElement {
     }
     
     async initialize() {
-        const propertyData = await this.validator.propertyManager.getPropertyConstraints(this.propertyId);
+        const propertyData = await fetchPropertyData(this.propertyId);
         
         this.innerHTML = `
             <label>${propertyData.label}</label>
@@ -939,7 +796,7 @@ customElements.define('wikidata-property-field', WikidataPropertyField);
 - **Standardized validation**: Reusable validation logic across applications
 - **Future-proof**: Automatically adapts to Wikidata constraint changes
 - **Comprehensive coverage**: Handles all major constraint types
-- **Performance optimized**: Caching and batching for efficient API usage
+- **Extensible architecture**: Easy to extend with custom validation rules
 
 ### Compliance Advantages
 - **Wikidata compatibility**: Ensures data meets Wikidata requirements
