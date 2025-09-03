@@ -4665,15 +4665,18 @@ pre.sample-value {
 
 .mapping-stage {
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 0;
     background: white;
-    box-shadow: var(--box-shadow);
+    box-shadow: none;
     transition: all 0.3s ease;
 }
 
 .mapping-stage:not(:last-child) {
     margin-bottom: 0;
     border-bottom: none;
+}
+
+.mapping-stage:first-child {
     border-radius: 8px 8px 0 0;
 }
 
@@ -4686,12 +4689,12 @@ pre.sample-value {
 }
 
 .mapping-stage[open] {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: none;
 }
 
 .stage-summary {
     padding: 16px 20px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background: #ffffff;
     font-weight: 600;
     font-size: 1.1em;
     color: var(--text-color);
@@ -4699,10 +4702,13 @@ pre.sample-value {
     transition: all 0.2s ease;
     border-bottom: 1px solid var(--border-color);
     position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .stage-summary:hover {
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    background: #f8f9fa;
 }
 
 .stage-summary::marker {
@@ -4714,29 +4720,29 @@ pre.sample-value {
     color: var(--primary-color);
 }
 
+/* Completed stage styling */
+.mapping-stage.stage-completed .stage-summary {
+    background: #f8fff4;
+    border-bottom-color: #28a745;
+}
+
+.mapping-stage.stage-completed .stage-summary::before {
+    content: "✓";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #28a745;
+    color: white;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
 /* Closed state styling */
 .mapping-stage:not([open]) .stage-summary {
     border-bottom: none;
-}
-
-/* First stage summary */
-.mapping-stage:not(:last-child) .stage-summary {
-    border-radius: 8px 8px 0 0;
-}
-
-/* Last stage summary */
-.mapping-stage:last-child .stage-summary {
-    border-radius: 0;
-}
-
-/* Only stage summary */
-.mapping-stage:only-child .stage-summary {
-    border-radius: 8px 8px 0 0;
-}
-
-/* Closed last stage */
-.mapping-stage:last-child:not([open]) .stage-summary {
-    border-radius: 0 0 8px 8px;
 }
 
 .stage-content {
@@ -4757,9 +4763,9 @@ pre.sample-value {
 
 /* Improved Data Type Configuration Styles */
 .datatype-info {
-    background: #f9f9f9;
-    border-radius: 6px;
-    padding: 16px;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
 }
 
 .datatype-display {
@@ -4978,30 +4984,20 @@ pre.sample-value {
     color: #666;
 }
 
-/* Stage 3: Value manipulation */
-#stage-3-value-manipulation {
-    border-color: #ff9800;
-}
-
-#stage-3-value-manipulation .stage-summary {
-    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-    border-bottom-color: #ff9800;
-}
-
 /* Value manipulation content */
 .value-manipulation-info {
-    background: #f9f9f9;
-    border-radius: 6px;
-    padding: 16px;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
 }
 
 .future-stage-placeholder {
     text-align: center;
-    padding: 20px;
+    padding: 20px 0;
 }
 
 .future-stage-placeholder h4 {
-    color: #ff9800;
+    color: var(--text-color);
     margin-bottom: 12px;
     font-size: 1.1em;
 }

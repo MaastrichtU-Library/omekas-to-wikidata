@@ -1458,26 +1458,32 @@ export function setupMappingStep(state) {
         await transitionToDataTypeConfiguration(property);
     }
     
-    // New function to handle transition to Stage 2
+    // New function to handle transition to Stage 3 (skip Stage 2)
     async function transitionToDataTypeConfiguration(property) {
         // Update modal title to show the mapping relationship
         updateModalTitle(property);
         
-        // Collapse Stage 1 and expand Stage 2
+        // Get all stages
         const stage1 = document.getElementById('stage-1-property-selection');
         const stage2 = document.getElementById('stage-2-value-type-detection');
+        const stage3 = document.getElementById('stage-3-value-manipulation');
         
-        if (stage1 && stage2) {
-            // Collapse stage 1 with animation
-            stage1.open = false;
+        if (stage1 && stage2 && stage3) {
+            // Mark stages 1 and 2 as completed
+            stage1.classList.add('stage-completed');
+            stage2.classList.add('stage-completed');
             
-            // Open stage 2 after a brief delay for better UX
+            // Collapse stages 1 and 2
+            stage1.open = false;
+            stage2.open = false;
+            
+            // Open stage 3 after a brief delay for better UX
             setTimeout(() => {
-                stage2.open = true;
+                stage3.open = true;
             }, 300);
         }
         
-        // Display data type information in Stage 2
+        // Still process data type information silently (for internal use)
         await displayDataTypeConfiguration(property);
     }
     
