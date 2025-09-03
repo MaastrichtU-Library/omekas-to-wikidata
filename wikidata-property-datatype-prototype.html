@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikidata Property Data Type Prototype</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .property-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .test-properties {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .test-property-btn {
+            padding: 5px 15px;
+            background: #f0f0f0;
+            color: #333;
+            font-size: 14px;
+            border: 1px solid #ddd;
+        }
+        .test-property-btn:hover {
+            background: #e0e0e0;
+        }
+        .results {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .property-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .property-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .property-id {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .property-label {
+            font-size: 18px;
+            color: #333;
+        }
+        .data-type {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #28a745;
+            color: white;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .constraint-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .constraint-title {
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .constraint {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #ffa500;
+            border-radius: 4px;
+        }
+        .constraint-type {
+            font-weight: bold;
+            color: #ff6b00;
+            margin-bottom: 5px;
+        }
+        .allowed-values {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .allowed-value {
+            background: #e7f3ff;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 14px;
+            color: #0066cc;
+            border: 1px solid #b3d9ff;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #c00;
+        }
+        .info-box {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0066cc;
+        }
+        .description {
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        .raw-data {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .raw-data summary {
+            cursor: pointer;
+            color: #0066cc;
+            font-weight: bold;
+        }
+        .raw-data pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Wikidata Property Data Type Explorer</h1>
+    
+    <div class="info-box">
+        <strong>ℹ️ About this tool:</strong> This prototype fetches and displays data type information for Wikidata properties.
+        Each property in Wikidata has a specific data type (e.g., Item, String, Quantity, Time, etc.) and may have 
+        additional constraints that define what values are allowed.
+    </div>
+
+    <div class="controls">
+        <div class="property-input-group">
+            <input type="text" id="propertyInput" placeholder="Enter property ID (e.g., P31, P21, P569)" />
+            <button id="fetchBtn" onclick="fetchPropertyData()">Fetch Property Data</button>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <strong>Test with common properties:</strong>
+            <div class="test-properties">
+                <button class="test-property-btn" onclick="testProperty('P31')">P31 (instance of)</button>
+                <button class="test-property-btn" onclick="testProperty('P21')">P21 (sex or gender)</button>
+                <button class="test-property-btn" onclick="testProperty('P569')">P569 (date of birth)</button>
+                <button class="test-property-btn" onclick="testProperty('P625')">P625 (coordinate location)</button>
+                <button class="test-property-btn" onclick="testProperty('P18')">P18 (image)</button>
+                <button class="test-property-btn" onclick="testProperty('P1082')">P1082 (population)</button>
+                <button class="test-property-btn" onclick="testProperty('P2046')">P2046 (area)</button>
+                <button class="test-property-btn" onclick="testProperty('P856')">P856 (official website)</button>
+                <button class="test-property-btn" onclick="testProperty('P227')">P227 (GND ID)</button>
+                <button class="test-property-btn" onclick="testProperty('P373')">P373 (Commons category)</button>
+            </div>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <button onclick="testMultipleProperties()">🧪 Test Multiple Properties</button>
+            <button onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+    </div>
+
+    <div id="results" class="results">
+        <div class="loading">Enter a property ID to get started...</div>
+    </div>
+
+    <script>
+        const WIKIDATA_API = 'https://www.wikidata.org/w/api.php';
+        
+        // Map of constraint types to human-readable names
+        const CONSTRAINT_TYPES = {
+            'Q21502404': 'Format constraint',
+            'Q21510865': 'Value type constraint',
+            'Q21503250': 'Type constraint',
+            'Q21510862': 'Symmetric constraint',
+            'Q21510851': 'Inverse constraint',
+            'Q21502838': 'Distinct values constraint',
+            'Q21510859': 'One-of constraint',
+            'Q21514353': 'Allowed units constraint',
+            'Q21510860': 'Required constraint',
+            'Q21503247': 'Item constraint',
+            'Q21510852': 'Qualifier constraint',
+            'Q21510856': 'Conflicts-with constraint',
+            'Q52004125': 'Allowed values constraint',
+            'Q21510855': 'Mandatory qualifiers constraint',
+            'Q21510863': 'Value requires statement constraint',
+            'Q21510864': 'Item requires statement constraint',
+            'Q52558054': 'Allowed entity types constraint',
+            'Q21502410': 'Single value constraint',
+            'Q21510857': 'Multi-value constraint'
+        };
+
+        async function fetchPropertyData(propertyId = null) {
+            const input = propertyId || document.getElementById('propertyInput').value.trim().toUpperCase();
+            
+            if (!input) {
+                alert('Please enter a property ID');
+                return;
+            }
+            
+            // Ensure it starts with P
+            const pid = input.startsWith('P') ? input : 'P' + input;
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">Loading property data for ' + pid + '...</div>';
+            
+            try {
+                // Fetch property entity data
+                const url = `${WIKIDATA_API}?action=wbgetentities&ids=${pid}&format=json&origin=*&props=labels|descriptions|datatype|claims`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.entities[pid].missing) {
+                    throw new Error(`Property ${pid} not found`);
+                }
+                
+                const property = data.entities[pid];
+                displayPropertyData(pid, property);
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                console.error('Error fetching property:', error);
+            }
+        }
+        
+        function displayPropertyData(pid, property) {
+            const resultsDiv = document.getElementById('results');
+            
+            // Get English label and description
+            const label = property.labels?.en?.value || 'No label';
+            const description = property.descriptions?.en?.value || 'No description';
+            const dataType = property.datatype || 'Unknown';
+            
+            // Process constraints if they exist
+            const constraints = [];
+            if (property.claims?.P2302) {
+                for (const constraint of property.claims.P2302) {
+                    const constraintId = constraint.mainsnak?.datavalue?.value?.id;
+                    if (constraintId) {
+                        const constraintData = {
+                            id: constraintId,
+                            type: CONSTRAINT_TYPES[constraintId] || constraintId,
+                            qualifiers: {}
+                        };
+                        
+                        // Extract qualifier data
+                        if (constraint.qualifiers) {
+                            for (const [qualProp, qualValues] of Object.entries(constraint.qualifiers)) {
+                                constraintData.qualifiers[qualProp] = qualValues.map(qv => {
+                                    if (qv.datavalue?.value?.id) {
+                                        return qv.datavalue.value.id;
+                                    } else if (qv.datavalue?.value) {
+                                        return qv.datavalue.value;
+                                    }
+                                    return null;
+                                }).filter(v => v !== null);
+                            }
+                        }
+                        
+                        constraints.push(constraintData);
+                    }
+                }
+            }
+            
+            // Build HTML
+            let html = `
+                <div class="property-card">
+                    <div class="property-header">
+                        <div>
+                            <span class="property-id">${pid}</span>
+                            <span class="property-label">${label}</span>
+                        </div>
+                        <div class="data-type">Data Type: ${dataType}</div>
+                    </div>
+                    
+                    <div class="description">${description}</div>
+            `;
+            
+            // Add constraints section if there are any
+            if (constraints.length > 0) {
+                html += `
+                    <div class="constraint-section">
+                        <div class="constraint-title">📋 Property Constraints (${constraints.length})</div>
+                `;
+                
+                for (const constraint of constraints) {
+                    html += `
+                        <div class="constraint">
+                            <div class="constraint-type">${constraint.type}</div>
+                    `;
+                    
+                    // Display specific constraint details
+                    if (constraint.type === 'Value type constraint' && constraint.qualifiers.P2308) {
+                        html += `<div>Allowed types: <div class="allowed-values">`;
+                        for (const type of constraint.qualifiers.P2308) {
+                            html += `<span class="allowed-value">${type}</span>`;
+                        }
+                        html += `</div></div>`;
+                    }
+                    
+                    if (constraint.type === 'Allowed values constraint' && constraint.qualifiers.P2305) {
+                        html += `<div>Allowed values: <div class="allowed-values">`;
+                        for (const value of constraint.qualifiers.P2305) {
+                            html += `<span class="allowed-value">${value}</span>`;
+                        }
+                        html += `</div></div>`;
+                    }
+                    
+                    if (constraint.type === 'Format constraint' && constraint.qualifiers.P1793) {
+                        html += `<div>Pattern: <code>${constraint.qualifiers.P1793[0]}</code></div>`;
+                    }
+                    
+                    if (constraint.type === 'Allowed units constraint' && constraint.qualifiers.P2305) {
+                        html += `<div>Allowed units: <div class="allowed-values">`;
+                        for (const unit of constraint.qualifiers.P2305) {
+                            html += `<span class="allowed-value">${unit}</span>`;
+                        }
+                        html += `</div></div>`;
+                    }
+                    
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+            }
+            
+            // Add raw data section
+            html += `
+                <details class="raw-data">
+                    <summary>View Raw API Response</summary>
+                    <pre>${JSON.stringify(property, null, 2)}</pre>
+                </details>
+            </div>
+            `;
+            
+            // Update results or append
+            const existingResults = resultsDiv.querySelector('.property-card');
+            if (existingResults && !document.getElementById('propertyInput').value) {
+                // Append when testing multiple
+                resultsDiv.innerHTML += html;
+            } else {
+                resultsDiv.innerHTML = html;
+            }
+        }
+        
+        function testProperty(pid) {
+            document.getElementById('propertyInput').value = pid;
+            fetchPropertyData(pid);
+        }
+        
+        async function testMultipleProperties() {
+            const testProps = ['P31', 'P21', 'P569', 'P625', 'P18', 'P1082', 'P2046', 'P856', 'P227', 'P373'];
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">Testing multiple properties...</div>';
+            
+            // Clear after loading message
+            setTimeout(() => {
+                resultsDiv.innerHTML = '';
+            }, 100);
+            
+            for (const prop of testProps) {
+                await fetchPropertyData(prop);
+                // Small delay to avoid overwhelming the API
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '<div class="loading">Enter a property ID to get started...</div>';
+            document.getElementById('propertyInput').value = '';
+        }
+        
+        // Allow Enter key to trigger fetch
+        document.getElementById('propertyInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                fetchPropertyData();
+            }
+        });
+    </script>
+</body>
+</html>
