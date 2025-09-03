@@ -45,10 +45,22 @@ Based on the official Wikidata data types documentation and practical usage patt
 - **Description**: Decimal number with unit of measurement and optional bounds
 - **Attributes**:
   - `amount`: Main numeric value
-  - `unit`: Unit of measure item (QID or dimensionless)
+  - `unit`: Unit of measure item (QID or dimensionless Q199)
   - `lowerBound`: Optional lower bound
   - `upperBound`: Optional upper bound
-- **Examples**: `762` (dimensionless), `2500 km`, `1.03 ± 0.02 g`
+- **Unit Integration**: 
+  - Units are **predetermined Wikidata entities** (QIDs)
+  - Retrieved via **Wikidata API** calls for real-time search and validation
+  - Support for **dimensionless quantities** (Q199 - "1")
+  - **Unit conversion** awareness through Wikidata unit relationships
+- **Examples**: 
+  - `762` (dimensionless - Q199)
+  - `2500 km` (amount: 2500, unit: Q828 - kilometer)
+  - `1.03 ± 0.02 g` (amount: 1.03, bounds: 1.01-1.05, unit: Q41803 - gram)
+- **API Integration**: 
+  - Search units via Wikidata Query Service
+  - Validate unit QIDs against Wikidata
+  - Fetch unit metadata (labels, conversion factors)
 - **Components**: Unit Search & Detection, Precision Management, Bounds Configuration
 
 ### 5. URL
@@ -148,12 +160,31 @@ Components are reusable UI/logic blocks that can be applied to multiple data typ
   - Reconciliation workflow
 
 #### Unit Search & Detection (Quantity)
-- **Purpose**: Identify and assign measurement units
+- **Purpose**: Identify and assign measurement units from Wikidata's predetermined unit entities
+- **API Integration**:
+  - **Real-time Search**: Query Wikidata API for units matching user input
+  - **SPARQL Queries**: Use Wikidata Query Service to find units by label/alias
+  - **Unit Validation**: Verify selected units exist and are valid measurement units
+  - **Metadata Retrieval**: Fetch unit labels, descriptions, and conversion factors
 - **Features**:
-  - Unit search with autocomplete
-  - Common units quick selection
-  - Automatic unit detection from text patterns
-  - Unit conversion awareness
+  - **Live Unit Search**: Autocomplete with API-powered suggestions
+  - **Common Units Library**: Pre-cached frequently used units (meter, gram, second, etc.)
+  - **Automatic Detection**: Parse text patterns to suggest appropriate units
+  - **Unit Relationships**: Understand unit hierarchies and conversions via Wikidata properties
+  - **Dimensionless Support**: Handle quantities without units (Q199 - "1")
+- **API Endpoints**:
+  - Wikidata API: `https://www.wikidata.org/w/api.php`
+  - Query Service: `https://query.wikidata.org/sparql`
+  - Search for units with property P2370 (conversion to SI unit)
+- **Example SPARQL**: 
+  ```sparql
+  SELECT ?unit ?unitLabel WHERE {
+    ?unit wdt:P31/wdt:P279* wd:Q47574 .  # unit of measurement
+    ?unit rdfs:label ?unitLabel .
+    FILTER(LANG(?unitLabel) = "en")
+    FILTER(CONTAINS(LCASE(?unitLabel), "meter"))
+  }
+  ```
 
 #### Coordinate Format Detection (Geographic Coordinates)
 - **Purpose**: Parse and validate coordinate formats
@@ -288,6 +319,54 @@ DataTypeManager
     └── ...
 ```
 
+### API Integration Patterns
+
+For components requiring Wikidata API integration (especially Unit Search & Detection):
+
+```javascript
+// Unit Search Service
+class WikidataUnitService {
+  constructor() {
+    this.cache = new Map();
+    this.apiBase = 'https://www.wikidata.org/w/api.php';
+    this.sparqlEndpoint = 'https://query.wikidata.org/sparql';
+  }
+  
+  async searchUnits(query, limit = 10) {
+    // Check cache first
+    const cacheKey = `units_${query}_${limit}`;
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+    
+    // SPARQL query for units
+    const sparql = `
+      SELECT DISTINCT ?unit ?unitLabel ?description WHERE {
+        ?unit wdt:P31/wdt:P279* wd:Q47574 .  # unit of measurement
+        ?unit rdfs:label ?unitLabel .
+        OPTIONAL { ?unit schema:description ?description . }
+        FILTER(LANG(?unitLabel) = "en")
+        FILTER(CONTAINS(LCASE(?unitLabel), "${query.toLowerCase()}"))
+      } LIMIT ${limit}
+    `;
+    
+    const results = await this.executeSparql(sparql);
+    this.cache.set(cacheKey, results);
+    return results;
+  }
+  
+  async validateUnit(qid) {
+    // Validate that QID is a valid unit
+    const sparql = `
+      ASK {
+        wd:${qid} wdt:P31/wdt:P279* wd:Q47574 .
+      }
+    `;
+    return await this.executeSparql(sparql);
+  }
+}
+```
+
 ### Configuration Schema
 
 ```javascript
@@ -400,6 +479,11 @@ class MetadataTypeSelectionComponent extends BaseComponent {
 - **Lazy Loading**: Load components only when needed
 - **Caching**: Cache validation results and transformations
 - **Debouncing**: Debounce real-time validation
+- **API Optimization**:
+  - **Unit Caching**: Cache frequently used units locally to reduce API calls
+  - **Batch Requests**: Group multiple unit lookups into single API calls
+  - **Request Throttling**: Limit API request frequency to respect rate limits
+  - **Offline Fallback**: Maintain cached unit database for offline functionality
 
 ### Accessibility
 - **Screen Reader Support**: Proper ARIA labels
