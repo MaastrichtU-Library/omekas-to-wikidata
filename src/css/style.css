@@ -857,7 +857,6 @@ main {
 .mapping-modal-content {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
 }
 
 .key-info {
@@ -1276,10 +1275,6 @@ pre.sample-value {
     .step {
         flex-basis: 33.333%;
         margin-bottom: 1rem;
-    }
-    
-    .mapping-modal-content {
-        gap: 1rem;
     }
     
     .property-suggestions {
