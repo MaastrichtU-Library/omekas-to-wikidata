@@ -1473,31 +1473,50 @@ export function setupMappingStep(state) {
                 window.currentMappingSelectedProperty = propertyData;
             }
             
-            // Display the detected data type
-            const datatypeDisplay = `
-                <div class="datatype-result">
-                    <div class="datatype-main">
-                        <span class="datatype-name">${propertyData.datatypeLabel}</span>
-                        <span class="datatype-code">(${propertyData.datatype})</span>
-                    </div>
-                    <div class="datatype-constraints">
-                        ${formatConstraintsForDisplay(propertyData.constraints)}
-                    </div>
+            // Create the main data type display
+            const datatypeDisplay = createElement('div', {
+                className: 'datatype-result'
+            });
+            
+            // Main data type information
+            const mainInfo = createElement('div', {
+                className: 'datatype-main-info'
+            });
+            mainInfo.innerHTML = `
+                <div class="datatype-header">
+                    <span class="datatype-name">${propertyData.datatypeLabel}</span>
+                    <span class="datatype-code">(${propertyData.datatype})</span>
                 </div>
+                <div class="datatype-summary">${getDataTypeSummary(propertyData.datatype)}</div>
             `;
+            datatypeDisplay.appendChild(mainInfo);
             
-            datatypeContainer.innerHTML = datatypeDisplay;
+            // Constraints section
+            const constraintsSection = createConstraintsSection(propertyData.constraints);
+            if (constraintsSection) {
+                datatypeDisplay.appendChild(constraintsSection);
+            }
             
-            // Show description section with future expansion notice
+            // Technical details button
+            const technicalSection = createElement('div', {
+                className: 'technical-details-section'
+            });
+            
+            const rawJsonBtn = createElement('button', {
+                className: 'raw-json-btn',
+                onClick: () => openRawJsonModal(propertyData)
+            }, '{ } View Raw JSON');
+            
+            technicalSection.appendChild(rawJsonBtn);
+            datatypeDisplay.appendChild(technicalSection);
+            
+            // Replace loading with content
+            datatypeContainer.innerHTML = '';
+            datatypeContainer.appendChild(datatypeDisplay);
+            
+            // Hide the redundant description section
             if (descriptionContainer) {
-                descriptionContainer.style.display = 'block';
-                descriptionContainer.innerHTML = `
-                    <div class="datatype-info">
-                        <h5>Data Type: ${propertyData.datatypeLabel}</h5>
-                        <p>This property expects values of type "<strong>${propertyData.datatypeLabel}</strong>". 
-                           Additional transformation and validation components will be available here in future versions.</p>
-                    </div>
-                `;
+                descriptionContainer.style.display = 'none';
             }
             
         } catch (error) {
@@ -1511,28 +1530,220 @@ export function setupMappingStep(state) {
         }
     }
     
-    // Format constraints for display in Stage 2
-    function formatConstraintsForDisplay(constraints) {
-        if (!constraints) return '';
+    // Get a clear summary of what the data type means
+    function getDataTypeSummary(datatype) {
+        const summaries = {
+            'wikibase-item': 'Values must be links to other Wikidata items (Q-numbers)',
+            'string': 'Values are text strings with no language or translation needed',
+            'external-id': 'Values are identifiers from external systems (IDs, codes)',
+            'time': 'Values are dates or points in time',
+            'quantity': 'Values are numbers with optional units of measurement', 
+            'url': 'Values are web addresses (URLs)',
+            'commonsMedia': 'Values are filenames of media files on Wikimedia Commons',
+            'monolingualtext': 'Values are text in a specific language',
+            'globe-coordinate': 'Values are geographical coordinates (latitude/longitude)',
+            'wikibase-property': 'Values are links to Wikidata properties (P-numbers)',
+            'math': 'Values are mathematical expressions',
+            'geo-shape': 'Values are geographic shapes or regions',
+            'musical-notation': 'Values are musical notation',
+            'tabular-data': 'Values are structured tabular data',
+            'wikibase-lexeme': 'Values are links to lexemes',
+            'wikibase-form': 'Values are links to word forms',
+            'wikibase-sense': 'Values are links to word senses'
+        };
         
-        let constraintText = '';
+        return summaries[datatype] || 'Values follow Wikidata specifications for this data type';
+    }
+    
+    // Create expandable constraints section
+    function createConstraintsSection(constraints) {
+        if (!constraints) return null;
         
-        // Format constraints
-        if (constraints.format && constraints.format.length > 0) {
-            constraintText += '<div class="constraint-item">📝 Format requirements apply</div>';
+        const hasConstraints = (constraints.format && constraints.format.length > 0) ||
+                              (constraints.valueType && constraints.valueType.length > 0) ||
+                              (constraints.other && constraints.other.length > 0);
+        
+        if (!hasConstraints) {
+            const noConstraints = createElement('div', {
+                className: 'no-constraints'
+            }, '✅ No special constraints or restrictions');
+            return noConstraints;
         }
         
-        // Value type constraints
+        const constraintsSection = createElement('div', {
+            className: 'constraints-section'
+        });
+        
+        // Value type restrictions
         if (constraints.valueType && constraints.valueType.length > 0) {
-            constraintText += '<div class="constraint-item">🔗 Value type restrictions apply</div>';
+            const valueTypeSection = createExpandableConstraint(
+                '🔗 Value type restrictions',
+                'These items must be instances or subclasses of specific types',
+                formatValueTypeConstraints(constraints.valueType)
+            );
+            constraintsSection.appendChild(valueTypeSection);
+        }
+        
+        // Format requirements
+        if (constraints.format && constraints.format.length > 0) {
+            const formatSection = createExpandableConstraint(
+                '📝 Format requirements', 
+                'Values must match specific patterns or formats',
+                formatFormatConstraints(constraints.format)
+            );
+            constraintsSection.appendChild(formatSection);
         }
         
         // Other constraints
         if (constraints.other && constraints.other.length > 0) {
-            constraintText += '<div class="constraint-item">⚙️ Additional constraints apply</div>';
+            const otherSection = createExpandableConstraint(
+                '⚙️ Additional constraints',
+                'Other validation rules may apply',
+                formatOtherConstraints(constraints.other)
+            );
+            constraintsSection.appendChild(otherSection);
         }
         
-        return constraintText || '<div class="constraint-item">✅ No special constraints</div>';
+        return constraintsSection;
+    }
+    
+    // Create an expandable constraint section
+    function createExpandableConstraint(title, summary, details) {
+        const container = createElement('details', {
+            className: 'constraint-expandable'
+        });
+        
+        const summaryEl = createElement('summary', {
+            className: 'constraint-summary'
+        });
+        summaryEl.innerHTML = `
+            <span class="constraint-title">${title}</span>
+            <span class="constraint-description">${summary}</span>
+        `;
+        container.appendChild(summaryEl);
+        
+        const detailsEl = createElement('div', {
+            className: 'constraint-details'
+        });
+        detailsEl.innerHTML = details;
+        container.appendChild(detailsEl);
+        
+        return container;
+    }
+    
+    // Format value type constraints with specific details
+    function formatValueTypeConstraints(valueTypeConstraints) {
+        if (!valueTypeConstraints || valueTypeConstraints.length === 0) {
+            return '<p>No value type restrictions found.</p>';
+        }
+        
+        let html = '<div class="constraint-list">';
+        
+        valueTypeConstraints.forEach((constraint, index) => {
+            html += '<div class="constraint-item-detail">';
+            html += '<h6>Allowed Types:</h6>';
+            html += '<ul>';
+            
+            constraint.classes.forEach(classId => {
+                const label = constraint.classLabels[classId] || classId;
+                html += `<li><code>${classId}</code> - ${label}</li>`;
+            });
+            
+            html += '</ul>';
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
+    // Format format constraints with patterns
+    function formatFormatConstraints(formatConstraints) {
+        if (!formatConstraints || formatConstraints.length === 0) {
+            return '<p>No format requirements found.</p>';
+        }
+        
+        let html = '<div class="constraint-list">';
+        
+        formatConstraints.forEach((constraint, index) => {
+            html += '<div class="constraint-item-detail">';
+            html += `<h6>Pattern:</h6>`;
+            html += `<code class="regex-pattern">${constraint.regex}</code>`;
+            html += `<p><strong>Description:</strong> ${constraint.description}</p>`;
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
+    // Format other constraints
+    function formatOtherConstraints(otherConstraints) {
+        if (!otherConstraints || otherConstraints.length === 0) {
+            return '<p>No additional constraints found.</p>';
+        }
+        
+        let html = '<div class="constraint-list">';
+        
+        otherConstraints.forEach((constraint, index) => {
+            html += '<div class="constraint-item-detail">';
+            html += `<h6>Constraint Type:</h6>`;
+            html += `<p><code>${constraint.type}</code></p>`;
+            if (constraint.qualifiers && Object.keys(constraint.qualifiers).length > 0) {
+                html += '<h6>Details:</h6>';
+                html += '<pre>' + JSON.stringify(constraint.qualifiers, null, 2) + '</pre>';
+            }
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
+    // Open modal with raw JSON data
+    function openRawJsonModal(propertyData) {
+        import('../ui/modal-ui.js').then(({ setupModalUI }) => {
+            const modalUI = setupModalUI();
+            
+            // Create JSON viewer content
+            const jsonContent = createElement('div', {
+                className: 'raw-json-viewer'
+            });
+            
+            const jsonPre = createElement('pre', {
+                className: 'json-display'
+            }, JSON.stringify(propertyData, null, 2));
+            
+            jsonContent.appendChild(jsonPre);
+            
+            // Add copy button
+            const copyBtn = createElement('button', {
+                className: 'copy-json-btn',
+                onClick: () => {
+                    navigator.clipboard.writeText(JSON.stringify(propertyData, null, 2));
+                    copyBtn.textContent = '✓ Copied!';
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy to Clipboard';
+                    }, 2000);
+                }
+            }, 'Copy to Clipboard');
+            
+            jsonContent.insertBefore(copyBtn, jsonPre);
+            
+            const buttons = [
+                {
+                    text: 'Close',
+                    type: 'primary',
+                    callback: () => modalUI.closeModal()
+                }
+            ];
+            
+            modalUI.openModal(
+                `Raw JSON Data - ${propertyData.id}`,
+                jsonContent,
+                buttons
+            );
+        });
     }
     
     // Display property constraints
