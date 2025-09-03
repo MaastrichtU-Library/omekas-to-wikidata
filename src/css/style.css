@@ -857,7 +857,6 @@ main {
 .mapping-modal-content {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
 }
 
 .key-info {
@@ -1276,10 +1275,6 @@ pre.sample-value {
     .step {
         flex-basis: 33.333%;
         margin-bottom: 1rem;
-    }
-    
-    .mapping-modal-content {
-        gap: 1rem;
     }
     
     .property-suggestions {
@@ -4657,4 +4652,426 @@ pre.sample-value {
 .required-indicator-header {
     color: #dc3545;
     font-weight: bold;
+}
+
+/* ========================================
+   Mapping Modal - Collapsible Stages
+   ======================================== */
+
+.mapping-stage {
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    background: white;
+    box-shadow: none;
+    transition: all 0.3s ease;
+}
+
+.mapping-stage:not(:last-child) {
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.mapping-stage:first-child {
+    border-radius: 8px 8px 0 0;
+}
+
+.mapping-stage:last-child {
+    border-radius: 0 0 8px 8px;
+}
+
+.mapping-stage:only-child {
+    border-radius: 8px;
+}
+
+.mapping-stage[open] {
+    box-shadow: none;
+}
+
+.stage-summary {
+    padding: 16px 20px;
+    background: #ffffff;
+    font-weight: 600;
+    font-size: 1.1em;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stage-summary:hover {
+    background: #f8f9fa;
+}
+
+.stage-summary::marker {
+    font-size: 1.2em;
+    color: var(--primary-color);
+}
+
+.stage-summary::-webkit-details-marker {
+    color: var(--primary-color);
+}
+
+/* Completed stage styling */
+.mapping-stage.stage-completed .stage-summary {
+    background: #f8fff4;
+    border-bottom-color: #28a745;
+}
+
+.mapping-stage.stage-completed .stage-summary::before {
+    content: "✓";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #28a745;
+    color: white;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+/* Closed state styling */
+.mapping-stage:not([open]) .stage-summary {
+    border-bottom: none;
+}
+
+.stage-content {
+    padding: 12px;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Improved Data Type Configuration Styles */
+.datatype-info {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+}
+
+.datatype-display {
+    margin-bottom: 16px;
+}
+
+.datatype-display h4 {
+    color: var(--text-color);
+    margin-bottom: 12px;
+    font-size: 1.1em;
+}
+
+.detected-datatype {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 16px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.datatype-loading {
+    color: #666;
+    font-style: italic;
+}
+
+.datatype-result {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Main data type info section */
+.datatype-main-info {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.datatype-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.datatype-name {
+    font-size: 1.3em;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.datatype-code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.datatype-summary {
+    font-size: 0.95em;
+    color: #555;
+    line-height: 1.4;
+    margin-top: 8px;
+}
+
+/* Compact Constraints section */
+.constraints-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+}
+
+.constraint-compact {
+    border: none;
+    background: none;
+}
+
+.constraint-compact-summary {
+    padding: 6px 0;
+    cursor: pointer;
+    color: #666;
+    font-size: 0.9em;
+    transition: color 0.2s ease;
+    border: none;
+    background: none;
+}
+
+.constraint-compact-summary:hover {
+    color: var(--primary-color);
+}
+
+.constraint-compact-summary::marker {
+    color: #999;
+    font-size: 0.8em;
+}
+
+.constraint-compact-summary::-webkit-details-marker {
+    color: #999;
+    font-size: 0.8em;
+}
+
+.constraint-compact-title {
+    font-weight: 500;
+}
+
+.constraint-compact-details {
+    padding: 8px 16px 4px 16px;
+    color: #666;
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+.constraint-explanation {
+    margin-bottom: 8px;
+    font-style: italic;
+    color: #777;
+}
+
+.constraint-simple-list {
+    margin: 0;
+}
+
+.constraint-simple-list p {
+    margin: 4px 0;
+    color: #555;
+}
+
+.constraint-simple-list strong {
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+/* Technical details section */
+.technical-details-section {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 8px;
+}
+
+.raw-json-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.raw-json-btn:hover {
+    background: #e9ecef;
+    border-color: #ced4da;
+}
+
+/* Raw JSON viewer modal */
+.raw-json-viewer {
+    max-width: 800px;
+    width: 100%;
+}
+
+.copy-json-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: background 0.2s ease;
+}
+
+.copy-json-btn:hover {
+    background: #1976d2;
+}
+
+.json-display {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 16px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85em;
+    line-height: 1.4;
+    overflow-x: auto;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.datatype-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--danger-color);
+    text-align: center;
+}
+
+.error-message {
+    font-weight: 600;
+}
+
+.error-details {
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* Value manipulation content */
+.value-manipulation-info {
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+}
+
+.future-stage-placeholder {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.future-stage-placeholder h4 {
+    color: var(--text-color);
+    margin-bottom: 12px;
+    font-size: 1.1em;
+}
+
+.future-stage-placeholder p {
+    color: #666;
+    margin-bottom: 16px;
+    font-style: italic;
+}
+
+.future-stage-placeholder ul {
+    display: inline-block;
+    text-align: left;
+    color: #777;
+    font-size: 0.9em;
+    line-height: 1.6;
+}
+
+.future-stage-placeholder li {
+    margin-bottom: 4px;
+}
+
+/* Future stages fallback styling */
+.mapping-stage.future-stage {
+    opacity: 0.6;
+    border-color: #ccc;
+    border-style: dashed;
+}
+
+.mapping-stage.future-stage .stage-summary {
+    background: linear-gradient(135deg, #f8f8f8 0%, #eeeeee 100%);
+    color: #666;
+}
+
+/* Enhanced responsive design for stages */
+@media (max-width: 768px) {
+    .stage-content {
+        padding: 8px;
+    }
+    
+    .stage-summary {
+        padding: 12px 16px;
+        font-size: 1em;
+    }
+    
+    .datatype-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .datatype-main-info {
+        padding: 16px;
+    }
+    
+    .constraint-compact-details {
+        padding: 6px 12px 4px 12px;
+        font-size: 0.8em;
+    }
+    
+    .raw-json-btn {
+        font-size: 0.8em;
+        padding: 6px 10px;
+    }
+    
+    .json-display {
+        font-size: 0.8em;
+        padding: 12px;
+    }
+    
+    .technical-details-section {
+        justify-content: center;
+    }
+    
+    .future-stage-placeholder {
+        padding: 16px;
+    }
+    
+    .future-stage-placeholder ul {
+        font-size: 0.85em;
+    }
 }
