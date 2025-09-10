@@ -71,6 +71,18 @@ import {
     createReconciliationTableFactory,
     createRestoreReconciliationDisplayFactory
 } from '../reconciliation/ui/reconciliation-table.js';
+import {
+    displayReconciliationResults,
+    displayHighConfidenceMatches,
+    displayFallbackOptions,
+    showCustomInputInterface,
+    setupManualSearchInFallback,
+    displayFallbackSearchResults,
+    setupExpandedSearch,
+    setupManualSearch,
+    createOpenReconciliationModalFactory,
+    createReconciliationModalContentFactory
+} from '../reconciliation/ui/reconciliation-modal.js';
 
 /**
  * Initializes the reconciliation step interface and processing engine
@@ -165,6 +177,10 @@ export function setupReconciliationStep(state) {
     let createPropertyCell;
     let createManualPropertyCell;
     let restoreReconciliationDisplay;
+    
+    // Set up modal UI factory functions
+    let openReconciliationModal;
+    let createReconciliationModalContent;
     
     // Add click handler for proceed to designer button
     if (proceedToDesignerBtn) {
@@ -693,168 +709,9 @@ export function setupReconciliationStep(state) {
      * @returns {boolean} True if the value appears to be a date
      */
     
-    /**
-     * Open reconciliation modal for a specific property value
-     */
-    async function openReconciliationModal(itemId, property, valueIndex, value) {
-        currentReconciliationCell = { itemId, property, valueIndex, value };
-        
-        // Create modal content (now async)
-        const modalContent = await createReconciliationModalContent(itemId, property, valueIndex, value);
-        
-        // Open modal
-        modalUI.openModal('Reconcile Value', modalContent, [], () => {
-            currentReconciliationCell = null;
-        });
-        
-        // Setup modal after DOM is rendered
-        setTimeout(() => {
-            const modalElement = document.querySelector('#modal-content');
-            if (modalElement) {
-                setupDynamicDatePrecision(modalElement);
-                setupAutoAdvanceToggle();
-            } else {
-                console.warn('⚠️ Modal content element not found for setup');
-            }
-        }, 100);
-        
-        // Start automatic reconciliation (but use existing matches if available)
-        await performAutomaticReconciliation(value, property, itemId, valueIndex);
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
-    /**
-     * Create modal content for reconciliation with simplified design based on Q&A requirements
-     * Enhanced with constraint information display
-     */
-    async function createReconciliationModalContent(itemId, property, valueIndex, value) {
-        // Get property metadata from reconciliation data if available
-        let propertyObj = null;
-        if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            const propData = reconciliationData[itemId].properties[property];
-            
-            // Get property object from stored metadata
-            if (propData.propertyMetadata) {
-                propertyObj = propData.propertyMetadata;
-            } else if (propData.manualPropertyData) {
-                // For manual properties, use the property data
-                propertyObj = propData.manualPropertyData.property;
-            }
-        }
-        
-        // Detect property type for dynamic input fields
-        const propertyType = detectPropertyType(property);
-        const inputConfig = getInputFieldConfig(propertyType);
-        
-        // Get property information for display (now async)
-        const propertyInfo = await getPropertyDisplayInfo(property);
-        const originalKeyInfo = getOriginalKeyInfo(itemId, property);
-        const itemTitle = reconciliationData[itemId]?.originalData?.['o:title'] || `Item ${itemId.replace('item-', '')}`;
-        
-        // Get constraint information for display
-        const constraintInfo = propertyObj ? getConstraintSummary(propertyObj) : null;
-        
-        // Determine why Wikidata item is required (Entity Schema vs property constraint)
-        const requirementReason = getReconciliationRequirementReason(property);
-        
-        return `
-            <div class="reconciliation-modal-compact">
-                <!-- Compact Property Display with Original Value -->
-                <div class="property-section">
-                    <div class="property-header">
-                        <a href="${propertyInfo.wikidataUrl}" target="_blank" class="property-link">
-                            ${propertyInfo.label} (${propertyInfo.pid})
-                            ${propertyInfo.isMock ? ' <span class="mock-indicator">[estimated]</span>' : ''}
-                        </a>
-                    </div>
-                    <p class="property-description">
-                        ${propertyInfo.description}
-                        <a href="https://www.wikidata.org/wiki/Help:Description" target="_blank" class="help-link" title="Learn about Wikidata descriptions">
-                            <span class="help-icon">ⓘ</span>
-                        </a>
-                    </p>
-                    
-                    ${constraintInfo && constraintInfo.hasConstraints ? `
-                    <!-- Property Constraints Information -->
-                    <div class="property-constraints">
-                        <div class="constraint-info-notice">
-                            Property constraints from Wikidata:
-                        </div>
-                        ${constraintInfo.datatype ? `
-                        <div class="constraint-datatype">
-                            <strong>Expects:</strong> ${constraintInfo.datatype}
-                        </div>
-                        ` : ''}
-                        ${constraintInfo.valueTypes.length > 0 ? `
-                        <div class="constraint-value-types">
-                            <strong>Must be:</strong> ${constraintInfo.valueTypes.join(', ')}
-                        </div>
-                        ` : ''}
-                        ${constraintInfo.formatRequirements.length > 0 ? `
-                        <div class="constraint-format">
-                            <strong>Format:</strong> ${constraintInfo.formatRequirements.join('; ')}
-                        </div>
-                        ` : ''}
-                    </div>
-                    ` : ''}
-                    
-                    <div class="original-info">
-                        <span class="original-label">Original key:</span>
-                        <a href="${originalKeyInfo.lodUri}" target="_blank" class="original-link">
-                            ${originalKeyInfo.keyName}
-                        </a>
-                    </div>
-                    <div class="value-context">
-                        <strong>"${value}"</strong> from ${itemTitle}
-                    </div>
-                </div>
-                
-                <!-- Reconciliation Results -->
-                <div class="reconciliation-results">
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p>Finding matches...</p>
-                    </div>
-                    <div class="matches-display" style="display: none;">
-                        <!-- Results will be populated here -->
-                    </div>
-                    <div class="primary-recommendations" style="display: none;">
-                        <!-- Primary recommendations will be populated here -->
-                    </div>
-                </div>
-                
-                <!-- Fallback Options (Manual Search) -->
-                <div class="fallback-options" style="display: none;">
-                    <div class="search-wikidata">
-                        <input type="text" class="search-input" placeholder="Search Wikidata..." value="">
-                        <button class="btn primary search-btn">Search</button>
-                    </div>
-                    <button class="btn create-new-item" onclick="createNewWikidataItem()">
-                        ➕ Create New Wikidata Item
-                    </button>
-                </div>
-                
-                <!-- Use as String Option -->
-                <div class="use-as-string-option" style="margin-top: 20px; text-align: center;">
-                    <button class="btn primary" onclick="useCurrentValueAsString()" style="background-color: #4CAF50; color: white;">
-                        📝 Use as String
-                    </button>
-                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
-                        Use the original value as a string instead of linking to Wikidata
-                    </p>
-                </div>
-                
-                <!-- Ignore Option -->
-                <div class="ignore-option" style="margin-top: 20px; text-align: center;">
-                    <button class="btn secondary" onclick="ignoreCurrentValue()" style="background-color: #f44336; color: white;">
-                        🚫 Ignore This Value
-                    </button>
-                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
-                        This value will be skipped and not included in the final mapping
-                    </p>
-                </div>
-            </div>
-        `;
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
     /**
      * Get property display information including Wikidata PID and clickable link
@@ -906,6 +763,14 @@ export function setupReconciliationStep(state) {
     // Initialize factory functions that depend on getPropertyDisplayInfo
     getOriginalKeyInfo = createOriginalKeyInfoGetter(reconciliationData, state);
     getReconciliationRequirementReason = createReconciliationRequirementReasonGetter(state, getPropertyDisplayInfo);
+    
+    // Initialize modal factory functions
+    createReconciliationModalContent = createReconciliationModalContentFactory({
+        reconciliationData,
+        getPropertyDisplayInfo,
+        getOriginalKeyInfo,
+        getReconciliationRequirementReason
+    });
     
     /**
      * Fetch real property information from Wikidata
@@ -1023,124 +888,7 @@ export function setupReconciliationStep(state) {
         return autoAdvanceSetting;
     }
     
-    /**
-     * Display reconciliation results with new confidence logic from Q&A requirements
-     */
-    async function displayReconciliationResults(matches, propertyType, value) {
-        const loadingState = document.querySelector('.loading-state');
-        const matchesDisplay = document.querySelector('.matches-display');
-        
-        if (loadingState) {
-            loadingState.style.display = 'none';
-        }
-        
-        if (!matchesDisplay) return;
-        
-        // Handle non-Wikidata properties
-        if (propertyType !== 'wikibase-item') {
-            if (propertyType === 'time' || isDateValue(value)) {
-                // For date properties, show date input interface directly
-                matchesDisplay.innerHTML = '<p>Date/time property - use the date input below.</p>';
-                matchesDisplay.style.display = 'block';
-                showCustomInputInterface(propertyType, value);
-            } else {
-                matchesDisplay.innerHTML = '<p>Non-Wikidata property - use manual input section below.</p>';
-                matchesDisplay.style.display = 'block';
-            }
-            return;
-        }
-        
-        if (!matches || matches.length === 0) {
-            matchesDisplay.innerHTML = '<p class="no-matches">No automatic matches found. Try manual search below.</p>';
-            matchesDisplay.style.display = 'block';
-            
-            // Show fallback options for manual search
-            displayFallbackOptions(value, []);
-            return;
-        }
-        
-        // New confidence logic from Q&A requirements:
-        // - Show ALL suggestions with 80%+ confidence if multiple matches exist at that level
-        // - If no suggestions above 80%, display the top 3 best matches
-        
-        const highConfidenceMatches = matches.filter(m => m.score >= 80);
-        let displayMatches = [];
-        
-        if (highConfidenceMatches.length > 0) {
-            // Show ALL matches above 80%
-            displayMatches = highConfidenceMatches;
-        } else {
-            // Show top 3 best matches
-            displayMatches = matches.slice(0, 3);
-        }
-        
-        // Debug logging to identify undefined labels
-        displayMatches.forEach((match, index) => {
-            console.log('Match data:', {
-                id: match.id,
-                name: match.name,
-                description: match.description,
-                score: match.score,
-                rawMatch: match
-            });
-        });
-
-        matchesDisplay.innerHTML = `
-            <div class="matches-header">
-                <h5>Reconciliation Suggestions</h5>
-                ${highConfidenceMatches.length > 0 ? 
-                    `<p class="confidence-note">All matches above 80% confidence:</p>` : 
-                    `<p class="confidence-note">Top ${displayMatches.length} matches (no high-confidence matches found):</p>`
-                }
-            </div>
-            <div class="matches-list">
-                ${displayMatches.map((match, index) => {
-                    // Ensure we have fallback values for undefined labels
-                    const matchName = match.name || match.label || 'Unnamed item';
-                    const matchDescription = match.description || match.desc || 'No description available';
-                    const safeMatchName = escapeHtml(matchName);
-                    const safeMatchDescription = escapeHtml(matchDescription);
-                    
-                    return `
-                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
-                        <div class="match-score">${match.score.toFixed(1)}%</div>
-                        <div class="match-content">
-                            <div class="match-name">${matchName}</div>
-                            <div class="match-description">${matchDescription}</div>
-                            <div class="match-id">
-                                <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
-                                    ${match.id}
-                                </a>
-                            </div>
-                        </div>
-                        <div class="match-select">
-                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
-                                Select
-                            </button>
-                        </div>
-                    </div>
-                    `;
-                }).join('')}
-            </div>
-            ${matches.length > displayMatches.length ? `
-                <div class="view-all-matches">
-                    <button class="btn secondary" onclick="showAllMatches()">
-                        View all ${matches.length} matches
-                    </button>
-                </div>
-            ` : ''}
-        `;
-        
-        matchesDisplay.style.display = 'block';
-        
-        // Show fallback options if there are no high-confidence matches
-        if (highConfidenceMatches.length === 0) {
-            displayFallbackOptions(value, matches);
-        }
-        
-        // Store all matches for "View all" functionality
-        window.allReconciliationMatches = matches;
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
     /**
      * Escape HTML to prevent XSS in match data
@@ -1409,6 +1157,14 @@ export function setupReconciliationStep(state) {
     
     getAutoAdvanceSetting = createAutoAdvanceSettingGetter(autoAdvanceSetting);
     setupAutoAdvanceToggle = createAutoAdvanceToggleSetup(autoAdvanceSetting);
+    
+    // Initialize modal factory function
+    openReconciliationModal = createOpenReconciliationModalFactory({
+        modalUI,
+        performAutomaticReconciliation,
+        setupDynamicDatePrecision,
+        setupAutoAdvanceToggle
+    });
     
     // Initialize table UI factory functions
     restoreReconciliationDisplay = createRestoreReconciliationDisplayFactory(reconciliationData);
