@@ -5598,15 +5598,16 @@ pre.sample-value {
 
 .regex-flags {
     display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+    flex-direction: column;
+    gap: 8px;
     margin-top: 8px;
 }
 
 .flag-option {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    padding: 4px 0;
 }
 
 .flag-option input[type="checkbox"] {
@@ -5627,8 +5628,7 @@ pre.sample-value {
     }
     
     .regex-flags {
-        flex-direction: column;
-        gap: 8px;
+        gap: 6px;
     }
     
     .pattern-input {
