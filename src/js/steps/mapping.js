@@ -3130,6 +3130,29 @@ export function setupMappingStep(state) {
             state.updateTransformationBlock(propertyId, block.id, { pattern: '{{value}}' });
         }
         
+        // Ensure block has access to full item data for field substitution
+        const keyData = window.currentMappingKeyData;
+        if (keyData && (!block.config.sourceData || block.config.sourceData === keyData.sampleValue)) {
+            const currentState = state.getState();
+            if (currentState.fetchedData) {
+                const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+                let fullItemData = items.find(item => {
+                    if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
+                        return true;
+                    }
+                    return false;
+                });
+                
+                if (!fullItemData && items.length > 0) {
+                    fullItemData = items[0];
+                }
+                
+                if (fullItemData) {
+                    state.updateTransformationBlock(propertyId, block.id, { sourceData: fullItemData });
+                }
+            }
+        }
+        
         const patternTextarea = createElement('textarea', {
             rows: 3,
             placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
@@ -3302,8 +3325,38 @@ export function setupMappingStep(state) {
             return;
         }
         
-        // Extract all fields from the sample data
-        const allFields = extractAllFields(keyData.sampleValue);
+        // Get the full item data from state to extract all fields
+        const state = window.mappingStepState;
+        const currentState = state.getState();
+        let fullItemData = null;
+        
+        if (currentState.fetchedData) {
+            const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+            
+            // Find the item that contains this property value
+            // We'll match based on the key and sampleValue
+            fullItemData = items.find(item => {
+                if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
+                    return true;
+                }
+                return false;
+            });
+            
+            // If we couldn't find a specific item, use the first item as fallback
+            if (!fullItemData && items.length > 0) {
+                fullItemData = items[0];
+            }
+        }
+        
+        if (!fullItemData) {
+            resultsContainer.appendChild(createElement('div', { 
+                className: 'no-fields-message' 
+            }, 'No full item data available'));
+            return;
+        }
+        
+        // Extract all fields from the full item data instead of just the property value
+        const allFields = extractAllFields(fullItemData);
         const filteredFields = searchFields(allFields, searchTerm);
         
         if (filteredFields.length === 0) {
@@ -3334,7 +3387,7 @@ export function setupMappingStep(state) {
                         const state = window.mappingStepState;
                         state.updateTransformationBlock(propertyId, block.id, { 
                             pattern: newPattern,
-                            sourceData: keyData.sampleValue 
+                            sourceData: fullItemData 
                         });
                         updateTransformationPreview(propertyId, state);
                         
