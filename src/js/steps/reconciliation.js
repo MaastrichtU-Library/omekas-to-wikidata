@@ -173,6 +173,7 @@ export function setupReconciliationStep(state) {
         
         // Entity matching functions
         const performAutomaticReconciliation = createAutomaticReconciliation({
+            reconciliationData,
             state,
             storeAllMatches: null, // Will be set after progress functions
             storeEmptyMatches: null, // Will be set after progress functions
@@ -400,7 +401,9 @@ export function setupReconciliationStep(state) {
         // Check if we already have reconciliation data from a previous session
         let isReturningToStep = false;
         if (currentState.reconciliationData && Object.keys(currentState.reconciliationData).length > 0) {
-            reconciliationData = currentState.reconciliationData;
+            // Clear existing data and copy from state (mutate, don't reassign)
+            Object.keys(reconciliationData).forEach(key => delete reconciliationData[key]);
+            Object.assign(reconciliationData, currentState.reconciliationData);
             isReturningToStep = true;
         } else {
             // Initialize reconciliation progress
@@ -408,7 +411,10 @@ export function setupReconciliationStep(state) {
             state.setReconciliationProgress(0, totalCells);
             
             // Initialize reconciliation data structure using extracted function
-            reconciliationData = modules.initializeReconciliationDataStructure(data, mappedKeys, manualProperties);
+            const newData = modules.initializeReconciliationDataStructure(data, mappedKeys, manualProperties);
+            // Clear existing data and copy new data (mutate, don't reassign)
+            Object.keys(reconciliationData).forEach(key => delete reconciliationData[key]);
+            Object.assign(reconciliationData, newData);
         }
         
         // Update proceed button

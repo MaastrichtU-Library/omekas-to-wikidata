@@ -285,13 +285,17 @@ export function parseReconciliationResults(data, value, propertyObj) {
         // Score the match with constraint validation
         const constraintScore = scoreMatchWithConstraints(result, propertyObj);
         
+        // Ensure result.score exists and is a valid number
+        const baseScore = (result.score !== undefined && !isNaN(result.score)) ? result.score : 50;
+        const finalScore = Math.round(baseScore * constraintScore);
+        
         return {
             id: result.id,
             name: result.name,
             description: result.description || '',
-            score: Math.round(result.score * constraintScore), // Apply constraint scoring
+            score: isNaN(finalScore) ? 0 : finalScore, // Apply constraint scoring with fallback
             url: `https://www.wikidata.org/wiki/${result.id}`,
-            originalScore: result.score,
+            originalScore: baseScore,
             constraintScore: constraintScore,
             types: result.type || [],
             features: result.features || []

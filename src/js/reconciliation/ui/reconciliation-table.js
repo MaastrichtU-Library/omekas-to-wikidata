@@ -70,20 +70,26 @@ export function updateCellDisplayWithMatch(itemId, property, valueIndex, bestMat
         if (valueElement) {
             const statusSpan = valueElement.querySelector('.value-status');
             if (statusSpan) {
+                // Ensure score exists and is a valid number
+                const score = bestMatch.score !== undefined && !isNaN(bestMatch.score) ? 
+                    bestMatch.score : 0;
+                
                 // Just show percentage, not the specific match details
-                statusSpan.textContent = `${bestMatch.score.toFixed(1)}% match`;
+                statusSpan.textContent = `${score.toFixed(1)}% match`;
                 statusSpan.className = 'value-status with-match';
                 
                 // Ensure we have a label for the tooltip
                 const matchLabel = bestMatch.label || bestMatch.name || 'Unlabeled item';
-                statusSpan.title = `Best match: ${matchLabel} (${bestMatch.score.toFixed(1)}%)`;
+                statusSpan.title = `Best match: ${matchLabel} (${score.toFixed(1)}%)`;
             }
             
             // Add a visual indicator for good matches - use yellow for partial matches
             valueElement.classList.remove('checking'); // Remove loading state
-            if (bestMatch.score >= 85) {
+            const score = bestMatch.score !== undefined && !isNaN(bestMatch.score) ? 
+                bestMatch.score : 0;
+            if (score >= 85) {
                 valueElement.classList.add('high-confidence-match');
-            } else if (bestMatch.score >= 50) {
+            } else if (score >= 50) {
                 valueElement.classList.add('partial-match'); // Yellow for partial matches
             } else {
                 valueElement.classList.add('low-confidence-match');
