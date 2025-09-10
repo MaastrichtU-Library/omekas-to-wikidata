@@ -1,13 +1,87 @@
 /**
- * Handles the Export step functionality
+ * Handles the Export step functionality - QuickStatements generation and validation
+ * 
+ * This module generates the final QuickStatements format for importing data into Wikidata.
+ * QuickStatements is Wikidata's batch import tool that requires precise formatting:
+ * - Tab-separated values with specific column meanings
+ * - Proper escaping of special characters and strings
+ * - Validation against Wikidata property and entity ID patterns
+ * - Date formatting with precision indicators
+ * - Reference sourcing and statement qualifiers
+ * 
+ * The export process is the culmination of the entire workflow - it transforms:
+ * - Raw Omeka S metadata (step 1)
+ * - Property mappings (step 2)  
+ * - Entity reconciliation (step 3)
+ * - Structural configuration (step 4)
+ * 
+ * Into properly formatted QuickStatements that can be imported directly into Wikidata
+ * without manual intervention or formatting corrections.
+ * 
+ * Critical Requirements:
+ * - All property IDs must be valid Wikidata format (P123, S456)
+ * - All entity references must be valid Q-numbers or reconciled entities
+ * - String values must be properly escaped for QuickStatements parser
+ * - Date values must include appropriate precision indicators
+ * - References must follow Wikidata sourcing requirements
+ * 
+ * @module export
  */
 import { createDownloadLink, createFileInput, createElement, createButton, showMessage } from '../ui/components.js';
 import { eventSystem } from '../events.js';
 
-// Constants for validation
-const PROPERTY_ID_REGEX = /^[PS]\d+$/;  // Matches P123, S456 (Wikidata properties)
-const LANGUAGE_PROPERTY_REGEX = /^[LDA][a-z]{2,3}(-[a-z]+)?$/;  // Matches Len, Den, Amul, Lde-ch (language-specific labels/descriptions/aliases)
+// Validation constants for Wikidata format compliance
+// These patterns ensure generated QuickStatements meet Wikidata requirements
 
+/**
+ * Validates Wikidata property and statement IDs
+ * - P\d+: Property IDs (e.g., P31 for "instance of", P569 for "date of birth")
+ * - S\d+: Statement IDs used for references and qualifiers
+ * @see https://www.wikidata.org/wiki/Wikidata:Glossary
+ */
+const PROPERTY_ID_REGEX = /^[PS]\d+$/;
+
+/**
+ * Validates language-specific property formats for multilingual content
+ * - L + language code: Labels (e.g., "Len" for English label)
+ * - D + language code: Descriptions (e.g., "Dde" for German description)
+ * - A + language code: Aliases (e.g., "Afr" for French aliases)
+ * Supports standard language codes with optional regional variants
+ * @see https://www.wikidata.org/wiki/Help:Multilingual
+ */
+const LANGUAGE_PROPERTY_REGEX = /^[LDA][a-z]{2,3}(-[a-z]+)?$/;
+
+/**
+ * Initializes the export step interface with QuickStatements generation capabilities
+ * 
+ * This function sets up the final step where all processed data is transformed into
+ * QuickStatements format for Wikidata import. It handles the complex task of:
+ * - Aggregating data from all previous workflow steps
+ * - Applying final validation and format checking
+ * - Generating syntactically correct QuickStatements
+ * - Providing multiple export options (copy, download, direct import)
+ * 
+ * The export step requires complete data from the entire workflow:
+ * - Validated Omeka S data with proper structure
+ * - Complete property mappings to Wikidata properties
+ * - Reconciled entities with confidence scores
+ * - Final structural configuration and references
+ * 
+ * @param {Object} state - Application state management instance
+ * @param {Function} state.getState - Retrieves complete application state
+ * @param {Object} state.reconciliationData - Entity reconciliation results
+ * @param {Array} state.mappedProperties - Property mappings from mapping step
+ * @param {Object} state.designerConfig - Final structure configuration
+ * 
+ * @description
+ * Export workflow:
+ * 1. Validates completeness of all previous steps
+ * 2. Aggregates reconciled entities and mapped properties
+ * 3. Applies final formatting and validation rules
+ * 4. Generates QuickStatements with proper escaping and formatting
+ * 5. Provides export interface with copy/download/direct import options
+ * 6. Validates generated statements against Wikidata requirements
+ */
 export function setupExportStep(state) {
     const quickStatementsTextarea = document.getElementById('quick-statements');
     const copyQuickStatementsBtn = document.getElementById('copy-quick-statements');
@@ -76,14 +150,61 @@ export function setupExportStep(state) {
         generateQuickStatements();
     }
     
-    // Utility function to escape strings for QuickStatements
+    /**
+     * Escapes strings for QuickStatements format compliance
+     * 
+     * QuickStatements requires specific string escaping to prevent parsing errors:
+     * - Double quotes must be escaped as double double-quotes ("")
+     * - Newlines and carriage returns must be converted to spaces
+     * - Empty/null values must be represented as empty quoted strings
+     * 
+     * This escaping is critical because improperly formatted strings can cause:
+     * - QuickStatements import failures
+     * - Data corruption during parsing
+     * - Silent truncation of content
+     * 
+     * @param {string|null|undefined} str - String to escape for QuickStatements
+     * @returns {string} Properly escaped string ready for QuickStatements format
+     * 
+     * @example
+     * escapeQuickStatementsString('Book "Title" Name') // '"Book ""Title"" Name"'
+     * escapeQuickStatementsString('Multi\nline') // '"Multi line"'
+     * escapeQuickStatementsString(null) // '""'
+     */
     function escapeQuickStatementsString(str) {
         if (!str) return '""';
         // Escape quotes and handle special characters
         return `"${str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, ' ')}"`;
     }
     
-    // Format dates for QuickStatements
+    /**
+     * Formats dates for QuickStatements with appropriate precision indicators
+     * 
+     * Wikidata requires specific date formatting with precision values that indicate
+     * the granularity of the date information:
+     * - Precision 11: Day-level precision (YYYY-MM-DD)
+     * - Precision 10: Month-level precision (YYYY-MM)
+     * - Precision 9: Year-level precision (YYYY)
+     * 
+     * The precision affects how Wikidata displays and processes the date,
+     * and must match the actual precision of the source data.
+     * 
+     * @param {string|Date} dateString - Date value to format
+     * @param {number} precision - Wikidata precision level (9=year, 10=month, 11=day)
+     * @returns {string|null} Formatted date string or null for invalid dates
+     * 
+     * @example
+     * formatDate("2023-05-15", 11) // "+2023-05-15T00:00:00Z/11"
+     * formatDate("2023-05", 10) // "+2023-05-01T00:00:00Z/10"
+     * formatDate("2023", 9) // "+2023-01-01T00:00:00Z/9"
+     * 
+     * @description
+     * Date formatting requirements:
+     * - Must include timezone indicator (Z for UTC)
+     * - Must include precision suffix (/11, /10, /9)
+     * - Must handle various input formats gracefully
+     * - Must return null for unparseable dates
+     */
     function formatDate(dateString, precision = 11) {
         if (!dateString) return null;
         

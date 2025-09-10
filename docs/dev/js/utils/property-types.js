@@ -1,10 +1,48 @@
 /**
- * Property type detection and input field management for reconciliation
- * Determines appropriate input types based on Wikidata properties and Entity Schema
+ * Property type detection and input field management for sophisticated reconciliation
+ * 
+ * This utility module provides intelligent property type detection based on multiple signals:
+ * - Wikidata property datatype definitions
+ * - Semantic property name patterns and conventions
+ * - Sample value analysis from Omeka S data
+ * - Entity Schema constraint requirements
+ * 
+ * Accurate type detection is crucial because it determines:
+ * - Which reconciliation strategies to apply (entity vs. literal matching)
+ * - What input validation and formatting rules to use
+ * - How values should be represented in final QuickStatements export
+ * - Which Wikidata constraints and validation rules apply
+ * 
+ * The system balances multiple detection approaches:
+ * 1. Explicit Wikidata datatype (most reliable when available)
+ * 2. Semantic name pattern matching (covers common metadata patterns)
+ * 3. Value content analysis (handles edge cases and custom properties)
+ * 4. Fallback to safe default types (prevents processing failures)
+ * 
+ * Type detection affects the entire reconciliation workflow, so accuracy and
+ * completeness here directly impacts the quality of the final Wikidata import.
+ * 
+ * @module property-types
  */
 
 /**
- * Common Wikidata property types and their expected input types
+ * Canonical mapping from Wikidata property datatypes to internal processing types
+ * 
+ * This mapping defines how Wikidata's formal property datatypes translate into
+ * the reconciliation and validation systems used by this application. Each mapping
+ * determines the entire processing pipeline for properties of that type.
+ * 
+ * The mappings are based on Wikidata's official datatype specifications:
+ * @see https://www.wikidata.org/wiki/Help:Data_type
+ * 
+ * Critical implications of each type:
+ * - wikibase-item: Requires entity reconciliation against Wikidata Q-IDs
+ * - string/text: Direct text matching with optional validation patterns
+ * - time/date: Requires date parsing and precision handling
+ * - quantity/number: Requires numeric validation and unit handling
+ * - url: Requires URL format validation and accessibility checking
+ * 
+ * @constant {Object.<string, string>}
  */
 const PROPERTY_TYPE_MAPPING = {
     // Entity references (Q-IDs)
@@ -29,7 +67,27 @@ const PROPERTY_TYPE_MAPPING = {
 };
 
 /**
- * Common property patterns that suggest specific types
+ * Semantic property name patterns for intelligent type detection
+ * 
+ * When explicit Wikidata datatype information is unavailable, this mapping provides
+ * intelligent fallback detection based on property name semantics. The patterns are
+ * derived from common metadata vocabularies and naming conventions:
+ * 
+ * - Dublin Core (dcterms:creator, dcterms:title, etc.)
+ * - Schema.org (schema:author, schema:publisher, etc.)
+ * - Common Omeka S property naming patterns
+ * - Academic and cultural heritage metadata standards
+ * 
+ * Pattern matching strategy:
+ * 1. Exact property name matches (e.g., "creator" -> wikibase-item)
+ * 2. Partial matches for compound properties (e.g., "copyrightHolder")
+ * 3. Semantic grouping by expected value types
+ * 4. Conservative defaults to prevent processing errors
+ * 
+ * The patterns are ordered by likelihood and specificity, with more specific
+ * patterns taking precedence over general ones during detection.
+ * 
+ * @constant {Object.<string, string>} Property name -> expected Wikidata datatype
  */
 const PROPERTY_PATTERNS = {
     // Common person/organization properties
@@ -93,10 +151,38 @@ const PROPERTY_PATTERNS = {
 };
 
 /**
- * Detect the expected property type for a given property name
- * @param {string} propertyName - The property name (e.g., 'creator', 'title')
- * @param {Object} entitySchema - Optional entity schema constraints
- * @returns {string} The detected property type
+ * Detects the expected property type using multiple detection strategies
+ * 
+ * This is the primary type detection function that orchestrates multiple detection
+ * approaches to determine the most appropriate property type. The detection follows
+ * a priority hierarchy to ensure accuracy while maintaining robustness.
+ * 
+ * Detection priority order:
+ * 1. Explicit entity schema constraints (highest priority)
+ * 2. Direct property name pattern matching
+ * 3. Semantic substring matching for compound names
+ * 4. Value content analysis (fallback)
+ * 5. Safe default type (string - lowest priority)
+ * 
+ * @param {string} propertyName - Property name to analyze (e.g., 'dcterms:creator')
+ * @param {Object} [entitySchema] - Optional entity schema with property constraints
+ * @param {Array} [entitySchema.properties] - Property constraint definitions
+ * @returns {string} Detected property type compatible with Wikidata datatypes
+ * 
+ * @example
+ * detectPropertyType('creator') // 'wikibase-item' (expects entity)
+ * detectPropertyType('title') // 'string' (expects literal text)
+ * detectPropertyType('dateCreated') // 'time' (expects date value)
+ * 
+ * @description
+ * The function handles various property name formats:
+ * - Prefixed properties (dcterms:creator, schema:author)
+ * - CamelCase compounds (dateCreated, copyrightHolder)
+ * - Underscore_separated (date_created, copyright_holder)
+ * - Simple names (title, description, year)
+ * 
+ * Type detection accuracy is crucial because it determines the entire
+ * reconciliation and validation pipeline for each property.
  */
 export function detectPropertyType(propertyName, entitySchema = null) {
     // First check if we have entity schema information
