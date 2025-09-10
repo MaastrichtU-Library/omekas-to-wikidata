@@ -47,6 +47,20 @@ import {
     updateCellQueueStatus,
     createCellMarkers
 } from '../reconciliation/core/reconciliation-progress.js';
+import {
+    isDateValue,
+    escapeHtml,
+    createAutomaticReconciliation,
+    tryReconciliationApi,
+    parseReconciliationResults,
+    tryDirectWikidataSearch
+} from '../reconciliation/core/entity-matcher.js';
+import {
+    createBatchAutoAcceptanceProcessor,
+    createNextUnprocessedCellReconciler,
+    createAutoAdvanceSettingGetter,
+    createAutoAdvanceToggleSetup
+} from '../reconciliation/core/batch-processor.js';
 
 /**
  * Initializes the reconciliation step interface and processing engine
@@ -126,6 +140,15 @@ export function setupReconciliationStep(state) {
     let markCellAsSkipped;
     let markCellAsNoItem;
     let markCellAsString;
+    
+    // Set up entity matcher factory functions
+    let performAutomaticReconciliation;
+    
+    // Set up batch processor factory functions
+    let performBatchAutoAcceptance;
+    let reconcileNextUnprocessedCell;
+    let getAutoAdvanceSetting;
+    let setupAutoAdvanceToggle;
     
     // Add click handler for proceed to designer button
     if (proceedToDesignerBtn) {
@@ -593,7 +616,7 @@ export function setupReconciliationStep(state) {
     /**
      * Perform batch auto-acceptance for all values in the table
      */
-    async function performBatchAutoAcceptance(data, mappedKeys, manualProperties = []) {
+    // [REMOVED] Moved to batch-processor.js module
         const batchJobs = [];
         let autoAcceptedCount = 0;
         
@@ -1030,44 +1053,6 @@ export function setupReconciliationStep(state) {
      * @param {string} value - The value to check
      * @returns {boolean} True if the value appears to be a date
      */
-    function isDateValue(value) {
-        if (!value || typeof value !== 'string') {
-            return false;
-        }
-        
-        const trimmedValue = value.trim();
-        
-        // Common date patterns
-        const datePatterns = [
-            /^\d{4}$/,                              // Year only (e.g., "2023")
-            /^\d{4}-\d{2}$/,                        // Year-month (e.g., "2023-06") 
-            /^\d{4}-\d{2}-\d{2}$/,                  // ISO date (e.g., "2023-06-15")
-            /^\d{1,2}\/\d{1,2}\/\d{4}$/,           // US format (e.g., "6/15/2023")
-            /^\d{1,2}-\d{1,2}-\d{4}$/,             // Dash format (e.g., "15-6-2023")
-            /^\d{1,2}\.\d{1,2}\.\d{4}$/,           // Dot format (e.g., "15.6.2023")
-            /^\d{4}s$/,                             // Decade (e.g., "1990s")
-            /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}$/i, // "June 15, 2023"
-            /^\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}$/i, // "15 June 2023"
-            /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4}$/i, // "Jun 15, 2023"
-            /^\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/i, // "15 Jun 2023"
-            /^(early|mid|late)\s+\d{4}s?$/i,        // "early 2000s", "mid 1990s"
-            /^c\.\s*\d{4}$/i,                       // "c. 2000" (circa)
-            /^circa\s+\d{4}$/i,                     // "circa 2000"
-            /^\d{4}-\d{4}$/,                        // Date range (e.g., "1990-1995")
-            /^\d{4}\/\d{4}$/,                       // Date range with slash (e.g., "1990/1995")
-        ];
-        
-        // Test against patterns
-        for (const pattern of datePatterns) {
-            if (pattern.test(trimmedValue)) {
-                return true;
-            }
-        }
-        
-        // Try parsing with Date constructor as fallback
-        const parsed = new Date(trimmedValue);
-        return !isNaN(parsed.getTime()) && trimmedValue.length > 3; // Avoid matching single numbers
-    }
     
     /**
      * Open reconciliation modal for a specific property value
@@ -1521,14 +1506,6 @@ export function setupReconciliationStep(state) {
     /**
      * Escape HTML to prevent XSS in match data
      */
-    function escapeHtml(text) {
-        if (text === undefined || text === null) {
-            return '';
-        }
-        const div = createElement('div');
-        div.textContent = String(text);
-        return div.innerHTML;
-    }
     
     /**
      * Display high confidence matches in a horizontal scrollable container
@@ -1689,265 +1666,10 @@ export function setupReconciliationStep(state) {
      * Perform automatic reconciliation using Wikidata APIs with progressive disclosure
      * Enhanced with constraint-based validation and property metadata
      */
-    async function performAutomaticReconciliation(value, property, itemId, valueIndex) {
-        // Get property metadata from reconciliation data if available
-        let propertyObj = null;
-        let propData = null;
-        
-        if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            propData = reconciliationData[itemId].properties[property];
-            
-            // Get property object from stored metadata
-            if (propData.propertyMetadata) {
-                propertyObj = propData.propertyMetadata;
-            } else if (propData.manualPropertyData) {
-                // For manual properties, use the property data
-                propertyObj = propData.manualPropertyData.property;
-            }
-        }
-        
-        // Check if this property type requires reconciliation
-        const propertyType = detectPropertyType(property);
-        const inputConfig = getInputFieldConfig(propertyType);
-        
-        // For date properties, skip reconciliation and show date input directly
-        if (propertyType === 'time' || isDateValue(value)) {
-            displayReconciliationResults([], propertyType, value);
-            return;
-        }
-        
-        try {
-            let matches = [];
-            let hasBeenReconciled = false;
-            
-            // Check if we already have reconciliation data from batch reconciliation
-            if (propData && propData.reconciled[valueIndex]) {
-                const reconciledData = propData.reconciled[valueIndex];
-                
-                // Check if reconciliation has been attempted (regardless of results)
-                if (reconciledData.matches !== undefined) {
-                    hasBeenReconciled = true;
-                    matches = reconciledData.matches || [];
-                }
-            }
-            
-            // Only fetch new matches if reconciliation has never been attempted
-            if (!hasBeenReconciled) {
-                
-                // Validate against format constraints before making API calls
-                if (propertyObj) {
-                    const formatValidation = validateAgainstFormatConstraints(value, propertyObj);
-                    if (!formatValidation.isValid) {
-                        console.warn(`⚠️ Format constraint violation for ${propertyObj.id}:`, formatValidation.violations);
-                        // Still proceed with reconciliation but log the issue
-                    }
-                }
-                
-                // Get all mapped keys for contextual property building
-                const currentState = state.getState();
-                const allMappings = currentState.mappings?.mappedKeys || [];
-                
-                // Try reconciliation API first with property object and context
-                matches = await tryReconciliationApi(value, propertyObj || property, allMappings);
-                
-                // If no good matches, try direct Wikidata search
-                if (!matches || matches.length === 0) {
-                    matches = await tryDirectWikidataSearch(value);
-                }
-                
-                // Store matches (even if empty) to track that reconciliation was attempted
-                if (itemId && valueIndex !== undefined) {
-                    if (matches && matches.length > 0) {
-                        storeAllMatches({ itemId, property, valueIndex }, matches, matches[0]);
-                    } else {
-                        storeEmptyMatches({ itemId, property, valueIndex });
-                    }
-                }
-            } else {
-            }
-            
-            // Check for 100% confidence auto-selection (Q&A requirement)
-            if (matches && matches.length > 0 && matches[0].score >= 100) {
-                
-                // Auto-select 100% confidence match
-                const perfectMatch = matches[0];
-                markCellAsReconciled(currentReconciliationCell, {
-                    type: 'wikidata',
-                    id: perfectMatch.id,
-                    label: perfectMatch.name,
-                    description: perfectMatch.description,
-                    qualifiers: {
-                        autoAccepted: true,
-                        reason: '100% confidence match',
-                        score: perfectMatch.score
-                    }
-                });
-                
-                modalUI.closeModal();
-                
-                // Auto-advance if enabled
-                if (getAutoAdvanceSetting()) {
-                    setTimeout(() => {
-                        reconcileNextUnprocessedCell();
-                    }, 300);
-                }
-                return;
-            }
-            
-            // Display results using new simplified display logic
-            await displayReconciliationResults(matches, propertyType, value);
-            
-        } catch (error) {
-            console.error('Error during automatic reconciliation:', error);
-            displayReconciliationError(error);
-        }
-    }
     
     /**
-     * Try Wikidata Reconciliation API with fallback handling
-     * Enhanced with constraint-based type filtering and contextual properties
+     * [REMOVED] Moved to entity-matcher.js module
      */
-    async function tryReconciliationApi(value, propertyObj, allMappings = []) {
-        // Primary endpoint - wikidata.reconci.link
-        const primaryApiUrl = 'https://wikidata.reconci.link/en/api';
-        // Fallback endpoint - tools.wmflabs.org
-        const fallbackApiUrl = 'https://tools.wmflabs.org/openrefine-wikidata/en/api';
-        
-        // Get constraint-based entity types (falls back to heuristic if no constraints)
-        const entityTypes = getConstraintBasedTypes(propertyObj);
-        
-        // Build contextual properties for better disambiguation
-        const contextualProperties = buildContextualProperties(propertyObj, allMappings);
-        
-        const query = {
-            queries: {
-                q1: {
-                    query: value,
-                    type: entityTypes,
-                    properties: contextualProperties
-                }
-            }
-        };
-        
-        const requestBody = "queries=" + encodeURIComponent(JSON.stringify(query.queries));
-        
-        // Try primary endpoint first
-        try {
-            const response = await fetch(primaryApiUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: requestBody,
-                mode: 'cors'
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Primary API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            return parseReconciliationResults(data, value, propertyObj);
-            
-        } catch (primaryError) {
-            console.warn(`⚠️ Primary reconciliation API failed for "${value}":`, primaryError.message);
-            
-            // Try fallback endpoint
-            try {
-                const response = await fetch(fallbackApiUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    },
-                    body: requestBody,
-                    mode: 'cors'
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Fallback API error: ${response.status} ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                return parseReconciliationResults(data, value, propertyObj);
-                
-            } catch (fallbackError) {
-                console.error(`❌ Both reconciliation APIs failed for "${value}"`);
-                console.error('Primary error:', primaryError.message);
-                console.error('Fallback error:', fallbackError.message);
-                
-                // Throw a more informative error
-                throw new Error(`Reconciliation services unavailable. Primary: ${primaryError.message}, Fallback: ${fallbackError.message}`);
-            }
-        }
-    }
-    
-    /**
-     * Parse reconciliation API results with constraint-based scoring
-     */
-    function parseReconciliationResults(data, value, propertyObj) {
-        if (data.q1 && data.q1.result) {
-            return data.q1.result.map(match => {
-                // Create base match object
-                const baseMatch = {
-                    id: match.id,
-                    name: match.name || match.label || 'Unnamed item',
-                    description: match.description || match.desc || 'No description available',
-                    score: match.score || 0,
-                    type: match.type || [],
-                    source: 'reconciliation'
-                };
-                
-                // Apply constraint-based scoring if property object available
-                if (propertyObj) {
-                    return scoreMatchWithConstraints(baseMatch, propertyObj, value);
-                }
-                
-                return baseMatch;
-            });
-        }
-        
-        return [];
-    }
-    
-    /**
-     * Try direct Wikidata search API
-     */
-    async function tryDirectWikidataSearch(value) {
-        const apiUrl = 'https://www.wikidata.org/w/api.php';
-        
-        const params = new URLSearchParams({
-            action: 'wbsearchentities',
-            search: value,
-            language: 'en',
-            format: 'json',
-            origin: '*',
-            type: 'item',
-            limit: 10
-        });
-        
-        const response = await fetch(`${apiUrl}?${params.toString()}`);
-        
-        if (!response.ok) {
-            throw new Error(`Wikidata API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.search) {
-            return data.search.map(item => {
-                return {
-                    id: item.id,
-                    name: item.label || item.name || 'Unnamed item',
-                    description: item.description || item.desc || 'No description available',
-                    score: 50, // Approximate score for direct search
-                    type: [],
-                    source: 'direct'
-                };
-            });
-        }
-        
-        return [];
-    }
     
     /**
      * Display automatic matches in the modal
@@ -2009,6 +1731,45 @@ export function setupReconciliationStep(state) {
             <button class="btn secondary" onclick="switchTab('manual')">Try Manual Search</button>
         `;
     }
+    
+    // Initialize entity matcher factory function after all dependencies are defined
+    performAutomaticReconciliation = createAutomaticReconciliation({
+        reconciliationData,
+        state,
+        storeAllMatches,
+        storeEmptyMatches,
+        displayReconciliationResults,
+        displayReconciliationError,
+        markCellAsReconciled,
+        modalUI,
+        currentReconciliationCell,
+        getAutoAdvanceSetting,
+        reconcileNextUnprocessedCell
+    });
+    
+    // Initialize batch processor factory functions
+    performBatchAutoAcceptance = createBatchAutoAcceptanceProcessor({
+        extractPropertyValues,
+        markCellAsReconciled,
+        storeAllMatches,
+        storeEmptyMatches,
+        updateCellQueueStatus,
+        updateCellLoadingState,
+        updateCellDisplayAsNoMatches,
+        updateProceedButton,
+        reconciliationData,
+        state
+    });
+    
+    reconcileNextUnprocessedCell = createNextUnprocessedCellReconciler({
+        calculateCurrentProgress,
+        state,
+        updateProceedButton,
+        reconciliationData
+    });
+    
+    getAutoAdvanceSetting = createAutoAdvanceSettingGetter(autoAdvanceSetting);
+    setupAutoAdvanceToggle = createAutoAdvanceToggleSetup(autoAdvanceSetting);
     
     /**
      * Restore reconciliation display states when returning to the step
