@@ -397,9 +397,6 @@ export function setupMappingStep(state) {
         // Update section counts
         updateSectionCounts(finalState.mappings);
         
-        // Ensure proper ordering of existing manual properties
-        state.sortManualPropertiesByPriority();
-        
         // Auto-add metadata fields and P31 (instance of) if not already mapped or present as manual property
         autoAddMetadataFields(finalState);
         autoAddInstanceOfProperty(finalState);

@@ -696,37 +696,10 @@ export function setupState() {
         // Check if property already exists
         const existingIndex = state.mappings.manualProperties.findIndex(p => p.property.id === manualProperty.property.id);
         if (existingIndex === -1) {
-            const newProperty = {
+            state.mappings.manualProperties.push({
                 ...manualProperty,
                 addedAt: new Date().toISOString()
-            };
-            
-            // Priority properties that should be added to the beginning
-            const priorityProperties = ['label', 'description', 'aliases', 'P31'];
-            const isPriorityProperty = priorityProperties.includes(manualProperty.property.id);
-            
-            if (isPriorityProperty) {
-                // Insert at the beginning, but maintain priority order among them
-                const priorityOrder = { 'label': 0, 'description': 1, 'aliases': 2, 'P31': 3 };
-                const currentPriority = priorityOrder[manualProperty.property.id];
-                
-                // Find the correct position to insert based on priority
-                let insertIndex = 0;
-                for (let i = 0; i < state.mappings.manualProperties.length; i++) {
-                    const existingPriority = priorityOrder[state.mappings.manualProperties[i].property.id];
-                    if (existingPriority !== undefined && existingPriority < currentPriority) {
-                        insertIndex = i + 1;
-                    } else {
-                        break;
-                    }
-                }
-                
-                state.mappings.manualProperties.splice(insertIndex, 0, newProperty);
-            } else {
-                // Regular properties go to the end
-                state.mappings.manualProperties.push(newProperty);
-            }
-            
+            });
             state.hasUnsavedChanges = true;
             
             eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
@@ -737,41 +710,6 @@ export function setupState() {
         }
     }
     
-    /**
-     * Sorts existing manual properties to ensure proper priority ordering
-     * Priority: label, description, aliases, instance of, then rest
-     */
-    function sortManualPropertiesByPriority() {
-        ensureMappingArrays();
-        
-        if (state.mappings.manualProperties.length === 0) return;
-        
-        const oldValue = [...state.mappings.manualProperties];
-        const priorityOrder = { 'label': 0, 'description': 1, 'aliases': 2, 'P31': 3 };
-        
-        state.mappings.manualProperties.sort((a, b) => {
-            const aPriority = priorityOrder[a.property.id] ?? 999;
-            const bPriority = priorityOrder[b.property.id] ?? 999;
-            
-            if (aPriority !== bPriority) {
-                return aPriority - bPriority;
-            }
-            
-            // If same priority, maintain original order based on addedAt timestamp
-            const aTime = new Date(a.addedAt || 0).getTime();
-            const bTime = new Date(b.addedAt || 0).getTime();
-            return aTime - bTime;
-        });
-        
-        state.hasUnsavedChanges = true;
-        
-        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-            path: 'mappings.manualProperties',
-            oldValue,
-            newValue: [...state.mappings.manualProperties]
-        });
-    }
-
     /**
      * Removes a manual property by property ID
      * @param {String} propertyId - The Wikidata property ID to remove
@@ -860,7 +798,6 @@ export function setupState() {
         ensureMappingArrays,
         addManualProperty,
         removeManualProperty,
-        sortManualPropertiesByPriority,
         // Convenience methods for reconciliation progress
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,
