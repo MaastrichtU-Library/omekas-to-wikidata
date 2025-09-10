@@ -7,6 +7,9 @@ import { showMessage, createElement, createListItem, createDownloadLink } from '
 import { getCompletePropertyData } from '../api/wikidata.js';
 import { BLOCK_TYPES, BLOCK_METADATA, createTransformationBlock, getTransformationPreview } from '../transformations.js';
 export function setupMappingStep(state) {
+    // Store state globally for access in modal functions
+    window.mappingStepState = state;
+    
     // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
     const nonLinkedKeysList = document.getElementById('non-linked-keys');
@@ -1586,6 +1589,8 @@ export function setupMappingStep(state) {
             // Open stage 3 after a brief delay for better UX
             setTimeout(() => {
                 stage3.open = true;
+                // Refresh Stage 3 transformation UI with the selected property
+                refreshStage3TransformationUI();
             }, 300);
         }
         
@@ -2620,8 +2625,10 @@ export function setupMappingStep(state) {
             id: 'value-transformation-section'
         });
 
-        // Property ID for transformation blocks
-        const propertyId = keyData?.property?.id;
+        // Property ID for transformation blocks - check both current selection and keyData
+        const currentProperty = window.currentMappingSelectedProperty || keyData?.property;
+        const propertyId = currentProperty?.id;
+        
         if (!propertyId) {
             container.appendChild(createElement('div', {
                 className: 'transformation-message'
@@ -2980,6 +2987,26 @@ export function setupMappingStep(state) {
                 }
             }
         });
+    }
+
+    /**
+     * Refreshes the Stage 3 transformation UI when a property is selected
+     */
+    function refreshStage3TransformationUI() {
+        const existingContainer = document.getElementById('value-transformation-section');
+        if (!existingContainer) return;
+
+        // Get the stored keyData and state
+        const keyData = window.currentMappingKeyData;
+        const currentState = window.mappingStepState;
+        
+        if (!keyData || !currentState) return;
+
+        // Create new transformation UI with the selected property
+        const newContainer = renderValueTransformationUI(keyData, currentState);
+
+        // Replace the existing container content
+        existingContainer.parentNode.replaceChild(newContainer, existingContainer);
     }
     
     // Export functions globally for use by other modules
