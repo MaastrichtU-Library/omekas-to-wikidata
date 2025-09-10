@@ -397,8 +397,9 @@ export function setupMappingStep(state) {
         // Update section counts
         updateSectionCounts(finalState.mappings);
         
-        // Auto-add metadata fields and P31 (instance of) in priority order
-        await autoAddMetadataFieldsInOrder(finalState);
+        // Auto-add metadata fields and P31 (instance of) if not already mapped or present as manual property
+        autoAddMetadataFields(finalState);
+        autoAddInstanceOfProperty(finalState);
         
         // Auto-open mapped keys section if there are mapped keys
         if (finalState.mappings.mappedKeys.length > 0) {
@@ -426,108 +427,7 @@ export function setupMappingStep(state) {
         }
     }
     
-    // Auto-add metadata fields in priority order: Label, Description, Alias, Instance of
-    async function autoAddMetadataFieldsInOrder(currentState) {
-        const priorityFields = [
-            {
-                id: 'label',
-                label: 'label',
-                description: 'Human-readable name of the item',
-                datatype: 'monolingualtext',
-                datatypeLabel: 'Monolingual text',
-                isMetadata: true
-            },
-            {
-                id: 'description',
-                label: 'description',
-                description: 'Short description of the item',
-                datatype: 'monolingualtext',
-                datatypeLabel: 'Monolingual text',
-                isMetadata: true
-            },
-            {
-                id: 'aliases',
-                label: 'alias', // Changed from 'aliases' to 'alias' for display
-                description: 'Alternative names for the item',
-                datatype: 'monolingualtext',
-                datatypeLabel: 'Monolingual text',
-                isMetadata: true
-            }
-        ];
-
-        // Add metadata fields in order
-        for (const field of priorityFields) {
-            // Check if this metadata field is already in manual properties
-            const existsInManual = currentState.mappings.manualProperties.some(prop => 
-                prop.property.id === field.id
-            );
-
-            // Check if this metadata field is already mapped
-            const existsInMapped = currentState.mappings.mappedKeys.some(key => 
-                key.property && key.property.id === field.id
-            );
-
-            if (!existsInManual && !existsInMapped) {
-                state.addManualProperty({
-                    property: field,
-                    defaultValue: '',
-                    isRequired: field.id === 'label', // Label is required
-                    cannotRemove: field.id === 'label' // Label cannot be removed
-                });
-            }
-        }
-
-        // Add instance of property after the metadata fields
-        await autoAddInstanceOfPropertyAtPosition(currentState);
-
-        // Update section counts after adding all properties
-        if (currentState.mappings.manualProperties.length > 0) {
-            populateLists();
-            updateSectionCounts(state.getState().mappings);
-        }
-    }
-
-    // Auto-add P31 (instance of) at the correct position
-    async function autoAddInstanceOfPropertyAtPosition(currentState) {
-        // Check if P31 or P279 is already mapped
-        const hasP31Mapped = currentState.mappings.mappedKeys.some(key => 
-            key.property && (key.property.id === 'P31' || key.property.id === 'P279')
-        );
-        
-        // Check if P31 or P279 is already in manual properties
-        const hasP31Manual = currentState.mappings.manualProperties.some(prop => 
-            prop.property.id === 'P31' || prop.property.id === 'P279'
-        );
-        
-        // If neither P31 nor P279 is mapped or manual, auto-add P31
-        if (!hasP31Mapped && !hasP31Manual) {
-            try {
-                // Get complete property data for P31
-                const propertyData = await getCompletePropertyData('P31');
-                
-                const p31Property = {
-                    property: {
-                        id: 'P31',
-                        label: 'instance of',
-                        description: 'that class of which this subject is a particular example and member',
-                        datatype: 'wikibase-item',
-                        datatypeLabel: 'Item',
-                        ...propertyData
-                    },
-                    defaultValue: '',
-                    isRequired: true,
-                    cannotRemove: true
-                };
-                
-                state.addManualProperty(p31Property);
-                
-            } catch (error) {
-                console.error('Error adding P31 property:', error);
-            }
-        }
-    }
-
-    // Auto-add metadata fields (label, description, aliases) if not already present - LEGACY FUNCTION
+    // Auto-add metadata fields (label, description, aliases) if not already present
     async function autoAddMetadataFields(currentState) {
         const metadataFields = [
             {
