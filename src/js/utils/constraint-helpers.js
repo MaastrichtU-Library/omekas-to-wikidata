@@ -1,16 +1,68 @@
 /**
- * Constraint helper utilities for reconciliation enhancement
- * Provides functions to work with Wikidata property constraints for improved reconciliation
+ * Constraint helper utilities for sophisticated reconciliation enhancement
+ * 
+ * This module implements advanced constraint-based validation and scoring algorithms
+ * that significantly improve reconciliation accuracy by leveraging Wikidata's
+ * formal property constraint system.
+ * 
+ * Wikidata Property Constraints:
+ * - Value Type Constraints: Define expected entity classes (e.g., P31 expects instances of Q5 for humans)
+ * - Format Constraints: Define regex patterns for string properties (e.g., ISBN patterns)
+ * - Range Constraints: Define acceptable value ranges for quantities
+ * - Qualifiers Constraints: Define required or forbidden qualifiers
+ * 
+ * The constraint system enables:
+ * - Intelligent entity type filtering during reconciliation
+ * - Automatic validation of proposed matches against Wikidata requirements
+ * - Sophisticated scoring that considers constraint satisfaction
+ * - Early detection of data quality issues before export
+ * 
+ * Constraint-Enhanced Reconciliation:
+ * Instead of simple string matching, this system considers whether potential matches
+ * actually satisfy Wikidata's semantic requirements, leading to much higher quality
+ * mappings and fewer post-import corrections.
+ * 
  * @module utils/constraint-helpers
  */
 
 import { getSuggestedEntityTypes } from './property-types.js';
 
 /**
- * Get constraint-based entity types for reconciliation API
- * Uses actual Wikidata value type constraints when available, falls back to heuristic mapping
- * @param {Object} propertyObj - Full property object with constraints
- * @returns {Array<string>} Array of Wikidata entity type Q-IDs
+ * Extracts precise entity type constraints from Wikidata property definitions
+ * 
+ * This function implements intelligent entity type detection by analyzing formal
+ * Wikidata constraint data. When available, constraint-based types are far more
+ * accurate than heuristic guessing because they reflect actual Wikidata semantics.
+ * 
+ * Value Type Constraints define which classes of entities are acceptable values
+ * for a property. For example:
+ * - P39 (position held) expects instances of Q4164871 (position)
+ * - P106 (occupation) expects instances of Q12737077 (occupation)
+ * - P31 (instance of) expects instances of Q16889133 (class)
+ * 
+ * Using these constraints dramatically improves reconciliation accuracy by:
+ * - Filtering out semantically invalid matches early
+ * - Focusing reconciliation on appropriate entity types
+ * - Reducing false positives and manual review requirements
+ * 
+ * @param {Object} propertyObj - Complete Wikidata property object with constraint data
+ * @param {string} propertyObj.id - Wikidata property ID (e.g., "P31")
+ * @param {Object} propertyObj.constraints - Constraint object with valueType array
+ * @param {Array} propertyObj.constraints.valueType - Value type constraint definitions
+ * @returns {Array<string>} Array of Wikidata entity type Q-IDs for targeted reconciliation
+ * 
+ * @example
+ * // For P106 (occupation) property:
+ * getConstraintBasedTypes(occupationProperty)
+ * // Returns: ["Q12737077"] (occupation class)
+ * 
+ * @description
+ * Processing logic:
+ * 1. Extracts value type constraints from property definition
+ * 2. Collects all constraint class Q-IDs and validates format
+ * 3. Deduplicates and filters valid Q-numbers
+ * 4. Falls back to heuristic detection if no constraints available
+ * 5. Logs constraint usage for debugging and quality assurance
  */
 export function getConstraintBasedTypes(propertyObj) {
     // Check if we have constraint data available
@@ -42,10 +94,43 @@ export function getConstraintBasedTypes(propertyObj) {
 }
 
 /**
- * Validate a value against format constraints (regex patterns)
- * @param {string} value - Value to validate
- * @param {Object} propertyObj - Property object with constraints
- * @returns {Object} Validation result with isValid flag and details
+ * Validates values against Wikidata format constraints with comprehensive reporting
+ * 
+ * Format constraints define regex patterns that valid values must match.
+ * This validation is crucial for:
+ * - External identifier properties (ISBN, DOI, ORCID patterns)
+ * - Structured text properties (coordinates, dates, codes)
+ * - Preventing import failures due to invalid formats
+ * - Early detection of data quality issues
+ * 
+ * The function provides detailed validation results including:
+ * - Boolean validity status
+ * - Specific constraint violations with explanations
+ * - Passed constraints for confidence building
+ * - Warnings for malformed constraint definitions
+ * 
+ * @param {string} value - Value to validate against format constraints
+ * @param {Object} propertyObj - Complete property object with constraint definitions
+ * @param {Object} propertyObj.constraints - Property constraint object
+ * @param {Array} propertyObj.constraints.format - Array of format constraint objects
+ * @returns {Object} Comprehensive validation result object
+ * @returns {boolean} result.isValid - Overall validation status
+ * @returns {Array} result.violations - Array of failed constraint details
+ * @returns {Array} result.passedConstraints - Array of satisfied constraints
+ * @returns {Array} result.warnings - Array of validation process warnings
+ * 
+ * @example
+ * // Validating an ISBN against P957 (ISBN-10) constraints:
+ * validateAgainstFormatConstraints("0123456789", isbnProperty)
+ * // Returns: { isValid: true, violations: [], passedConstraints: [...] }
+ * 
+ * @description
+ * Validation process:
+ * 1. Checks for presence of format constraints in property definition
+ * 2. Iterates through all non-deprecated format constraint regex patterns
+ * 3. Tests value against each pattern with comprehensive error handling
+ * 4. Categorizes results into violations, passes, and warnings
+ * 5. Returns detailed results for UI display and logging
  */
 export function validateAgainstFormatConstraints(value, propertyObj) {
     const result = {
@@ -95,9 +180,53 @@ export function validateAgainstFormatConstraints(value, propertyObj) {
 }
 
 /**
- * Score a reconciliation match based on constraint satisfaction
- * @param {Object} match - Reconciliation match result
- * @param {Object} propertyObj - Property object with constraints
+ * Calculates sophisticated match scores incorporating Wikidata constraint satisfaction
+ * 
+ * This is the core scoring algorithm that determines reconciliation confidence by
+ * analyzing multiple factors including constraint compliance, label similarity,
+ * and semantic consistency. The scoring directly affects auto-acceptance decisions
+ * and user review priorities.
+ * 
+ * Scoring Factors:
+ * - Base match score from Wikidata reconciliation API (0-100)
+ * - Constraint satisfaction bonus/penalty (type matching, format compliance)
+ * - Label and alias similarity analysis
+ * - Description relevance scoring
+ * - Contextual consistency with related properties
+ * 
+ * Score Ranges and Implications:
+ * - 90-100: High confidence, eligible for auto-acceptance
+ * - 70-89: Medium confidence, requires user review
+ * - 50-69: Low confidence, manual verification recommended
+ * - <50: Very low confidence, likely incorrect match
+ * 
+ * @param {Object} match - Reconciliation match result from Wikidata API
+ * @param {string} match.id - Wikidata entity ID (Q-number)
+ * @param {string} match.name - Primary label of matched entity
+ * @param {number} match.score - Base reconciliation confidence score
+ * @param {Array} match.type - Entity type information
+ * @param {Object} propertyObj - Complete property object with constraint data
+ * @param {Object} propertyObj.constraints - Property constraint definitions
+ * @param {string} originalValue - Original value from Omeka S data for comparison
+ * @returns {number} Enhanced confidence score (0-100) incorporating constraint analysis
+ * 
+ * @example
+ * // Scoring a potential creator match:
+ * scoreMatchWithConstraints(wikidataMatch, creatorProperty, "Jane Smith")
+ * // Returns: 92 (high confidence due to constraint satisfaction)
+ * 
+ * @description
+ * Scoring algorithm:
+ * 1. Starts with base reconciliation API score
+ * 2. Applies constraint satisfaction bonuses/penalties:
+ *    - Type constraint match: +10 points
+ *    - Type constraint violation: -20 points
+ *    - Format constraint compliance: +5 points
+ * 3. Analyzes label similarity for additional confidence
+ * 4. Considers description relevance and contextual factors
+ * 5. Normalizes final score to 0-100 range
+ * 6. Logs scoring details for debugging and quality assurance
+ */
  * @param {string} originalValue - Original value being reconciled
  * @returns {Object} Enhanced match with constraint-based scoring
  */

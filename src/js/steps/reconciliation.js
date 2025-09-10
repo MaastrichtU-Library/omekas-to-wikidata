@@ -1,7 +1,27 @@
 /**
- * Handles the Reconciliation step functionality
- * Manages the process of reconciling Omeka S values with Wikidata entities
- * Implements OpenRefine-style reconciliation interface with modal-based workflow
+ * Handles the Reconciliation step functionality - the core entity matching engine
+ * 
+ * This module implements sophisticated algorithms for matching Omeka S property values
+ * to appropriate Wikidata entities. The reconciliation process is critical because it
+ * determines the quality and accuracy of the final Wikidata import.
+ * 
+ * The system implements an OpenRefine-inspired reconciliation workflow with:
+ * - Automatic entity matching using multiple scoring algorithms
+ * - Constraint-based validation against Wikidata property requirements  
+ * - Interactive modal interface for manual review and selection
+ * - Context-aware suggestions based on related properties and values
+ * - Batch processing with auto-acceptance for high-confidence matches
+ * 
+ * Reconciliation Quality Factors:
+ * - Label similarity scoring (fuzzy matching, alias matching)
+ * - Type constraint validation (must match expected entity types)
+ * - Description relevance (semantic similarity)
+ * - Contextual consistency (matches related properties)
+ * 
+ * The reconciliation data structure stores match results, confidence scores,
+ * and user decisions to support both automatic processing and manual review.
+ * 
+ * @module reconciliation
  */
 
 import { setupModalUI } from '../ui/modal-ui.js';
@@ -11,6 +31,34 @@ import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
 
+/**
+ * Initializes the reconciliation step interface and processing engine
+ * 
+ * This is the main orchestrator for the reconciliation workflow. It sets up:
+ * - Event handlers for step navigation and UI interactions
+ * - Modal interface for detailed entity selection and review
+ * - Batch processing controls and progress tracking
+ * - Integration with constraint validation and type detection systems
+ * 
+ * The reconciliation step appears as step 3 in the workflow and requires:
+ * - Completed property mappings from step 2
+ * - Valid Wikidata property constraints and type information
+ * - Omeka S data with values ready for entity matching
+ * 
+ * @param {Object} state - Application state management instance
+ * @param {Function} state.getState - Retrieves current application state
+ * @param {Function} state.setCurrentStep - Changes active workflow step
+ * @param {Object} state.reconciliationData - Stores match results and decisions
+ * 
+ * @description
+ * Reconciliation workflow stages:
+ * 1. Initialize reconciliation data structures from mapped properties
+ * 2. Calculate total reconciliable cells for progress tracking
+ * 3. Process cells in batches with automatic matching and scoring
+ * 4. Present ambiguous matches to user for manual resolution
+ * 5. Apply constraint validation to ensure Wikidata compliance
+ * 6. Prepare final reconciliation data for export step
+ */
 export function setupReconciliationStep(state) {
     
     // Initialize modal UI
@@ -35,9 +83,16 @@ export function setupReconciliationStep(state) {
     // Debug DOM element initialization
     
     // Reconciliation state management
-    let reconciliationData = {};
-    let currentReconciliationCell = null;
-    let contextSuggestions = new Map(); // Store previously selected values for suggestions
+    // Core data structures that drive the reconciliation process
+    let reconciliationData = {};  // Stores match results by item ID and property
+    let currentReconciliationCell = null;  // Tracks which cell is being processed
+    
+    // Context-aware suggestion system
+    // Learns from user selections to improve future suggestions
+    let contextSuggestions = new Map(); // Maps property values to previously accepted entities
+    
+    // Auto-advance setting for batch processing efficiency
+    // When enabled, high-confidence matches proceed automatically without user review
     let autoAdvanceSetting = true; // Default to auto-advance enabled
     
     // Add click handler for proceed to designer button
@@ -99,7 +154,33 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Initialize reconciliation interface based on fetched data and mappings
+     * Initializes the reconciliation interface and processes all reconcilable data
+     * 
+     * This is the main orchestration function that sets up the complete reconciliation
+     * workflow. It analyzes the current application state, processes mapped properties,
+     * and creates the interactive table interface for entity matching.
+     * 
+     * The function handles complex data preparation including:
+     * - Validation of mapping completeness and data availability
+     * - Calculation of total reconciliable cells for progress tracking
+     * - Integration of manual properties with mapped properties
+     * - Generation of the reconciliation table with interactive controls
+     * 
+     * @returns {Promise<void>} Resolves when reconciliation interface is fully initialized
+     * 
+     * @throws {Error} When required data or mappings are missing or invalid
+     * 
+     * @description
+     * Initialization sequence:
+     * 1. Validates current state has required data and mappings
+     * 2. Merges mapped properties from step 2 with manual properties
+     * 3. Calculates total reconciliable cells for progress tracking
+     * 4. Creates interactive reconciliation table with all property columns
+     * 5. Initializes progress tracking and status indicators
+     * 6. Sets up event handlers for batch processing and navigation
+     * 
+     * The function gracefully handles edge cases like missing data or empty mappings
+     * by displaying appropriate user guidance and preventing erroneous processing.
      */
     async function initializeReconciliation() {
         const currentState = state.getState();
@@ -237,7 +318,37 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Calculate total number of reconcilable cells
+     * Calculates total reconciliable cells for accurate progress tracking
+     * 
+     * This function performs sophisticated analysis of the data structure to determine
+     * exactly how many individual property values need reconciliation. The calculation
+     * is critical for:
+     * - Accurate progress reporting during batch processing
+     * - Resource planning and performance estimation
+     * - User expectation management for large datasets
+     * 
+     * The counting logic handles complex Omeka S data structures including:
+     * - Multi-value properties (arrays of values)
+     * - Nested object structures with different value representations
+     * - Manual properties that apply to every item
+     * - Empty or missing values that should be skipped
+     * 
+     * @param {Array} data - Array of Omeka S items to process
+     * @param {Array} mappedKeys - Properties mapped to Wikidata in step 2
+     * @param {Array} manualProperties - Additional properties added manually
+     * @returns {number} Total number of individual cells requiring reconciliation
+     * 
+     * @example
+     * // For 10 items with 3 mapped properties (2 single-value, 1 multi-value avg 3 values)
+     * // Plus 2 manual properties:
+     * // Total = 10 * (1 + 1 + 3 + 2) = 70 reconciliable cells
+     * 
+     * @description
+     * Counting methodology:
+     * - Each single property value = 1 reconciliable cell
+     * - Multi-value properties contribute multiple cells per item
+     * - Manual properties contribute 1 cell per item (regardless of current values)
+     * - Missing or empty values are excluded from the count
      */
     function calculateTotalReconciliableCells(data, mappedKeys, manualProperties = []) {
         let total = 0;
@@ -256,7 +367,33 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Extract property values from an item, handling multiple values
+     * Extracts property values from Omeka S items with comprehensive format handling
+     * 
+     * Omeka S stores property values in various complex formats depending on the
+     * property type, resource relationships, and export configuration. This function
+     * normalizes all these formats into consistent string arrays for reconciliation.
+     * 
+     * Supported value formats:
+     * - Simple strings and primitives
+     * - Arrays of value objects with @value annotations
+     * - Resource references with o:label properties
+     * - Mixed arrays containing different value types
+     * - Nested objects with various value properties
+     * 
+     * @param {Object} item - Single Omeka S item object
+     * @param {string} key - Property key to extract values from
+     * @returns {Array<string>} Array of normalized string values for reconciliation
+     * 
+     * @example
+     * // Omeka S multi-value property:
+     * extractPropertyValues(item, "dcterms:subject");
+     * // Input: [{"@value": "Art"}, {"o:label": "History"}]
+     * // Output: ["Art", "History"]
+     * 
+     * @description
+     * The normalization process is essential because Wikidata reconciliation
+     * requires consistent string representations of values. The function prioritizes
+     * human-readable labels (o:label) over technical values (@value) when both exist.
      */
     function extractPropertyValues(item, key) {
         const value = item[key];

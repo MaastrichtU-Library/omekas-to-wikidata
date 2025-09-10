@@ -1,9 +1,54 @@
 /**
- * Handles the Input step functionality
+ * Handles the Input step functionality - data ingestion and validation gateway
+ * 
+ * This module manages the critical first step of data acquisition from Omeka S instances.
+ * It handles the complexity of web-based data fetching including:
+ * - Cross-Origin Resource Sharing (CORS) challenges and proxy fallbacks
+ * - Omeka S API endpoint validation and data format verification
+ * - Manual JSON input as an alternative to API fetching
+ * - Comprehensive error handling with user-friendly explanations
+ * - Data structure validation to ensure compatibility with mapping step
+ * 
+ * The input step is the foundation of the entire workflow - invalid or incomplete
+ * data here will cause problems throughout the subsequent mapping, reconciliation,
+ * and export processes.
+ * 
+ * CORS Handling Strategy:
+ * Web browsers prevent direct access to many Omeka S instances due to CORS policies.
+ * This module implements a sophisticated fallback system using multiple proxy services
+ * to ensure data access while maintaining security and transparency.
+ * 
+ * @module input
  */
 import { eventSystem } from '../events.js';
 import { fetchWithCorsProxy, getCorsExplanation, getAdminEmailTemplate } from '../utils/cors-proxy.js';
 
+/**
+ * Initializes the input step interface with comprehensive data acquisition capabilities
+ * 
+ * This function sets up the data ingestion interface that handles both automated
+ * API fetching and manual JSON input. It provides sophisticated error handling
+ * and validation to ensure only compatible data proceeds to the mapping step.
+ * 
+ * The function handles multiple input methods:
+ * - Direct Omeka S API fetching with URL validation
+ * - CORS proxy fallback for restricted instances
+ * - Manual JSON paste for offline or problematic sources
+ * - Data format validation and structure verification
+ * 
+ * @param {Object} state - Application state management instance
+ * @param {Function} state.updateState - Updates application state with fetched data
+ * @param {Function} state.getState - Retrieves current application state
+ * @param {Function} state.markChangesUnsaved - Marks data changes as unsaved
+ * 
+ * @description
+ * Input validation pipeline:
+ * 1. URL format validation (must be valid Omeka S API endpoint)
+ * 2. CORS-aware fetching with automatic proxy fallback
+ * 3. JSON structure validation (must contain expected Omeka S format)
+ * 4. Content analysis (must contain actual items with properties)
+ * 5. State persistence and UI updates for successful data acquisition
+ */
 export function setupInputStep(state) {
     const apiUrlInput = document.getElementById('api-url');
     // Advanced parameters removed for MVP
@@ -205,7 +250,29 @@ export function setupInputStep(state) {
         }
     }
 
-    // Helper function to validate API URL
+    /**
+     * Validates Omeka S API URL format and accessibility requirements
+     * 
+     * This function performs basic URL validation to ensure the provided endpoint
+     * meets minimum requirements for API access. It checks protocol security and
+     * format validity but cannot verify actual endpoint functionality due to CORS.
+     * 
+     * @param {string} url - User-provided API URL to validate
+     * @returns {boolean} True if URL meets basic validation criteria
+     * 
+     * @example
+     * isValidApiUrl("https://example.com/api/items") // true
+     * isValidApiUrl("ftp://example.com/api") // false
+     * 
+     * @description
+     * Validation criteria:
+     * - Must be a valid URL format (parseable by URL constructor)
+     * - Must use HTTP or HTTPS protocol (no file:// or other schemes)
+     * - No validation of endpoint existence (would require CORS-breaking requests)
+     * 
+     * This basic validation prevents obvious errors but actual API compatibility
+     * is verified during the fetchWithCorsProxy attempt.
+     */
     function isValidApiUrl(url) {
         try {
             const urlObj = new URL(url);
@@ -215,7 +282,32 @@ export function setupInputStep(state) {
         }
     }
     
-    // Helper function to validate Omeka S API response
+    /**
+     * Validates Omeka S API response structure and content requirements
+     * 
+     * This function performs comprehensive validation of fetched JSON data to ensure
+     * it matches expected Omeka S API formats. The validation is critical because
+     * downstream processes depend on specific data structures and properties.
+     * 
+     * Omeka S APIs can return data in multiple formats:
+     * - Direct array of item objects
+     * - Wrapper object with 'items' array property
+     * - Single item object (for specific item requests)
+     * 
+     * @param {any} data - JSON data retrieved from API endpoint
+     * @returns {boolean} True if data structure is compatible with the mapping system
+     * 
+     * @description
+     * Validation requirements:
+     * - Must be valid JSON (already parsed at this point)
+     * - Must contain at least one item object
+     * - Items must be objects (not primitives)
+     * - Items must have property keys beyond just JSON-LD system keys (@context, @id, @type)
+     * - Must have mappable metadata properties for the workflow to be meaningful
+     * 
+     * The validation ensures data quality while being flexible enough to handle
+     * different Omeka S export formats and configurations.
+     */
     function isValidOmekaResponse(data) {
         if (!data) return false;
         
@@ -237,7 +329,28 @@ export function setupInputStep(state) {
         return false;
     }
     
-    // Helper function to display CORS error with solutions
+    /**
+     * Displays comprehensive CORS error information with actionable solutions
+     * 
+     * When data fetching fails due to CORS restrictions or other access issues,
+     * this function provides detailed explanations and practical solutions for users.
+     * It goes beyond generic error messages to educate users about CORS and provide
+     * specific steps they can take to resolve access issues.
+     * 
+     * @param {Error} error - The error object from failed fetch attempt
+     * @param {string} apiUrl - The API URL that failed to fetch
+     * 
+     * @description
+     * Error handling strategy:
+     * - Provides clear explanation of CORS and why it affects data access
+     * - Offers multiple solution paths (manual JSON, admin contact, proxy services)
+     * - Generates ready-to-send email templates for contacting Omeka S administrators
+     * - Explains technical concepts in user-friendly language
+     * - Maintains trust by explaining data privacy and security considerations
+     * 
+     * The comprehensive error handling reduces user frustration and provides
+     * clear paths forward when technical issues arise.
+     */
     function displayCorsError(error, apiUrl) {
         const explanation = getCorsExplanation();
         
@@ -328,7 +441,28 @@ export function setupInputStep(state) {
         
     }
     
-    // Helper function to process successful data (used by both automatic and manual methods)
+    /**
+     * Processes validated data for use throughout the application workflow
+     * 
+     * This function handles successful data acquisition from either automatic API
+     * fetching or manual JSON input. It performs final processing and state updates
+     * to make the data available for the mapping step.
+     * 
+     * @param {Object|Array} data - Validated Omeka S data structure
+     * @param {string} method - How data was acquired ('direct', 'proxy', 'manual')
+     * 
+     * @description
+     * Processing steps:
+     * 1. Stores validated data in application state
+     * 2. Selects representative example item for UI display
+     * 3. Updates interface to show successful data acquisition
+     * 4. Enables navigation to mapping step
+     * 5. Provides user feedback about data size and characteristics
+     * 
+     * The function serves as the gateway between data acquisition and the core
+     * mapping workflow, ensuring all subsequent steps have access to properly
+     * formatted and validated data.
+     */
     function processSuccessfulData(data, method = 'direct') {
         // Store fetched data
         state.updateState('fetchedData', data);

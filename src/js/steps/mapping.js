@@ -1,11 +1,45 @@
 /**
- * Handles the Mapping step functionality
- * Provides UI for mapping Omeka S fields to Wikidata properties
+ * Handles the Mapping step functionality - the core property mapping interface
+ * 
+ * This module provides the interactive UI for mapping Omeka S metadata fields
+ * to equivalent Wikidata properties. It handles the complex process of:
+ * - Analyzing Omeka S JSON-LD data structures and extracting property keys
+ * - Resolving JSON-LD context definitions to understand semantic meanings
+ * - Providing intelligent property suggestions based on data types and values
+ * - Managing the three-category mapping system: non-linked, mapped, and ignored
+ * - Supporting manual property additions for comprehensive data modeling
+ * 
+ * The mapping process is critical because it determines how Omeka S metadata
+ * will be represented in Wikidata's semantic structure. Poor mappings result
+ * in data loss or semantic inconsistency.
+ * 
+ * @module mapping
  */
 import { eventSystem } from '../events.js';
 import { showMessage, createElement, createListItem, createDownloadLink } from '../ui/components.js';
 import { getCompletePropertyData } from '../api/wikidata.js';
 import { BLOCK_TYPES, BLOCK_METADATA, createTransformationBlock, getTransformationPreview, extractAllFields, searchFields, COMMON_REGEX_PATTERNS } from '../transformations.js';
+
+/**
+ * Initializes the mapping step interface and sets up all event handlers
+ * 
+ * This is the main entry point for the mapping functionality. It coordinates:
+ * - DOM element initialization and event binding
+ * - State synchronization when navigating to this step
+ * - File import/export functionality for mapping configurations
+ * - Integration with the broader application workflow
+ * 
+ * @param {Object} state - Application state management instance
+ * @param {Function} state.updateState - Updates application state
+ * @param {Function} state.getState - Retrieves current state
+ * @param {Function} state.markChangesUnsaved - Marks changes as unsaved
+ * 
+ * @description
+ * The mapping step appears as step 2 in the workflow and requires:
+ * - Valid Omeka S data from step 1 (input validation)
+ * - User selection of a Wikidata entity schema (Q-identifier)
+ * - Interactive mapping of all discovered properties to Wikidata equivalents
+ */
 export function setupMappingStep(state) {
     // Store state globally for access in modal functions
     window.mappingStepState = state;
@@ -109,9 +143,32 @@ export function setupMappingStep(state) {
     }
     
     // Cache for fetched contexts to avoid repeated API calls
+    // This prevents excessive network requests when processing multiple files
+    // with the same JSON-LD context definitions
     const contextCache = new Map();
     
-    // Function to fetch and parse @context from URL
+    /**
+     * Fetches and parses JSON-LD @context definitions from remote URLs
+     * 
+     * This is critical for Omeka S data processing because JSON-LD contexts
+     * define how prefixed property names (like "dcterms:title") map to full URIs.
+     * Without proper context resolution, we can't understand the semantic meaning
+     * of properties in the data.
+     * 
+     * @param {string} contextUrl - URL to JSON-LD context document
+     * @returns {Promise<Map>} Map of prefix -> URI mappings
+     * 
+     * @example
+     * // For context "http://example.com/context.json" containing:
+     * // { "@context": { "dcterms": "http://purl.org/dc/terms/" } }
+     * const contextMap = await fetchContextDefinitions(url);
+     * // Returns: Map { "dcterms" => "http://purl.org/dc/terms/" }
+     * 
+     * @description
+     * Handles nested @context structures common in Omeka S exports.
+     * Results are cached indefinitely to improve performance when processing
+     * large datasets with repeated context references.
+     */
     async function fetchContextDefinitions(contextUrl) {
         if (contextCache.has(contextUrl)) {
             return contextCache.get(contextUrl);
@@ -147,14 +204,54 @@ export function setupMappingStep(state) {
         }
     }
     
-    // Helper function to convert camelCase to spaced words
+    /**
+     * Converts camelCase property names to human-readable spaced words
+     * 
+     * Used in the UI to make technical property names more user-friendly
+     * when displaying Omeka S fields for mapping selection.
+     * 
+     * @param {string} text - camelCase text to convert
+     * @returns {string} Text with spaces inserted before capital letters
+     * 
+     * @example
+     * convertCamelCaseToSpaces("dctermsCreated") // "dcterms Created"
+     * convertCamelCaseToSpaces("itemType") // "item Type"
+     */
     function convertCamelCaseToSpaces(text) {
         // Insert space before uppercase letters that are preceded by lowercase letters or digits
         return text.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
     }
     
-    // Helper function to extract sample values from Omeka S structures
-    // Returns the full object/array structure for Stage 1 JSON display
+    /**
+     * Extracts sample values from complex Omeka S data structures for JSON display
+     * 
+     * This function has been updated to return full object/array structures rather than
+     * extracted text values, enabling rich JSON visualization in the mapping interface.
+     * This change supports the enhanced Stage 1 JSON display functionality.
+     * 
+     * Omeka S stores values in various formats (arrays, objects with @value annotations,
+     * nested structures). This function preserves the original structure to enable
+     * comprehensive data inspection and transformation planning.
+     * 
+     * @param {any} value - Raw value from Omeka S data structure
+     * @returns {any|null} Full object/array structure or null if no meaningful content
+     * 
+     * @example
+     * // Omeka S array format - returns first full object
+     * extractSampleValue([{"@value": "Sample Title", "type": "literal"}]) 
+     * // Returns: {"@value": "Sample Title", "type": "literal"}
+     * 
+     * // Omeka S object format - returns full object structure
+     * extractSampleValue({"@value": "2023-01-01", "@type": "date"}) 
+     * // Returns: {"@value": "2023-01-01", "@type": "date"}
+     * 
+     * @description
+     * Returns full data structures to support:
+     * - Rich JSON visualization in mapping interface
+     * - Comprehensive understanding of data complexity
+     * - Transformation planning based on complete structure
+     * - Preservation of all metadata and type information
+     */
     function extractSampleValue(value) {
         if (value === null || value === undefined) {
             return null;
@@ -170,13 +267,52 @@ export function setupMappingStep(state) {
         return value;
     }
     
-    // Helper function to extract and analyze keys from all items
+    /**
+     * Extracts and analyzes all property keys from Omeka S data with semantic context resolution
+     * 
+     * This is the core analysis function that processes raw Omeka S JSON-LD data to identify
+     * all available properties for mapping. It performs sophisticated analysis including:
+     * - Frequency analysis to identify common vs. rare properties
+     * - JSON-LD context resolution to understand semantic meanings  
+     * - Sample value extraction to help users understand property content
+     * - URI generation for linked data compatibility
+     * 
+     * The frequency analysis is crucial because:
+     * - Properties appearing in all items are likely core metadata (title, creator)
+     * - Rare properties might be specialized fields needing careful mapping
+     * - Missing properties in some items affect data completeness decisions
+     * 
+     * @param {Object|Array} data - Raw Omeka S data (single object or array of items)
+     * @returns {Promise<Array>} Array of analyzed property objects with metadata
+     * 
+     * @example
+     * const analysis = await extractAndAnalyzeKeys(omekaData);
+     * // Returns: [{
+     * //   key: "dcterms:title",
+     * //   frequency: 25,        // appears in 25 out of 25 items
+     * //   sampleValue: "Book Title",
+     * //   linkedDataUri: "http://purl.org/dc/terms/title"
+     * // }]
+     * 
+     * @description
+     * Processing steps:
+     * 1. Normalizes various Omeka S data formats into consistent item arrays
+     * 2. Extracts and caches JSON-LD context definitions (with remote fetching)
+     * 3. Counts property frequency across all items (ignoring @-prefixed JSON-LD system keys)
+     * 4. Resolves prefixed properties to full URIs using context definitions
+     * 5. Extracts sample values to help users understand property content
+     * 6. Applies fallback URI generation for properties without explicit context
+     */
     async function extractAndAnalyzeKeys(data) {
         const keyFrequency = new Map();
         const contextMap = new Map();
         let items = [];
         
         // Normalize data structure to get array of items
+        // Omeka S can export data in different formats:
+        // 1. Direct array of items (most common)
+        // 2. Wrapper object with 'items' property
+        // 3. Single item object (less common)
         if (Array.isArray(data)) {
             items = data;
         } else if (data.items && Array.isArray(data.items)) {
@@ -186,10 +322,14 @@ export function setupMappingStep(state) {
         }
         
         // Extract context information from first item
+        // JSON-LD context is essential for understanding property semantics
+        // It maps short prefixes (like "dcterms") to full URIs
         if (items.length > 0 && items[0]['@context']) {
             const context = items[0]['@context'];
             
             // Handle both object and string contexts
+            // Object contexts: direct prefix->URI mappings in the data
+            // String contexts: URLs pointing to remote context definitions
             if (typeof context === 'object') {
                 for (const [prefix, uri] of Object.entries(context)) {
                     if (typeof uri === 'string') {
@@ -206,13 +346,19 @@ export function setupMappingStep(state) {
         }
         
         // Analyze all items to get key frequency
+        // Frequency analysis reveals data patterns and helps prioritize mapping efforts:
+        // - Properties in every item are core metadata (title, type)
+        // - Properties in some items might be optional or specialized
+        // - Very rare properties might be data entry errors or edge cases
         items.forEach(item => {
             if (typeof item === 'object' && item !== null) {
                 Object.keys(item).forEach(key => {
-                    // Skip JSON-LD system keys
+                    // Skip JSON-LD system keys (@context, @id, @type)
+                    // These are structural metadata, not content properties
                     if (key.startsWith('@')) return;
                     
                     // Count all keys including o: keys - we'll categorize them later
+                    // o: prefix typically indicates Omeka-specific properties
                     const count = keyFrequency.get(key) || 0;
                     keyFrequency.set(key, count + 1);
                 });
@@ -220,9 +366,11 @@ export function setupMappingStep(state) {
         });
         
         // Convert to array and sort by frequency
+        // Higher frequency properties appear first, making core metadata more prominent
         const keyAnalysis = Array.from(keyFrequency.entries())
             .map(([key, frequency]) => {
                 // Get sample value from first item that has this key
+                // Sample values help users understand what kind of data each property contains
                 let sampleValue = null;
                 let linkedDataUri = null;
                 
@@ -234,11 +382,16 @@ export function setupMappingStep(state) {
                 }
                 
                 // Generate linked data URI from context
+                // This is critical for semantic interoperability - we need full URIs
+                // to understand what each property actually represents
                 if (key.includes(':')) {
+                    // Handle prefixed properties (e.g., "dcterms:title")
                     const [prefix, localName] = key.split(':', 2);
                     const baseUri = contextMap.get(prefix);
                     if (baseUri) {
-                        // Handle different URI patterns
+                        // Handle different URI patterns used by various vocabularies:
+                        // - Hash URIs: http://example.org/vocab# (common in RDF)
+                        // - Slash URIs: http://example.org/vocab/ (common in REST APIs)
                         if (baseUri.endsWith('/') || baseUri.endsWith('#')) {
                             linkedDataUri = baseUri + localName;
                         } else {
@@ -246,16 +399,18 @@ export function setupMappingStep(state) {
                         }
                     }
                 } else {
-                    // Check for common prefixes even without explicit context
+                    // Fallback for properties without explicit prefixes
+                    // Many Omeka installations use common vocabularies without declaring context
                     const commonPrefixes = {
-                        'schema': 'https://schema.org/',
-                        'dc': 'http://purl.org/dc/terms/',
+                        'schema': 'https://schema.org/',        // Schema.org vocabulary
+                        'dc': 'http://purl.org/dc/terms/',     // Dublin Core terms
                         'dcterms': 'http://purl.org/dc/terms/',
-                        'foaf': 'http://xmlns.com/foaf/0.1/',
-                        'skos': 'http://www.w3.org/2004/02/skos/core#'
+                        'foaf': 'http://xmlns.com/foaf/0.1/',  // Friend of a Friend
+                        'skos': 'http://www.w3.org/2004/02/skos/core#' // SKOS vocabulary
                     };
                     
-                    // Try to match common patterns
+                    // Pattern matching for common vocabulary prefixes
+                    // This helps when context is missing or incomplete
                     for (const [prefix, uri] of Object.entries(commonPrefixes)) {
                         if (key.toLowerCase().startsWith(prefix.toLowerCase())) {
                             const localName = key.substring(prefix.length);
@@ -264,7 +419,8 @@ export function setupMappingStep(state) {
                         }
                     }
                     
-                    // Check if there's a default namespace
+                    // Check if there's a default namespace in the context
+                    // Empty string key indicates default namespace
                     const defaultNs = contextMap.get('');
                     if (defaultNs && !linkedDataUri) {
                         linkedDataUri = defaultNs + key;
@@ -286,7 +442,37 @@ export function setupMappingStep(state) {
         return keyAnalysis;
     }
 
-    // Helper function to populate key lists
+    /**
+     * Populates all mapping interface lists with analyzed property data
+     * 
+     * This is the main orchestration function that coordinates the entire mapping
+     * interface display. It processes the raw Omeka S data and organizes properties
+     * into the three-category system that drives the mapping workflow:
+     * 
+     * Categories:
+     * - Non-linked keys: Properties not yet mapped to Wikidata (require user action)
+     * - Mapped keys: Properties with confirmed Wikidata mappings (ready for reconciliation)
+     * - Ignored keys: Properties excluded from Wikidata export (user decision)
+     * 
+     * The function also handles automatic property suggestions based on common
+     * patterns and previously saved mapping configurations.
+     * 
+     * @returns {Promise<void>} Resolves when all lists are populated
+     * 
+     * @description
+     * Processing sequence:
+     * 1. Retrieves and analyzes raw Omeka S data from application state
+     * 2. Extracts all property keys with frequency and context analysis
+     * 3. Applies smart categorization based on patterns and user preferences
+     * 4. Automatically adds common metadata fields (instance of, labels, descriptions)
+     * 5. Updates UI lists with interactive elements for property management
+     * 6. Refreshes section counts and navigation state
+     * 
+     * This function is called whenever:
+     * - User navigates to the mapping step
+     * - Raw data is updated from input step
+     * - Mapping configuration is loaded from file
+     */
     async function populateLists() {
         const currentState = state.getState();
         
@@ -324,6 +510,22 @@ export function setupMappingStep(state) {
         }
         
         // Function to check if key should be ignored
+        /**
+         * Determines if a property key should be automatically ignored
+         * 
+         * This function implements business rules for automatic property filtering.
+         * Certain technical or system properties are not suitable for Wikidata mapping
+         * and should be filtered out to reduce interface complexity.
+         * 
+         * @param {string} key - Property key to evaluate
+         * @returns {boolean} True if key should be automatically ignored
+         * 
+         * @description
+         * Auto-ignore criteria:
+         * - JSON-LD system properties (@context, @id, @type)
+         * - Omeka system properties (o:id, o:resource_class, etc.)
+         * - Internal technical fields not relevant to content description
+         */
         const shouldIgnoreKey = (key) => {
             return ignorePatterns.some(pattern => {
                 if (pattern.endsWith(':')) {
@@ -1314,7 +1516,30 @@ export function setupMappingStep(state) {
         return null;
     }
     
-    // Setup property search functionality
+    /**
+     * Initializes the Wikidata property search interface with intelligent features
+     * 
+     * This function creates a sophisticated property search experience that includes:
+     * - Real-time search with debouncing to prevent API spam
+     * - Auto-suggestions based on property context and sample values
+     * - Previous selection restoration for mapped properties
+     * - Intelligent search result ranking and display
+     * 
+     * The search interface is critical for mapping quality - good property suggestions
+     * significantly improve user experience and reduce mapping errors.
+     * 
+     * @param {Object} keyData - Property data object containing key info and current mappings
+     * @param {string} keyData.key - The Omeka S property key being mapped
+     * @param {Object} [keyData.property] - Existing Wikidata property mapping if available
+     * @param {any} keyData.sampleValue - Sample value to guide property suggestions
+     * 
+     * @description
+     * Search behavior:
+     * - Minimum 2 characters before triggering search (prevents excessive API calls)
+     * - 300ms debounce delay to wait for user to finish typing
+     * - Automatic restoration of previous mappings for edit scenarios
+     * - Context-aware suggestions based on sample data analysis
+     */
     function setupPropertySearch(keyData) {
         const searchInput = document.getElementById('property-search-input');
         const suggestionsContainer = document.getElementById('property-suggestions');
@@ -1371,7 +1596,32 @@ export function setupMappingStep(state) {
         });
     }
     
-    // Search Wikidata properties
+    /**
+     * Searches Wikidata for properties matching the user query
+     * 
+     * This function handles the core integration with Wikidata's search API to find
+     * relevant properties. It implements intelligent result processing including:
+     * - Multi-source result aggregation (API search + auto-suggestions)
+     * - Result deduplication and ranking
+     * - Previous selection highlighting for user convenience
+     * - Error handling with graceful degradation
+     * 
+     * @param {string} query - User search query (minimum 2 characters)
+     * @param {HTMLElement} container - DOM container for displaying results
+     * 
+     * @throws {Error} When Wikidata API is unavailable or returns invalid data
+     * 
+     * @description
+     * Search strategy:
+     * 1. Calls Wikidata API with query string
+     * 2. Supplements API results with context-based auto-suggestions
+     * 3. Combines and deduplicates results by property ID
+     * 4. Ranks results by relevance (exact matches first, then partial matches)
+     * 5. Highlights previously selected properties for user reference
+     * 
+     * Rate limiting: API calls are naturally rate-limited by the 300ms debounce
+     * in setupPropertySearch(). No additional throttling is implemented.
+     */
     async function searchWikidataProperties(query, container) {
         try {
             container.innerHTML = '<div class="loading">Searching...</div>';
@@ -1476,7 +1726,36 @@ export function setupMappingStep(state) {
         return item;
     }
     
-    // Select a property
+    /**
+     * Selects a Wikidata property and initiates the data type configuration process
+     * 
+     * This is a critical function that handles the transition from property selection
+     * to data type analysis and constraint validation. It orchestrates:
+     * - Property selection UI updates and state management
+     * - Automatic data type detection based on Omeka S sample values
+     * - Wikidata constraint fetching for validation and guidance
+     * - Multi-stage modal workflow progression
+     * 
+     * The data type detection is crucial because it determines how values will be
+     * formatted for Wikidata import and what validation rules apply.
+     * 
+     * @param {Object} property - Selected Wikidata property object
+     * @param {string} property.id - Wikidata property ID (e.g., "P31")
+     * @param {string} property.label - Human-readable property name
+     * @param {string} property.description - Property description from Wikidata
+     * @param {string} property.datatype - Wikidata datatype (item, string, time, etc.)
+     * 
+     * @returns {Promise<void>} Resolves when selection process is complete
+     * 
+     * @description
+     * Selection workflow:
+     * 1. Updates UI to show selected property with visual feedback
+     * 2. Stores selection in global state for modal workflow
+     * 3. Fetches detailed property constraints from Wikidata
+     * 4. Triggers automatic data type detection based on sample values
+     * 5. Expands stage 2 of modal to show data type configuration
+     * 6. Prepares interface for user confirmation or adjustment
+     */
     async function selectProperty(property) {
         // Remove selection from other items
         document.querySelectorAll('.property-suggestion-item').forEach(item => {
