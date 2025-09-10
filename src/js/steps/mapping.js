@@ -3124,7 +3124,7 @@ export function setupMappingStep(state) {
         
         const patternTextarea = createElement('textarea', {
             rows: 3,
-            value: block.config.pattern || '{{value}}',
+            value: (block.config.pattern && block.config.pattern.trim()) || '{{value}}',
             placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
             className: 'pattern-input',
             onInput: (e) => {
