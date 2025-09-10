@@ -163,45 +163,57 @@ export function setupMappingStep(state) {
         if (Array.isArray(value)) {
             if (value.length === 0) return null;
             
-            // Get the first value for sample
+            // Get the first value for sample and extract recursively
             const firstValue = value[0];
-            
-            // If it's an object with @value, extract that
-            if (firstValue && typeof firstValue === 'object' && '@value' in firstValue) {
-                return firstValue['@value'];
-            }
-            
-            // If it's an object with meaningful content, try to extract readable parts
-            if (firstValue && typeof firstValue === 'object') {
-                // Look for common value properties
-                const valueProps = ['@value', 'value', 'name', 'title', 'label', 'display_title'];
-                for (const prop of valueProps) {
-                    if (prop in firstValue && firstValue[prop] !== null && firstValue[prop] !== undefined) {
-                        return firstValue[prop];
-                    }
-                }
-                // If no value property found, return the whole object for JSON display
-                return firstValue;
-            }
-            
-            // For primitive values in arrays, return the first one
-            return firstValue;
+            return extractSampleValue(firstValue);
         }
         
-        // Handle objects with @value property
-        if (value && typeof value === 'object' && '@value' in value) {
-            return value['@value'];
-        }
-        
-        // Handle other objects - look for common value properties
+        // Handle Omeka S objects with type-aware extraction
         if (value && typeof value === 'object') {
-            const valueProps = ['@value', 'value', 'name', 'title', 'label', 'display_title'];
+            // Type-aware value extraction for Omeka S
+            if (value.type && typeof value.type === 'string') {
+                switch (true) {
+                    // Literal values - use @value
+                    case value.type === 'literal':
+                    case value.type === 'numeric:timestamp':
+                        if ('@value' in value && value['@value'] !== null && value['@value'] !== undefined) {
+                            return value['@value'];
+                        }
+                        break;
+                    
+                    // Value suggest types - use o:label (human-readable label)
+                    case value.type.startsWith('valuesuggest:'):
+                        if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
+                            return value['o:label'];
+                        }
+                        break;
+                    
+                    // URI types - prefer o:label, fallback to @id
+                    case value.type === 'uri':
+                        if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
+                            return value['o:label'];
+                        }
+                        if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
+                            return value['@id'];
+                        }
+                        break;
+                }
+            }
+            
+            // Fallback to standard property extraction for non-typed objects
+            const valueProps = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
             for (const prop of valueProps) {
                 if (prop in value && value[prop] !== null && value[prop] !== undefined) {
                     return value[prop];
                 }
             }
-            // Return the whole object for JSON display
+            
+            // Look for @id as last resort for URIs
+            if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
+                return value['@id'];
+            }
+            
+            // Return the whole object for complex structures that don't match known patterns
             return value;
         }
         
@@ -2615,6 +2627,7 @@ export function setupMappingStep(state) {
 
     /**
      * Converts a sample value to a string suitable for transformation preview
+     * Uses Omeka S type-aware extraction for meaningful values
      * @param {*} value - The sample value (can be object, array, string, etc.)
      * @returns {string} String representation for transformation
      */
@@ -2642,21 +2655,55 @@ export function setupMappingStep(state) {
             return convertSampleValueToString(firstValue);
         }
 
-        // Handle objects - look for common value properties
+        // Handle Omeka S objects with type-aware extraction
         if (value && typeof value === 'object') {
-            // Look for Omeka S style values first
-            const valueProps = ['@value', 'value', 'name', 'title', 'label', 'display_title'];
+            // Type-aware value extraction for Omeka S
+            if (value.type && typeof value.type === 'string') {
+                switch (true) {
+                    // Literal values - use @value
+                    case value.type === 'literal':
+                    case value.type === 'numeric:timestamp':
+                        if ('@value' in value && value['@value'] !== null && value['@value'] !== undefined) {
+                            return String(value['@value']);
+                        }
+                        break;
+                    
+                    // Value suggest types - use o:label (human-readable label)
+                    case value.type.startsWith('valuesuggest:'):
+                        if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
+                            return String(value['o:label']);
+                        }
+                        break;
+                    
+                    // URI types - prefer o:label, fallback to @id
+                    case value.type === 'uri':
+                        if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
+                            return String(value['o:label']);
+                        }
+                        if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
+                            return String(value['@id']);
+                        }
+                        break;
+                }
+            }
+            
+            // Fallback to standard property extraction for non-typed objects
+            const valueProps = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
             for (const prop of valueProps) {
                 if (prop in value && value[prop] !== null && value[prop] !== undefined) {
                     return convertSampleValueToString(value[prop]);
                 }
             }
             
-            // If no standard property found, try to create a meaningful string
-            // Look for any string values in the object
+            // Look for @id as last resort for URIs
+            if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
+                return String(value['@id']);
+            }
+            
+            // If no known property found, look for any string values
             const entries = Object.entries(value);
             for (const [key, val] of entries) {
-                if (typeof val === 'string' && val.trim() !== '') {
+                if (typeof val === 'string' && val.trim() !== '' && !key.startsWith('property_') && key !== 'type') {
                     return val;
                 }
             }
