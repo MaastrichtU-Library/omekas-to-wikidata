@@ -5169,6 +5169,43 @@ pre.sample-value {
     border: 1px dashed #ddd;
 }
 
+/* Field selector section */
+.field-selector-section {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.field-selector-label {
+    display: block;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.field-selector {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9em;
+    background: white;
+    transition: border-color 0.2s ease;
+}
+
+.field-selector:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.field-selector option {
+    padding: 4px 8px;
+}
+
 /* Transformation blocks container */
 .transformation-blocks-container {
     margin-bottom: 20px;
@@ -5465,6 +5502,21 @@ pre.sample-value {
     
     .transformation-value-state {
         padding: 10px;
+    }
+    
+    .field-selector-section {
+        padding: 12px;
+        margin: 12px 0;
+    }
+    
+    .field-selector-label {
+        font-size: 0.85em;
+        margin-bottom: 6px;
+    }
+    
+    .field-selector {
+        font-size: 0.85em;
+        padding: 6px 10px;
     }
     
     .value-label {

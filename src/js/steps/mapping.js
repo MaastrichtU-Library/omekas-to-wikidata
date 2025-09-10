@@ -153,71 +153,20 @@ export function setupMappingStep(state) {
         return text.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
     }
     
-    // Helper function to extract readable sample values from Omeka S structures
+    // Helper function to extract sample values from Omeka S structures
+    // Returns the full object/array structure for Stage 1 JSON display
     function extractSampleValue(value) {
         if (value === null || value === undefined) {
             return null;
         }
         
-        // Handle arrays (common in Omeka S)
+        // Handle arrays (common in Omeka S) - return first item as full object
         if (Array.isArray(value)) {
             if (value.length === 0) return null;
-            
-            // Get the first value for sample and extract recursively
-            const firstValue = value[0];
-            return extractSampleValue(firstValue);
+            return value[0]; // Return full first object, not extracted value
         }
         
-        // Handle Omeka S objects with type-aware extraction
-        if (value && typeof value === 'object') {
-            // Type-aware value extraction for Omeka S
-            if (value.type && typeof value.type === 'string') {
-                switch (true) {
-                    // Literal values - use @value
-                    case value.type === 'literal':
-                    case value.type === 'numeric:timestamp':
-                        if ('@value' in value && value['@value'] !== null && value['@value'] !== undefined) {
-                            return value['@value'];
-                        }
-                        break;
-                    
-                    // Value suggest types - use o:label (human-readable label)
-                    case value.type.startsWith('valuesuggest:'):
-                        if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
-                            return value['o:label'];
-                        }
-                        break;
-                    
-                    // URI types - prefer o:label, fallback to @id
-                    case value.type === 'uri':
-                        if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
-                            return value['o:label'];
-                        }
-                        if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
-                            return value['@id'];
-                        }
-                        break;
-                }
-            }
-            
-            // Fallback to standard property extraction for non-typed objects
-            const valueProps = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
-            for (const prop of valueProps) {
-                if (prop in value && value[prop] !== null && value[prop] !== undefined) {
-                    return value[prop];
-                }
-            }
-            
-            // Look for @id as last resort for URIs
-            if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
-                return value['@id'];
-            }
-            
-            // Return the whole object for complex structures that don't match known patterns
-            return value;
-        }
-        
-        // For primitive values, return as-is
+        // Return the full object/value as-is for JSON display
         return value;
     }
     
@@ -2626,6 +2575,91 @@ export function setupMappingStep(state) {
     }
 
     /**
+     * Extracts available fields from a sample value object
+     * @param {*} sampleValue - The sample value (object, array, or primitive)
+     * @returns {Array} Array of field objects {key, preview}
+     */
+    function extractAvailableFields(sampleValue) {
+        if (!sampleValue || typeof sampleValue !== 'object') {
+            return [{ key: '_value', preview: String(sampleValue || 'N/A') }];
+        }
+
+        // Handle arrays - get fields from first object
+        if (Array.isArray(sampleValue)) {
+            if (sampleValue.length === 0) return [{ key: '_value', preview: 'Empty Array' }];
+            return extractAvailableFields(sampleValue[0]);
+        }
+
+        // Extract fields from object
+        const fields = [];
+        Object.entries(sampleValue).forEach(([key, value]) => {
+            let preview = '';
+            if (value === null || value === undefined) {
+                preview = 'null';
+            } else if (typeof value === 'string') {
+                preview = value.length > 30 ? `${value.substring(0, 30)}...` : value;
+            } else if (typeof value === 'number' || typeof value === 'boolean') {
+                preview = String(value);
+            } else {
+                preview = '[Object/Array]';
+            }
+            
+            fields.push({ key, preview });
+        });
+
+        return fields.length > 0 ? fields : [{ key: '_value', preview: 'No fields available' }];
+    }
+
+    /**
+     * Gets the value of a specific field from the sample value
+     * @param {*} sampleValue - The sample value object
+     * @param {string} fieldKey - The field key to extract
+     * @returns {string} String representation of the field value
+     */
+    function getFieldValueFromSample(sampleValue, fieldKey) {
+        if (!sampleValue || fieldKey === '_value') {
+            return convertSampleValueToString(sampleValue);
+        }
+
+        // Handle arrays
+        if (Array.isArray(sampleValue)) {
+            if (sampleValue.length === 0) return '';
+            return getFieldValueFromSample(sampleValue[0], fieldKey);
+        }
+
+        // Handle objects
+        if (typeof sampleValue === 'object' && sampleValue[fieldKey] !== undefined) {
+            return convertSampleValueToString(sampleValue[fieldKey]);
+        }
+
+        return '';
+    }
+
+    /**
+     * Refreshes the transformation preview when field selection changes
+     * @param {string} propertyId - The property ID
+     * @param {Object} state - Application state
+     */
+    function refreshTransformationFieldPreview(propertyId, state) {
+        const fieldSelector = document.getElementById(`field-selector-${propertyId}`);
+        const container = document.getElementById(`transformation-blocks-${propertyId}`);
+        
+        if (!fieldSelector || !container) return;
+
+        const keyData = window.currentMappingKeyData;
+        if (!keyData) return;
+
+        const selectedField = fieldSelector.value;
+        const newSampleValue = getFieldValueFromSample(keyData.sampleValue, selectedField);
+        
+        // Update stored sample value
+        container.dataset.sampleValue = newSampleValue;
+        
+        // Update the preview
+        updateTransformationPreview(propertyId, state);
+    }
+
+    /**
      * Converts a sample value to a string suitable for transformation preview
      * Uses Omeka S type-aware extraction for meaningful values
      * @param {*} value - The sample value (can be object, array, string, etc.)
@@ -2750,10 +2784,47 @@ export function setupMappingStep(state) {
             'Apply transformations to modify values before reconciliation. Transformations are applied in order.'));
         container.appendChild(header);
 
+        // Field selector section
+        const rawSampleValue = keyData.sampleValue;
+        const availableFields = extractAvailableFields(rawSampleValue);
+        
+        if (availableFields.length > 1) {
+            const fieldSelectorSection = createElement('div', { className: 'field-selector-section' });
+            
+            const selectorLabel = createElement('label', { className: 'field-selector-label' }, 
+                'Select field to transform:');
+            
+            const fieldSelect = createElement('select', {
+                className: 'field-selector',
+                id: `field-selector-${propertyId}`,
+                onChange: (e) => {
+                    // Update the sample value when field selection changes
+                    refreshTransformationFieldPreview(propertyId, state);
+                }
+            });
+            
+            // Populate field options
+            availableFields.forEach(field => {
+                const option = createElement('option', {
+                    value: field.key
+                }, `${field.key}: ${field.preview}`);
+                fieldSelect.appendChild(option);
+            });
+            
+            fieldSelectorSection.appendChild(selectorLabel);
+            fieldSelectorSection.appendChild(fieldSelect);
+            container.appendChild(fieldSelectorSection);
+        }
+
         // Sample value for preview - convert to string for transformations
         const currentState = state.getState();
-        const rawSampleValue = keyData.sampleValue;
-        const sampleValue = convertSampleValueToString(rawSampleValue) || 'Sample Value';
+        const selectedField = availableFields.length > 1 ? 
+            (document.getElementById(`field-selector-${propertyId}`)?.value || availableFields[0].key) :
+            (availableFields[0]?.key || null);
+        
+        const sampleValue = selectedField ? 
+            getFieldValueFromSample(rawSampleValue, selectedField) :
+            convertSampleValueToString(rawSampleValue) || 'Sample Value';
         
         // Transformation blocks container
         const blocksContainer = createElement('div', {
