@@ -281,25 +281,52 @@ export function parseReconciliationResults(data, value, propertyObj) {
     
     const results = data.q1.result;
     
-    return results.map(result => {
+    return results.map((result, index) => {
+        // Ensure the result has a score - reconciliation API returns scores as 0-100
+        // If no score, use position-based scoring (first result = highest score)
+        if (result.score === undefined || result.score === null) {
+            result.score = Math.max(100 - (index * 10), 10); // Position-based fallback
+            console.log(`⚠️ No score from API for ${result.id}, using position-based score: ${result.score}`);
+        }
+        
+        // Convert score to number if it's a string
+        if (typeof result.score === 'string') {
+            result.score = parseFloat(result.score);
+        }
+        
         // Score the match with constraint validation
-        const constraintScore = scoreMatchWithConstraints(result, propertyObj);
+        // scoreMatchWithConstraints returns an enhanced match object, not just a score
+        const enhancedMatch = scoreMatchWithConstraints(result, propertyObj);
         
-        // Ensure result.score exists and is a valid number
-        const baseScore = (result.score !== undefined && !isNaN(result.score)) ? result.score : 50;
-        const finalScore = Math.round(baseScore * constraintScore);
-        
-        return {
-            id: result.id,
-            name: result.name,
-            description: result.description || '',
-            score: isNaN(finalScore) ? 0 : finalScore, // Apply constraint scoring with fallback
-            url: `https://www.wikidata.org/wiki/${result.id}`,
-            originalScore: baseScore,
-            constraintScore: constraintScore,
-            types: result.type || [],
-            features: result.features || []
-        };
+        // Extract the score from the enhanced match object
+        if (enhancedMatch && typeof enhancedMatch === 'object') {
+            return {
+                id: enhancedMatch.id || result.id,
+                name: enhancedMatch.name || result.name,
+                description: enhancedMatch.description || result.description || '',
+                score: enhancedMatch.score !== undefined ? Math.round(enhancedMatch.score) : 50,
+                url: `https://www.wikidata.org/wiki/${result.id}`,
+                originalScore: enhancedMatch.originalScore || result.score || 50,
+                constraintScore: enhancedMatch.constraintScore || 100,
+                types: result.type || [],
+                features: result.features || [],
+                constraintDetails: enhancedMatch.constraintDetails
+            };
+        } else {
+            // Fallback if scoreMatchWithConstraints didn't work as expected
+            const baseScore = (result.score !== undefined && !isNaN(result.score)) ? result.score : 50;
+            return {
+                id: result.id,
+                name: result.name,
+                description: result.description || '',
+                score: baseScore,
+                url: `https://www.wikidata.org/wiki/${result.id}`,
+                originalScore: baseScore,
+                constraintScore: 100,
+                types: result.type || [],
+                features: result.features || []
+            };
+        }
     }).sort((a, b) => b.score - a.score); // Sort by score descending
 }
 
