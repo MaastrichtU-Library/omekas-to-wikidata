@@ -302,32 +302,117 @@ export function setupReconciliationStep(state) {
             // Add property headers for mapped keys
             mappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                
+                // Create header content with property label and clickable QID
+                let headerContent;
+                let clickHandler = null;
+                
+                if (keyObj.property && keyObj.property.label && keyObj.property.id) {
+                    // Create header with property label and clickable QID
+                    headerContent = createElement('div', { 
+                        className: 'property-header-content' 
+                    });
+                    
+                    // Property label
+                    const labelSpan = createElement('span', {
+                        className: 'property-label'
+                    }, keyObj.property.label);
+                    headerContent.appendChild(labelSpan);
+                    
+                    // Space and opening bracket
+                    headerContent.appendChild(document.createTextNode(' ('));
+                    
+                    // Clickable QID link
+                    const qidLink = createElement('a', {
+                        className: 'property-qid-link',
+                        href: `https://www.wikidata.org/wiki/${keyObj.property.id}`,
+                        target: '_blank',
+                        onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
+                    }, keyObj.property.id);
+                    headerContent.appendChild(qidLink);
+                    
+                    // Closing bracket
+                    headerContent.appendChild(document.createTextNode(')'));
+                    
+                    // Set click handler to open mapping modal
+                    clickHandler = () => {
+                        if (window.openMappingModal) {
+                            window.openMappingModal(keyObj);
+                        }
+                    };
+                } else {
+                    // Fallback to original key name if no property info available
+                    headerContent = keyName;
+                    clickHandler = () => {
+                        if (window.openMappingModal) {
+                            window.openMappingModal(keyObj);
+                        }
+                    };
+                }
+                
                 const th = createElement('th', {
-                    className: 'property-header',
-                    dataset: { property: keyName }
-                }, keyName);
+                    className: 'property-header clickable-header',
+                    dataset: { property: keyName },
+                    onClick: clickHandler,
+                    style: { cursor: 'pointer' },
+                    title: 'Click to modify mapping'
+                }, headerContent);
+                
                 propertyHeaders.appendChild(th);
             });
             
             // Add property headers for manual properties
             manualProperties.forEach(manualProp => {
-                const propertyLabel = `${manualProp.property.label} (${manualProp.property.id})`;
-                const th = createElement('th', {
-                    className: 'property-header manual-property-header',
-                    dataset: { 
-                        property: manualProp.property.id,
-                        isManual: 'true'
-                    },
-                    title: manualProp.property.description
-                }, propertyLabel);
+                // Create header content with property label and clickable QID
+                const headerContent = createElement('div', { 
+                    className: 'property-header-content' 
+                });
+                
+                // Property label
+                const labelSpan = createElement('span', {
+                    className: 'property-label'
+                }, manualProp.property.label);
+                headerContent.appendChild(labelSpan);
+                
+                // Space and opening bracket
+                headerContent.appendChild(document.createTextNode(' ('));
+                
+                // Clickable QID link
+                const qidLink = createElement('a', {
+                    className: 'property-qid-link',
+                    href: `https://www.wikidata.org/wiki/${manualProp.property.id}`,
+                    target: '_blank',
+                    onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
+                }, manualProp.property.id);
+                headerContent.appendChild(qidLink);
+                
+                // Closing bracket
+                headerContent.appendChild(document.createTextNode(')'));
                 
                 // Add required indicator if applicable
                 if (manualProp.isRequired) {
                     const requiredIndicator = createElement('span', {
                         className: 'required-indicator-header'
                     }, ' *');
-                    th.appendChild(requiredIndicator);
+                    headerContent.appendChild(requiredIndicator);
                 }
+                
+                const th = createElement('th', {
+                    className: 'property-header manual-property-header clickable-header',
+                    dataset: { 
+                        property: manualProp.property.id,
+                        isManual: 'true'
+                    },
+                    title: `${manualProp.property.description}\nClick to modify property settings`,
+                    onClick: () => {
+                        // For manual properties, we could open the manual property edit modal
+                        // But since it's not immediately clear how to create the keyObj for manual properties,
+                        // let's just add a message for now indicating this functionality
+                        console.log('Manual property header clicked:', manualProp);
+                        // TODO: Implement manual property editing via modal
+                    },
+                    style: { cursor: 'pointer' }
+                }, headerContent);
                 
                 propertyHeaders.appendChild(th);
             });
