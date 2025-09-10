@@ -1259,15 +1259,15 @@ export function setupMappingStep(state) {
         stage2Section.appendChild(stage2Content);
         container.appendChild(stage2Section);
         
-        // Stage 3: Value manipulation (Initially hidden)
+        // Stage 3: Value Transformation (Initially hidden)
         const stage3Section = createElement('details', {
             className: 'mapping-stage',
-            id: 'stage-3-value-manipulation'
+            id: 'stage-3-value-transformation'
         });
         
         const stage3Summary = createElement('summary', {
             className: 'stage-summary'
-        }, 'Stage 3: Value manipulation');
+        }, 'Stage 3: Value Transformation');
         stage3Section.appendChild(stage3Summary);
         
         const stage3Content = createElement('div', {
@@ -2957,12 +2957,6 @@ export function setupMappingStep(state) {
             return container;
         }
 
-        // Header section
-        const header = createElement('div', { className: 'transformation-header' });
-        header.appendChild(createElement('h4', {}, 'Value Transformation'));
-        header.appendChild(createElement('p', { className: 'transformation-description' }, 
-            'Apply transformations to modify values before reconciliation. Transformations are applied in order.'));
-        container.appendChild(header);
 
         // Field selector section
         const rawSampleValue = keyData.sampleValue;
