@@ -819,11 +819,10 @@ export function setupMappingStep(state) {
             className: 'metadata-consolidated-modal-content'
         });
         
-        // Stage 1: Property Information (Collapsible)
+        // Stage 1: Property Information (Collapsible, closed by default)
         const stage1Section = createElement('details', {
             className: 'mapping-stage',
-            id: 'metadata-stage-1-property-info',
-            open: true
+            id: 'metadata-stage-1-property-info'
         });
         
         const stage1Summary = createElement('summary', {
@@ -887,7 +886,7 @@ export function setupMappingStep(state) {
             <div class="datatype-description">
                 ${manualProp.property.id === 'instance-of' 
                     ? 'Values will link to Wikidata items representing the type or class of each item.' 
-                    : 'Values will be stored as text metadata for each item.'}
+                    : 'Expecting a string for a language-specific value. Values will be stored as text metadata for each item.'}
             </div>
         `;
         stage2Content.appendChild(dataTypeSection);
@@ -910,24 +909,27 @@ export function setupMappingStep(state) {
             className: 'stage-content'
         });
         
-        // Default value section
-        const defaultValueSection = createElement('div', {
-            className: 'default-value-section'
+        // Placeholder section
+        const placeholderSection = createElement('div', {
+            className: 'placeholder-section'
         });
-        defaultValueSection.innerHTML = `
+        placeholderSection.innerHTML = `
             <h4>Default Value (Optional)</h4>
-            <div class="default-value-description">
+            <div class="placeholder-description">
                 This value will be pre-filled for all items. You can modify individual values during reconciliation.
             </div>
-            <div class="default-value-input-container">
+            <div class="placeholder-input-container">
                 <input type="text" id="metadata-default-value-input" 
                        placeholder="Enter a default value..." 
                        class="default-value-input"
                        value="${manualProp.defaultValue || ''}">
                 <div class="input-help">Enter a ${manualProp.property.id === 'instance-of' ? 'Wikidata item' : 'text'} value for ${manualProp.property.label}</div>
             </div>
+            <div class="placeholder-notice">
+                <em>Additional configuration options will be available here in future updates.</em>
+            </div>
         `;
-        stage3Content.appendChild(defaultValueSection);
+        stage3Content.appendChild(placeholderSection);
         stage3Section.appendChild(stage3Content);
         container.appendChild(stage3Section);
         
