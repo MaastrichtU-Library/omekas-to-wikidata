@@ -3200,37 +3200,6 @@ export function setupMappingStep(state) {
     function renderRegexConfigUI(propertyId, block, state) {
         const container = createElement('div', { className: 'config-fields' });
         
-        // Common patterns section
-        const patternsSection = createElement('div', { className: 'config-field' });
-        patternsSection.appendChild(createElement('label', {}, 'Common Patterns:'));
-        
-        const patternSelect = createElement('select', {
-            className: 'pattern-select',
-            onChange: (e) => {
-                if (e.target.value && COMMON_REGEX_PATTERNS[e.target.value]) {
-                    const pattern = COMMON_REGEX_PATTERNS[e.target.value];
-                    state.updateTransformationBlock(propertyId, block.id, {
-                        pattern: pattern.pattern,
-                        replacement: pattern.replacement
-                    });
-                    updateTransformationPreview(propertyId, state);
-                    // Refresh UI to show the populated values
-                    refreshTransformationUI(propertyId, state);
-                }
-            }
-        });
-        
-        // Add empty option
-        patternSelect.appendChild(createElement('option', { value: '' }, 'Select a common pattern...'));
-        
-        // Add common patterns
-        Object.entries(COMMON_REGEX_PATTERNS).forEach(([name, pattern]) => {
-            const option = createElement('option', { value: name }, `${name} - ${pattern.description}`);
-            patternSelect.appendChild(option);
-        });
-        
-        patternsSection.appendChild(patternSelect);
-        
         // Pattern field
         const patternField = createElement('div', { className: 'config-field' });
         patternField.appendChild(createElement('label', {}, 'Regex Pattern:'));
@@ -3259,6 +3228,39 @@ export function setupMappingStep(state) {
             }
         });
         replacementField.appendChild(replacementInput);
+        
+        // Common patterns section
+        const patternsSection = createElement('div', { className: 'config-field' });
+        patternsSection.appendChild(createElement('label', {}, 'Common Patterns:'));
+        
+        const patternSelect = createElement('select', {
+            className: 'pattern-select',
+            onChange: (e) => {
+                if (e.target.value && COMMON_REGEX_PATTERNS[e.target.value]) {
+                    const pattern = COMMON_REGEX_PATTERNS[e.target.value];
+                    state.updateTransformationBlock(propertyId, block.id, {
+                        pattern: pattern.pattern,
+                        replacement: pattern.replacement
+                    });
+                    updateTransformationPreview(propertyId, state);
+                    
+                    // Update the input field values to reflect the selected pattern
+                    patternInput.value = pattern.pattern;
+                    replacementInput.value = pattern.replacement;
+                }
+            }
+        });
+        
+        // Add empty option
+        patternSelect.appendChild(createElement('option', { value: '' }, 'Select a common pattern...'));
+        
+        // Add common patterns
+        Object.entries(COMMON_REGEX_PATTERNS).forEach(([name, pattern]) => {
+            const option = createElement('option', { value: name }, `${name} - ${pattern.description}`);
+            patternSelect.appendChild(option);
+        });
+        
+        patternsSection.appendChild(patternSelect);
         
         // Flags field
         const flagsField = createElement('div', { className: 'config-field' });
@@ -3303,9 +3305,9 @@ export function setupMappingStep(state) {
         
         flagsField.appendChild(flagsContainer);
         
-        container.appendChild(patternsSection);
         container.appendChild(patternField);
         container.appendChild(replacementField);
+        container.appendChild(patternsSection);
         container.appendChild(flagsField);
         return container;
     }
