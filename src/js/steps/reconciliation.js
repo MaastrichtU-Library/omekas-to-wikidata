@@ -172,9 +172,8 @@ export function setupReconciliationStep(state) {
                     };
                 });
                 
-                // Initialize each manual property with default values (using same sort order as headers)
-                const sortedManualProperties = sortManualPropertiesByPriority(manualProperties);
-                sortedManualProperties.forEach(manualProp => {
+                // Initialize each manual property with default values
+                manualProperties.forEach(manualProp => {
                     const propertyId = manualProp.property.id;
                     const defaultValue = manualProp.defaultValue;
                     
@@ -363,9 +362,8 @@ export function setupReconciliationStep(state) {
                 propertyHeaders.appendChild(th);
             });
             
-            // Add property headers for manual properties with priority ordering
-            const sortedManualProperties = sortManualPropertiesByPriority(manualProperties);
-            sortedManualProperties.forEach(manualProp => {
+            // Add property headers for manual properties (now in correct order from source)
+            manualProperties.forEach(manualProp => {
                 // Create header content with property label and clickable QID
                 const headerContent = createElement('div', { 
                     className: 'property-header-content' 
@@ -473,9 +471,8 @@ export function setupReconciliationStep(state) {
                     }
                 });
                 
-                // Add manual property cells (using same sort order as headers)
-                const sortedManualProperties = sortManualPropertiesByPriority(manualProperties);
-                sortedManualProperties.forEach(manualProp => {
+                // Add manual property cells
+                manualProperties.forEach(manualProp => {
                     const propertyId = manualProp.property.id;
                     const defaultValue = manualProp.defaultValue || '';
                     
@@ -1398,35 +1395,6 @@ export function setupReconciliationStep(state) {
         
         // For regular properties, use the property page
         return `https://www.wikidata.org/wiki/Property:${property.id}`;
-    }
-    
-    /**
-     * Sort manual properties by priority order: Label, Description, Alias, Instance of, then others
-     */
-    function sortManualPropertiesByPriority(manualProperties) {
-        const priorityOrder = ['label', 'description', 'alias', 'aliases', 'instance of'];
-        
-        return [...manualProperties].sort((a, b) => {
-            const aLabel = a.property.label?.toLowerCase();
-            const bLabel = b.property.label?.toLowerCase();
-            
-            const aIndex = priorityOrder.findIndex(priority => aLabel === priority);
-            const bIndex = priorityOrder.findIndex(priority => bLabel === priority);
-            
-            // If both have priority, sort by priority order
-            if (aIndex !== -1 && bIndex !== -1) {
-                return aIndex - bIndex;
-            }
-            
-            // If only 'a' has priority, it comes first
-            if (aIndex !== -1) return -1;
-            
-            // If only 'b' has priority, it comes first  
-            if (bIndex !== -1) return 1;
-            
-            // If neither has priority, maintain original order (or sort alphabetically)
-            return aLabel?.localeCompare(bLabel) || 0;
-        });
     }
     
     /**
