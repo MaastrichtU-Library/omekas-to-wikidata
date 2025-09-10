@@ -325,7 +325,7 @@ export function setupReconciliationStep(state) {
                     // Clickable QID link
                     const qidLink = createElement('a', {
                         className: 'property-qid-link',
-                        href: `https://www.wikidata.org/wiki/${keyObj.property.id}`,
+                        href: `https://www.wikidata.org/wiki/Property:${keyObj.property.id}`,
                         target: '_blank',
                         onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
                     }, keyObj.property.id);
@@ -380,7 +380,7 @@ export function setupReconciliationStep(state) {
                 // Clickable QID link
                 const qidLink = createElement('a', {
                     className: 'property-qid-link',
-                    href: `https://www.wikidata.org/wiki/${manualProp.property.id}`,
+                    href: `https://www.wikidata.org/wiki/Property:${manualProp.property.id}`,
                     target: '_blank',
                     onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
                 }, manualProp.property.id);
