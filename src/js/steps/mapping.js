@@ -412,6 +412,15 @@ export function setupMappingStep(state) {
             }
         }
         
+        // Always auto-open Extra Wikidata properties and metadata section
+        const manualPropertiesListElement = document.getElementById('manual-properties');
+        if (manualPropertiesListElement) {
+            const manualPropertiesSection = manualPropertiesListElement.closest('details');
+            if (manualPropertiesSection) {
+                manualPropertiesSection.open = true;
+            }
+        }
+        
         // Enable continue button if there are mapped keys
         if (proceedToReconciliationBtn) {
             proceedToReconciliationBtn.disabled = !finalState.mappings.mappedKeys.length;
