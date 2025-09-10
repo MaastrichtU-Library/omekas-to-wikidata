@@ -2614,6 +2614,66 @@ export function setupMappingStep(state) {
     }
 
     /**
+     * Converts a sample value to a string suitable for transformation preview
+     * @param {*} value - The sample value (can be object, array, string, etc.)
+     * @returns {string} String representation for transformation
+     */
+    function convertSampleValueToString(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        // If it's already a string, return it
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        // If it's a primitive value, convert to string
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            return String(value);
+        }
+
+        // Handle arrays
+        if (Array.isArray(value)) {
+            if (value.length === 0) return '';
+            
+            // Get first value and convert to string
+            const firstValue = value[0];
+            return convertSampleValueToString(firstValue);
+        }
+
+        // Handle objects - look for common value properties
+        if (value && typeof value === 'object') {
+            // Look for Omeka S style values first
+            const valueProps = ['@value', 'value', 'name', 'title', 'label', 'display_title'];
+            for (const prop of valueProps) {
+                if (prop in value && value[prop] !== null && value[prop] !== undefined) {
+                    return convertSampleValueToString(value[prop]);
+                }
+            }
+            
+            // If no standard property found, try to create a meaningful string
+            // Look for any string values in the object
+            const entries = Object.entries(value);
+            for (const [key, val] of entries) {
+                if (typeof val === 'string' && val.trim() !== '') {
+                    return val;
+                }
+            }
+            
+            // As a last resort, stringify the object in a readable way
+            try {
+                return JSON.stringify(value);
+            } catch (e) {
+                return '[Complex Object]';
+            }
+        }
+
+        // Fallback for any other types
+        return String(value);
+    }
+
+    /**
      * Renders the value transformation UI for Stage 3
      * @param {Object} keyData - The mapped key data
      * @param {Object} state - The application state
@@ -2640,12 +2700,13 @@ export function setupMappingStep(state) {
         const header = createElement('div', { className: 'transformation-header' });
         header.appendChild(createElement('h4', {}, 'Value Transformation'));
         header.appendChild(createElement('p', { className: 'transformation-description' }, 
-            'Apply transformations to modify values before they are sent to Wikidata. Transformations are applied in order.'));
+            'Apply transformations to modify values before reconciliation. Transformations are applied in order.'));
         container.appendChild(header);
 
-        // Sample value for preview
+        // Sample value for preview - convert to string for transformations
         const currentState = state.getState();
-        const sampleValue = keyData.sampleValue || 'Sample Value';
+        const rawSampleValue = keyData.sampleValue;
+        const sampleValue = convertSampleValueToString(rawSampleValue) || 'Sample Value';
         
         // Transformation blocks container
         const blocksContainer = createElement('div', {
@@ -2705,7 +2766,7 @@ export function setupMappingStep(state) {
         if (blocks.length === 0) {
             container.appendChild(createElement('div', {
                 className: 'no-transformations-message'
-            }, 'No transformations configured. Add a transformation to modify values before sending to Wikidata.'));
+            }, 'No transformations configured. Add a transformation to modify values before reconciliation.'));
             return;
         }
 
@@ -2842,7 +2903,7 @@ export function setupMappingStep(state) {
             placeholder: `Enter ${block.type} text...`,
             onInput: (e) => {
                 state.updateTransformationBlock(propertyId, block.id, { text: e.target.value });
-                refreshTransformationUI(propertyId, state);
+                updateTransformationPreview(propertyId, state);
             }
         });
         
@@ -2866,7 +2927,7 @@ export function setupMappingStep(state) {
             placeholder: 'Text to find...',
             onInput: (e) => {
                 state.updateTransformationBlock(propertyId, block.id, { find: e.target.value });
-                refreshTransformationUI(propertyId, state);
+                updateTransformationPreview(propertyId, state);
             }
         });
         findField.appendChild(findInput);
@@ -2880,7 +2941,7 @@ export function setupMappingStep(state) {
             placeholder: 'Replacement text...',
             onInput: (e) => {
                 state.updateTransformationBlock(propertyId, block.id, { replace: e.target.value });
-                refreshTransformationUI(propertyId, state);
+                updateTransformationPreview(propertyId, state);
             }
         });
         replaceField.appendChild(replaceInput);
@@ -2894,7 +2955,7 @@ export function setupMappingStep(state) {
             checked: block.config.caseSensitive || false,
             onChange: (e) => {
                 state.updateTransformationBlock(propertyId, block.id, { caseSensitive: e.target.checked });
-                refreshTransformationUI(propertyId, state);
+                updateTransformationPreview(propertyId, state);
             }
         });
         
@@ -2938,7 +2999,32 @@ export function setupMappingStep(state) {
     }
 
     /**
-     * Refreshes the transformation UI for a property
+     * Updates only the transformation preview values without re-rendering the entire UI
+     * This prevents input fields from losing focus on every keystroke
+     */
+    function updateTransformationPreview(propertyId, state) {
+        const container = document.getElementById(`transformation-blocks-${propertyId}`);
+        if (!container || !container.dataset.sampleValue) return;
+
+        const sampleValue = container.dataset.sampleValue;
+        const blocks = state.getTransformationBlocks(propertyId);
+        const preview = getTransformationPreview(sampleValue, blocks);
+
+        // Update each value state display
+        const valueStates = container.querySelectorAll('.transformation-value-state');
+        preview.steps.forEach((step, index) => {
+            if (valueStates[index]) {
+                const valueContent = valueStates[index].querySelector('.value-content');
+                if (valueContent) {
+                    valueContent.textContent = step.value || '(empty)';
+                }
+            }
+        });
+    }
+
+    /**
+     * Refreshes the transformation UI for a property (full re-render)
+     * Use sparingly as this will cause input fields to lose focus
      */
     function refreshTransformationUI(propertyId, state) {
         const container = document.getElementById(`transformation-blocks-${propertyId}`);
