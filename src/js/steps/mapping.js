@@ -2953,12 +2953,14 @@ export function setupMappingStep(state) {
         const metadata = BLOCK_METADATA[block.type];
         const blockElement = createElement('div', {
             className: `transformation-block transformation-block--${block.type}`,
-            dataset: { blockId: block.id },
-            draggable: 'true'
+            dataset: { blockId: block.id }
         });
 
         // Block header with drag handle and controls
-        const blockHeader = createElement('div', { className: 'block-header' });
+        const blockHeader = createElement('div', { 
+            className: 'block-header',
+            draggable: 'true'
+        });
         
         const dragHandle = createElement('div', { 
             className: 'drag-handle',
@@ -2993,7 +2995,7 @@ export function setupMappingStep(state) {
         blockElement.appendChild(blockConfig);
 
         // Add drag and drop handlers
-        addDragHandlers(blockElement, propertyId, state);
+        addDragHandlers(blockElement, blockHeader, propertyId, state);
 
         return blockElement;
     }
@@ -3457,15 +3459,15 @@ export function setupMappingStep(state) {
     /**
      * Adds drag and drop handlers to a block element
      */
-    function addDragHandlers(blockElement, propertyId, state) {
-        blockElement.addEventListener('dragstart', (e) => {
+    function addDragHandlers(blockElement, dragHandle, propertyId, state) {
+        dragHandle.addEventListener('dragstart', (e) => {
             currentDraggedElement = blockElement;
             blockElement.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', blockElement.dataset.blockId);
         });
 
-        blockElement.addEventListener('dragend', () => {
+        dragHandle.addEventListener('dragend', () => {
             if (currentDraggedElement) {
                 currentDraggedElement.classList.remove('dragging');
                 currentDraggedElement = null;
