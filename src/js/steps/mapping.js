@@ -1501,7 +1501,7 @@ export function setupMappingStep(state) {
     function updateStage2Summary(property) {
         const stage2Summary = document.getElementById('stage-2-summary');
         if (stage2Summary && property && property.datatypeLabel) {
-            stage2Summary.textContent = `Stage 2: Value Type Detection - Data type is ${property.datatypeLabel}`;
+            stage2Summary.textContent = `Stage 2: Value type is ${property.datatypeLabel}`;
         }
     }
     
