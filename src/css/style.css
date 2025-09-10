@@ -5601,22 +5601,24 @@ pre.sample-value {
 }
 
 .flag-option {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-    width: fit-content;
+    display: block;
+    margin-bottom: 8px;
+    clear: both;
 }
 
 .flag-option input[type="checkbox"] {
-    margin: 0;
+    display: inline-block;
+    margin: 0 6px 0 0;
+    vertical-align: middle;
 }
 
 .flag-option label {
+    display: inline-block;
     font-size: 13px;
     color: #555;
     margin: 0;
     cursor: pointer;
+    vertical-align: middle;
 }
 
 /* Responsive design for new components */
