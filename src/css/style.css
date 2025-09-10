@@ -5292,8 +5292,10 @@ pre.sample-value {
 }
 
 .transformation-block.drop-target {
-    border-color: #007bff;
-    background: #f8f9ff;
+    border: 2px dashed var(--primary-color) !important;
+    background: rgba(33, 150, 243, 0.08);
+    transform: scale(1.02);
+    transition: all 0.2s ease;
 }
 
 /* Block header */

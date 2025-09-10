@@ -3397,37 +3397,62 @@ export function setupMappingStep(state) {
         }
     }
 
+    // Global variable to track the currently dragged element across all blocks
+    let currentDraggedElement = null;
+
     /**
      * Adds drag and drop handlers to a block element
      */
     function addDragHandlers(blockElement, propertyId, state) {
-        let draggedElement = null;
-
         blockElement.addEventListener('dragstart', (e) => {
-            draggedElement = blockElement;
+            currentDraggedElement = blockElement;
             blockElement.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', blockElement.dataset.blockId);
         });
 
         blockElement.addEventListener('dragend', () => {
-            blockElement.classList.remove('dragging');
-            draggedElement = null;
+            if (currentDraggedElement) {
+                currentDraggedElement.classList.remove('dragging');
+                currentDraggedElement = null;
+            }
+            // Remove drop target indicators from all blocks
+            const blocks = Array.from(blockElement.parentElement.querySelectorAll('.transformation-block'));
+            blocks.forEach(block => block.classList.remove('drop-target'));
+        });
+
+        blockElement.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            if (currentDraggedElement && currentDraggedElement !== blockElement) {
+                blockElement.classList.add('drop-target');
+            }
+        });
+
+        blockElement.addEventListener('dragleave', (e) => {
+            // Only remove drop-target if we're actually leaving this element
+            if (!blockElement.contains(e.relatedTarget)) {
+                blockElement.classList.remove('drop-target');
+            }
         });
 
         blockElement.addEventListener('dragover', (e) => {
             e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
+            if (currentDraggedElement && currentDraggedElement !== blockElement) {
+                e.dataTransfer.dropEffect = 'move';
+            }
         });
 
         blockElement.addEventListener('drop', (e) => {
             e.preventDefault();
-            if (draggedElement && draggedElement !== blockElement) {
+            blockElement.classList.remove('drop-target');
+            
+            if (currentDraggedElement && currentDraggedElement !== blockElement) {
                 // Reorder blocks
                 const blocks = Array.from(blockElement.parentElement.querySelectorAll('.transformation-block'));
-                const draggedIndex = blocks.indexOf(draggedElement);
+                const draggedIndex = blocks.indexOf(currentDraggedElement);
                 const targetIndex = blocks.indexOf(blockElement);
                 
-                if (draggedIndex !== targetIndex) {
+                if (draggedIndex !== -1 && targetIndex !== -1 && draggedIndex !== targetIndex) {
                     const blockIds = blocks.map(el => el.dataset.blockId);
                     const draggedId = blockIds.splice(draggedIndex, 1)[0];
                     blockIds.splice(targetIndex, 0, draggedId);
