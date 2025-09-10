@@ -5531,7 +5531,7 @@ pre.sample-value {
 }
 
 .field-results {
-    max-height: 200px;
+    max-height: 400px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -5623,7 +5623,7 @@ pre.sample-value {
 /* Responsive design for new components */
 @media (max-width: 768px) {
     .field-results {
-        max-height: 150px;
+        max-height: 300px;
     }
     
     .regex-flags {

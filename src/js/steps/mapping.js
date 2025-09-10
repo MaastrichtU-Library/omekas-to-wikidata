@@ -3366,10 +3366,8 @@ export function setupMappingStep(state) {
             return;
         }
         
-        // Limit results to avoid UI clutter
-        const displayFields = filteredFields.slice(0, 10);
-        
-        displayFields.forEach(field => {
+        // Show all results - container will be scrollable
+        filteredFields.forEach(field => {
             const fieldItem = createElement('div', {
                 className: 'field-result-item',
                 onClick: () => {
@@ -3405,12 +3403,6 @@ export function setupMappingStep(state) {
             fieldItem.appendChild(previewElement);
             resultsContainer.appendChild(fieldItem);
         });
-        
-        if (filteredFields.length > 10) {
-            resultsContainer.appendChild(createElement('div', { 
-                className: 'more-results-message' 
-            }, `... and ${filteredFields.length - 10} more results`));
-        }
     }
     
     /**
