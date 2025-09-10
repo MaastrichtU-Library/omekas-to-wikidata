@@ -494,7 +494,7 @@ export function setupMappingStep(state) {
                 
                 const p31Property = {
                     property: {
-                        id: 'instance-of',
+                        id: 'P31',
                         label: 'instance of',
                         description: 'that class of which this subject is a particular example and member',
                         datatype: 'wikibase-item',
@@ -521,7 +521,7 @@ export function setupMappingStep(state) {
                 // Fallback to basic P31 without constraints
                 const p31Property = {
                     property: {
-                        id: 'instance-of',
+                        id: 'P31',
                         label: 'instance of',
                         description: 'that class of which this subject is a particular example and member',
                         datatype: 'wikibase-item',
@@ -863,7 +863,7 @@ export function setupMappingStep(state) {
         
         // Automatically detect data type based on property
         let detectedDataType;
-        if (manualProp.property.id === 'instance-of') {
+        if (manualProp.property.id === 'P31') {
             detectedDataType = 'Wikidata item';
         } else {
             detectedDataType = 'metadata';
@@ -886,7 +886,7 @@ export function setupMappingStep(state) {
                 <span class="datatype-label">${detectedDataType}</span>
             </div>
             <div class="datatype-description">
-                ${manualProp.property.id === 'instance-of' 
+                ${manualProp.property.id === 'P31' 
                     ? 'Values will link to Wikidata items representing the type or class of each item.' 
                     : manualProp.property.id === 'description'
                         ? 'Expecting a language-specific string value. Descriptions are always specific to each language and cannot have a default value for all languages.'
@@ -914,7 +914,7 @@ export function setupMappingStep(state) {
         });
         
         // Default value section - different for instance of vs other metadata
-        if (manualProp.property.id === 'instance-of') {
+        if (manualProp.property.id === 'P31') {
             const instanceOfSection = createElement('div', {
                 className: 'instance-of-section'
             });
