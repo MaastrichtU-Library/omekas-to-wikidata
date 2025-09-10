@@ -39,6 +39,8 @@ import {
     createOriginalKeyInfoGetter,
     generateLodUri,
     createReconciliationRequirementReasonGetter,
+    validateReconciliationRequirements,
+    initializeReconciliationDataStructure,
     
     // Progress tracking
     createProgressCalculator,
@@ -83,6 +85,7 @@ import {
     setupManualSearch,
     createOpenReconciliationModalFactory,
     createReconciliationModalContentFactory,
+    createModalInteractionHandlers,
     
     // Display utilities
     createGetPropertyDisplayInfoFactory,
@@ -158,40 +161,132 @@ export function setupReconciliationStep(state) {
     // When enabled, high-confidence matches proceed automatically without user review
     let autoAdvanceSetting = true; // Default to auto-advance enabled
     
-    // Set up factory functions for data processing functions that need access to local variables
-    const loadMockDataForTesting = createMockDataLoader(state, initializeReconciliation);
-    let getOriginalKeyInfo; // Will be initialized after getPropertyDisplayInfo is defined
-    let getReconciliationRequirementReason; // Will be initialized after getPropertyDisplayInfo is defined
-    let getPropertyDisplayInfo; // Will be initialized from factory function
+    // Initialize all reconciliation modules (consolidated initialization)
+    const modules = initializeAllReconciliationModules();
     
-    // Set up progress factory functions
-    let calculateCurrentProgress;
-    let updateProceedButton;
-    let storeAllMatches;
-    let storeEmptyMatches;
-    let markCellAsReconciled;
-    let markCellAsSkipped;
-    let markCellAsNoItem;
-    let markCellAsString;
-    
-    // Set up entity matcher factory functions
-    let performAutomaticReconciliation;
-    
-    // Set up batch processor factory functions
-    let performBatchAutoAcceptance;
-    let reconcileNextUnprocessedCell;
-    let getAutoAdvanceSetting;
-    let setupAutoAdvanceToggle;
-    
-    // Set up table UI factory functions
-    let createReconciliationTable;
-    let createPropertyCell;
-    let createManualPropertyCell;
-    let restoreReconciliationDisplay;
-    
-    // Set up modal UI factory functions
-    let openReconciliationModal;
-    let createReconciliationModalContent;
+    function initializeAllReconciliationModules() {
+        // Data processing functions
+        const loadMockDataForTesting = createMockDataLoader(state, initializeReconciliation);
+        const getPropertyDisplayInfo = createGetPropertyDisplayInfoFactory(state);
+        const getOriginalKeyInfo = createOriginalKeyInfoGetter(reconciliationData, state);
+        const getReconciliationRequirementReason = createReconciliationRequirementReasonGetter(state, getPropertyDisplayInfo);
+        
+        // Entity matching functions
+        const performAutomaticReconciliation = createAutomaticReconciliation({
+            state,
+            storeAllMatches: null, // Will be set after progress functions
+            storeEmptyMatches: null, // Will be set after progress functions
+            displayReconciliationResults,
+            displayReconciliationError,
+            markCellAsReconciled: null, // Will be set after progress functions
+            modalUI,
+            currentReconciliationCell,
+            getAutoAdvanceSetting: () => autoAdvanceSetting,
+            reconcileNextUnprocessedCell: null // Will be set later
+        });
+        
+        // Progress and state management functions
+        const calculateCurrentProgress = createProgressCalculator(reconciliationData);
+        const updateProceedButton = createProceedButtonUpdater(proceedToDesignerBtn, state);
+        const storeAllMatches = createMatchesStorer(reconciliationData, state, updateCellDisplayWithMatch);
+        const storeEmptyMatches = createEmptyMatchesStorer(reconciliationData, state);
+        const cellMarkers = createCellMarkers(reconciliationData, state, updateCellDisplay, updateProceedButton, contextSuggestions);
+        
+        // Batch processing functions
+        const performBatchAutoAcceptance = createBatchAutoAcceptanceProcessor({
+            extractPropertyValues,
+            markCellAsReconciled: cellMarkers.markCellAsReconciled,
+            storeAllMatches,
+            storeEmptyMatches,
+            updateCellQueueStatus,
+            updateCellLoadingState,
+            updateCellDisplayAsNoMatches,
+            updateProceedButton,
+            reconciliationData,
+            state
+        });
+        
+        const reconcileNextUnprocessedCell = createNextUnprocessedCellReconciler({
+            calculateCurrentProgress,
+            state,
+            updateProceedButton,
+            reconciliationData
+        });
+        
+        // Modal functions
+        const createReconciliationModalContent = createReconciliationModalContentFactory({
+            reconciliationData,
+            getPropertyDisplayInfo,
+            fetchWikidataPropertyInfo,
+            getWikidataUrlForProperty
+        });
+        
+        const openReconciliationModal = createOpenReconciliationModalFactory({
+            modalUI,
+            performAutomaticReconciliation,
+            setupDynamicDatePrecision,
+            setupAutoAdvanceToggle: () => setupAutoAdvanceToggle()
+        });
+        
+        // Table UI functions
+        const restoreReconciliationDisplay = createRestoreReconciliationDisplayFactory(reconciliationData);
+        const createReconciliationTable = createReconciliationTableFactory({
+            propertyHeaders,
+            reconciliationRows,
+            getWikidataUrlForProperty,
+            performBatchAutoAcceptance,
+            restoreReconciliationDisplay,
+            openReconciliationModal
+        });
+        
+        const createPropertyCell = createPropertyCellFactory(openReconciliationModal);
+        const createManualPropertyCell = createManualPropertyCellFactory(openReconciliationModal);
+        
+        // Update cross-references
+        performAutomaticReconciliation.storeAllMatches = storeAllMatches;
+        performAutomaticReconciliation.storeEmptyMatches = storeEmptyMatches;
+        performAutomaticReconciliation.markCellAsReconciled = cellMarkers.markCellAsReconciled;
+        performAutomaticReconciliation.reconcileNextUnprocessedCell = reconcileNextUnprocessedCell;
+        
+        return {
+            // Data processing
+            loadMockDataForTesting,
+            getPropertyDisplayInfo,
+            getOriginalKeyInfo,
+            getReconciliationRequirementReason,
+            validateReconciliationRequirements,
+            initializeReconciliationDataStructure,
+            
+            // Progress and state
+            calculateCurrentProgress,
+            updateProceedButton,
+            storeAllMatches,
+            storeEmptyMatches,
+            markCellAsReconciled: cellMarkers.markCellAsReconciled,
+            markCellAsSkipped: cellMarkers.markCellAsSkipped,
+            markCellAsNoItem: cellMarkers.markCellAsNoItem,
+            markCellAsString: cellMarkers.markCellAsString,
+            
+            // Entity matching
+            performAutomaticReconciliation,
+            
+            // Batch processing
+            performBatchAutoAcceptance,
+            reconcileNextUnprocessedCell,
+            getAutoAdvanceSetting: () => autoAdvanceSetting,
+            setupAutoAdvanceToggle: () => setupAutoAdvanceToggle(),
+            
+            // Modal UI
+            openReconciliationModal,
+            createReconciliationModalContent,
+            
+            // Table UI
+            createReconciliationTable,
+            createPropertyCell,
+            createManualPropertyCell,
+            restoreReconciliationDisplay
+        };
+    }
     
     // Add click handler for proceed to designer button
     if (proceedToDesignerBtn) {
@@ -240,14 +335,14 @@ export function setupReconciliationStep(state) {
     // Reconcile next item button - now processes next unreconciled cell
     if (reconcileNextBtn) {
         reconcileNextBtn.addEventListener('click', () => {
-            reconcileNextUnprocessedCell();
+            modules.reconcileNextUnprocessedCell();
         });
     }
     
     // Test reconciliation model button for debugging
     if (testReconciliationModelBtn) {
         testReconciliationModelBtn.addEventListener('click', () => {
-            loadMockDataForTesting();
+            modules.loadMockDataForTesting();
         });
     }
     
@@ -283,33 +378,21 @@ export function setupReconciliationStep(state) {
     async function initializeReconciliation() {
         const currentState = state.getState();
         
-        if (!currentState.mappings || !currentState.mappings.mappedKeys || !currentState.mappings.mappedKeys.length) {
-            console.warn('❌ No mapped keys available for reconciliation');
-            console.warn('❌ Current mappings:', currentState.mappings);
-            return;
-        }
-        
-        // Pre-filter check: ensure we have keys that exist in the current dataset
-        const availableMappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
-        if (availableMappedKeys.length === 0) {
-            console.warn('❌ No mapped keys are available in the current dataset for reconciliation');
-            console.warn('❌ All mapped keys are from a different dataset or not present in current data');
-            return;
-        }
-        
-        if (!currentState.fetchedData) {
-            console.warn('❌ No fetched data available for reconciliation');
-            console.warn('❌ Current fetchedData:', currentState.fetchedData);
+        // Validate reconciliation requirements
+        const validation = modules.validateReconciliationRequirements(currentState);
+        if (!validation.isValid) {
+            console.warn(`❌ ${validation.error}`);
+            if (validation.details) {
+                console.warn('❌ Details:', validation.details);
+            }
             return;
         }
         
         
-        // Filter out keys that are not in the current dataset
-        const mappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
         
-        // Get manual properties
+        // Extract data for processing
+        const mappedKeys = validation.availableMappedKeys;
         const manualProperties = currentState.mappings.manualProperties || [];
-        
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         
         // Check if we already have reconciliation data from a previous session
@@ -318,82 +401,31 @@ export function setupReconciliationStep(state) {
             reconciliationData = currentState.reconciliationData;
             isReturningToStep = true;
         } else {
-            
             // Initialize reconciliation progress
             const totalCells = calculateTotalReconciliableCells(data, mappedKeys, manualProperties);
             state.setReconciliationProgress(0, totalCells);
             
-            // Initialize reconciliation data structure
-            reconciliationData = {};
-            data.forEach((item, index) => {
-                const itemId = `item-${index}`;
-                reconciliationData[itemId] = {
-                    originalData: item,
-                    properties: {}
-                };
-                
-                // Initialize each mapped property
-                mappedKeys.forEach(keyObj => {
-                    const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                    const values = extractPropertyValues(item, keyName);
-                    reconciliationData[itemId].properties[keyName] = {
-                        originalValues: values,
-                        references: [], // References specific to this property
-                        propertyMetadata: typeof keyObj === 'object' ? keyObj : null, // Store full property object with constraints
-                        reconciled: values.map(() => ({
-                            status: 'pending', // pending, reconciled, skipped, failed
-                            matches: [],
-                            selectedMatch: null,
-                            manualValue: null,
-                            qualifiers: {},
-                            confidence: 0
-                        }))
-                    };
-                });
-                
-                // Initialize each manual property with default values
-                manualProperties.forEach(manualProp => {
-                    const propertyId = manualProp.property.id;
-                    const defaultValue = manualProp.defaultValue;
-                    
-                    // Create default values array - manual properties get one value per item
-                    const values = defaultValue ? [defaultValue] : [''];
-                    
-                    reconciliationData[itemId].properties[propertyId] = {
-                        originalValues: values,
-                        references: [], // References specific to this property
-                        isManualProperty: true, // Mark as manual property
-                        manualPropertyData: manualProp, // Store complete manual property data
-                        reconciled: values.map(() => ({
-                            status: 'pending', // pending, reconciled, skipped, failed
-                            matches: [],
-                            selectedMatch: null,
-                            manualValue: defaultValue || null,
-                            qualifiers: {},
-                            confidence: 0
-                        }))
-                    };
-                });
-            });
+            // Initialize reconciliation data structure using extracted function
+            reconciliationData = modules.initializeReconciliationDataStructure(data, mappedKeys, manualProperties);
         }
         
         // Update proceed button
-        updateProceedButton();
+        modules.updateProceedButton();
         
         // Create reconciliation table
-        await createReconciliationTable(data, mappedKeys, manualProperties, isReturningToStep);
+        await modules.createReconciliationTable(data, mappedKeys, manualProperties, isReturningToStep);
         
         // Update state
         state.updateState('reconciliationData', reconciliationData);
         
         // Calculate and update progress from actual reconciliation data
         if (reconciliationData && Object.keys(reconciliationData).length > 0) {
-            const progress = calculateCurrentProgress();
+            const progress = modules.calculateCurrentProgress();
             state.updateState('reconciliationProgress', progress);
         }
         
         // Enable/disable proceed button
-        updateProceedButton();
+        modules.updateProceedButton();
         
     }
     
@@ -434,320 +466,26 @@ export function setupReconciliationStep(state) {
     
     
     
-    /**
-     * Create the reconciliation table interface
-     */
-    // [REMOVED] Moved to reconciliation-table.js module
     
-    /**
-     * Perform batch auto-acceptance for all values in the table
-     */
-    // [REMOVED] Moved to batch-processor.js module
-        const batchJobs = [];
-        let autoAcceptedCount = 0;
-        
-        // Collect all values that need checking
-        data.forEach((item, index) => {
-            const itemId = `item-${index}`;
-            mappedKeys.forEach(keyObj => {
-                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                const values = extractPropertyValues(item, keyName);
-                
-                values.forEach((value, valueIndex) => {
-                    batchJobs.push({
-                        itemId,
-                        property: keyName,
-                        valueIndex,
-                        value
-                    });
-                });
-            });
-        });
-        
-        
-        // Group by property to batch API calls efficiently
-        const batchByProperty = new Map();
-        const dateValues = [];
-        
-        batchJobs.forEach(job => {
-            const propertyType = detectPropertyType(job.property);
-            const inputConfig = getInputFieldConfig(propertyType);
-            
-            // Handle dates immediately (no API call needed)
-            if (propertyType === 'time' || isDateValue(job.value)) {
-                // Standardize the date and detect precision
-                const standardized = standardizeDateInput(job.value);
-                
-                dateValues.push({
-                    ...job,
-                    autoAcceptResult: {
-                        type: 'custom',
-                        value: standardized.date || job.value,
-                        datatype: 'time',
-                        qualifiers: {
-                            autoAccepted: true,
-                            reason: 'date value',
-                            precision: standardized.precision,
-                            displayValue: standardized.displayValue
-                        }
-                    }
-                });
-            } 
-            // Group API-requiring properties
-            else if (inputConfig.requiresReconciliation) {
-                if (!batchByProperty.has(job.property)) {
-                    batchByProperty.set(job.property, []);
-                }
-                batchByProperty.get(job.property).push(job);
-            }
-        });
-        
-        // Auto-accept all date values immediately
-        dateValues.forEach(({ itemId, property, valueIndex, autoAcceptResult }) => {
-            markCellAsReconciled({ itemId, property, valueIndex }, autoAcceptResult);
-            autoAcceptedCount++;
-        });
-        
-        // Process API-requiring properties in batches
-        for (const [property, jobs] of batchByProperty.entries()) {
-            
-            // Mark all jobs as queued first
-            jobs.forEach(job => {
-                updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'queued');
-            });
-            
-            // Batch reconciliation calls for this property
-            const batchPromises = jobs.map(async (job) => {                
-                try {
-                    // Try reconciliation API first
-                    let matches = await tryReconciliationApi(job.value, job.property);
-                    
-                    // If no matches from reconciliation API, try direct search
-                    if (!matches || matches.length === 0) {
-                        matches = await tryDirectWikidataSearch(job.value);
-                    }
-                    
-                    // Check for matches
-                    if (matches && matches.length > 0) {
-                        const bestMatch = matches[0]; // First match is usually the best
-                        
-                        // Auto-accept 100% matches
-                        if (bestMatch.score >= 100) {
-                            return {
-                                ...job,
-                                autoAcceptResult: {
-                                    type: 'wikidata',
-                                    id: bestMatch.id,
-                                    label: bestMatch.name,
-                                    description: bestMatch.description,
-                                    qualifiers: {
-                                        autoAccepted: true,
-                                        reason: '100% reconciliation match',
-                                        score: bestMatch.score
-                                    }
-                                }
-                            };
-                        } else {
-                            // Store all matches for display (but don't auto-accept)
-                            return {
-                                ...job,
-                                allMatches: matches.map(match => ({
-                                    type: 'wikidata',
-                                    id: match.id,
-                                    label: match.name,
-                                    description: match.description,
-                                    score: match.score
-                                })),
-                                bestMatch: {
-                                    type: 'wikidata',
-                                    id: bestMatch.id,
-                                    label: bestMatch.name,
-                                    description: bestMatch.description,
-                                    score: bestMatch.score
-                                }
-                            };
-                        }
-                    }
-                } catch (error) {
-                    console.warn(`🤖 Error checking reconciliation for ${job.value}:`, error);
-                    // Update cell to show error state
-                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'error');
-                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
-                    
-                    // Add error information to the cell
-                    const cellId = `${job.itemId}-${job.property}-${job.valueIndex}`;
-                    const cell = document.querySelector(`[data-cell-id="${cellId}"]`);
-                    if (cell) {
-                        cell.classList.add('reconciliation-error');
-                        cell.setAttribute('data-error-message', 'Reconciliation service unavailable');
-                        cell.setAttribute('title', `Error: ${error.message}`);
-                    }
-                    
-                    // Update reconciliation data with error status
-                    if (!reconciliationData[job.itemId]) {
-                        reconciliationData[job.itemId] = { properties: {} };
-                    }
-                    if (!reconciliationData[job.itemId].properties[job.property]) {
-                        reconciliationData[job.itemId].properties[job.property] = { 
-                            reconciled: [],
-                            references: [] // References specific to this property
-                        };
-                    }
-                    if (!reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex]) {
-                        reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {};
-                    }
-                    
-                    reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {
-                        status: 'error',
-                        value: job.value,
-                        error: error.message
-                    };
-                }
-                return null;
-            });
-            
-            // Wait for all reconciliation calls for this property with controlled concurrency
-            const batchSize = 5; // Limit concurrent API calls
-            for (let i = 0; i < batchPromises.length; i += batchSize) {
-                const batchPromiseSlice = batchPromises.slice(i, i + batchSize);
-                const batchJobSlice = jobs.slice(i, i + batchSize);
-                
-                // Mark current batch as processing
-                batchJobSlice.forEach(job => {
-                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'processing');
-                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
-                });
-                
-                
-                const results = await Promise.all(batchPromiseSlice);
-                
-                // Process results
-                results.forEach((result, index) => {
-                    const job = batchJobSlice[index];
-                    
-                    // Always clear loading and queue state first
-                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
-                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'clear');
-                    
-                    if (result) {
-                        if (result.autoAcceptResult) {
-                            // Auto-accept 100% matches
-                            markCellAsReconciled(
-                                { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
-                                result.autoAcceptResult
-                            );
-                            autoAcceptedCount++;
-                        } else if (result.allMatches) {
-                            // Store all matches for display
-                            storeAllMatches(
-                                { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
-                                result.allMatches,
-                                result.bestMatch
-                            );
-                        } else {
-                            // No matches found - store empty matches array and set to pending
-                            storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
-                            updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
-                        }
-                    } else {
-                        // Result was null - store empty matches array and set to pending
-                        storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
-                        updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
-                    }
-                });
-                
-                // Small delay between batches to be respectful to APIs
-                if (i + batchSize < batchPromises.length) {
-                    await new Promise(resolve => setTimeout(resolve, 50)); // Reduced delay
-                }
-            }
-        }
-        
-        
-        // Update proceed button
-        updateProceedButton();
-    }
     
-    /**
-     * Store all matches for a cell (without auto-accepting)
-     */
-
-    
-
-    /**
-     * Update cell loading state
-     */
-    // [REMOVED] Moved to reconciliation-table.js module
-    
-    // [REMOVED] Moved to reconciliation-table.js module
-
-    // [REMOVED] Moved to reconciliation-table.js module
-    
-    // [REMOVED] Moved to reconciliation-table.js module
-    
-    // [REMOVED] Moved to reconciliation-table.js module
-    
-    // [REMOVED] Moved to reconciliation-table.js module
 
     /**
      * Calculate current progress from reconciliation data
      */
     
     
-    /**
-     * Find and reconcile next unprocessed cell
-     */
-    function reconcileNextUnprocessedCell() {
-        // Find first pending cell
-        const pendingCell = document.querySelector('.property-value[data-status="pending"]');
-        if (pendingCell) {
-            pendingCell.click();
-        } else {
-            // Reconciliation complete - no alert needed
-            // Calculate current progress from actual reconciliation data and update state
-            if (reconciliationData && Object.keys(reconciliationData).length > 0) {
-                const progress = calculateCurrentProgress();
-                state.updateState('reconciliationProgress', progress);
-            }
-            updateProceedButton();
-        }
-    }
     
     
-    /**
-     * Check if a value appears to be a date
-     * @param {string} value - The value to check
-     * @returns {boolean} True if the value appears to be a date
-     */
     
-    // [REMOVED] Moved to reconciliation-modal.js module
     
-    // [REMOVED] Moved to reconciliation-modal.js module
     
-    // [REMOVED] Moved to reconciliation-display.js module
     
-    // Initialize display factory function
-    getPropertyDisplayInfo = createGetPropertyDisplayInfoFactory(state);
+    // Factory functions are initialized in consolidated modules object
     
-    // Initialize factory functions that depend on getPropertyDisplayInfo
-    getOriginalKeyInfo = createOriginalKeyInfoGetter(reconciliationData, state);
-    getReconciliationRequirementReason = createReconciliationRequirementReasonGetter(state, getPropertyDisplayInfo);
     
-    // Initialize modal factory functions
-    createReconciliationModalContent = createReconciliationModalContentFactory({
-        reconciliationData,
-        getPropertyDisplayInfo,
-        getOriginalKeyInfo,
-        getReconciliationRequirementReason
-    });
     
-    // [REMOVED] Moved to reconciliation-display.js module
     
-    // [REMOVED] Moved to reconciliation-display.js module
     
-    // [REMOVED] Moved to reconciliation-display.js module
-    
-    // [REMOVED] Moved to reconciliation-display.js module
     
     /**
      * Get original key information including LOD URI
@@ -762,264 +500,52 @@ export function setupReconciliationStep(state) {
         return autoAdvanceSetting;
     }
     
-    // [REMOVED] Moved to reconciliation-modal.js module
     
     /**
-     * Escape HTML to prevent XSS in match data
-     */
+    // All factory functions available via modules object
     
-    // [REMOVED] Moved to reconciliation-modal.js module
+    // Set up modal interaction handlers
+    const currentReconciliationCellRef = { current: null };
     
-    // [REMOVED] Moved to reconciliation-modal.js module
+    // Update references to use the new ref pattern
+    const originalSetCurrentReconciliationCell = (cell) => {
+        currentReconciliationCellRef.current = cell;
+        currentReconciliationCell = cell;
+    };
     
-    // [REMOVED] Moved to reconciliation-modal.js module
-    
-    // [REMOVED] Moved to reconciliation-modal.js module
-    
-    /**
-     * Display search results in fallback options
-     */
-    // [REMOVED] Moved to reconciliation-modal.js module
-    
-    /**
-     * Perform automatic reconciliation using Wikidata APIs with progressive disclosure
-     * Enhanced with constraint-based validation and property metadata
-     */
-    
-    /**
-     * [REMOVED] Moved to entity-matcher.js module
-     */
-    
-    // [REMOVED] Moved to reconciliation-display.js module
-    
-    // [REMOVED] Moved to reconciliation-display.js module
-    
-    // Initialize entity matcher factory function after all dependencies are defined
-    performAutomaticReconciliation = createAutomaticReconciliation({
-        reconciliationData,
-        state,
-        storeAllMatches,
-        storeEmptyMatches,
-        displayReconciliationResults,
-        displayReconciliationError,
-        markCellAsReconciled,
+    const modalInteractionHandlers = createModalInteractionHandlers({
+        currentReconciliationCell: currentReconciliationCellRef,
         modalUI,
-        currentReconciliationCell,
-        getAutoAdvanceSetting,
-        reconcileNextUnprocessedCell
+        markCellAsReconciled: modules.markCellAsReconciled,
+        markCellAsSkipped: modules.markCellAsSkipped,
+        markCellAsNoItem: modules.markCellAsNoItem,
+        markCellAsString: modules.markCellAsString,
+        getAutoAdvanceSetting: modules.getAutoAdvanceSetting,
+        reconcileNextUnprocessedCell: modules.reconcileNextUnprocessedCell,
+        setupExpandedSearch
     });
     
-    // Initialize batch processor factory functions
-    performBatchAutoAcceptance = createBatchAutoAcceptanceProcessor({
-        extractPropertyValues,
-        markCellAsReconciled,
-        storeAllMatches,
-        storeEmptyMatches,
-        updateCellQueueStatus,
-        updateCellLoadingState,
-        updateCellDisplayAsNoMatches,
-        updateProceedButton,
-        reconciliationData,
-        state
-    });
+    // Expose modal interaction handlers to global scope for HTML onclick handlers
+    window.toggleMoreOptions = modalInteractionHandlers.toggleMoreOptions;
+    window.selectMatchAndAdvance = modalInteractionHandlers.selectMatchAndAdvance;
+    window.confirmCustomValue = modalInteractionHandlers.confirmCustomValue;
+    window.skipReconciliation = modalInteractionHandlers.skipReconciliation;
+    window.markAsNoWikidataItem = modalInteractionHandlers.markAsNoWikidataItem;
+    window.ignoreCurrentValue = modalInteractionHandlers.ignoreCurrentValue;
+    window.useCurrentValueAsString = modalInteractionHandlers.useCurrentValueAsString;
+    window.createNewWikidataItem = modalInteractionHandlers.createNewWikidataItem;
+    window.selectMatch = modalInteractionHandlers.selectMatch;
+    window.showAllMatches = modalInteractionHandlers.showAllMatches;
+    window.showTopMatches = modalInteractionHandlers.showTopMatches;
+    window.selectManualMatch = modalInteractionHandlers.selectManualMatch;
+    window.applyTypeOverride = modalInteractionHandlers.applyTypeOverride;
+    window.confirmReconciliation = modalInteractionHandlers.confirmReconciliation; // Legacy
     
-    reconcileNextUnprocessedCell = createNextUnprocessedCellReconciler({
-        calculateCurrentProgress,
-        state,
-        updateProceedButton,
-        reconciliationData
-    });
     
-    getAutoAdvanceSetting = createAutoAdvanceSettingGetter(autoAdvanceSetting);
-    setupAutoAdvanceToggle = createAutoAdvanceToggleSetup(autoAdvanceSetting);
-    
-    // Initialize modal factory function
-    openReconciliationModal = createOpenReconciliationModalFactory({
-        modalUI,
-        performAutomaticReconciliation,
-        setupDynamicDatePrecision,
-        setupAutoAdvanceToggle
-    });
-    
-    // Initialize table UI factory functions
-    restoreReconciliationDisplay = createRestoreReconciliationDisplayFactory(reconciliationData);
-    
-    createReconciliationTable = createReconciliationTableFactory({
-        propertyHeaders,
-        reconciliationRows,
-        getWikidataUrlForProperty,
-        performBatchAutoAcceptance,
-        restoreReconciliationDisplay,
-        openReconciliationModal
-    });
-    
-    createPropertyCell = createPropertyCellFactory(openReconciliationModal);
-    createManualPropertyCell = createManualPropertyCellFactory(openReconciliationModal);
-    
-    /**
-     * Restore reconciliation display states when returning to the step
-     */
-    // [REMOVED] Moved to reconciliation-table.js module
-    
-    // Tab functionality removed - now using progressive disclosure design
-    
-    // Global functions for new progressive disclosure modal interactions
-    window.toggleMoreOptions = function() {
-        const expandedOptions = document.querySelector('.expanded-options');
-        const button = document.querySelector('.expand-options');
-        
-        if (!expandedOptions || !button) return;
-        
-        const isExpanded = expandedOptions.style.display === 'block';
-        
-        if (isExpanded) {
-            expandedOptions.style.display = 'none';
-            button.textContent = '▼ More Options';
-        } else {
-            expandedOptions.style.display = 'block';
-            button.textContent = '▲ Hide Options';
-            
-            // Setup expanded search functionality
-            setTimeout(() => {
-                setupExpandedSearch();
-            }, 100);
-        }
-    };
-    
-    window.selectMatchAndAdvance = function(matchId) {
-        if (!currentReconciliationCell) return;
-        
-        // Find the match details
-        const matchCard = document.querySelector(`[data-match-id="${matchId}"]`);
-        if (!matchCard) return;
-        
-        const matchName = matchCard.querySelector('.match-name, .result-name')?.textContent || 'Unknown';
-        const matchDescription = matchCard.querySelector('.match-description, .result-description')?.textContent || 'No description';
-        
-        // Mark as reconciled
-        markCellAsReconciled(currentReconciliationCell, {
-            type: 'wikidata',
-            id: matchId,
-            label: matchName,
-            description: matchDescription
-        });
-        
-        modalUI.closeModal();
-        
-        // Auto-advance if enabled
-        if (getAutoAdvanceSetting()) {
-            setTimeout(() => {
-                reconcileNextUnprocessedCell();
-            }, 300); // Brief delay for visual feedback
-        }
-    };
-    
-    window.confirmCustomValue = function() {
-        if (!currentReconciliationCell) return;
-        
-        const { property } = currentReconciliationCell;
-        const propertyType = detectPropertyType(property);
-        
-        const inputContainer = document.querySelector('.custom-input-container') || document.querySelector('.custom-input-primary');
-        let customValue = null;
-        let qualifiers = {};
-        
-        // Extract value based on input type
-        if (inputContainer) {
-            const textInput = inputContainer.querySelector('.text-input, .qid-input');
-            const numberInput = inputContainer.querySelector('.number-input');
-            const dateInput = inputContainer.querySelector('.date-input');
-            const urlInput = inputContainer.querySelector('.url-input');
-            const coordinatesInput = inputContainer.querySelector('.coordinates-input');
-            
-            if (textInput) {
-                customValue = textInput.value;
-                
-                // Check for language qualifier
-                const languageSelect = inputContainer.querySelector('.language-select');
-                if (languageSelect && languageSelect.value) {
-                    qualifiers.language = languageSelect.value;
-                }
-            } else if (numberInput) {
-                customValue = numberInput.value;
-                
-                // Check for unit qualifier
-                const unitSelect = inputContainer.querySelector('.unit-select');
-                if (unitSelect && unitSelect.value) {
-                    qualifiers.unit = unitSelect.value;
-                }
-            } else if (dateInput) {
-                // Standardize the date input and get precision
-                const standardized = standardizeDateInput(dateInput.value);
-                customValue = standardized.date;
-                
-                // Use detected precision if not manually overridden
-                const precisionSelect = inputContainer.querySelector('.precision-select');
-                const calendarSelect = inputContainer.querySelector('.calendar-select');
-                
-                if (precisionSelect && precisionSelect.value) {
-                    qualifiers.precision = precisionSelect.value;
-                } else if (standardized.precision) {
-                    // Use automatically detected precision
-                    qualifiers.precision = standardized.precision;
-                }
-                
-                if (calendarSelect && calendarSelect.value) {
-                    qualifiers.calendar = calendarSelect.value;
-                }
-                
-                // Store the display value for reference
-                if (standardized.displayValue) {
-                    qualifiers.displayValue = standardized.displayValue;
-                }
-            } else if (urlInput) {
-                customValue = urlInput.value;
-            } else if (coordinatesInput) {
-                customValue = coordinatesInput.value;
-            }
-        }
-        
-        // Validate the input
-        if (customValue) {
-            const validation = validateInput(customValue, propertyType);
-            
-            if (!validation.isValid) {
-                // Show validation error
-                const validationMessage = document.querySelector('.validation-message');
-                if (validationMessage) {
-                    validationMessage.textContent = validation.message;
-                    validationMessage.style.display = 'block';
-                    validationMessage.style.color = 'red';
-                } else {
-                    alert(validation.message);
-                }
-                return;
-            }
-            
-            markCellAsReconciled(currentReconciliationCell, {
-                type: 'custom',
-                value: customValue,
-                datatype: propertyType,
-                qualifiers: qualifiers
-            });
-            
-            modalUI.closeModal();
-            
-            // Auto-advance if enabled
-            if (getAutoAdvanceSetting()) {
-                setTimeout(() => {
-                    reconcileNextUnprocessedCell();
-                }, 300);
-            }
-        } else {
-            alert('Please enter a value.');
-        }
-    };
     
     /**
      * Setup expanded search functionality in progressive disclosure
      */
-    // [REMOVED] Moved to reconciliation-modal.js module
     
     /**
      * Setup auto-advance toggle functionality
@@ -1035,195 +561,20 @@ export function setupReconciliationStep(state) {
     
     // Tab functionality removed - progressive disclosure design handles this
     
-    window.selectMatch = function(matchId) {
-        // Mark match as selected
-        document.querySelectorAll('.match-item').forEach(item => {
-            item.classList.remove('selected');
-        });
-        document.querySelector(`[data-match-id="${matchId}"]`).classList.add('selected');
-        
-        // Enable confirm button
-        const confirmBtn = document.querySelector('.reconciliation-actions .btn.primary');
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-        }
-    };
     
-    window.skipReconciliation = function() {
-        if (currentReconciliationCell) {
-            markCellAsSkipped(currentReconciliationCell);
-            modalUI.closeModal();
-            
-            // Auto-open next pending cell
-            setTimeout(() => {
-                reconcileNextUnprocessedCell();
-            }, 100);
-        }
-    };
     
-    window.markAsNoWikidataItem = function() {
-        if (currentReconciliationCell) {
-            markCellAsNoItem(currentReconciliationCell);
-            modalUI.closeModal();
-            
-            // Auto-advance if enabled
-            if (getAutoAdvanceSetting()) {
-                setTimeout(() => {
-                    reconcileNextUnprocessedCell();
-                }, 300);
-            }
-        }
-    };
     
-    window.ignoreCurrentValue = function() {
-        if (currentReconciliationCell) {
-            markCellAsSkipped(currentReconciliationCell);
-            modalUI.closeModal();
-            
-            // Auto-advance if enabled
-            if (getAutoAdvanceSetting()) {
-                setTimeout(() => {
-                    reconcileNextUnprocessedCell();
-                }, 300);
-            }
-        }
-    };
     
-    window.useCurrentValueAsString = function() {
-        if (currentReconciliationCell) {
-            markCellAsString(currentReconciliationCell);
-            modalUI.closeModal();
-            
-            // Auto-advance if enabled
-            if (getAutoAdvanceSetting()) {
-                setTimeout(() => {
-                    reconcileNextUnprocessedCell();
-                }, 300);
-            }
-        }
-    };
     
-    window.createNewWikidataItem = function() {
-        const value = currentReconciliationCell?.value;
-        if (value) {
-            const url = `https://www.wikidata.org/wiki/Special:NewItem?label=${encodeURIComponent(value)}`;
-            window.open(url, '_blank');
-        }
-    };
     
     // ============================================================================
     // New Global Functions for Simplified Modal Interface
     // ============================================================================
     
-    /**
-     * Select a match from reconciliation results
-     */
-    window.selectMatch = function(matchId, matchName, matchDescription) {
-        if (!currentReconciliationCell) return;
-        
-        
-        // Mark as reconciled
-        markCellAsReconciled(currentReconciliationCell, {
-            type: 'wikidata',
-            id: matchId,
-            label: matchName,
-            description: matchDescription
-        });
-        
-        modalUI.closeModal();
-        
-        // Auto-advance if enabled
-        if (getAutoAdvanceSetting()) {
-            setTimeout(() => {
-                reconcileNextUnprocessedCell();
-            }, 300);
-        }
-    };
     
-    /**
-     * Show all matches when user clicks "View all matches"
-     */
-    window.showAllMatches = function() {
-        const matchesDisplay = document.querySelector('.matches-display');
-        if (!matchesDisplay || !window.allReconciliationMatches) return;
-        
-        const allMatches = window.allReconciliationMatches;
-        
-        matchesDisplay.innerHTML = `
-            <div class="matches-header">
-                <h5>All Reconciliation Matches</h5>
-                <p class="confidence-note">Showing all ${allMatches.length} matches:</p>
-                <button class="btn small secondary" onclick="showTopMatches()">Show top matches only</button>
-            </div>
-            <div class="matches-list">
-                ${allMatches.map((match, index) => {
-                    const matchName = match.name || match.label || 'Unnamed item';
-                    const matchDescription = match.description || match.desc || 'No description available';
-                    const safeMatchName = escapeHtml(matchName);
-                    const safeMatchDescription = escapeHtml(matchDescription);
-                    
-                    return `
-                    <div class="match-item-simplified" data-match-id="${match.id}" onclick="selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
-                        <div class="match-score">${match.score.toFixed(1)}%</div>
-                        <div class="match-content">
-                            <div class="match-name">${matchName}</div>
-                            <div class="match-description">${matchDescription}</div>
-                            <div class="match-id">
-                                <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank" onclick="event.stopPropagation()">
-                                    ${match.id}
-                                </a>
-                            </div>
-                        </div>
-                        <div class="match-select">
-                            <button class="btn small primary" onclick="event.stopPropagation(); selectMatch('${match.id}', '${safeMatchName}', '${safeMatchDescription}')">
-                                Select
-                            </button>
-                        </div>
-                    </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    };
     
-    /**
-     * Return to showing only top matches
-     */
-    window.showTopMatches = function() {
-        if (!currentReconciliationCell || !window.allReconciliationMatches) return;
-        
-        const { property } = currentReconciliationCell;
-        const propertyType = detectPropertyType(property);
-        
-        // Re-display with original logic
-        displayReconciliationResults(window.allReconciliationMatches, propertyType, currentReconciliationCell.value);
-    };
     
-    // Removed manual search and ignore functions for compact design
     
-    // Legacy confirmReconciliation function - now redirects to progressive disclosure functions
-    window.confirmReconciliation = function() {
-        // In progressive disclosure design, use specific functions instead:
-        // - selectMatchAndAdvance() for Wikidata matches
-        // - confirmCustomValue() for custom inputs
-        // This function is kept for backward compatibility but should not be used
-        console.warn('confirmReconciliation() is deprecated - use selectMatchAndAdvance() or confirmCustomValue() instead');
-        
-        if (currentReconciliationCell) {
-            // Try to find selected match first
-            const selectedMatch = document.querySelector('.match-item.selected');
-            if (selectedMatch) {
-                const matchId = selectedMatch.dataset.matchId;
-                window.selectMatchAndAdvance(matchId);
-                return;
-            }
-            
-            // Fall back to custom value confirmation
-            window.confirmCustomValue();
-        }
-    };
-    
-    // [REMOVED] Moved to reconciliation-modal.js module
     
     window.selectManualMatch = function(matchId) {
         // Mark as selected and enable confirm
@@ -1238,25 +589,6 @@ export function setupReconciliationStep(state) {
         }
     };
     
-    /**
-     * Mark a cell as reconciled
-     */
-    
-    /**
-     * Update cell display based on reconciliation status
-     */
-    // [REMOVED] Moved to reconciliation-table.js module
-    
-    // Initialize progress factory functions after updateCellDisplay is defined
-    calculateCurrentProgress = createProgressCalculator(reconciliationData);
-    updateProceedButton = createProceedButtonUpdater(proceedToDesignerBtn, state);
-    storeAllMatches = createMatchesStorer(reconciliationData, state, updateCellDisplayWithMatch);
-    storeEmptyMatches = createEmptyMatchesStorer(reconciliationData, state);
-    const cellMarkers = createCellMarkers(reconciliationData, state, updateCellDisplay, updateProceedButton, contextSuggestions);
-    markCellAsReconciled = cellMarkers.markCellAsReconciled;
-    markCellAsSkipped = cellMarkers.markCellAsSkipped;
-    markCellAsNoItem = cellMarkers.markCellAsNoItem;
-    markCellAsString = cellMarkers.markCellAsString;
     
     /**
      * Debug function to check reconciliation step state
@@ -1285,102 +617,11 @@ export function setupReconciliationStep(state) {
         };
     }
     
-    // Expose debug function globally for console access
+    // Expose debug functions globally for console access
     window.debugReconciliation = debugReconciliationStep;
-    window.loadMockReconciliationData = loadMockDataForTesting;
+    window.loadMockReconciliationData = modules.loadMockDataForTesting;
     window.initializeReconciliationManually = initializeReconciliation;
     
-    // Type override function for progressive disclosure design
-    window.applyTypeOverride = function() {
-        const select = document.querySelector('.type-override-select');
-        
-        if (!select || !select.value) {
-            alert('Please select a property type.');
-            return;
-        }
-        
-        const newType = select.value;
-        
-        // Get current property and value from the modal context
-        if (!currentReconciliationCell) return;
-        
-        const { property, value } = currentReconciliationCell;
-        const inputConfig = getInputFieldConfig(newType);
-        
-        // Helper function for user-friendly type names
-        const getUserFriendlyTypeName = (type) => {
-            const typeNames = {
-                'wikibase-item': 'Wikidata item',
-                'string': 'Text string',
-                'external-id': 'External identifier',
-                'url': 'URL',
-                'quantity': 'Number',
-                'time': 'Date/Time',
-                'monolingualtext': 'Text with language',
-                'globe-coordinate': 'Coordinates'
-            };
-            return typeNames[type] || type;
-        };
-        
-        // Update the expected type display in header
-        const expectedTypeElement = document.querySelector('.expected-type');
-        if (expectedTypeElement) {
-            expectedTypeElement.textContent = `Expected: ${getUserFriendlyTypeName(newType)}`;
-        }
-        
-        // Update primary recommendations section based on new type
-        const primaryRecommendations = document.querySelector('.primary-recommendations');
-        if (primaryRecommendations) {
-            if (newType === 'wikibase-item') {
-                // For Wikidata items, show reconciliation interface
-                primaryRecommendations.innerHTML = `
-                    <div class="loading-state">Finding matches...</div>
-                    <div class="high-confidence-matches" style="display: none;"></div>
-                    <div class="fallback-options" style="display: none;">
-                        <div class="search-wikidata">
-                            <input type="text" class="search-input" placeholder="Search Wikidata..." value="${value}">
-                            <button class="btn primary search-btn">Search</button>
-                        </div>
-                        <button class="btn create-new-item" onclick="createNewWikidataItem()">
-                            ➕ Create New Wikidata Item
-                        </button>
-                    </div>
-                `;
-                
-                // Re-perform reconciliation with new type
-                setTimeout(async () => {
-                    await performAutomaticReconciliation(value, property);
-                    setupManualSearchInFallback();
-                }, 100);
-            } else {
-                // For non-Wikidata properties, show custom input directly
-                const customInputHTML = createInputHTML(newType, value, property);
-                primaryRecommendations.innerHTML = `
-                    <div class="non-wikidata-input">
-                        <h5>Enter ${inputConfig.description}</h5>
-                        <div class="custom-input-container">
-                            ${customInputHTML}
-                        </div>
-                        <div class="input-actions">
-                            <button class="btn primary" onclick="confirmCustomValue()">Confirm Value</button>
-                        </div>
-                    </div>
-                `;
-                
-                // Setup dynamic date precision if needed
-                setTimeout(() => {
-                    setupDynamicDatePrecision(primaryRecommendations);
-                }, 100);
-            }
-        }
-        
-        // Update the type description in expanded options
-        const typeSettingsDesc = document.querySelector('.option-section p strong');
-        if (typeSettingsDesc) {
-            typeSettingsDesc.textContent = getUserFriendlyTypeName(newType);
-        }
-        
-    };
     
     // Return public API if needed
     return {

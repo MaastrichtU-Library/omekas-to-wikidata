@@ -6,7 +6,7 @@
  * automatic match display, manual search, and custom input interfaces.
  */
 
-import { detectPropertyType, getInputFieldConfig, createInputHTML, setupDynamicDatePrecision } from '../../utils/property-types.js';
+import { detectPropertyType, getInputFieldConfig, createInputHTML, setupDynamicDatePrecision, validateInput, standardizeDateInput } from '../../utils/property-types.js';
 import { getConstraintSummary } from '../../utils/constraint-helpers.js';
 import { createElement } from '../../ui/components.js';
 import { isDateValue, escapeHtml, tryDirectWikidataSearch } from '../core/entity-matcher.js';
@@ -555,6 +555,422 @@ export function createReconciliationModalContentFactory(dependencies) {
                 </div>
             </div>
         `;
+    };
+}
+
+/**
+ * Modal Interaction Functions Factory
+ * Creates all modal interaction functions with proper dependency injection
+ */
+export function createModalInteractionHandlers(dependencies) {
+    const {
+        currentReconciliationCell,
+        modalUI,
+        markCellAsReconciled,
+        markCellAsSkipped,
+        markCellAsNoItem,
+        markCellAsString,
+        getAutoAdvanceSetting,
+        reconcileNextUnprocessedCell,
+        setupExpandedSearch
+    } = dependencies;
+
+    return {
+        toggleMoreOptions() {
+            const expandedOptions = document.querySelector('.expanded-options');
+            const button = document.querySelector('.expand-options');
+            
+            if (!expandedOptions || !button) return;
+            
+            const isExpanded = expandedOptions.style.display === 'block';
+            
+            if (isExpanded) {
+                expandedOptions.style.display = 'none';
+                button.textContent = '▼ More Options';
+            } else {
+                expandedOptions.style.display = 'block';
+                button.textContent = '▲ Hide Options';
+                
+                // Setup expanded search functionality
+                if (typeof setupExpandedSearch === 'function') {
+                    setTimeout(() => {
+                        setupExpandedSearch();
+                    }, 100);
+                }
+            }
+        },
+
+        selectMatchAndAdvance(matchId) {
+            if (!currentReconciliationCell.current) return;
+            
+            // Find the match details
+            const matchCard = document.querySelector(`[data-match-id="${matchId}"]`);
+            if (!matchCard) return;
+            
+            const matchName = matchCard.querySelector('.match-name, .result-name')?.textContent || 'Unknown';
+            const matchDescription = matchCard.querySelector('.match-description, .result-description')?.textContent || 'No description';
+            
+            // Mark as reconciled
+            markCellAsReconciled(currentReconciliationCell.current, {
+                type: 'wikidata',
+                id: matchId,
+                label: matchName,
+                description: matchDescription
+            });
+            
+            modalUI.closeModal();
+            
+            // Auto-advance if enabled
+            if (getAutoAdvanceSetting()) {
+                setTimeout(() => {
+                    reconcileNextUnprocessedCell();
+                }, 300); // Brief delay for visual feedback
+            }
+        },
+
+        confirmCustomValue() {
+            if (!currentReconciliationCell.current) return;
+            
+            const { property } = currentReconciliationCell.current;
+            const propertyType = detectPropertyType(property);
+            
+            const inputContainer = document.querySelector('.custom-input-container') || document.querySelector('.custom-input-primary');
+            let customValue = null;
+            let qualifiers = {};
+            
+            // Extract value based on input type
+            if (inputContainer) {
+                const textInput = inputContainer.querySelector('.text-input, .qid-input');
+                const numberInput = inputContainer.querySelector('.number-input');
+                const dateInput = inputContainer.querySelector('.date-input');
+                const urlInput = inputContainer.querySelector('.url-input');
+                const coordinatesInput = inputContainer.querySelector('.coordinates-input');
+                
+                if (textInput) {
+                    customValue = textInput.value;
+                    
+                    // Check for language qualifier
+                    const languageSelect = inputContainer.querySelector('.language-select');
+                    if (languageSelect && languageSelect.value) {
+                        qualifiers.language = languageSelect.value;
+                    }
+                } else if (numberInput) {
+                    customValue = numberInput.value;
+                    
+                    // Check for unit qualifier
+                    const unitSelect = inputContainer.querySelector('.unit-select');
+                    if (unitSelect && unitSelect.value) {
+                        qualifiers.unit = unitSelect.value;
+                    }
+                } else if (dateInput) {
+                    // Standardize the date input and get precision
+                    const standardized = standardizeDateInput(dateInput.value);
+                    customValue = standardized.date;
+                    
+                    // Use detected precision if not manually overridden
+                    const precisionSelect = inputContainer.querySelector('.precision-select');
+                    const calendarSelect = inputContainer.querySelector('.calendar-select');
+                    
+                    if (precisionSelect && precisionSelect.value) {
+                        qualifiers.precision = precisionSelect.value;
+                    } else if (standardized.precision) {
+                        // Use automatically detected precision
+                        qualifiers.precision = standardized.precision;
+                    }
+                    
+                    if (calendarSelect && calendarSelect.value) {
+                        qualifiers.calendar = calendarSelect.value;
+                    }
+                    
+                    // Store the display value for reference
+                    if (standardized.displayValue) {
+                        qualifiers.displayValue = standardized.displayValue;
+                    }
+                } else if (urlInput) {
+                    customValue = urlInput.value;
+                } else if (coordinatesInput) {
+                    customValue = coordinatesInput.value;
+                }
+            }
+            
+            // Validate the input
+            if (customValue) {
+                const validation = validateInput(customValue, propertyType);
+                
+                if (!validation.isValid) {
+                    // Show validation error
+                    const validationMessage = document.querySelector('.validation-message');
+                    if (validationMessage) {
+                        validationMessage.textContent = validation.message;
+                        validationMessage.style.display = 'block';
+                        validationMessage.style.color = 'red';
+                    } else {
+                        alert(validation.message);
+                    }
+                    return;
+                }
+                
+                markCellAsReconciled(currentReconciliationCell.current, {
+                    type: 'custom',
+                    value: customValue,
+                    datatype: propertyType,
+                    qualifiers: qualifiers
+                });
+                
+                modalUI.closeModal();
+                
+                // Auto-advance if enabled
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            } else {
+                alert('Please enter a value.');
+            }
+        },
+
+        skipReconciliation() {
+            if (currentReconciliationCell.current) {
+                markCellAsSkipped(currentReconciliationCell.current);
+                modalUI.closeModal();
+                
+                // Auto-advance if enabled
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            }
+        },
+
+        markAsNoWikidataItem() {
+            if (currentReconciliationCell.current) {
+                markCellAsNoItem(currentReconciliationCell.current);
+                modalUI.closeModal();
+                
+                // Auto-advance if enabled
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            }
+        },
+
+        ignoreCurrentValue() {
+            if (currentReconciliationCell.current) {
+                markCellAsSkipped(currentReconciliationCell.current);
+                modalUI.closeModal();
+                
+                // Auto-advance if enabled
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            }
+        },
+
+        useCurrentValueAsString() {
+            if (currentReconciliationCell.current) {
+                markCellAsString(currentReconciliationCell.current);
+                modalUI.closeModal();
+                
+                // Auto-advance if enabled
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            }
+        },
+
+        createNewWikidataItem() {
+            const value = currentReconciliationCell.current?.value;
+            if (value) {
+                const url = `https://www.wikidata.org/wiki/Special:NewItem?label=${encodeURIComponent(value)}`;
+                window.open(url, '_blank');
+            }
+        },
+
+        selectMatch(matchId, matchName, matchDescription) {
+            if (!currentReconciliationCell.current) return;
+            
+            // If called with only matchId (legacy support)
+            if (arguments.length === 1) {
+                // Mark match as selected
+                document.querySelectorAll('.match-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                const matchElement = document.querySelector(`[data-match-id="${matchId}"]`);
+                if (matchElement) {
+                    matchElement.classList.add('selected');
+                }
+                return;
+            }
+            
+            // Mark as reconciled
+            markCellAsReconciled(currentReconciliationCell.current, {
+                type: 'wikidata',
+                id: matchId,
+                label: matchName,
+                description: matchDescription
+            });
+            
+            modalUI.closeModal();
+            
+            // Auto-advance if enabled
+            if (getAutoAdvanceSetting()) {
+                setTimeout(() => {
+                    reconcileNextUnprocessedCell();
+                }, 300);
+            }
+        },
+
+        showAllMatches() {
+            const matchesDisplay = document.querySelector('.matches-display');
+            if (!matchesDisplay || !window.allReconciliationMatches) return;
+            
+            const allMatches = window.allReconciliationMatches;
+            
+            matchesDisplay.innerHTML = `
+                <div class="matches-header">
+                    <h5>All Reconciliation Matches</h5>
+                    <p class="confidence-note">Showing all ${allMatches.length} matches:</p>
+                    <button class="btn secondary" onclick="window.showTopMatches()">← Back to Top Matches</button>
+                </div>
+                <div class="all-matches-list">
+                    ${allMatches.map(match => `
+                        <div class="match-item all-match" data-match-id="${match.id}" 
+                             onclick="window.selectMatchAndAdvance('${match.id}')">
+                            <div class="match-header">
+                                <strong class="match-name">${escapeHtml(match.name)}</strong>
+                                <span class="match-id">${match.id}</span>
+                                <span class="confidence-score">Score: ${Math.round(match.score || 0)}%</span>
+                            </div>
+                            <p class="match-description">${escapeHtml(match.description || 'No description available')}</p>
+                            ${match.aliases && match.aliases.length > 0 ? 
+                                `<p class="match-aliases"><strong>Also known as:</strong> ${match.aliases.join(', ')}</p>` : ''
+                            }
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        },
+
+        showTopMatches() {
+            if (!currentReconciliationCell.current || !window.allReconciliationMatches) return;
+            
+            const { property } = currentReconciliationCell.current;
+            const propertyType = detectPropertyType(property);
+            
+            // Re-display with original logic
+            displayReconciliationResults(window.allReconciliationMatches, propertyType, currentReconciliationCell.current.value);
+        },
+
+        selectManualMatch(matchId) {
+            // Mark as selected and enable confirm
+            document.querySelectorAll('.search-result-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            const matchElement = document.querySelector(`[data-match-id="${matchId}"]`);
+            if (matchElement) {
+                matchElement.classList.add('selected');
+            }
+            
+            const confirmBtn = document.querySelector('.reconciliation-actions .btn.primary');
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+            }
+        },
+
+        applyTypeOverride() {
+            const select = document.querySelector('.type-override-select');
+            
+            if (!select || !select.value) {
+                alert('Please select a property type.');
+                return;
+            }
+            
+            const newType = select.value;
+            
+            // Get current property and value from the modal context
+            if (!currentReconciliationCell.current) return;
+            
+            const { property, value } = currentReconciliationCell.current;
+            const inputConfig = getInputFieldConfig(newType);
+            
+            // Helper function for user-friendly type names
+            const getUserFriendlyTypeName = (type) => {
+                const typeNames = {
+                    'wikibase-item': 'Wikidata item',
+                    'string': 'Text string',
+                    'external-id': 'External identifier',
+                    'url': 'URL',
+                    'quantity': 'Number',
+                    'time': 'Date/Time',
+                    'monolingualtext': 'Text with language',
+                    'globe-coordinate': 'Coordinates'
+                };
+                return typeNames[type] || type;
+            };
+            
+            // Update the expected type display in header
+            const expectedTypeElement = document.querySelector('.expected-type');
+            if (expectedTypeElement) {
+                expectedTypeElement.textContent = `Expected: ${getUserFriendlyTypeName(newType)}`;
+            }
+            
+            // Update primary recommendations section based on new type
+            const primaryRecommendations = document.querySelector('.primary-recommendations');
+            if (primaryRecommendations) {
+                if (newType === 'wikibase-item') {
+                    // For Wikidata items, show reconciliation interface
+                    primaryRecommendations.innerHTML = `
+                        <div class="loading-state">Finding matches...</div>
+                        <div class="high-confidence-matches" style="display: none;"></div>
+                        <div class="fallback-options" style="display: none;">
+                            <div class="search-wikidata">
+                                <input type="text" class="search-input" placeholder="Search Wikidata..." value="${value}">
+                                <button class="btn primary search-btn">Search</button>
+                            </div>
+                            <button class="btn create-new-item" onclick="createNewWikidataItem()">
+                                ➕ Create New Wikidata Item
+                            </button>
+                        </div>
+                    `;
+                    
+                    // Trigger new reconciliation with overridden type
+                    setTimeout(() => {
+                        // This would trigger a new reconciliation attempt
+                        // Implementation depends on how the reconciliation system is structured
+                    }, 100);
+                } else {
+                    // For other types, show appropriate custom input
+                    primaryRecommendations.innerHTML = `<p>Type changed to ${getUserFriendlyTypeName(newType)} - use manual input section below.</p>`;
+                    showCustomInputInterface(newType, value);
+                }
+            }
+        },
+
+        // Legacy function for backward compatibility
+        confirmReconciliation() {
+            console.warn('confirmReconciliation() is deprecated - use selectMatchAndAdvance() or confirmCustomValue() instead');
+            
+            if (currentReconciliationCell.current) {
+                // Try to find selected match first
+                const selectedMatch = document.querySelector('.match-item.selected');
+                if (selectedMatch) {
+                    const matchId = selectedMatch.dataset.matchId;
+                    this.selectMatchAndAdvance(matchId);
+                    return;
+                }
+                
+                // Fall back to custom value confirmation
+                this.confirmCustomValue();
+            }
+        }
     };
 }
 

@@ -256,3 +256,103 @@ export function createReconciliationRequirementReasonGetter(state, getPropertyDi
         return reason;
     };
 }
+
+/**
+ * Validate reconciliation initialization requirements
+ * Checks for required mappings, keys, and data availability
+ */
+export function validateReconciliationRequirements(currentState) {
+    // Check for mapped keys
+    if (!currentState.mappings || !currentState.mappings.mappedKeys || !currentState.mappings.mappedKeys.length) {
+        return {
+            isValid: false,
+            error: 'No mapped keys available for reconciliation',
+            details: currentState.mappings
+        };
+    }
+    
+    // Pre-filter check: ensure we have keys that exist in the current dataset
+    const availableMappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
+    if (availableMappedKeys.length === 0) {
+        return {
+            isValid: false,
+            error: 'No mapped keys are available in the current dataset for reconciliation',
+            details: 'All mapped keys are from a different dataset or not present in current data'
+        };
+    }
+    
+    // Check for fetched data
+    if (!currentState.fetchedData) {
+        return {
+            isValid: false,
+            error: 'No fetched data available for reconciliation',
+            details: currentState.fetchedData
+        };
+    }
+    
+    return {
+        isValid: true,
+        availableMappedKeys
+    };
+}
+
+/**
+ * Initialize reconciliation data structure
+ * Creates the complex reconciliation data structure for all items and properties
+ */
+export function initializeReconciliationDataStructure(data, mappedKeys, manualProperties) {
+    const reconciliationData = {};
+    
+    data.forEach((item, index) => {
+        const itemId = `item-${index}`;
+        reconciliationData[itemId] = {
+            originalData: item,
+            properties: {}
+        };
+        
+        // Initialize each mapped property
+        mappedKeys.forEach(keyObj => {
+            const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+            const values = extractPropertyValues(item, keyName);
+            reconciliationData[itemId].properties[keyName] = {
+                originalValues: values,
+                references: [], // References specific to this property
+                propertyMetadata: typeof keyObj === 'object' ? keyObj : null, // Store full property object with constraints
+                reconciled: values.map(() => ({
+                    status: 'pending', // pending, reconciled, skipped, failed
+                    matches: [],
+                    selectedMatch: null,
+                    manualValue: null,
+                    qualifiers: {},
+                    confidence: 0
+                }))
+            };
+        });
+        
+        // Initialize each manual property with default values
+        manualProperties.forEach(manualProp => {
+            const propertyId = manualProp.property.id;
+            const defaultValue = manualProp.defaultValue;
+            
+            // Create default values array - manual properties get one value per item
+            const values = defaultValue ? [defaultValue] : [''];
+            
+            reconciliationData[itemId].properties[propertyId] = {
+                originalValues: values,
+                references: [], // References specific to this property
+                isManualProperty: true, // Mark as manual property
+                manualPropertyData: manualProp, // Store complete manual property data
+                reconciled: values.map(() => ({
+                    status: 'pending', // pending, reconciled, skipped, failed
+                    matches: [],
+                    selectedMatch: null,
+                    manualValue: defaultValue || null,
+                    qualifiers: {},
+                    confidence: 0
+                }))
+            };
+        });
+    });
+    
+    return reconciliationData;
+}
