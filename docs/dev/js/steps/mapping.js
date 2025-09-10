@@ -858,15 +858,10 @@ export function setupMappingStep(state) {
             }, propertyDisplayText);
             keyDisplay.appendChild(propertyName);
             
-            // Property info section showing default value and required status
+            // Property info section showing required status
             let infoText = '';
-            if (manualProp.defaultValue) {
-                infoText = `Default: ${manualProp.defaultValue}`;
-            } else {
-                infoText = 'No default value';
-            }
             if (manualProp.isRequired) {
-                infoText += ' • Required';
+                infoText = 'Required';
             }
             
             const propertyInfo = createElement('span', {
@@ -924,13 +919,10 @@ export function setupMappingStep(state) {
                         type: 'primary',
                         keyboardShortcut: 'Enter',
                         callback: () => {
-                            const defaultValueInput = document.getElementById('metadata-default-value-input');
-                            const defaultValue = defaultValueInput ? defaultValueInput.value.trim() : '';
-                            
-                            // Update the metadata property
+                            // Update the metadata property (no default values to update)
                             const updatedProp = {
                                 ...manualProp,
-                                defaultValue
+                                defaultValue: null
                             };
                             
                             // Remove and re-add to update
@@ -1073,66 +1065,6 @@ export function setupMappingStep(state) {
         stage2Section.appendChild(stage2Content);
         container.appendChild(stage2Section);
         
-        // Stage 3: Options (Collapsible)
-        const stage3Section = createElement('details', {
-            className: 'mapping-stage',
-            id: 'metadata-stage-3-options',
-            open: true
-        });
-        
-        const stage3Summary = createElement('summary', {
-            className: 'stage-summary'
-        }, 'Stage 3: Options');
-        stage3Section.appendChild(stage3Summary);
-        
-        const stage3Content = createElement('div', {
-            className: 'stage-content'
-        });
-        
-        // Default value section - different for instance of vs other metadata
-        if (manualProp.property.id === 'P31') {
-            const instanceOfSection = createElement('div', {
-                className: 'instance-of-section'
-            });
-            instanceOfSection.innerHTML = `
-                <h4>Default Value (Optional)</h4>
-                <div class="default-value-description">
-                    This Wikidata item will be pre-filled for all items. You can modify individual values during reconciliation.
-                </div>
-                <div class="wikidata-search-container">
-                    <input type="text" id="metadata-default-value-input" 
-                           placeholder="Search for a Wikidata item..." 
-                           class="wikidata-item-search-input"
-                           value="${manualProp.defaultValue || ''}">
-                    <div class="input-help">Search for and select the Wikidata item that represents what type of thing your items are (e.g., "book", "person", "building")</div>
-                </div>
-            `;
-            stage3Content.appendChild(instanceOfSection);
-        } else {
-            // Regular metadata (label, description, aliases)
-            const metadataSection = createElement('div', {
-                className: 'metadata-section'
-            });
-            metadataSection.innerHTML = `
-                <h4>Default Value (Optional)</h4>
-                <div class="default-value-description">
-                    This value will be pre-filled for all items. You can modify individual values during reconciliation.
-                </div>
-                <div class="default-value-input-container">
-                    <input type="text" id="metadata-default-value-input" 
-                           placeholder="Enter a default value..." 
-                           class="default-value-input"
-                           value="${manualProp.defaultValue || ''}">
-                    <div class="input-help">Enter a text value for ${manualProp.property.label}</div>
-                </div>
-                <div class="placeholder-notice">
-                    <em>Additional configuration options will be available here in future updates.</em>
-                </div>
-            `;
-            stage3Content.appendChild(metadataSection);
-        }
-        stage3Section.appendChild(stage3Content);
-        container.appendChild(stage3Section);
         
         return container;
     }
@@ -2345,7 +2277,6 @@ export function setupMappingStep(state) {
         searchSection.innerHTML = `
             <h4>Search Wikidata Properties</h4>
             <input type="text" id="manual-property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
-            <div id="manual-property-suggestions" class="property-suggestions"></div>
             <div id="manual-selected-property" class="selected-property" style="display: none;">
                 <h4>Selected Property</h4>
                 <div id="manual-selected-property-details"></div>
@@ -2382,20 +2313,6 @@ export function setupMappingStep(state) {
         `;
         container.appendChild(classificationSection);
         
-        // Default value section
-        const defaultValueSection = createElement('div', {
-            className: 'default-value-section'
-        });
-        defaultValueSection.innerHTML = `
-            <h4>Default Value (Optional)</h4>
-            <div class="default-value-description">
-                This value will be pre-filled for all items. You can modify individual values during reconciliation.
-            </div>
-            <div id="default-value-input-container" class="default-value-input-container">
-                <input type="text" id="default-value-input" placeholder="Enter a default value..." class="default-value-input">
-            </div>
-        `;
-        container.appendChild(defaultValueSection);
         
         // Setup search functionality
         setTimeout(() => setupManualPropertySearch(existingProperty), 100);
@@ -2406,7 +2323,6 @@ export function setupMappingStep(state) {
     // Setup search functionality for manual property modal
     function setupManualPropertySearch(existingProperty = null) {
         const searchInput = document.getElementById('manual-property-search-input');
-        const suggestionsContainer = document.getElementById('manual-property-suggestions');
         let searchTimeout;
         
         if (!searchInput) return;
@@ -2417,13 +2333,6 @@ export function setupMappingStep(state) {
             selectManualProperty(existingProperty.property);
             searchInput.value = `${existingProperty.property.id}: ${existingProperty.property.label}`;
             
-            // Pre-populate default value
-            setTimeout(() => {
-                const defaultValueInput = document.getElementById('default-value-input');
-                if (defaultValueInput && existingProperty.defaultValue) {
-                    defaultValueInput.value = existingProperty.defaultValue;
-                }
-            }, 200);
         } else {
             window.currentManualPropertySelected = null;
         }
@@ -2433,13 +2342,11 @@ export function setupMappingStep(state) {
             const query = e.target.value.trim();
             
             if (query.length < 2) {
-                suggestionsContainer.innerHTML = '';
                 return;
             }
             
-            searchTimeout = setTimeout(() => {
-                searchManualPropertyWikidataProperties(query, suggestionsContainer);
-            }, 300);
+            // Search functionality disabled - suggestions container removed
+            // Users can manually enter property ID and label
         });
     }
     
@@ -2522,11 +2429,6 @@ export function setupMappingStep(state) {
             searchInput.value = `${property.id}: ${property.label}`;
         }
         
-        // Clear suggestions container
-        const suggestionsContainer = document.getElementById('manual-property-suggestions');
-        if (suggestionsContainer) {
-            suggestionsContainer.innerHTML = '';
-        }
         
         // Show selected property details
         const selectedContainer = document.getElementById('manual-selected-property');
@@ -2680,10 +2582,9 @@ export function setupMappingStep(state) {
     // Get manual property data from modal
     function getManualPropertyFromModal() {
         const selectedProperty = window.currentManualPropertySelected;
-        const defaultValueInput = document.getElementById('default-value-input');
         const classificationRadio = document.querySelector('input[name="classification-type"]:checked');
         
-        let defaultValue = defaultValueInput ? defaultValueInput.value.trim() : '';
+        let defaultValue = null;
         let isRequired = false;
         
         // Handle classification properties
