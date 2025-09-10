@@ -398,9 +398,7 @@ export function setupMappingStep(state) {
         updateSectionCounts(finalState.mappings);
         
         // Auto-add metadata fields and P31 (instance of) in priority order
-        console.log('About to add metadata fields...');
         await autoAddMetadataFieldsInOrder(finalState);
-        console.log('After adding metadata fields, manual properties count:', finalState.mappings.manualProperties.length);
         
         // Auto-open mapped keys section if there are mapped keys
         if (finalState.mappings.mappedKeys.length > 0) {
@@ -430,7 +428,6 @@ export function setupMappingStep(state) {
     
     // Auto-add metadata fields in priority order: Label, Description, Alias, Instance of
     async function autoAddMetadataFieldsInOrder(currentState) {
-        console.log('autoAddMetadataFieldsInOrder called with state:', currentState);
         const priorityFields = [
             {
                 id: 'label',
@@ -460,30 +457,23 @@ export function setupMappingStep(state) {
 
         // Add metadata fields in order
         for (const field of priorityFields) {
-            console.log('Processing field:', field.id);
-            
             // Check if this metadata field is already in manual properties
             const existsInManual = currentState.mappings.manualProperties.some(prop => 
                 prop.property.id === field.id
             );
-            console.log(`${field.id} exists in manual:`, existsInManual);
 
             // Check if this metadata field is already mapped
             const existsInMapped = currentState.mappings.mappedKeys.some(key => 
                 key.property && key.property.id === field.id
             );
-            console.log(`${field.id} exists in mapped:`, existsInMapped);
 
             if (!existsInManual && !existsInMapped) {
-                console.log(`Adding ${field.id} as manual property`);
                 state.addManualProperty({
                     property: field,
                     defaultValue: '',
                     isRequired: field.id === 'label', // Label is required
                     cannotRemove: field.id === 'label' // Label cannot be removed
                 });
-            } else {
-                console.log(`Skipping ${field.id} - already exists`);
             }
         }
 
