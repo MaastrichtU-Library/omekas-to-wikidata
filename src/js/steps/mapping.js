@@ -899,27 +899,26 @@ export function setupMappingStep(state) {
         import('../ui/modal-ui.js').then(({ setupModalUI }) => {
             const modalUI = setupModalUI();
             
-            // Check if this is a metadata field
-            if (manualProp.property.isMetadata) {
-                // Create consolidated modal content for metadata with automatic data type detection
-                const modalContent = createConsolidatedMetadataModalContent(manualProp);
-                
-                // Create buttons for metadata
-                const buttons = [
-                    {
-                        text: 'Cancel',
-                        type: 'secondary',
-                        keyboardShortcut: 'Escape',
-                        callback: () => {
-                            modalUI.closeModal();
-                        }
-                    },
-                    {
-                        text: 'Update',
-                        type: 'primary',
-                        keyboardShortcut: 'Enter',
-                        callback: () => {
-                            // Update the metadata property (no default values to update)
+            // Use unified modal content for all property types
+            const modalContent = createUnifiedPropertyModalContent(manualProp);
+            
+            // Create unified buttons
+            const buttons = [
+                {
+                    text: 'Cancel',
+                    type: 'secondary',
+                    keyboardShortcut: 'Escape',
+                    callback: () => {
+                        modalUI.closeModal();
+                    }
+                },
+                {
+                    text: manualProp.property.isMetadata ? 'Update' : 'Update Property',
+                    type: 'primary',
+                    keyboardShortcut: 'Enter',
+                    callback: () => {
+                        if (manualProp.property.isMetadata) {
+                            // Update the metadata property
                             const updatedProp = {
                                 ...manualProp,
                                 defaultValue: null
@@ -932,141 +931,359 @@ export function setupMappingStep(state) {
                             populateLists();
                             modalUI.closeModal();
                             showMessage(`Updated ${manualProp.property.label}`, 'success', 2000);
-                        }
-                    }
-                ];
-                
-                // Open modal with metadata-specific title
-                modalUI.openModal(
-                    manualProp.property.label.charAt(0).toUpperCase() + manualProp.property.label.slice(1),
-                    modalContent,
-                    buttons
-                );
-            } else {
-                // Regular property - use existing flow
-                const modalContent = createAddManualPropertyModalContent(manualProp);
-                
-                const buttons = [
-                    {
-                        text: 'Cancel',
-                        type: 'secondary',
-                        keyboardShortcut: 'Escape',
-                        callback: () => {
-                            modalUI.closeModal();
-                        }
-                    },
-                    {
-                        text: 'Update Property',
-                        type: 'primary',
-                        keyboardShortcut: 'Enter',
-                        callback: () => {
-                            const { selectedProperty, defaultValue, isRequired } = getManualPropertyFromModal();
+                        } else {
+                            // For custom properties, check if they selected a different property
+                            const selectedProperty = getUnifiedSelectedPropertyFromModal();
                             if (selectedProperty) {
                                 // Remove the old property and add the updated one
                                 state.removeManualProperty(manualProp.property.id);
-                                addManualPropertyToState(selectedProperty, defaultValue, isRequired);
+                                addManualPropertyToState(selectedProperty, null, manualProp.isRequired);
                                 modalUI.closeModal();
                             } else {
-                                showMessage('Please select a Wikidata property first.', 'warning', 3000);
+                                // Keep the existing property if none selected
+                                modalUI.closeModal();
+                                showMessage('Property unchanged', 'info', 2000);
                             }
                         }
                     }
-                ];
-                
-                // Open modal
-                modalUI.openModal(
-                    'Edit Additional Custom Wikidata Property',
-                    modalContent,
-                    buttons
-                );
-            }
+                }
+            ];
+            
+            // Determine modal title
+            const modalTitle = manualProp.property.isMetadata 
+                ? manualProp.property.label.charAt(0).toUpperCase() + manualProp.property.label.slice(1)
+                : 'Edit Additional Custom Wikidata Property';
+            
+            // Open unified modal
+            modalUI.openModal(
+                modalTitle,
+                modalContent,
+                buttons
+            );
         });
     }
     
-    // Create consolidated modal content for metadata fields with automatic data type detection
-    function createConsolidatedMetadataModalContent(manualProp) {
+    // Create unified modal content for all property types (metadata and custom properties)
+    function createUnifiedPropertyModalContent(manualProp, keyData = null) {
         const container = createElement('div', {
-            className: 'metadata-consolidated-modal-content'
+            className: 'unified-property-modal-content'
         });
         
-        // Stage 1: Property Information (Collapsible, closed by default)
+        // Determine if this is a pre-selected property (metadata or existing custom property)
+        const isPreSelected = Boolean(manualProp);
+        const property = manualProp?.property || keyData?.property;
+        
+        // Stage 1: Property Selection/Information (Collapsible, closed by default for pre-selected)
         const stage1Section = createElement('details', {
             className: 'mapping-stage',
-            id: 'metadata-stage-1-property-info'
+            id: 'unified-stage-1-property-selection',
+            ...(isPreSelected ? {} : { open: true }) // Open by default only for new properties
         });
         
         const stage1Summary = createElement('summary', {
             className: 'stage-summary'
-        }, 'Stage 1: Property Information');
+        }, 'Stage 1: Property Selection');
         stage1Section.appendChild(stage1Summary);
         
         const stage1Content = createElement('div', {
             className: 'stage-content'
         });
         
-        // Property information section
-        const propertyInfo = createElement('div', {
-            className: 'property-info'
-        });
-        propertyInfo.innerHTML = `
-            <h4>Property Details</h4>
-            <p><strong>Property:</strong> ${manualProp.property.label}</p>
-            <p><strong>Description:</strong> ${manualProp.property.description}</p>
-        `;
-        stage1Content.appendChild(propertyInfo);
+        if (isPreSelected && property) {
+            // Show property as read-only for pre-selected properties
+            const propertyInfo = createElement('div', {
+                className: 'property-info'
+            });
+            const propertyDisplayText = property.isMetadata 
+                ? `${property.label} (metadata)`
+                : `${property.label} (${property.id})`;
+            
+            propertyInfo.innerHTML = `
+                <h4>Selected Property</h4>
+                <p><strong>Property:</strong> ${propertyDisplayText}</p>
+                <p><strong>Description:</strong> ${property.description}</p>
+                ${property.id ? `<p><strong>ID:</strong> ${property.id}</p>` : ''}
+            `;
+            stage1Content.appendChild(propertyInfo);
+        } else {
+            // Property search section for new custom properties
+            const searchSection = createElement('div', {
+                className: 'property-search'
+            });
+            searchSection.innerHTML = `
+                <h4>Search Wikidata Properties</h4>
+                <input type="text" id="unified-property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
+                <div id="unified-property-suggestions" class="property-suggestions"></div>
+                <div id="unified-selected-property" class="selected-property" style="display: none;">
+                    <h4>Selected Property</h4>
+                    <div id="unified-selected-property-details"></div>
+                    <div id="unified-property-constraints" class="property-constraints" style="display: none;">
+                        <div class="constraint-loading" style="display: none;">Loading constraint information...</div>
+                        <div class="constraint-content"></div>
+                        <div class="constraint-info-notice">
+                            This information is automatically retrieved from Wikidata and cannot be changed.
+                        </div>
+                    </div>
+                </div>
+            `;
+            stage1Content.appendChild(searchSection);
+        }
+        
         stage1Section.appendChild(stage1Content);
         container.appendChild(stage1Section);
         
-        // Stage 2: Value Type Detection (Collapsible)
+        // Stage 2: Value Type Detection (Collapsible, open by default)
         const stage2Section = createElement('details', {
             className: 'mapping-stage',
-            id: 'metadata-stage-2-value-type-detection',
+            id: 'unified-stage-2-value-type-detection',
             open: true
         });
         
-        const stage2Summary = createElement('summary', {
-            className: 'stage-summary',
-            id: 'metadata-stage-2-summary'
-        });
+        // Determine data type and display text
+        let detectedDataType, dataTypeLabel, dataTypeDescription;
         
-        // Automatically detect data type based on property
-        let detectedDataType;
-        if (manualProp.property.id === 'P31') {
-            detectedDataType = 'Wikidata item';
+        if (property) {
+            if (property.id === 'P31') {
+                detectedDataType = 'wikibase-item';
+                dataTypeLabel = 'Item';
+                dataTypeDescription = 'Values will link to Wikidata items representing the type or class of each item.';
+            } else if (property.isMetadata) {
+                if (property.id === 'description') {
+                    detectedDataType = 'monolingualtext';
+                    dataTypeLabel = 'Monolingual text';
+                    dataTypeDescription = 'Expecting a language-specific string value. Descriptions are always specific to each language and cannot have a default value for all languages.';
+                } else {
+                    detectedDataType = 'monolingualtext';
+                    dataTypeLabel = 'Monolingual text';
+                    dataTypeDescription = 'Expecting a string value. Labels and aliases can have a default value for all languages, with optional language-specific overrides. <a href="https://www.wikidata.org/wiki/Help:Default_values_for_labels_and_aliases" target="_blank" rel="noopener">Learn more about default values</a>.';
+                }
+            } else {
+                // Use actual Wikidata data type for custom properties
+                detectedDataType = property.datatype || 'unknown';
+                dataTypeLabel = property.datatypeLabel || 'Unknown';
+                dataTypeDescription = `This property expects values of type "${dataTypeLabel}".`;
+            }
         } else {
-            detectedDataType = 'metadata';
+            detectedDataType = 'unknown';
+            dataTypeLabel = 'Select a property first';
+            dataTypeDescription = 'Data type will be detected once you select a property.';
         }
         
-        stage2Summary.textContent = `Stage 2: Value type is ${detectedDataType}`;
+        const stage2Summary = createElement('summary', {
+            className: 'stage-summary',
+            id: 'unified-stage-2-summary'
+        }, `Stage 2: Value type is ${dataTypeLabel}`);
         stage2Section.appendChild(stage2Summary);
         
         const stage2Content = createElement('div', {
             className: 'stage-content'
         });
         
-        // Data type display section
-        const dataTypeSection = createElement('div', {
-            className: 'detected-datatype-section'
+        // Data type information section
+        const dataTypeInfo = createElement('div', {
+            className: 'datatype-info',
+            id: 'unified-datatype-info-section'
         });
-        dataTypeSection.innerHTML = `
-            <h4>Detected Data Type</h4>
+        dataTypeInfo.innerHTML = `
             <div class="datatype-display">
-                <span class="datatype-label">${detectedDataType}</span>
+                <h4>Detected Data Type</h4>
+                <div id="unified-detected-datatype" class="detected-datatype">
+                    <span class="datatype-label">${dataTypeLabel}</span>
+                </div>
             </div>
-            <div class="datatype-description">
-                ${manualProp.property.id === 'P31' 
-                    ? 'Values will link to Wikidata items representing the type or class of each item.' 
-                    : manualProp.property.id === 'description'
-                        ? 'Expecting a language-specific string value. Descriptions are always specific to each language and cannot have a default value for all languages.'
-                        : 'Expecting a string value. Labels and aliases can have a default value for all languages, with optional language-specific overrides. <a href="https://www.wikidata.org/wiki/Help:Default_values_for_labels_and_aliases" target="_blank" rel="noopener">Learn more about default values</a>.'}
+            <div class="datatype-description" id="unified-datatype-description">
+                <p>${dataTypeDescription}</p>
             </div>
         `;
-        stage2Content.appendChild(dataTypeSection);
+        stage2Content.appendChild(dataTypeInfo);
         stage2Section.appendChild(stage2Content);
         container.appendChild(stage2Section);
         
+        // Stage 3: Value Transformation (Initially hidden)
+        const stage3Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'unified-stage-3-value-transformation'
+        });
+        
+        const stage3Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 3: Value Transformation');
+        stage3Section.appendChild(stage3Summary);
+        
+        const stage3Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Value transformation section
+        if (property || keyData) {
+            const transformationKeyData = keyData || {
+                key: property?.label || 'property',
+                sampleValue: 'Sample value for transformation',
+                property: property
+            };
+            const valueTransformationContainer = renderValueTransformationUI(transformationKeyData, state);
+            stage3Content.appendChild(valueTransformationContainer);
+        } else {
+            stage3Content.appendChild(createElement('div', {
+                className: 'transformation-message'
+            }, 'Select a property first to configure value transformations'));
+        }
+        
+        stage3Section.appendChild(stage3Content);
+        container.appendChild(stage3Section);
+        
+        // Setup search functionality for new properties
+        if (!isPreSelected) {
+            setTimeout(() => setupUnifiedPropertySearch(), 100);
+        }
         
         return container;
+    }
+    
+    // Setup search functionality for unified property modal
+    function setupUnifiedPropertySearch() {
+        const searchInput = document.getElementById('unified-property-search-input');
+        let searchTimeout;
+        
+        if (!searchInput) return;
+        
+        window.currentUnifiedPropertySelected = null;
+        
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length < 2) {
+                document.getElementById('unified-property-suggestions').innerHTML = '';
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                searchUnifiedWikidataProperties(query, document.getElementById('unified-property-suggestions'));
+            }, 300);
+        });
+    }
+    
+    // Search Wikidata properties for unified modal
+    async function searchUnifiedWikidataProperties(query, container) {
+        try {
+            container.innerHTML = '<div class="loading">Searching...</div>';
+            
+            // Wikidata API search
+            const wikidataUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&type=property&format=json&origin=*`;
+            
+            const response = await fetch(wikidataUrl);
+            const data = await response.json();
+            
+            displayUnifiedPropertySuggestions(data.search || [], container);
+        } catch (error) {
+            console.error('Error searching Wikidata properties:', error);
+            container.innerHTML = '<div class="error">Error searching properties. Please try again.</div>';
+        }
+    }
+    
+    // Display property suggestions for unified modal
+    function displayUnifiedPropertySuggestions(suggestions, container) {
+        if (suggestions.length === 0) {
+            container.innerHTML = '<div class="no-results">No properties found. Try different search terms.</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        suggestions.forEach(prop => {
+            const suggestionElement = createElement('div', {
+                className: 'property-suggestion clickable',
+                onClick: () => selectUnifiedProperty(prop)
+            });
+            
+            suggestionElement.innerHTML = `
+                <strong>${prop.id}</strong> - ${prop.label}
+                <div class="property-description">${prop.description || 'No description available'}</div>
+            `;
+            
+            container.appendChild(suggestionElement);
+        });
+    }
+    
+    // Select a property in unified modal
+    async function selectUnifiedProperty(property) {
+        window.currentUnifiedPropertySelected = property;
+        
+        const selectedPropertyDiv = document.getElementById('unified-selected-property');
+        const detailsDiv = document.getElementById('unified-selected-property-details');
+        const constraintsDiv = document.getElementById('unified-property-constraints');
+        
+        if (!selectedPropertyDiv || !detailsDiv) return;
+        
+        // Show selected property
+        selectedPropertyDiv.style.display = 'block';
+        detailsDiv.innerHTML = `
+            <div class="selected-property-info">
+                <p><strong>ID:</strong> ${property.id}</p>
+                <p><strong>Label:</strong> ${property.label}</p>
+                <p><strong>Description:</strong> ${property.description || 'No description available'}</p>
+            </div>
+        `;
+        
+        // Clear suggestions
+        document.getElementById('unified-property-suggestions').innerHTML = '';
+        
+        // Update search input
+        const searchInput = document.getElementById('unified-property-search-input');
+        if (searchInput) {
+            searchInput.value = `${property.id}: ${property.label}`;
+        }
+        
+        // Load constraints and data type info
+        if (constraintsDiv) {
+            const loadingDiv = constraintsDiv.querySelector('.constraint-loading');
+            const contentDiv = constraintsDiv.querySelector('.constraint-content');
+            
+            if (loadingDiv && contentDiv) {
+                loadingDiv.style.display = 'block';
+                constraintsDiv.style.display = 'block';
+                
+                try {
+                    const propertyData = await fetchPropertyData(property.id);
+                    
+                    // Update Stage 2 with actual data type
+                    updateUnifiedStage2DataType(propertyData);
+                    
+                    // Show constraints
+                    contentDiv.innerHTML = formatPropertyConstraints(propertyData);
+                    loadingDiv.style.display = 'none';
+                } catch (error) {
+                    console.error('Error loading property data:', error);
+                    contentDiv.innerHTML = '<div class="error">Error loading property information.</div>';
+                    loadingDiv.style.display = 'none';
+                }
+            }
+        }
+    }
+    
+    // Update Stage 2 data type information for unified modal
+    function updateUnifiedStage2DataType(propertyData) {
+        const stage2Summary = document.getElementById('unified-stage-2-summary');
+        const datatypeLabel = document.querySelector('#unified-detected-datatype .datatype-label');
+        const datatypeDescription = document.getElementById('unified-datatype-description');
+        
+        if (stage2Summary) {
+            stage2Summary.textContent = `Stage 2: Value type is ${propertyData.datatypeLabel || propertyData.datatype || 'Unknown'}`;
+        }
+        
+        if (datatypeLabel) {
+            datatypeLabel.textContent = propertyData.datatypeLabel || propertyData.datatype || 'Unknown';
+        }
+        
+        if (datatypeDescription) {
+            datatypeDescription.innerHTML = `<p>This property expects values of type "${propertyData.datatypeLabel || propertyData.datatype || 'Unknown'}".</p>`;
+        }
+    }
+    
+    // Get selected property from unified modal
+    function getUnifiedSelectedPropertyFromModal() {
+        return window.currentUnifiedPropertySelected || null;
     }
     
     // Remove manual property from UI and state
@@ -2226,8 +2443,8 @@ export function setupMappingStep(state) {
         import('../ui/modal-ui.js').then(({ setupModalUI }) => {
             const modalUI = setupModalUI();
             
-            // Create modal content
-            const modalContent = createAddManualPropertyModalContent();
+            // Create unified modal content for new properties (no preselected property)
+            const modalContent = createUnifiedPropertyModalContent(null);
             
             // Create buttons
             const buttons = [
@@ -2244,9 +2461,9 @@ export function setupMappingStep(state) {
                     type: 'primary',
                     keyboardShortcut: 'Enter',
                     callback: () => {
-                        const { selectedProperty, defaultValue, isRequired } = getManualPropertyFromModal();
+                        const selectedProperty = getUnifiedSelectedPropertyFromModal();
                         if (selectedProperty) {
-                            addManualPropertyToState(selectedProperty, defaultValue, isRequired);
+                            addManualPropertyToState(selectedProperty, null, false);
                             modalUI.closeModal();
                         } else {
                             showMessage('Please select a Wikidata property first.', 'warning', 3000);
@@ -2262,147 +2479,6 @@ export function setupMappingStep(state) {
                 buttons
             );
         });
-    }
-    
-    // Create the content for the add manual property modal
-    function createAddManualPropertyModalContent(existingProperty = null) {
-        const container = createElement('div', {
-            className: 'manual-property-modal-content'
-        });
-        
-        // Property search section (reuse existing search functionality)
-        const searchSection = createElement('div', {
-            className: 'property-search'
-        });
-        searchSection.innerHTML = `
-            <h4>Search Wikidata Properties</h4>
-            <input type="text" id="manual-property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
-            <div id="manual-selected-property" class="selected-property" style="display: none;">
-                <h4>Selected Property</h4>
-                <div id="manual-selected-property-details"></div>
-                <div id="manual-property-constraints" class="property-constraints" style="display: none;">
-                    <div class="constraint-loading" style="display: none;">Loading constraint information...</div>
-                    <div class="constraint-content"></div>
-                    <div class="constraint-info-notice">
-                        This information is automatically retrieved from Wikidata and cannot be changed.
-                    </div>
-                </div>
-            </div>
-        `;
-        container.appendChild(searchSection);
-        
-        // Instance of / Subclass of toggle section (for P31/P279)
-        const classificationSection = createElement('div', {
-            className: 'classification-toggle-section',
-            style: 'display: none;' // Initially hidden, shown when P31 or P279 is selected
-        });
-        classificationSection.innerHTML = `
-            <h4>Classification Type</h4>
-            <div class="classification-options" style="line-height: 1.8;">
-                <div style="margin-bottom: 8px;">
-                    <label style="cursor: pointer;">
-                        <input type="radio" name="classification-type" value="P31" checked style="margin-right: 6px; width: auto;">Instance of (P31) - This item is an example of this class
-                    </label>
-                </div>
-                <div>
-                    <label style="cursor: pointer;">
-                        <input type="radio" name="classification-type" value="P279" style="margin-right: 6px; width: auto;">Subclass of (P279) - This item type is a subtype of this class
-                    </label>
-                </div>
-            </div>
-        `;
-        container.appendChild(classificationSection);
-        
-        
-        // Setup search functionality
-        setTimeout(() => setupManualPropertySearch(existingProperty), 100);
-        
-        return container;
-    }
-    
-    // Setup search functionality for manual property modal
-    function setupManualPropertySearch(existingProperty = null) {
-        const searchInput = document.getElementById('manual-property-search-input');
-        let searchTimeout;
-        
-        if (!searchInput) return;
-        
-        // Pre-populate if editing existing property
-        if (existingProperty) {
-            window.currentManualPropertySelected = existingProperty.property;
-            selectManualProperty(existingProperty.property);
-            searchInput.value = `${existingProperty.property.id}: ${existingProperty.property.label}`;
-            
-        } else {
-            window.currentManualPropertySelected = null;
-        }
-        
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            const query = e.target.value.trim();
-            
-            if (query.length < 2) {
-                return;
-            }
-            
-            // Search functionality disabled - suggestions container removed
-            // Users can manually enter property ID and label
-        });
-    }
-    
-    // Search Wikidata properties for manual property modal
-    async function searchManualPropertyWikidataProperties(query, container) {
-        try {
-            container.innerHTML = '<div class="loading">Searching...</div>';
-            
-            // Wikidata API search
-            const wikidataUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&type=property&format=json&origin=*`;
-            
-            const response = await fetch(wikidataUrl);
-            const data = await response.json();
-            
-            displayManualPropertySuggestions(data.search || [], container);
-        } catch (error) {
-            console.error('Error searching Wikidata properties:', error);
-            container.innerHTML = '<div class="error">Error searching properties. Please try again.</div>';
-        }
-    }
-    
-    // Display property suggestions for manual property modal
-    function displayManualPropertySuggestions(wikidataResults, container) {
-        container.innerHTML = '';
-        
-        if (wikidataResults.length > 0) {
-            wikidataResults.forEach(property => {
-                const formattedProperty = {
-                    id: property.id,
-                    label: property.label,
-                    description: property.description || 'No description available'
-                };
-                const item = createManualPropertySuggestionItem(formattedProperty);
-                container.appendChild(item);
-            });
-        } else {
-            container.innerHTML = '<div class="no-results">No properties found</div>';
-        }
-    }
-    
-    // Create a property suggestion item for manual property modal
-    function createManualPropertySuggestionItem(property) {
-        const item = createElement('div', {
-            className: 'property-suggestion-item',
-            onClick: () => selectManualProperty(property)
-        });
-        
-        item.innerHTML = `
-            <div class="property-main">
-                <span class="property-id">${property.id}</span>
-                <span class="property-label">${property.label}</span>
-            </div>
-            <div class="property-description">${property.description}</div>
-        `;
-        
-        return item;
     }
     
     // Select a property in manual property modal
