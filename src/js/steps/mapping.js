@@ -3132,14 +3132,13 @@ export function setupMappingStep(state) {
         
         const patternTextarea = createElement('textarea', {
             rows: 3,
-            value: currentPattern,
             placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
             className: 'pattern-input',
             onInput: (e) => {
                 state.updateTransformationBlock(propertyId, block.id, { pattern: e.target.value });
                 updateTransformationPreview(propertyId, state);
             }
-        });
+        }, currentPattern);
         patternField.appendChild(patternTextarea);
         
         // Help text
