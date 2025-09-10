@@ -1065,34 +1065,6 @@ export function setupMappingStep(state) {
         stage2Section.appendChild(stage2Content);
         container.appendChild(stage2Section);
         
-        // Stage 3: Options (Collapsible)
-        const stage3Section = createElement('details', {
-            className: 'mapping-stage',
-            id: 'metadata-stage-3-options',
-            open: true
-        });
-        
-        const stage3Summary = createElement('summary', {
-            className: 'stage-summary'
-        }, 'Stage 3: Options');
-        stage3Section.appendChild(stage3Summary);
-        
-        const stage3Content = createElement('div', {
-            className: 'stage-content'
-        });
-        
-        // Configuration options will be added here in future updates
-        const placeholderSection = createElement('div', {
-            className: 'options-placeholder'
-        });
-        placeholderSection.innerHTML = `
-            <div class="placeholder-notice">
-                <em>Additional configuration options will be available here in future updates.</em>
-            </div>
-        `;
-        stage3Content.appendChild(placeholderSection);
-        stage3Section.appendChild(stage3Content);
-        container.appendChild(stage3Section);
         
         return container;
     }
@@ -2305,7 +2277,6 @@ export function setupMappingStep(state) {
         searchSection.innerHTML = `
             <h4>Search Wikidata Properties</h4>
             <input type="text" id="manual-property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
-            <div id="manual-property-suggestions" class="property-suggestions"></div>
             <div id="manual-selected-property" class="selected-property" style="display: none;">
                 <h4>Selected Property</h4>
                 <div id="manual-selected-property-details"></div>
@@ -2352,7 +2323,6 @@ export function setupMappingStep(state) {
     // Setup search functionality for manual property modal
     function setupManualPropertySearch(existingProperty = null) {
         const searchInput = document.getElementById('manual-property-search-input');
-        const suggestionsContainer = document.getElementById('manual-property-suggestions');
         let searchTimeout;
         
         if (!searchInput) return;
@@ -2372,13 +2342,11 @@ export function setupMappingStep(state) {
             const query = e.target.value.trim();
             
             if (query.length < 2) {
-                suggestionsContainer.innerHTML = '';
                 return;
             }
             
-            searchTimeout = setTimeout(() => {
-                searchManualPropertyWikidataProperties(query, suggestionsContainer);
-            }, 300);
+            // Search functionality disabled - suggestions container removed
+            // Users can manually enter property ID and label
         });
     }
     
@@ -2461,11 +2429,6 @@ export function setupMappingStep(state) {
             searchInput.value = `${property.id}: ${property.label}`;
         }
         
-        // Clear suggestions container
-        const suggestionsContainer = document.getElementById('manual-property-suggestions');
-        if (suggestionsContainer) {
-            suggestionsContainer.innerHTML = '';
-        }
         
         // Show selected property details
         const selectedContainer = document.getElementById('manual-selected-property');
