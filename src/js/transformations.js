@@ -406,6 +406,16 @@ export const COMMON_REGEX_PATTERNS = {
         pattern: '[\\[\\]{}()]',
         replacement: '',
         description: 'Remove all types of brackets'
+    },
+    'Remove HTTP/HTTPS': {
+        pattern: 'https?://',
+        replacement: '',
+        description: 'Remove http:// and https:// from URLs'
+    },
+    'Extract URL Last Part': {
+        pattern: '.*\\/(.+)$',
+        replacement: '$1',
+        description: 'Extract the last part of a URL after the final slash'
     }
 };
 
