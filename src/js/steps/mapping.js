@@ -728,8 +728,8 @@ export function setupMappingStep(state) {
             
             // Check if this is a metadata field
             if (manualProp.property.isMetadata) {
-                // Create simplified modal content for metadata
-                const modalContent = createMetadataEditModalContent(manualProp);
+                // Create consolidated modal content for metadata with automatic data type detection
+                const modalContent = createConsolidatedMetadataModalContent(manualProp);
                 
                 // Create buttons for metadata
                 const buttons = [
@@ -813,21 +813,102 @@ export function setupMappingStep(state) {
         });
     }
     
-    // Create modal content for metadata fields
-    function createMetadataEditModalContent(manualProp) {
+    // Create consolidated modal content for metadata fields with automatic data type detection
+    function createConsolidatedMetadataModalContent(manualProp) {
         const container = createElement('div', {
-            className: 'metadata-edit-modal-content'
+            className: 'metadata-consolidated-modal-content'
         });
         
-        // Description section
-        const descriptionSection = createElement('div', {
-            className: 'metadata-description-section',
-            style: 'margin-bottom: 20px;'
+        // Stage 1: Property Information (Collapsible)
+        const stage1Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'metadata-stage-1-property-info',
+            open: true
         });
-        descriptionSection.innerHTML = `
-            <p>${manualProp.property.description}</p>
+        
+        const stage1Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 1: Property Information');
+        stage1Section.appendChild(stage1Summary);
+        
+        const stage1Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Property information section
+        const propertyInfo = createElement('div', {
+            className: 'property-info'
+        });
+        propertyInfo.innerHTML = `
+            <h4>Property Details</h4>
+            <p><strong>Property:</strong> ${manualProp.property.label}</p>
+            <p><strong>Description:</strong> ${manualProp.property.description}</p>
         `;
-        container.appendChild(descriptionSection);
+        stage1Content.appendChild(propertyInfo);
+        stage1Section.appendChild(stage1Content);
+        container.appendChild(stage1Section);
+        
+        // Stage 2: Value Type Detection (Collapsible)
+        const stage2Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'metadata-stage-2-value-type-detection',
+            open: true
+        });
+        
+        const stage2Summary = createElement('summary', {
+            className: 'stage-summary',
+            id: 'metadata-stage-2-summary'
+        });
+        
+        // Automatically detect data type based on property
+        let detectedDataType;
+        if (manualProp.property.id === 'instance-of') {
+            detectedDataType = 'Wikidata item';
+        } else {
+            detectedDataType = 'metadata';
+        }
+        
+        stage2Summary.textContent = `Stage 2: Value type is ${detectedDataType}`;
+        stage2Section.appendChild(stage2Summary);
+        
+        const stage2Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Data type display section
+        const dataTypeSection = createElement('div', {
+            className: 'detected-datatype-section'
+        });
+        dataTypeSection.innerHTML = `
+            <h4>Detected Data Type</h4>
+            <div class="datatype-display">
+                <span class="datatype-label">${detectedDataType}</span>
+            </div>
+            <div class="datatype-description">
+                ${manualProp.property.id === 'instance-of' 
+                    ? 'Values will link to Wikidata items representing the type or class of each item.' 
+                    : 'Values will be stored as text metadata for each item.'}
+            </div>
+        `;
+        stage2Content.appendChild(dataTypeSection);
+        stage2Section.appendChild(stage2Content);
+        container.appendChild(stage2Section);
+        
+        // Stage 3: Options (Collapsible)
+        const stage3Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'metadata-stage-3-options',
+            open: true
+        });
+        
+        const stage3Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 3: Options');
+        stage3Section.appendChild(stage3Summary);
+        
+        const stage3Content = createElement('div', {
+            className: 'stage-content'
+        });
         
         // Default value section
         const defaultValueSection = createElement('div', {
@@ -843,10 +924,12 @@ export function setupMappingStep(state) {
                        placeholder="Enter a default value..." 
                        class="default-value-input"
                        value="${manualProp.defaultValue || ''}">
-                <div class="input-help">Enter a text value for ${manualProp.property.label}</div>
+                <div class="input-help">Enter a ${manualProp.property.id === 'instance-of' ? 'Wikidata item' : 'text'} value for ${manualProp.property.label}</div>
             </div>
         `;
-        container.appendChild(defaultValueSection);
+        stage3Content.appendChild(defaultValueSection);
+        stage3Section.appendChild(stage3Content);
+        container.appendChild(stage3Section);
         
         return container;
     }
