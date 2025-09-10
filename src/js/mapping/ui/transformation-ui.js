@@ -123,7 +123,7 @@ export function renderValueTransformationUI(keyData, state) {
     // Add transformation block button
     const addBlockBtn = createButton('Add Transformation', {
         className: 'add-transformation-btn',
-        onClick: () => showAddTransformationMenu(propertyId, state)
+        onClick: () => showAddTransformationMenu(propertyId, state, addBlockBtn)
     });
     
     transformationHeader.appendChild(transformationTitle);
@@ -746,7 +746,7 @@ export function addDragHandlers(blockElement, dragHandle, propertyId, state) {
 }
 
 // Helper function to show add transformation menu
-function showAddTransformationMenu(propertyId, state) {
+function showAddTransformationMenu(propertyId, state, addBtn) {
     // Create a simple dropdown menu
     const menu = createElement('div', { 
         className: 'add-transformation-menu',
@@ -773,7 +773,6 @@ function showAddTransformationMenu(propertyId, state) {
     });
 
     // Position and show menu
-    const addBtn = document.querySelector('.add-transformation-btn');
     const rect = addBtn.getBoundingClientRect();
     menu.style.top = (rect.bottom + window.scrollY) + 'px';
     menu.style.left = rect.left + 'px';
