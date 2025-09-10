@@ -417,4 +417,101 @@ export const COMMON_REGEX_PATTERNS = {
         replacement: '',
         description: 'Remove all types of brackets'
     }
-};\n\n/**\n * Recursively extract all field paths and values from an Omeka S object\n * @param {Object} obj - The Omeka S data object\n * @param {string} basePath - Current path being processed\n * @param {Array} results - Array to collect results\n * @returns {Array} Array of {path, value, preview} objects\n */\nexport function extractAllFields(obj, basePath = '', results = []) {\n    if (!obj || typeof obj !== 'object') {\n        if (basePath && obj !== null && obj !== undefined) {\n            const value = String(obj);\n            results.push({\n                path: basePath,\n                value: value,\n                preview: value.length > 50 ? `${value.substring(0, 50)}...` : value\n            });\n        }\n        return results;\n    }\n    \n    if (Array.isArray(obj)) {\n        obj.forEach((item, index) => {\n            const newPath = basePath ? `${basePath}.${index}` : String(index);\n            extractAllFields(item, newPath, results);\n        });\n    } else {\n        Object.entries(obj).forEach(([key, value]) => {\n            const newPath = basePath ? `${basePath}.${key}` : key;\n            \n            if (value && typeof value === 'object') {\n                // Also check if this object has immediate string values we should extract\n                if (typeof value === 'object' && !Array.isArray(value)) {\n                    // Check for common Omeka S value patterns\n                    const immediateValues = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];\n                    for (const prop of immediateValues) {\n                        if (value[prop] && typeof value[prop] === 'string') {\n                            const val = String(value[prop]);\n                            results.push({\n                                path: `${newPath}.${prop}`,\n                                value: val,\n                                preview: val.length > 50 ? `${val.substring(0, 50)}...` : val\n                            });\n                        }\n                    }\n                }\n                // Continue recursive extraction\n                extractAllFields(value, newPath, results);\n            } else if (value !== null && value !== undefined) {\n                const val = String(value);\n                results.push({\n                    path: newPath,\n                    value: val,\n                    preview: val.length > 50 ? `${val.substring(0, 50)}...` : val\n                });\n            }\n        });\n    }\n    \n    return results;\n}\n\n/**\n * Search through extracted fields by key or value (case-insensitive)\n * @param {Array} fields - Array of field objects from extractAllFields\n * @param {string} searchTerm - Search term\n * @returns {Array} Filtered array of matching fields\n */\nexport function searchFields(fields, searchTerm) {\n    if (!searchTerm || !fields) return fields;\n    \n    const term = searchTerm.toLowerCase();\n    return fields.filter(field => \n        field.path.toLowerCase().includes(term) || \n        field.value.toLowerCase().includes(term)\n    );\n}\n\n/**\n * Gets a preview of the transformation result\n * @param {string} value - Sample value to transform\n * @param {Array} blocks - Array of transformation blocks\n * @returns {Object} Preview result with steps\n */\nexport function getTransformationPreview(value, blocks) {\n    if (!value) {\n        return { steps: [], finalValue: '' };  \n    }\n    \n    const steps = applyTransformationChain(value, blocks);\n    const finalValue = steps[steps.length - 1]?.value || value;\n    \n    return {\n        steps,\n        finalValue\n    };\n}
+};
+
+/**
+ * Recursively extract all field paths and values from an Omeka S object
+ * @param {Object} obj - The Omeka S data object
+ * @param {string} basePath - Current path being processed
+ * @param {Array} results - Array to collect results
+ * @returns {Array} Array of {path, value, preview} objects
+ */
+export function extractAllFields(obj, basePath = '', results = []) {
+    if (!obj || typeof obj !== 'object') {
+        if (basePath && obj !== null && obj !== undefined) {
+            const value = String(obj);
+            results.push({
+                path: basePath,
+                value: value,
+                preview: value.length > 50 ? `${value.substring(0, 50)}...` : value
+            });
+        }
+        return results;
+    }
+    
+    if (Array.isArray(obj)) {
+        obj.forEach((item, index) => {
+            const newPath = basePath ? `${basePath}.${index}` : String(index);
+            extractAllFields(item, newPath, results);
+        });
+    } else {
+        Object.entries(obj).forEach(([key, value]) => {
+            const newPath = basePath ? `${basePath}.${key}` : key;
+            
+            if (value && typeof value === 'object') {
+                // Also check if this object has immediate string values we should extract
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    // Check for common Omeka S value patterns
+                    const immediateValues = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
+                    for (const prop of immediateValues) {
+                        if (value[prop] && typeof value[prop] === 'string') {
+                            const val = String(value[prop]);
+                            results.push({
+                                path: `${newPath}.${prop}`,
+                                value: val,
+                                preview: val.length > 50 ? `${val.substring(0, 50)}...` : val
+                            });
+                        }
+                    }
+                }
+                // Continue recursive extraction
+                extractAllFields(value, newPath, results);
+            } else if (value !== null && value !== undefined) {
+                const val = String(value);
+                results.push({
+                    path: newPath,
+                    value: val,
+                    preview: val.length > 50 ? `${val.substring(0, 50)}...` : val
+                });
+            }
+        });
+    }
+    
+    return results;
+}
+
+/**
+ * Search through extracted fields by key or value (case-insensitive)
+ * @param {Array} fields - Array of field objects from extractAllFields
+ * @param {string} searchTerm - Search term
+ * @returns {Array} Filtered array of matching fields
+ */
+export function searchFields(fields, searchTerm) {
+    if (!searchTerm || !fields) return fields;
+    
+    const term = searchTerm.toLowerCase();
+    return fields.filter(field => 
+        field.path.toLowerCase().includes(term) || 
+        field.value.toLowerCase().includes(term)
+    );
+}
+
+/**
+ * Gets a preview of the transformation result
+ * @param {string} value - Sample value to transform
+ * @param {Array} blocks - Array of transformation blocks
+ * @returns {Object} Preview result with steps
+ */
+export function getTransformationPreview(value, blocks) {
+    if (!value) {
+        return { steps: [], finalValue: '' };  
+    }
+    
+    const steps = applyTransformationChain(value, blocks);
+    const finalValue = steps[steps.length - 1]?.value || value;
+    
+    return {
+        steps,
+        finalValue
+    };
+}
