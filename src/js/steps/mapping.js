@@ -886,7 +886,9 @@ export function setupMappingStep(state) {
             <div class="datatype-description">
                 ${manualProp.property.id === 'instance-of' 
                     ? 'Values will link to Wikidata items representing the type or class of each item.' 
-                    : 'Expecting a string for a language-specific value. Values will be stored as text metadata for each item.'}
+                    : manualProp.property.id === 'description'
+                        ? 'Expecting a language-specific string value. Descriptions are always specific to each language and cannot have default values.'
+                        : 'Expecting a string value. Labels and aliases can have default values that apply across languages, with optional language-specific overrides. <a href="https://www.wikidata.org/wiki/Help:Default_values_for_labels_and_aliases" target="_blank" rel="noopener">Learn more about default values</a>.'}
             </div>
         `;
         stage2Content.appendChild(dataTypeSection);
