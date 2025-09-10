@@ -49,6 +49,12 @@ import {
 } from '../mapping/core/property-searcher.js';
 import { 
     refreshTransformationFieldPreview,
+    addTransformationBlock,
+    updateTransformationPreview,
+    refreshTransformationUI,
+    refreshStage3TransformationUI 
+} from '../mapping/core/transformation-engine.js';
+import {
     renderValueTransformationUI,
     renderTransformationBlocks,
     renderTransformationBlockUI,
@@ -58,12 +64,8 @@ import {
     renderComposeConfigUI,
     renderRegexConfigUI,
     updateFieldSearchResults,
-    addTransformationBlock,
-    updateTransformationPreview,
-    refreshTransformationUI,
-    addDragHandlers,
-    refreshStage3TransformationUI 
-} from '../mapping/core/transformation-engine.js';
+    addDragHandlers
+} from '../mapping/ui/transformation-ui.js';
 import { 
     populateLists,
     updateSectionCounts,
