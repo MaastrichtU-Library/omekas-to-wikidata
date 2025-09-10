@@ -626,7 +626,7 @@ export function setupReconciliationStep(state) {
     // Return public API if needed
     return {
         debugReconciliationStep,
-        loadMockDataForTesting,
+        loadMockDataForTesting: modules.loadMockDataForTesting,
         initializeReconciliation
     };
 }
