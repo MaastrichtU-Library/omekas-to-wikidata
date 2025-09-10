@@ -5,6 +5,7 @@
 import { eventSystem } from '../events.js';
 import { showMessage, createElement, createListItem, createDownloadLink } from '../ui/components.js';
 import { getCompletePropertyData } from '../api/wikidata.js';
+import { BLOCK_TYPES, BLOCK_METADATA, createTransformationBlock, getTransformationPreview } from '../transformations.js';
 export function setupMappingStep(state) {
     // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
@@ -1175,24 +1176,9 @@ export function setupMappingStep(state) {
             className: 'stage-content'
         });
         
-        // Value manipulation section (placeholder for future functionality)
-        const valueManipulationInfo = createElement('div', {
-            className: 'value-manipulation-info',
-            id: 'value-manipulation-section'
-        });
-        valueManipulationInfo.innerHTML = `
-            <div class="future-stage-placeholder">
-                <h4>Value Transformation & Validation</h4>
-                <p>Advanced value manipulation tools will be available here in future versions:</p>
-                <ul>
-                    <li>Data transformation rules</li>
-                    <li>Format validation</li>
-                    <li>Value normalization</li>
-                    <li>Custom mapping logic</li>
-                </ul>
-            </div>
-        `;
-        stage3Content.appendChild(valueManipulationInfo);
+        // Value transformation section
+        const valueTransformationContainer = renderValueTransformationUI(keyData, state);
+        stage3Content.appendChild(valueTransformationContainer);
         stage3Section.appendChild(stage3Content);
         container.appendChild(stage3Section);
         
@@ -2620,6 +2606,380 @@ export function setupMappingStep(state) {
         // Update UI
         populateLists();
         
+    }
+
+    /**
+     * Renders the value transformation UI for Stage 3
+     * @param {Object} keyData - The mapped key data
+     * @param {Object} state - The application state
+     * @returns {HTMLElement} The transformation UI container
+     */
+    function renderValueTransformationUI(keyData, state) {
+        const container = createElement('div', {
+            className: 'value-transformation-container',
+            id: 'value-transformation-section'
+        });
+
+        // Property ID for transformation blocks
+        const propertyId = keyData?.property?.id;
+        if (!propertyId) {
+            container.appendChild(createElement('div', {
+                className: 'transformation-message'
+            }, 'Select a property first to configure value transformations'));
+            return container;
+        }
+
+        // Header section
+        const header = createElement('div', { className: 'transformation-header' });
+        header.appendChild(createElement('h4', {}, 'Value Transformation'));
+        header.appendChild(createElement('p', { className: 'transformation-description' }, 
+            'Apply transformations to modify values before they are sent to Wikidata. Transformations are applied in order.'));
+        container.appendChild(header);
+
+        // Sample value for preview
+        const currentState = state.getState();
+        const sampleValue = keyData.sampleValue || 'Sample Value';
+        
+        // Transformation blocks container
+        const blocksContainer = createElement('div', {
+            className: 'transformation-blocks-container',
+            id: `transformation-blocks-${propertyId}`
+        });
+
+        // Add transformation button
+        const addBlockSection = createElement('div', { className: 'add-block-section' });
+        const blockTypeSelect = createElement('select', {
+            className: 'block-type-select',
+            id: `block-type-select-${propertyId}`
+        });
+
+        // Add options for each block type
+        Object.entries(BLOCK_METADATA).forEach(([type, metadata]) => {
+            const option = createElement('option', {
+                value: type,
+                disabled: metadata.isPlaceholder
+            }, metadata.name);
+            blockTypeSelect.appendChild(option);
+        });
+
+        const addBlockBtn = createElement('button', {
+            className: 'button button--secondary',
+            onClick: () => addTransformationBlock(propertyId, blockTypeSelect.value, state)
+        }, '+ Add Transformation');
+
+        addBlockSection.appendChild(blockTypeSelect);
+        addBlockSection.appendChild(addBlockBtn);
+
+        // Store sample value for refreshes
+        blocksContainer.dataset.sampleValue = sampleValue;
+
+        // Initial render of transformation blocks
+        renderTransformationBlocks(propertyId, sampleValue, blocksContainer, state);
+
+        container.appendChild(blocksContainer);
+        container.appendChild(addBlockSection);
+
+        return container;
+    }
+
+    /**
+     * Renders the list of transformation blocks for a property
+     * @param {string} propertyId - The property ID
+     * @param {string} sampleValue - Sample value for preview
+     * @param {HTMLElement} container - Container to render into
+     * @param {Object} state - Application state
+     */
+    function renderTransformationBlocks(propertyId, sampleValue, container, state) {
+        // Clear existing content
+        container.innerHTML = '';
+
+        const blocks = state.getTransformationBlocks(propertyId);
+        
+        if (blocks.length === 0) {
+            container.appendChild(createElement('div', {
+                className: 'no-transformations-message'
+            }, 'No transformations configured. Add a transformation to modify values before sending to Wikidata.'));
+            return;
+        }
+
+        // Get transformation preview with all steps
+        const preview = getTransformationPreview(sampleValue, blocks);
+
+        // Create transformation flow visualization
+        const flowContainer = createElement('div', { className: 'transformation-flow' });
+        
+        preview.steps.forEach((step, index) => {
+            // Value state display
+            const valueDisplay = createElement('div', { 
+                className: `transformation-value-state ${index === 0 ? 'initial' : index === preview.steps.length - 1 ? 'final' : 'intermediate'}`
+            });
+            
+            valueDisplay.appendChild(createElement('div', { className: 'value-label' },
+                index === 0 ? 'Original Value:' : 
+                index === preview.steps.length - 1 ? 'Final Value:' : 
+                `After Step ${index}:`));
+            
+            valueDisplay.appendChild(createElement('div', { className: 'value-content' }, 
+                step.value || '(empty)'));
+
+            flowContainer.appendChild(valueDisplay);
+
+            // Add transformation block (except after the last step)
+            if (index < preview.steps.length - 1) {
+                const block = blocks.find(b => b.id === preview.steps[index + 1].blockId);
+                if (block) {
+                    const blockUI = renderTransformationBlockUI(propertyId, block, state);
+                    flowContainer.appendChild(blockUI);
+                }
+            }
+        });
+
+        container.appendChild(flowContainer);
+    }
+
+    /**
+     * Renders a single transformation block UI
+     * @param {string} propertyId - The property ID
+     * @param {Object} block - The transformation block
+     * @param {Object} state - Application state
+     * @returns {HTMLElement} Block UI element
+     */
+    function renderTransformationBlockUI(propertyId, block, state) {
+        const metadata = BLOCK_METADATA[block.type];
+        const blockElement = createElement('div', {
+            className: `transformation-block transformation-block--${block.type}`,
+            dataset: { blockId: block.id },
+            draggable: 'true'
+        });
+
+        // Block header with drag handle and controls
+        const blockHeader = createElement('div', { className: 'block-header' });
+        
+        const dragHandle = createElement('div', { 
+            className: 'drag-handle',
+            title: 'Drag to reorder'
+        }, '⋮⋮');
+        
+        const blockInfo = createElement('div', { className: 'block-info' });
+        blockInfo.appendChild(createElement('span', { className: 'block-icon' }, metadata.icon));
+        blockInfo.appendChild(createElement('span', { className: 'block-name' }, metadata.name));
+
+        const blockControls = createElement('div', { className: 'block-controls' });
+        const removeBtn = createElement('button', {
+            className: 'remove-block-btn',
+            title: 'Remove transformation',
+            onClick: () => {
+                state.removeTransformationBlock(propertyId, block.id);
+                refreshTransformationUI(propertyId, state);
+            }
+        }, '×');
+        
+        blockControls.appendChild(removeBtn);
+        
+        blockHeader.appendChild(dragHandle);
+        blockHeader.appendChild(blockInfo);
+        blockHeader.appendChild(blockControls);
+
+        // Block configuration
+        const blockConfig = createElement('div', { className: 'block-config' });
+        blockConfig.appendChild(renderBlockConfigUI(propertyId, block, state));
+
+        blockElement.appendChild(blockHeader);
+        blockElement.appendChild(blockConfig);
+
+        // Add drag and drop handlers
+        addDragHandlers(blockElement, propertyId, state);
+
+        return blockElement;
+    }
+
+    /**
+     * Renders the configuration UI for a specific block type
+     * @param {string} propertyId - The property ID
+     * @param {Object} block - The transformation block
+     * @param {Object} state - Application state
+     * @returns {HTMLElement} Configuration UI
+     */
+    function renderBlockConfigUI(propertyId, block, state) {
+        const configContainer = createElement('div', { className: 'block-config-content' });
+        
+        switch (block.type) {
+            case BLOCK_TYPES.PREFIX:
+                return renderPrefixSuffixConfigUI(propertyId, block, state, 'Prefix text:');
+            
+            case BLOCK_TYPES.SUFFIX:
+                return renderPrefixSuffixConfigUI(propertyId, block, state, 'Suffix text:');
+                
+            case BLOCK_TYPES.FIND_REPLACE:
+                return renderFindReplaceConfigUI(propertyId, block, state);
+                
+            case BLOCK_TYPES.COMPOSE:
+            case BLOCK_TYPES.REGEX:
+                return renderPlaceholderConfigUI(block);
+                
+            default:
+                return createElement('div', {}, 'Unknown block type');
+        }
+    }
+
+    /**
+     * Renders prefix/suffix configuration UI
+     */
+    function renderPrefixSuffixConfigUI(propertyId, block, state, label) {
+        const container = createElement('div', { className: 'config-field' });
+        
+        const labelElement = createElement('label', {}, label);
+        const input = createElement('input', {
+            type: 'text',
+            value: block.config.text || '',
+            placeholder: `Enter ${block.type} text...`,
+            onInput: (e) => {
+                state.updateTransformationBlock(propertyId, block.id, { text: e.target.value });
+                refreshTransformationUI(propertyId, state);
+            }
+        });
+        
+        container.appendChild(labelElement);
+        container.appendChild(input);
+        return container;
+    }
+
+    /**
+     * Renders find/replace configuration UI
+     */
+    function renderFindReplaceConfigUI(propertyId, block, state) {
+        const container = createElement('div', { className: 'config-fields' });
+        
+        // Find field
+        const findField = createElement('div', { className: 'config-field' });
+        findField.appendChild(createElement('label', {}, 'Find:'));
+        const findInput = createElement('input', {
+            type: 'text',
+            value: block.config.find || '',
+            placeholder: 'Text to find...',
+            onInput: (e) => {
+                state.updateTransformationBlock(propertyId, block.id, { find: e.target.value });
+                refreshTransformationUI(propertyId, state);
+            }
+        });
+        findField.appendChild(findInput);
+        
+        // Replace field
+        const replaceField = createElement('div', { className: 'config-field' });
+        replaceField.appendChild(createElement('label', {}, 'Replace with:'));
+        const replaceInput = createElement('input', {
+            type: 'text',
+            value: block.config.replace || '',
+            placeholder: 'Replacement text...',
+            onInput: (e) => {
+                state.updateTransformationBlock(propertyId, block.id, { replace: e.target.value });
+                refreshTransformationUI(propertyId, state);
+            }
+        });
+        replaceField.appendChild(replaceInput);
+        
+        // Options
+        const optionsField = createElement('div', { className: 'config-options' });
+        
+        const caseSensitiveCheck = createElement('input', {
+            type: 'checkbox',
+            id: `case-sensitive-${block.id}`,
+            checked: block.config.caseSensitive || false,
+            onChange: (e) => {
+                state.updateTransformationBlock(propertyId, block.id, { caseSensitive: e.target.checked });
+                refreshTransformationUI(propertyId, state);
+            }
+        });
+        
+        const caseSensitiveLabel = createElement('label', {
+            htmlFor: `case-sensitive-${block.id}`
+        }, 'Case sensitive');
+        
+        optionsField.appendChild(caseSensitiveCheck);
+        optionsField.appendChild(caseSensitiveLabel);
+        
+        container.appendChild(findField);
+        container.appendChild(replaceField);
+        container.appendChild(optionsField);
+        
+        return container;
+    }
+
+    /**
+     * Renders placeholder configuration for coming soon blocks
+     */
+    function renderPlaceholderConfigUI(block) {
+        const metadata = BLOCK_METADATA[block.type];
+        return createElement('div', { 
+            className: 'placeholder-config' 
+        }, `${metadata.description} - This feature will be available in a future update.`);
+    }
+
+    /**
+     * Adds a new transformation block
+     */
+    function addTransformationBlock(propertyId, blockType, state) {
+        const metadata = BLOCK_METADATA[blockType];
+        if (metadata?.isPlaceholder) {
+            showMessage('This transformation type is not yet available', 'info');
+            return;
+        }
+
+        const newBlock = createTransformationBlock(blockType);
+        state.addTransformationBlock(propertyId, newBlock);
+        refreshTransformationUI(propertyId, state);
+    }
+
+    /**
+     * Refreshes the transformation UI for a property
+     */
+    function refreshTransformationUI(propertyId, state) {
+        const container = document.getElementById(`transformation-blocks-${propertyId}`);
+        if (container && container.dataset.sampleValue) {
+            renderTransformationBlocks(propertyId, container.dataset.sampleValue, container, state);
+        }
+    }
+
+    /**
+     * Adds drag and drop handlers to a block element
+     */
+    function addDragHandlers(blockElement, propertyId, state) {
+        let draggedElement = null;
+
+        blockElement.addEventListener('dragstart', (e) => {
+            draggedElement = blockElement;
+            blockElement.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        blockElement.addEventListener('dragend', () => {
+            blockElement.classList.remove('dragging');
+            draggedElement = null;
+        });
+
+        blockElement.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        blockElement.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggedElement && draggedElement !== blockElement) {
+                // Reorder blocks
+                const blocks = Array.from(blockElement.parentElement.querySelectorAll('.transformation-block'));
+                const draggedIndex = blocks.indexOf(draggedElement);
+                const targetIndex = blocks.indexOf(blockElement);
+                
+                if (draggedIndex !== targetIndex) {
+                    const blockIds = blocks.map(el => el.dataset.blockId);
+                    const draggedId = blockIds.splice(draggedIndex, 1)[0];
+                    blockIds.splice(targetIndex, 0, draggedId);
+                    
+                    state.reorderTransformationBlocks(propertyId, blockIds);
+                    refreshTransformationUI(propertyId, state);
+                }
+            }
+        });
     }
     
     // Export functions globally for use by other modules
