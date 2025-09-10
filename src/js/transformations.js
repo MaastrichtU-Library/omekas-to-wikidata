@@ -456,6 +456,8 @@ export function extractAllFields(obj, basePath = '', results = []) {
                         const idVal = String(value['@id']);
                         const labelVal = String(value['o:label']);
                         
+                        console.log('Found @id + o:label combination:', { path: newPath, id: idVal, label: labelVal });
+                        
                         // Add the @id field with enhanced preview showing the label
                         results.push({
                             path: `${newPath}.@id`,
@@ -472,7 +474,7 @@ export function extractAllFields(obj, basePath = '', results = []) {
                     }
                     
                     // Check for common Omeka S value patterns (but skip @id and o:label if already processed above)
-                    const immediateValues = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
+                    const immediateValues = ['@value', '@id', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
                     for (const prop of immediateValues) {
                         if (value[prop] && typeof value[prop] === 'string') {
                             // Skip if we already processed this as part of @id + o:label combination
