@@ -2622,4 +2622,8 @@ export function setupMappingStep(state) {
         
     }
     
+    // Export functions globally for use by other modules
+    window.openMappingModal = openMappingModal;
+    window.openManualPropertyEditModal = openManualPropertyEditModal;
+    
 }
