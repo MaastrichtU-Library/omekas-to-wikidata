@@ -593,14 +593,17 @@ export function renderRegexConfigUI(propertyId, block, state, container = null) 
     const patternsLabel = createElement('label', {}, 'Common patterns:');
     const patternsSelect = createElement('select', {
         onChange: (e) => {
-            if (e.target.value) {
-                patternInput.value = e.target.value;
-                block.config.pattern = e.target.value;
+            const selectedKey = e.target.value;
+            if (selectedKey && COMMON_REGEX_PATTERNS[selectedKey]) {
+                const selectedPattern = COMMON_REGEX_PATTERNS[selectedKey];
+                patternInput.value = selectedPattern.pattern;
+                replacementInput.value = selectedPattern.replacement || '';
+                block.config.pattern = selectedPattern.pattern;
+                block.config.replacement = selectedPattern.replacement || '';
                 state.updateTransformationBlock(propertyId, block.id, block);
                 import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
                     updateTransformationPreview(propertyId, state);
                 });
-                e.target.value = ''; // Reset select
             }
         }
     });
@@ -608,9 +611,9 @@ export function renderRegexConfigUI(propertyId, block, state, container = null) 
     // Add default option
     patternsSelect.appendChild(createElement('option', { value: '' }, 'Choose a pattern...'));
 
-    // Add common regex patterns
+    // Add common regex patterns - use key as value for proper selection
     Object.entries(COMMON_REGEX_PATTERNS).forEach(([key, pattern]) => {
-        patternsSelect.appendChild(createElement('option', { value: pattern.pattern }, key));
+        patternsSelect.appendChild(createElement('option', { value: key }, key));
     });
 
     patternsContainer.appendChild(patternsLabel);
