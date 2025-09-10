@@ -30,6 +30,23 @@ import { getConstraintBasedTypes, buildContextualProperties, validateAgainstForm
 import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
+import { 
+    calculateTotalReconciliableCells, 
+    extractPropertyValues, 
+    combineAndSortProperties,
+    createMockDataLoader,
+    createOriginalKeyInfoGetter,
+    generateLodUri,
+    createReconciliationRequirementReasonGetter
+} from '../reconciliation/core/reconciliation-data.js';
+import {
+    createProgressCalculator,
+    createProceedButtonUpdater,
+    createMatchesStorer,
+    createEmptyMatchesStorer,
+    updateCellQueueStatus,
+    createCellMarkers
+} from '../reconciliation/core/reconciliation-progress.js';
 
 /**
  * Initializes the reconciliation step interface and processing engine
@@ -94,6 +111,21 @@ export function setupReconciliationStep(state) {
     // Auto-advance setting for batch processing efficiency
     // When enabled, high-confidence matches proceed automatically without user review
     let autoAdvanceSetting = true; // Default to auto-advance enabled
+    
+    // Set up factory functions for data processing functions that need access to local variables
+    const loadMockDataForTesting = createMockDataLoader(state, initializeReconciliation);
+    let getOriginalKeyInfo; // Will be initialized after getPropertyDisplayInfo is defined
+    let getReconciliationRequirementReason; // Will be initialized after getPropertyDisplayInfo is defined
+    
+    // Set up progress factory functions
+    let calculateCurrentProgress;
+    let updateProceedButton;
+    let storeAllMatches;
+    let storeEmptyMatches;
+    let markCellAsReconciled;
+    let markCellAsSkipped;
+    let markCellAsNoItem;
+    let markCellAsString;
     
     // Add click handler for proceed to designer button
     if (proceedToDesignerBtn) {
@@ -299,23 +331,6 @@ export function setupReconciliationStep(state) {
         
     }
     
-    /**
-     * Load mock data for testing purposes
-     */
-    function loadMockDataForTesting() {
-        
-        const mockItems = getMockItemsData();
-        const mockMapping = getMockMappingData();
-        
-        // Update state with mock data
-        state.loadMockData(mockItems, mockMapping);
-        
-        
-        // Initialize reconciliation with mock data
-        setTimeout(() => {
-            initializeReconciliation();
-        }, 100);
-    }
     
     /**
      * Calculates total reconciliable cells for accurate progress tracking
@@ -350,138 +365,8 @@ export function setupReconciliationStep(state) {
      * - Manual properties contribute 1 cell per item (regardless of current values)
      * - Missing or empty values are excluded from the count
      */
-    function calculateTotalReconciliableCells(data, mappedKeys, manualProperties = []) {
-        let total = 0;
-        data.forEach(item => {
-            // Count mapped property cells
-            mappedKeys.forEach(keyObj => {
-                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                const values = extractPropertyValues(item, keyName);
-                total += values.length;
-            });
-            
-            // Count manual property cells (each manual property counts as 1 cell per item)
-            total += manualProperties.length;
-        });
-        return total;
-    }
     
-    /**
-     * Extracts property values from Omeka S items with comprehensive format handling
-     * 
-     * Omeka S stores property values in various complex formats depending on the
-     * property type, resource relationships, and export configuration. This function
-     * normalizes all these formats into consistent string arrays for reconciliation.
-     * 
-     * Supported value formats:
-     * - Simple strings and primitives
-     * - Arrays of value objects with @value annotations
-     * - Resource references with o:label properties
-     * - Mixed arrays containing different value types
-     * - Nested objects with various value properties
-     * 
-     * @param {Object} item - Single Omeka S item object
-     * @param {string} key - Property key to extract values from
-     * @returns {Array<string>} Array of normalized string values for reconciliation
-     * 
-     * @example
-     * // Omeka S multi-value property:
-     * extractPropertyValues(item, "dcterms:subject");
-     * // Input: [{"@value": "Art"}, {"o:label": "History"}]
-     * // Output: ["Art", "History"]
-     * 
-     * @description
-     * The normalization process is essential because Wikidata reconciliation
-     * requires consistent string representations of values. The function prioritizes
-     * human-readable labels (o:label) over technical values (@value) when both exist.
-     */
-    function extractPropertyValues(item, key) {
-        const value = item[key];
-        if (!value) return [];
-        
-        // Handle different data structures
-        if (Array.isArray(value)) {
-            return value.map(v => {
-                if (typeof v === 'object' && v['o:label']) {
-                    return v['o:label'];
-                } else if (typeof v === 'object' && v['@value']) {
-                    return v['@value'];
-                } else if (typeof v === 'string') {
-                    return v;
-                } else {
-                    return String(v);
-                }
-            });
-        } else if (typeof value === 'object' && value['o:label']) {
-            return [value['o:label']];
-        } else if (typeof value === 'object' && value['@value']) {
-            return [value['@value']];
-        } else {
-            return [String(value)];
-        }
-    }
     
-    /**
-     * Combine and sort all properties (mapped and manual) to prioritize label, description, aliases, and instance of
-     */
-    function combineAndSortProperties(mappedKeys, manualProperties) {
-        // Create a unified array with both mapped and manual properties
-        const allProperties = [];
-        
-        // Add mapped properties with a type indicator
-        mappedKeys.forEach((keyObj, index) => {
-            allProperties.push({
-                type: 'mapped',
-                data: keyObj,
-                originalIndex: index
-            });
-        });
-        
-        // Add manual properties with a type indicator  
-        manualProperties.forEach((manualProp, index) => {
-            allProperties.push({
-                type: 'manual',
-                data: manualProp,
-                originalIndex: index + mappedKeys.length // Offset by mapped keys length
-            });
-        });
-        
-        // Sort the combined array
-        return allProperties.sort((a, b) => {
-            const getPriority = (item) => {
-                let label = '';
-                let id = '';
-                
-                if (item.type === 'mapped') {
-                    const property = typeof item.data === 'string' ? null : item.data.property;
-                    if (!property) return 100;
-                    label = property.label ? property.label.toLowerCase() : '';
-                    id = property.id || '';
-                } else if (item.type === 'manual') {
-                    label = item.data.property.label ? item.data.property.label.toLowerCase() : '';
-                    id = item.data.property.id || '';
-                }
-                
-                // Priority order: label, description, aliases, instance of (P31), then everything else
-                if (label === 'label') return 1;
-                if (label === 'description') return 2;
-                if (label === 'aliases' || label === 'alias') return 3;
-                if (id === 'P31' || label === 'instance of') return 4;
-                
-                return 50; // All other properties maintain relative order
-            };
-            
-            const aPriority = getPriority(a);
-            const bPriority = getPriority(b);
-            
-            if (aPriority !== bPriority) {
-                return aPriority - bPriority;
-            }
-            
-            // If same priority, maintain original order
-            return a.originalIndex - b.originalIndex;
-        });
-    }
     
     /**
      * Create the reconciliation table interface
@@ -937,83 +822,8 @@ export function setupReconciliationStep(state) {
     /**
      * Store all matches for a cell (without auto-accepting)
      */
-    function storeAllMatches(cellInfo, allMatches, bestMatch) {
-        const { itemId, property, valueIndex } = cellInfo;
-        
-        // Update data structure to store all matches
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            const propData = reconciliationData[itemId].properties[property];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].matches = allMatches;
-                propData.reconciled[valueIndex].confidence = bestMatch.score;
-            }
-        }
-        
-        // Update UI to show the best match percentage (for table display)
-        updateCellDisplayWithMatch(itemId, property, valueIndex, bestMatch);
-        
-        // Update state
-        state.updateState('reconciliationData', reconciliationData);
-    }
 
-    /**
-     * Store empty matches when no reconciliation results found
-     * This ensures the system knows reconciliation was attempted
-     */
-    function storeEmptyMatches(cellInfo) {
-        const { itemId, property, valueIndex } = cellInfo;
-        
-        // Update data structure to store empty matches array
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            const propData = reconciliationData[itemId].properties[property];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].matches = [];
-                propData.reconciled[valueIndex].confidence = 0;
-            }
-        }
-        
-        // Update state
-        state.updateState('reconciliationData', reconciliationData);
-    }
     
-    /**
-     * Update cell queue status
-     */
-    function updateCellQueueStatus(itemId, property, valueIndex, status) {
-        const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
-        const cell = document.querySelector(cellSelector);
-        
-        if (cell) {
-            // For multiple values, always use indexed selection; for single values, use the first element
-            const allValueElements = cell.querySelectorAll('.property-value');
-            const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
-            
-            if (valueElement) {
-                // Remove all queue-related classes
-                valueElement.classList.remove('queued', 'processing', 'checking');
-                
-                // Add appropriate class based on status
-                if (status === 'queued') {
-                    valueElement.classList.add('queued');
-                    const statusSpan = valueElement.querySelector('.value-status');
-                    if (statusSpan && statusSpan.textContent === 'Click to reconcile') {
-                        statusSpan.textContent = 'Queued...';
-                        statusSpan.className = 'value-status queued';
-                    }
-                } else if (status === 'processing') {
-                    valueElement.classList.add('processing');
-                    // Don't change text during processing - the spinner shows activity
-                } else if (status === 'clear') {
-                    // Clear queue status and revert to normal
-                    const statusSpan = valueElement.querySelector('.value-status');
-                    if (statusSpan && statusSpan.className.includes('queued')) {
-                        statusSpan.textContent = 'Click to reconcile';
-                        statusSpan.className = 'value-status';
-                    }
-                }
-            }
-        }
-    }
 
     /**
      * Update cell loading state
@@ -1193,41 +1003,7 @@ export function setupReconciliationStep(state) {
     /**
      * Calculate current progress from reconciliation data
      */
-    function calculateCurrentProgress() {
-        let total = 0;
-        let completed = 0;
-        let skipped = 0;
-        let errors = 0;
-        
-        Object.values(reconciliationData).forEach(itemData => {
-            Object.values(itemData.properties).forEach(propData => {
-                propData.reconciled.forEach(reconciledItem => {
-                    total++;
-                    if (reconciledItem.status === 'reconciled' || reconciledItem.status === 'no-item') {
-                        completed++;
-                    } else if (reconciledItem.status === 'skipped') {
-                        skipped++;
-                    } else if (reconciledItem.status === 'error') {
-                        errors++;
-                    }
-                });
-            });
-        });
-        
-        return { total, completed, skipped, errors };
-    }
     
-    /**
-     * Update proceed button state
-     */
-    function updateProceedButton() {
-        if (proceedToDesignerBtn) {
-            const currentState = state.getState();
-            const canProceed = currentState.reconciliationProgress.completed + currentState.reconciliationProgress.skipped >= currentState.reconciliationProgress.total && 
-                              currentState.reconciliationProgress.total > 0;
-            proceedToDesignerBtn.disabled = !canProceed;
-        }
-    }
     
     /**
      * Find and reconcile next unprocessed cell
@@ -1503,6 +1279,10 @@ export function setupReconciliationStep(state) {
         };
     }
     
+    // Initialize factory functions that depend on getPropertyDisplayInfo
+    getOriginalKeyInfo = createOriginalKeyInfoGetter(reconciliationData, state);
+    getReconciliationRequirementReason = createReconciliationRequirementReasonGetter(state, getPropertyDisplayInfo);
+    
     /**
      * Fetch real property information from Wikidata
      */
@@ -1609,85 +1389,8 @@ export function setupReconciliationStep(state) {
     /**
      * Get original key information including LOD URI
      */
-    function getOriginalKeyInfo(itemId, property) {
-        // Get the original key name from the source data
-        const originalData = reconciliationData[itemId]?.originalData;
-        
-        // Try to get the correct linked data URI from mapping information
-        const currentState = state.getState();
-        const mappedKeys = currentState.mappings?.mappedKeys || [];
-        const mappingInfo = mappedKeys.find(keyObj => 
-            (typeof keyObj === 'string' ? keyObj : keyObj.key) === property
-        );
-        
-        let lodUri;
-        if (mappingInfo && mappingInfo.linkedDataUri) {
-            // Use the correct linked data URI from the mapping
-            lodUri = mappingInfo.linkedDataUri;
-        } else {
-            // Fallback: try to extract from original data or generate generic URI
-            lodUri = generateLodUri(property, originalData);
-        }
-        
-        return {
-            keyName: property,
-            lodUri: lodUri
-        };
-    }
     
-    /**
-     * Generate a LOD URI for the original key
-     */
-    function generateLodUri(property, originalData) {
-        // Try to extract URI from the original data structure
-        if (originalData && originalData[property]) {
-            const value = originalData[property];
-            
-            // Check if it's an Omeka S structure with URI
-            if (Array.isArray(value) && value[0] && value[0]['@id']) {
-                return value[0]['@id'];
-            } else if (typeof value === 'object' && value['@id']) {
-                return value['@id'];
-            }
-        }
-        
-        // Fallback: create a generic ontology URI
-        return `http://purl.org/dc/terms/${property}`;
-    }
     
-    /**
-     * Determine why Wikidata item is required for this reconciliation
-     */
-    function getReconciliationRequirementReason(property) {
-        // Check if requirement comes from Entity Schema vs property constraint
-        const currentState = state.getState();
-        const entitySchemas = currentState.mappings?.entitySchemas || [];
-        
-        let reason = {
-            explanation: "This property requires a Wikidata item to maintain linked data integrity.",
-            links: []
-        };
-        
-        // Check if this property is part of an Entity Schema
-        if (entitySchemas.length > 0) {
-            reason.explanation = "This property is required by the selected Entity Schema to be a Wikidata item.";
-            reason.links.push(
-                ...entitySchemas.map(schema => ({
-                    label: `Entity Schema: ${schema.label || schema.id}`,
-                    url: `https://www.wikidata.org/wiki/EntitySchema:${schema.id}`
-                }))
-            );
-        }
-        
-        // Add property-specific investigation link
-        const propertyInfo = getPropertyDisplayInfo(property);
-        reason.links.push({
-            label: `Property: ${propertyInfo.label} (${propertyInfo.pid})`,
-            url: propertyInfo.wikidataUrl
-        });
-        
-        return reason;
-    }
     
     /**
      * Get auto-advance setting from user preference or state
@@ -2803,127 +2506,6 @@ export function setupReconciliationStep(state) {
     /**
      * Mark a cell as reconciled
      */
-    function markCellAsReconciled(cellInfo, reconciliation) {
-        const { itemId, property, valueIndex } = cellInfo;
-        
-        // Update data structure
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            const propData = reconciliationData[itemId].properties[property];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex] = {
-                    status: 'reconciled',
-                    selectedMatch: reconciliation,
-                    matches: [], // Could store all matches for reference
-                    confidence: reconciliation.type === 'wikidata' ? 95 : 80
-                };
-            }
-        }
-        
-        // Update UI
-        updateCellDisplay(itemId, property, valueIndex, 'reconciled', reconciliation);
-        
-        // Update progress
-        state.incrementReconciliationCompleted();
-        updateProceedButton();
-        
-        // Store in context suggestions
-        if (reconciliation.type === 'wikidata') {
-            contextSuggestions.set(property, reconciliation);
-        }
-        
-        // Update state
-        state.updateState('reconciliationData', reconciliationData);
-    }
-    
-    /**
-     * Mark a cell as skipped
-     */
-    function markCellAsSkipped(cellInfo) {
-        const { itemId, property, valueIndex } = cellInfo;
-        
-        // Update data structure
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            const propData = reconciliationData[itemId].properties[property];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].status = 'skipped';
-            }
-        }
-        
-        // Update UI
-        updateCellDisplay(itemId, property, valueIndex, 'skipped');
-        
-        // Update progress
-        state.incrementReconciliationSkipped();
-        updateProceedButton();
-        
-        // Update state
-        state.updateState('reconciliationData', reconciliationData);
-    }
-    
-    /**
-     * Mark a cell as having no Wikidata item
-     */
-    function markCellAsNoItem(cellInfo) {
-        const { itemId, property, valueIndex } = cellInfo;
-        
-        // Update data structure
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            const propData = reconciliationData[itemId].properties[property];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].status = 'no-item';
-                propData.reconciled[valueIndex].selectedMatch = {
-                    type: 'no-item',
-                    reason: 'No appropriate Wikidata item exists'
-                };
-            }
-        }
-        
-        // Update UI
-        updateCellDisplay(itemId, property, valueIndex, 'no-item');
-        
-        // Update progress (count as completed since it's a decision)
-        state.incrementReconciliationCompleted();
-        updateProceedButton();
-        
-        // Update state
-        state.updateState('reconciliationData', reconciliationData);
-    }
-    
-    /**
-     * Mark a cell as using the original value as a string
-     */
-    function markCellAsString(cellInfo) {
-        const { itemId, property, valueIndex, value } = cellInfo;
-        
-        // Update data structure
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            const propData = reconciliationData[itemId].properties[property];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].status = 'reconciled';
-                propData.reconciled[valueIndex].selectedMatch = {
-                    type: 'string',
-                    value: value,
-                    label: value,
-                    description: 'Used as string value'
-                };
-            }
-        }
-        
-        // Update UI
-        updateCellDisplay(itemId, property, valueIndex, 'reconciled', {
-            type: 'string',
-            value: value,
-            label: value,
-            description: 'Used as string value'
-        });
-        
-        // Update progress (count as completed since it's a decision)
-        state.incrementReconciliationCompleted();
-        updateProceedButton();
-        
-        // Update state
-        state.updateState('reconciliationData', reconciliationData);
-    }
     
     /**
      * Update cell display based on reconciliation status
@@ -3014,6 +2596,17 @@ export function setupReconciliationStep(state) {
             }
         }
     }
+    
+    // Initialize progress factory functions after updateCellDisplay is defined
+    calculateCurrentProgress = createProgressCalculator(reconciliationData);
+    updateProceedButton = createProceedButtonUpdater(proceedToDesignerBtn, state);
+    storeAllMatches = createMatchesStorer(reconciliationData, state, updateCellDisplayWithMatch);
+    storeEmptyMatches = createEmptyMatchesStorer(reconciliationData, state);
+    const cellMarkers = createCellMarkers(reconciliationData, state, updateCellDisplay, updateProceedButton, contextSuggestions);
+    markCellAsReconciled = cellMarkers.markCellAsReconciled;
+    markCellAsSkipped = cellMarkers.markCellAsSkipped;
+    markCellAsNoItem = cellMarkers.markCellAsNoItem;
+    markCellAsString = cellMarkers.markCellAsString;
     
     /**
      * Debug function to check reconciliation step state
