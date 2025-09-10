@@ -52,8 +52,14 @@ function openRawJsonModal(propertyData) {
 }
 
 function refreshStage3TransformationUI() {
-    // TODO: Extract this from mapping.js
-    console.log('refreshStage3TransformationUI placeholder');
+    // Import and call the real refresh function
+    import('../core/transformation-engine.js').then(({ refreshStage3TransformationUI: realRefresh }) => {
+        const keyData = window.currentMappingKeyData;
+        const state = window.mappingStepState;
+        if (keyData && state) {
+            realRefresh(keyData, state);
+        }
+    });
 }
 
 /**
@@ -234,6 +240,9 @@ export function setupPropertySearch(keyData, state) {
         window.currentMappingSelectedProperty = keyData.property;
         selectProperty(keyData.property, state);
         searchInput.value = `${keyData.property.id}: ${keyData.property.label}`;
+        
+        // Also trigger immediate Stage 3 refresh for robustness
+        setTimeout(() => refreshStage3TransformationUI(), 50);
     } else {
         window.currentMappingSelectedProperty = null;
         

@@ -33,20 +33,33 @@ export function renderValueTransformationUI(keyData, state) {
     let currentProperty = window.currentMappingSelectedProperty || keyData?.property;
     let propertyId = currentProperty?.id;
     
-    // For already-mapped keys, if we don't have the property yet, show placeholder and retry
-    if (!propertyId && keyData) {
-        // Check if this appears to be a mapped key based on the modal title or other indicators
-        const modalTitle = document.querySelector('.modal-title');
-        if (modalTitle && modalTitle.textContent.includes('→')) {
-            // This is likely a mapped key - create placeholder and set up retry mechanism
+    // If keyData has property info but global variable doesn't, set it
+    if (!window.currentMappingSelectedProperty && keyData?.property) {
+        window.currentMappingSelectedProperty = keyData.property;
+        currentProperty = keyData.property;
+        propertyId = currentProperty.id;
+    }
+    
+    // If we still don't have a property ID, show loading message and set up retry
+    if (!propertyId) {
+        // Check if we have any indicators that a property should be available
+        const hasPropertyIndicators = keyData?.property || 
+                                      document.getElementById('selected-property')?.style.display !== 'none' ||
+                                      document.querySelector('.property-search-input')?.value?.includes(':');
+        
+        if (hasPropertyIndicators) {
+            // Show loading message and retry
             const placeholder = createElement('div', {
                 className: 'transformation-message',
                 id: 'transformation-placeholder'
             }, 'Loading value transformation options...');
             container.appendChild(placeholder);
             
-            // Retry getting the property after a short delay to allow setup to complete
-            setTimeout(() => {
+            // More robust retry with multiple attempts
+            let retryCount = 0;
+            const maxRetries = 5;
+            
+            const retryGetProperty = () => {
                 const updatedProperty = window.currentMappingSelectedProperty || keyData?.property;
                 if (updatedProperty?.id) {
                     // Replace placeholder with actual transformation UI
@@ -54,18 +67,30 @@ export function renderValueTransformationUI(keyData, state) {
                     if (container.parentNode) {
                         container.parentNode.replaceChild(actualContainer, container);
                     }
+                } else if (retryCount < maxRetries) {
+                    retryCount++;
+                    setTimeout(retryGetProperty, 200 * retryCount); // Increasing delay
+                } else {
+                    // After max retries, show the "select property" message
+                    if (container.parentNode) {
+                        const errorContainer = createElement('div');
+                        errorContainer.appendChild(createElement('div', {
+                            className: 'transformation-message'
+                        }, 'Select a property first to configure value transformations'));
+                        container.parentNode.replaceChild(errorContainer, container);
+                    }
                 }
-            }, 200);
+            };
             
+            setTimeout(retryGetProperty, 100);
+            return container;
+        } else {
+            // No property indicators, show selection message
+            container.appendChild(createElement('div', {
+                className: 'transformation-message'
+            }, 'Select a property first to configure value transformations'));
             return container;
         }
-    }
-    
-    if (!propertyId) {
-        container.appendChild(createElement('div', {
-            className: 'transformation-message'
-        }, 'Select a property first to configure value transformations'));
-        return container;
     }
 
     // Field selector section
