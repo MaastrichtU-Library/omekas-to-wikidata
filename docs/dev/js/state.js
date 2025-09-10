@@ -32,7 +32,8 @@ export function setupState() {
             nonLinkedKeys: [],
             mappedKeys: [],
             ignoredKeys: [],
-            manualProperties: []
+            manualProperties: [],
+            transformationBlocks: {} // propertyId -> array of transformation blocks
         },
         
         // Step 3: Reconciliation
@@ -625,6 +626,9 @@ export function setupState() {
         if (!state.mappings.manualProperties) {
             state.mappings.manualProperties = [];
         }
+        if (!state.mappings.transformationBlocks) {
+            state.mappings.transformationBlocks = {};
+        }
     }
     
     /**
@@ -763,6 +767,138 @@ export function setupState() {
     }
     
     /**
+     * Adds a transformation block to a property
+     * @param {string} propertyId - The property ID to add the block to
+     * @param {Object} block - The transformation block to add
+     */
+    function addTransformationBlock(propertyId, block) {
+        ensureMappingArrays();
+        
+        if (!state.mappings.transformationBlocks[propertyId]) {
+            state.mappings.transformationBlocks[propertyId] = [];
+        }
+        
+        const oldValue = JSON.parse(JSON.stringify(state.mappings.transformationBlocks[propertyId]));
+        
+        // Generate unique ID if not provided
+        const blockWithId = {
+            ...block,
+            id: block.id || `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            order: state.mappings.transformationBlocks[propertyId].length
+        };
+        
+        state.mappings.transformationBlocks[propertyId].push(blockWithId);
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.transformationBlocks.${propertyId}`,
+            oldValue,
+            newValue: [...state.mappings.transformationBlocks[propertyId]]
+        });
+        
+        return blockWithId;
+    }
+    
+    /**
+     * Removes a transformation block by ID
+     * @param {string} propertyId - The property ID 
+     * @param {string} blockId - The block ID to remove
+     */
+    function removeTransformationBlock(propertyId, blockId) {
+        ensureMappingArrays();
+        
+        if (!state.mappings.transformationBlocks[propertyId]) return;
+        
+        const oldValue = [...state.mappings.transformationBlocks[propertyId]];
+        const index = state.mappings.transformationBlocks[propertyId].findIndex(b => b.id === blockId);
+        
+        if (index > -1) {
+            state.mappings.transformationBlocks[propertyId].splice(index, 1);
+            
+            // Update order indices for remaining blocks
+            state.mappings.transformationBlocks[propertyId].forEach((block, i) => {
+                block.order = i;
+            });
+            
+            state.hasUnsavedChanges = true;
+            
+            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                path: `mappings.transformationBlocks.${propertyId}`,
+                oldValue,
+                newValue: [...state.mappings.transformationBlocks[propertyId]]
+            });
+        }
+    }
+    
+    /**
+     * Updates a transformation block configuration
+     * @param {string} propertyId - The property ID
+     * @param {string} blockId - The block ID to update
+     * @param {Object} config - The new configuration
+     */
+    function updateTransformationBlock(propertyId, blockId, config) {
+        ensureMappingArrays();
+        
+        if (!state.mappings.transformationBlocks[propertyId]) return;
+        
+        const oldValue = [...state.mappings.transformationBlocks[propertyId]];
+        const block = state.mappings.transformationBlocks[propertyId].find(b => b.id === blockId);
+        
+        if (block) {
+            block.config = { ...block.config, ...config };
+            state.hasUnsavedChanges = true;
+            
+            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                path: `mappings.transformationBlocks.${propertyId}`,
+                oldValue,
+                newValue: [...state.mappings.transformationBlocks[propertyId]]
+            });
+        }
+    }
+    
+    /**
+     * Reorders transformation blocks for a property
+     * @param {string} propertyId - The property ID
+     * @param {Array} newOrder - Array of block IDs in new order
+     */
+    function reorderTransformationBlocks(propertyId, newOrder) {
+        ensureMappingArrays();
+        
+        if (!state.mappings.transformationBlocks[propertyId]) return;
+        
+        const oldValue = [...state.mappings.transformationBlocks[propertyId]];
+        const blocks = state.mappings.transformationBlocks[propertyId];
+        
+        // Create new ordered array
+        const reorderedBlocks = newOrder.map((blockId, index) => {
+            const block = blocks.find(b => b.id === blockId);
+            if (block) {
+                block.order = index;
+                return block;
+            }
+        }).filter(Boolean);
+        
+        state.mappings.transformationBlocks[propertyId] = reorderedBlocks;
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.transformationBlocks.${propertyId}`,
+            oldValue,
+            newValue: [...state.mappings.transformationBlocks[propertyId]]
+        });
+    }
+    
+    /**
+     * Gets transformation blocks for a property
+     * @param {string} propertyId - The property ID
+     * @returns {Array} Array of transformation blocks
+     */
+    function getTransformationBlocks(propertyId) {
+        ensureMappingArrays();
+        return state.mappings.transformationBlocks[propertyId] || [];
+    }
+    
+    /**
      * Clear persisted state from localStorage
      */
     function clearPersistedState() {
@@ -798,6 +934,12 @@ export function setupState() {
         ensureMappingArrays,
         addManualProperty,
         removeManualProperty,
+        // Convenience methods for transformation blocks
+        addTransformationBlock,
+        removeTransformationBlock,
+        updateTransformationBlock,
+        reorderTransformationBlocks,
+        getTransformationBlocks,
         // Convenience methods for reconciliation progress
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,
