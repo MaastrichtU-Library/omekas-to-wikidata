@@ -869,6 +869,9 @@ export function setupMappingStep(state) {
     
     // Function to open a mapping modal for a key
     function openMappingModal(keyData) {
+        // Store keyData globally for modal title updates
+        window.currentMappingKeyData = keyData;
+        
         // Import modal functionality
         import('../ui/modal-ui.js').then(({ setupModalUI }) => {
             const modalUI = setupModalUI();
@@ -943,6 +946,22 @@ export function setupMappingStep(state) {
             className: 'mapping-modal-content'
         });
         
+        // Stage 1: Key Information and Property Selection (Collapsible)
+        const stage1Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'stage-1-property-selection',
+            open: true // Open by default
+        });
+        
+        const stage1Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 1: Property Selection');
+        stage1Section.appendChild(stage1Summary);
+        
+        const stage1Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
         // Key information section
         const keyInfo = createElement('div', {
             className: 'key-info'
@@ -960,7 +979,7 @@ export function setupMappingStep(state) {
             <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
             <div><strong>Sample Value:</strong> ${sampleValueHtml}</div>
         `;
-        container.appendChild(keyInfo);
+        stage1Content.appendChild(keyInfo);
         
         // Property search section
         const searchSection = createElement('div', {
@@ -982,7 +1001,80 @@ export function setupMappingStep(state) {
                 </div>
             </div>
         `;
-        container.appendChild(searchSection);
+        stage1Content.appendChild(searchSection);
+        stage1Section.appendChild(stage1Content);
+        container.appendChild(stage1Section);
+        
+        // Stage 2: Value Type Detection (Initially hidden)
+        const stage2Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'stage-2-value-type-detection'
+        });
+        
+        const stage2Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 2: Value Type Detection');
+        stage2Section.appendChild(stage2Summary);
+        
+        const stage2Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Data type information section
+        const dataTypeInfo = createElement('div', {
+            className: 'datatype-info',
+            id: 'datatype-info-section'
+        });
+        dataTypeInfo.innerHTML = `
+            <div class="datatype-display">
+                <h4>Detected Data Type</h4>
+                <div id="detected-datatype" class="detected-datatype">
+                    <div class="datatype-loading">Select a property to detect data type...</div>
+                </div>
+            </div>
+            <div class="datatype-description" id="datatype-description" style="display: none;">
+                <p>Additional configuration options will be available here in future versions.</p>
+            </div>
+        `;
+        stage2Content.appendChild(dataTypeInfo);
+        stage2Section.appendChild(stage2Content);
+        container.appendChild(stage2Section);
+        
+        // Stage 3: Value manipulation (Initially hidden)
+        const stage3Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'stage-3-value-manipulation'
+        });
+        
+        const stage3Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 3: Value manipulation');
+        stage3Section.appendChild(stage3Summary);
+        
+        const stage3Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Value manipulation section (placeholder for future functionality)
+        const valueManipulationInfo = createElement('div', {
+            className: 'value-manipulation-info',
+            id: 'value-manipulation-section'
+        });
+        valueManipulationInfo.innerHTML = `
+            <div class="future-stage-placeholder">
+                <h4>Value Transformation & Validation</h4>
+                <p>Advanced value manipulation tools will be available here in future versions:</p>
+                <ul>
+                    <li>Data transformation rules</li>
+                    <li>Format validation</li>
+                    <li>Value normalization</li>
+                    <li>Custom mapping logic</li>
+                </ul>
+            </div>
+        `;
+        stage3Content.appendChild(valueManipulationInfo);
+        stage3Section.appendChild(stage3Content);
+        container.appendChild(stage3Section);
         
         // Setup search functionality and pre-populate if mapped
         setTimeout(() => setupPropertySearch(keyData), 100);
@@ -1359,8 +1451,325 @@ export function setupMappingStep(state) {
             selectedContainer.style.display = 'block';
         }
         
-        // Fetch and display constraints
+        // Fetch and display constraints (existing flow)
         await displayPropertyConstraints(property.id);
+        
+        // NEW: Transition to Stage 2 after property selection
+        await transitionToDataTypeConfiguration(property);
+    }
+    
+    // New function to handle transition to Stage 3 (skip Stage 2)
+    async function transitionToDataTypeConfiguration(property) {
+        // Update modal title to show the mapping relationship
+        updateModalTitle(property);
+        
+        // Get all stages
+        const stage1 = document.getElementById('stage-1-property-selection');
+        const stage2 = document.getElementById('stage-2-value-type-detection');
+        const stage3 = document.getElementById('stage-3-value-manipulation');
+        
+        if (stage1 && stage2 && stage3) {
+            // Mark stages 1 and 2 as completed
+            stage1.classList.add('stage-completed');
+            stage2.classList.add('stage-completed');
+            
+            // Collapse stages 1 and 2
+            stage1.open = false;
+            stage2.open = false;
+            
+            // Open stage 3 after a brief delay for better UX
+            setTimeout(() => {
+                stage3.open = true;
+            }, 300);
+        }
+        
+        // Still process data type information silently (for internal use)
+        await displayDataTypeConfiguration(property);
+    }
+    
+    // Update the modal title to show the mapping relationship
+    function updateModalTitle(property) {
+        const modalTitle = document.getElementById('modal-title');
+        if (modalTitle && window.currentMappingKeyData) {
+            const keyName = window.currentMappingKeyData.key || 'Key';
+            modalTitle.textContent = `${keyName} → ${property.label} (${property.id})`;
+        }
+    }
+    
+    // Display data type configuration in Stage 2
+    async function displayDataTypeConfiguration(property) {
+        const datatypeContainer = document.getElementById('detected-datatype');
+        const descriptionContainer = document.getElementById('datatype-description');
+        
+        if (!datatypeContainer) return;
+        
+        // Show loading state
+        datatypeContainer.innerHTML = '<div class="datatype-loading">Loading data type information...</div>';
+        
+        try {
+            // Fetch complete property data if not already available
+            let propertyData = property;
+            if (!property.constraints || !property.constraintsFetched) {
+                propertyData = await getCompletePropertyData(property.id);
+                // Update the stored property with complete data
+                window.currentMappingSelectedProperty = propertyData;
+            }
+            
+            // Create the main data type display
+            const datatypeDisplay = createElement('div', {
+                className: 'datatype-result'
+            });
+            
+            // Main data type information
+            const mainInfo = createElement('div', {
+                className: 'datatype-main-info'
+            });
+            mainInfo.innerHTML = `
+                <div class="datatype-header">
+                    <span class="datatype-name">${propertyData.datatypeLabel}</span>
+                    <span class="datatype-code">(${propertyData.datatype})</span>
+                </div>
+                <div class="datatype-summary">${getDataTypeSummary(propertyData.datatype)}</div>
+            `;
+            datatypeDisplay.appendChild(mainInfo);
+            
+            // Constraints section
+            const constraintsSection = createConstraintsSection(propertyData.constraints);
+            if (constraintsSection) {
+                datatypeDisplay.appendChild(constraintsSection);
+            }
+            
+            // Technical details button
+            const technicalSection = createElement('div', {
+                className: 'technical-details-section'
+            });
+            
+            const rawJsonBtn = createElement('button', {
+                className: 'raw-json-btn',
+                onClick: () => openRawJsonModal(propertyData)
+            }, '{ } View Raw JSON');
+            
+            technicalSection.appendChild(rawJsonBtn);
+            datatypeDisplay.appendChild(technicalSection);
+            
+            // Replace loading with content
+            datatypeContainer.innerHTML = '';
+            datatypeContainer.appendChild(datatypeDisplay);
+            
+            // Hide the redundant description section
+            if (descriptionContainer) {
+                descriptionContainer.style.display = 'none';
+            }
+            
+        } catch (error) {
+            console.error('Error displaying data type configuration:', error);
+            datatypeContainer.innerHTML = `
+                <div class="datatype-error">
+                    <span class="error-message">Unable to load data type information</span>
+                    <div class="error-details">${error.message}</div>
+                </div>
+            `;
+        }
+    }
+    
+    // Get a clear summary of what the data type means
+    function getDataTypeSummary(datatype) {
+        const summaries = {
+            'wikibase-item': 'Values must be links to other Wikidata items (Q-numbers)',
+            'string': 'Values are text strings with no language or translation needed',
+            'external-id': 'Values are identifiers from external systems (IDs, codes)',
+            'time': 'Values are dates or points in time',
+            'quantity': 'Values are numbers with optional units of measurement', 
+            'url': 'Values are web addresses (URLs)',
+            'commonsMedia': 'Values are filenames of media files on Wikimedia Commons',
+            'monolingualtext': 'Values are text in a specific language',
+            'globe-coordinate': 'Values are geographical coordinates (latitude/longitude)',
+            'wikibase-property': 'Values are links to Wikidata properties (P-numbers)',
+            'math': 'Values are mathematical expressions',
+            'geo-shape': 'Values are geographic shapes or regions',
+            'musical-notation': 'Values are musical notation',
+            'tabular-data': 'Values are structured tabular data',
+            'wikibase-lexeme': 'Values are links to lexemes',
+            'wikibase-form': 'Values are links to word forms',
+            'wikibase-sense': 'Values are links to word senses'
+        };
+        
+        return summaries[datatype] || 'Values follow Wikidata specifications for this data type';
+    }
+    
+    // Create compact constraints section
+    function createConstraintsSection(constraints) {
+        if (!constraints) return null;
+        
+        const hasConstraints = (constraints.format && constraints.format.length > 0) ||
+                              (constraints.valueType && constraints.valueType.length > 0) ||
+                              (constraints.other && constraints.other.length > 0);
+        
+        if (!hasConstraints) {
+            return null; // Don't show anything if no constraints
+        }
+        
+        const constraintsSection = createElement('div', {
+            className: 'constraints-section'
+        });
+        
+        // Value type restrictions - more user-friendly
+        if (constraints.valueType && constraints.valueType.length > 0) {
+            const valueTypeSection = createCompactConstraint(
+                'Value restrictions',
+                'Your values must link to specific types of items',
+                formatValueTypeConstraintsCompact(constraints.valueType)
+            );
+            constraintsSection.appendChild(valueTypeSection);
+        }
+        
+        // Format requirements - simplified
+        if (constraints.format && constraints.format.length > 0) {
+            const formatSection = createCompactConstraint(
+                'Format rules',
+                'Your text values must follow a specific format',
+                formatFormatConstraintsCompact(constraints.format)
+            );
+            constraintsSection.appendChild(formatSection);
+        }
+        
+        // Other constraints - only show if important
+        if (constraints.other && constraints.other.length > 0) {
+            const otherSection = createCompactConstraint(
+                'Other requirements',
+                'Additional validation rules apply',
+                formatOtherConstraintsCompact(constraints.other)
+            );
+            constraintsSection.appendChild(otherSection);
+        }
+        
+        return constraintsSection;
+    }
+    
+    // Create a compact constraint section
+    function createCompactConstraint(title, explanation, details) {
+        const container = createElement('details', {
+            className: 'constraint-compact'
+        });
+        
+        const summaryEl = createElement('summary', {
+            className: 'constraint-compact-summary'
+        });
+        summaryEl.innerHTML = `<span class="constraint-compact-title">${title}</span>`;
+        container.appendChild(summaryEl);
+        
+        const detailsEl = createElement('div', {
+            className: 'constraint-compact-details'
+        });
+        detailsEl.innerHTML = `
+            <div class="constraint-explanation">${explanation}</div>
+            ${details}
+        `;
+        container.appendChild(detailsEl);
+        
+        return container;
+    }
+    
+    // Format value type constraints - compact and user-friendly
+    function formatValueTypeConstraintsCompact(valueTypeConstraints) {
+        if (!valueTypeConstraints || valueTypeConstraints.length === 0) {
+            return '<p>No restrictions found.</p>';
+        }
+        
+        let html = '<div class="constraint-simple-list">';
+        let allTypes = [];
+        
+        valueTypeConstraints.forEach(constraint => {
+            constraint.classes.forEach(classId => {
+                const label = constraint.classLabels[classId] || classId;
+                allTypes.push(label);
+            });
+        });
+        
+        // Show only first few types to keep it compact
+        const displayTypes = allTypes.slice(0, 3);
+        const hasMore = allTypes.length > 3;
+        
+        html += '<p><strong>Must be:</strong> ';
+        html += displayTypes.join(', ');
+        if (hasMore) {
+            html += ` <em>and ${allTypes.length - 3} others</em>`;
+        }
+        html += '</p>';
+        
+        html += '</div>';
+        return html;
+    }
+    
+    // Format format constraints - simplified
+    function formatFormatConstraintsCompact(formatConstraints) {
+        if (!formatConstraints || formatConstraints.length === 0) {
+            return '<p>No format rules found.</p>';
+        }
+        
+        let html = '<div class="constraint-simple-list">';
+        
+        formatConstraints.forEach((constraint, index) => {
+            html += `<p><strong>Rule ${index + 1}:</strong> ${constraint.description}</p>`;
+        });
+        
+        html += '</div>';
+        return html;
+    }
+    
+    // Format other constraints - minimal
+    function formatOtherConstraintsCompact(otherConstraints) {
+        if (!otherConstraints || otherConstraints.length === 0) {
+            return '<p>No additional requirements found.</p>';
+        }
+        
+        return `<p>This property has <strong>${otherConstraints.length}</strong> additional validation rule${otherConstraints.length > 1 ? 's' : ''}.</p>`;
+    }
+    
+    // Open modal with raw JSON data
+    function openRawJsonModal(propertyData) {
+        import('../ui/modal-ui.js').then(({ setupModalUI }) => {
+            const modalUI = setupModalUI();
+            
+            // Create JSON viewer content
+            const jsonContent = createElement('div', {
+                className: 'raw-json-viewer'
+            });
+            
+            const jsonPre = createElement('pre', {
+                className: 'json-display'
+            }, JSON.stringify(propertyData, null, 2));
+            
+            jsonContent.appendChild(jsonPre);
+            
+            // Add copy button
+            const copyBtn = createElement('button', {
+                className: 'copy-json-btn',
+                onClick: () => {
+                    navigator.clipboard.writeText(JSON.stringify(propertyData, null, 2));
+                    copyBtn.textContent = '✓ Copied!';
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy to Clipboard';
+                    }, 2000);
+                }
+            }, 'Copy to Clipboard');
+            
+            jsonContent.insertBefore(copyBtn, jsonPre);
+            
+            const buttons = [
+                {
+                    text: 'Close',
+                    type: 'primary',
+                    callback: () => modalUI.closeModal()
+                }
+            ];
+            
+            modalUI.openModal(
+                `Raw JSON Data - ${propertyData.id}`,
+                jsonContent,
+                buttons
+            );
+        });
     }
     
     // Display property constraints
