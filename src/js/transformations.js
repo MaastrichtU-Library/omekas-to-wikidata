@@ -378,7 +378,7 @@ export function createTransformationBlock(type, customConfig = {}) {
  */
 export const COMMON_REGEX_PATTERNS = {
     'Extract Year': {
-        pattern: '\\b(\\d{4})\\b',
+        pattern: '.*?(\\b\\d{4}\\b).*',
         replacement: '$1',
         description: 'Extract 4-digit year from text'
     },
@@ -398,8 +398,8 @@ export const COMMON_REGEX_PATTERNS = {
         description: 'Remove special characters, keep only letters, numbers and spaces'
     },
     'Extract Email': {
-        pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}',
-        replacement: '$&',
+        pattern: '.*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}).*',
+        replacement: '$1',
         description: 'Extract email addresses'
     },
     'Clean Whitespace': {
