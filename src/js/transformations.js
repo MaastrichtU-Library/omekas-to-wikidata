@@ -8,8 +8,7 @@
  * Block type definitions
  */
 export const BLOCK_TYPES = {
-    PREFIX: 'prefix',
-    SUFFIX: 'suffix', 
+    PREFIX_SUFFIX: 'prefix_suffix',
     FIND_REPLACE: 'findReplace',
     COMPOSE: 'compose',
     REGEX: 'regex'
@@ -19,20 +18,13 @@ export const BLOCK_TYPES = {
  * Block type metadata for UI rendering
  */
 export const BLOCK_METADATA = {
-    [BLOCK_TYPES.PREFIX]: {
-        name: 'Add Prefix',
-        description: 'Add text to the beginning of the value',
-        icon: '⟨',
+    [BLOCK_TYPES.PREFIX_SUFFIX]: {
+        name: 'Prefix/Suffix',
+        description: 'Add text to the beginning and/or end of the value',
+        icon: '⟨⟩',
         defaultConfig: {
-            text: ''
-        }
-    },
-    [BLOCK_TYPES.SUFFIX]: {
-        name: 'Add Suffix',
-        description: 'Add text to the end of the value',
-        icon: '⟩',
-        defaultConfig: {
-            text: ''
+            prefix: '',
+            suffix: ''
         }
     },
     [BLOCK_TYPES.FIND_REPLACE]: {
@@ -79,11 +71,8 @@ export function applyTransformation(value, block) {
     
     try {
         switch (block.type) {
-            case BLOCK_TYPES.PREFIX:
-                return applyPrefixTransformation(value, block.config);
-                
-            case BLOCK_TYPES.SUFFIX:
-                return applySuffixTransformation(value, block.config);
+            case BLOCK_TYPES.PREFIX_SUFFIX:
+                return applyPrefixSuffixTransformation(value, block.config);
                 
             case BLOCK_TYPES.FIND_REPLACE:
                 return applyFindReplaceTransformation(value, block.config);
@@ -130,25 +119,15 @@ export function applyTransformationChain(initialValue, blocks) {
 }
 
 /**
- * Apply prefix transformation
+ * Apply prefix and/or suffix transformation
  * @param {string} value - Input value
- * @param {Object} config - Configuration {text}
+ * @param {Object} config - Configuration {prefix, suffix}
  * @returns {string} Transformed value
  */
-function applyPrefixTransformation(value, config) {
-    const prefix = config.text || '';
-    return prefix + value;
-}
-
-/**
- * Apply suffix transformation
- * @param {string} value - Input value
- * @param {Object} config - Configuration {text}
- * @returns {string} Transformed value
- */
-function applySuffixTransformation(value, config) {
-    const suffix = config.text || '';
-    return value + suffix;
+function applyPrefixSuffixTransformation(value, config) {
+    const prefix = config.prefix || '';
+    const suffix = config.suffix || '';
+    return prefix + value + suffix;
 }
 
 /**
@@ -308,10 +287,12 @@ export function validateTransformationBlock(block) {
     
     // Type-specific validation
     switch (block.type) {
-        case BLOCK_TYPES.PREFIX:
-        case BLOCK_TYPES.SUFFIX:
-            if (typeof block.config.text !== 'string') {
-                errors.push('Text must be a string');
+        case BLOCK_TYPES.PREFIX_SUFFIX:
+            if (block.config.prefix && typeof block.config.prefix !== 'string') {
+                errors.push('Prefix must be a string');
+            }
+            if (block.config.suffix && typeof block.config.suffix !== 'string') {
+                errors.push('Suffix must be a string');
             }
             break;
             

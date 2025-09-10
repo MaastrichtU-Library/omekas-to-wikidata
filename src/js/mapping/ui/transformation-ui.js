@@ -13,6 +13,12 @@ import {
     getFieldValueFromSample,
     convertSampleValueToString 
 } from '../core/data-analyzer.js';
+import { 
+    refreshTransformationFieldPreview,
+    addTransformationBlock,
+    updateTransformationPreview,
+    refreshTransformationUI
+} from '../core/transformation-engine.js';
 
 // Global variable to track the currently dragged element across all blocks
 let currentDraggedElement = null;
@@ -28,6 +34,8 @@ export function renderValueTransformationUI(keyData, state) {
         className: 'value-transformation-container',
         id: 'value-transformation-section'
     });
+    
+    try {
 
     // Property ID for transformation blocks - check multiple sources
     let currentProperty = window.currentMappingSelectedProperty || keyData?.property;
@@ -130,10 +138,7 @@ export function renderValueTransformationUI(keyData, state) {
         
         // Add change listener to update transformation preview
         fieldSelector.addEventListener('change', () => {
-            // Import from transformation-engine to avoid circular dependency
-            import('../core/transformation-engine.js').then(({ refreshTransformationFieldPreview }) => {
-                refreshTransformationFieldPreview(propertyId, state);
-            });
+            refreshTransformationFieldPreview(propertyId, state);
         });
         
         fieldSelectorSection.appendChild(fieldSelectorLabel);
@@ -170,6 +175,14 @@ export function renderValueTransformationUI(keyData, state) {
     renderTransformationBlocks(propertyId, sampleValue, blocksContainer, state);
     container.appendChild(blocksContainer);
 
+    } catch (error) {
+        console.error('Error rendering value transformation UI:', error);
+        container.innerHTML = '';
+        container.appendChild(createElement('div', {
+            className: 'error-message'
+        }, 'Error loading transformation options. Please try again.'));
+    }
+    
     return container;
 }
 
@@ -181,10 +194,11 @@ export function renderValueTransformationUI(keyData, state) {
  * @param {Object} state - Application state
  */
 export function renderTransformationBlocks(propertyId, sampleValue, container, state) {
-    // Clear existing content
-    container.innerHTML = '';
+    try {
+        // Clear existing content
+        container.innerHTML = '';
 
-    const blocks = state.getTransformationBlocks(propertyId);
+        const blocks = state.getTransformationBlocks(propertyId);
     
     if (blocks.length === 0) {
         container.appendChild(createElement('div', {
@@ -225,7 +239,14 @@ export function renderTransformationBlocks(propertyId, sampleValue, container, s
         }
     });
 
-    container.appendChild(flowContainer);
+        container.appendChild(flowContainer);
+    } catch (error) {
+        console.error('Error rendering transformation blocks:', error);
+        container.innerHTML = '';
+        container.appendChild(createElement('div', {
+            className: 'error-message'
+        }, 'Error rendering transformation blocks.'));
+    }
 }
 
 /**
@@ -244,13 +265,13 @@ export function renderTransformationBlockUI(propertyId, block, state) {
 
     // Block header with drag handle and controls
     const blockHeader = createElement('div', { 
-        className: 'block-header',
-        draggable: 'true'
+        className: 'block-header'
     });
     
     const dragHandle = createElement('div', { 
         className: 'drag-handle',
-        title: 'Drag to reorder'
+        title: 'Drag to reorder',
+        draggable: 'true'
     }, '⋮⋮');
     
     const blockInfo = createElement('div', { className: 'block-info' });
@@ -263,10 +284,7 @@ export function renderTransformationBlockUI(propertyId, block, state) {
         title: 'Remove transformation',
         onClick: () => {
             state.removeTransformationBlock(propertyId, block.id);
-            // Import refreshTransformationUI to avoid circular dependency
-            import('../core/transformation-engine.js').then(({ refreshTransformationUI }) => {
-                refreshTransformationUI(propertyId, state);
-            });
+            refreshTransformationUI(propertyId, state);
         }
     }, '×');
     
@@ -344,10 +362,7 @@ export function renderPrefixSuffixConfigUI(propertyId, block, state, label, cont
         onInput: (e) => {
             block.config.prefix = e.target.value;
             state.updateTransformationBlock(propertyId, block.id, block);
-            // Import to avoid circular dependency
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
 
@@ -359,9 +374,7 @@ export function renderPrefixSuffixConfigUI(propertyId, block, state, label, cont
         onInput: (e) => {
             block.config.suffix = e.target.value;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
 
@@ -391,9 +404,7 @@ export function renderFindReplaceConfigUI(propertyId, block, state, container = 
         onInput: (e) => {
             block.config.find = e.target.value;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
 
@@ -405,9 +416,7 @@ export function renderFindReplaceConfigUI(propertyId, block, state, container = 
         onInput: (e) => {
             block.config.replace = e.target.value;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
 
@@ -421,13 +430,11 @@ export function renderFindReplaceConfigUI(propertyId, block, state, container = 
         onChange: (e) => {
             block.config.caseSensitive = e.target.checked;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
     caseSensitiveLabel.appendChild(caseSensitiveCheckbox);
-    caseSensitiveLabel.appendChild(document.createTextNode(' Case sensitive'));
+    caseSensitiveLabel.appendChild(createElement('span', {}, ' Case sensitive'));
 
     // Replace all toggle
     const replaceAllLabel = createElement('label', {
@@ -439,13 +446,11 @@ export function renderFindReplaceConfigUI(propertyId, block, state, container = 
         onChange: (e) => {
             block.config.replaceAll = e.target.checked;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
     replaceAllLabel.appendChild(replaceAllCheckbox);
-    replaceAllLabel.appendChild(document.createTextNode(' Replace all occurrences'));
+    replaceAllLabel.appendChild(createElement('span', {}, ' Replace all occurrences'));
 
     const optionsContainer = createElement('div', { className: 'find-replace-options' });
     optionsContainer.appendChild(caseSensitiveLabel);
@@ -478,9 +483,7 @@ export function renderComposeConfigUI(propertyId, block, state, container = null
         onInput: (e) => {
             block.config.template = e.target.value;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
             // Update field search results
             updateFieldSearchResults(e.target.value, propertyId, block, fieldsContainer.querySelector('.field-search-results'));
         }
@@ -533,9 +536,7 @@ export function renderRegexConfigUI(propertyId, block, state, container = null) 
         onInput: (e) => {
             block.config.pattern = e.target.value;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
 
@@ -548,9 +549,7 @@ export function renderRegexConfigUI(propertyId, block, state, container = null) 
         onInput: (e) => {
             block.config.replacement = e.target.value;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
 
@@ -565,13 +564,11 @@ export function renderRegexConfigUI(propertyId, block, state, container = null) 
         onChange: (e) => {
             block.config.global = e.target.checked;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
     globalLabel.appendChild(globalCheckbox);
-    globalLabel.appendChild(document.createTextNode(' Global (g)'));
+    globalLabel.appendChild(createElement('span', {}, ' Global (g)'));
 
     // Case insensitive flag
     const caseInsensitiveLabel = createElement('label', { className: 'checkbox-label' });
@@ -581,13 +578,11 @@ export function renderRegexConfigUI(propertyId, block, state, container = null) 
         onChange: (e) => {
             block.config.ignoreCase = e.target.checked;
             state.updateTransformationBlock(propertyId, block.id, block);
-            import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                updateTransformationPreview(propertyId, state);
-            });
+            updateTransformationPreview(propertyId, state);
         }
     });
     caseInsensitiveLabel.appendChild(caseInsensitiveCheckbox);
-    caseInsensitiveLabel.appendChild(document.createTextNode(' Ignore case (i)'));
+    caseInsensitiveLabel.appendChild(createElement('span', {}, ' Ignore case (i)'));
 
     flagsContainer.appendChild(globalLabel);
     flagsContainer.appendChild(caseInsensitiveLabel);
@@ -605,9 +600,7 @@ export function renderRegexConfigUI(propertyId, block, state, container = null) 
                 block.config.pattern = selectedPattern.pattern;
                 block.config.replacement = selectedPattern.replacement || '';
                 state.updateTransformationBlock(propertyId, block.id, block);
-                import('../core/transformation-engine.js').then(({ updateTransformationPreview }) => {
-                    updateTransformationPreview(propertyId, state);
-                });
+                updateTransformationPreview(propertyId, state);
             }
         }
     });
@@ -763,13 +756,28 @@ export function addDragHandlers(blockElement, dragHandle, propertyId, state) {
             const midY = rect.top + rect.height / 2;
             const insertBefore = e.clientY < midY;
             
-            // Reorder blocks in state
-            state.reorderTransformationBlocks(propertyId, draggedBlockId, targetBlockId, insertBefore);
+            // Get current blocks order
+            const blocks = state.getTransformationBlocks(propertyId);
+            const blockIds = blocks.map(b => b.id);
+            
+            // Remove dragged block from its current position
+            const draggedIndex = blockIds.indexOf(draggedBlockId);
+            if (draggedIndex !== -1) {
+                blockIds.splice(draggedIndex, 1);
+            }
+            
+            // Find target position and insert
+            const targetIndex = blockIds.indexOf(targetBlockId);
+            if (targetIndex !== -1) {
+                const insertIndex = insertBefore ? targetIndex : targetIndex + 1;
+                blockIds.splice(insertIndex, 0, draggedBlockId);
+            }
+            
+            // Reorder blocks in state with new order array
+            state.reorderTransformationBlocks(propertyId, blockIds);
             
             // Refresh the transformation UI
-            import('../core/transformation-engine.js').then(({ refreshTransformationUI }) => {
-                refreshTransformationUI(propertyId, state);
-            });
+            refreshTransformationUI(propertyId, state);
         }
         
         // Clean up drag indicators
@@ -779,6 +787,12 @@ export function addDragHandlers(blockElement, dragHandle, propertyId, state) {
 
 // Helper function to show add transformation menu
 function showAddTransformationMenu(propertyId, state, addBtn) {
+    // Remove any existing menu first
+    const existingMenu = document.querySelector('.add-transformation-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+    
     // Create a simple dropdown menu
     const menu = createElement('div', { 
         className: 'add-transformation-menu',
@@ -793,10 +807,7 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
             onClick: (e) => {
                 // Prevent event bubbling to avoid double-removal error
                 e.stopPropagation();
-                // Import addTransformationBlock to avoid circular dependency
-                import('../core/transformation-engine.js').then(({ addTransformationBlock }) => {
-                    addTransformationBlock(propertyId, type, state);
-                });
+                addTransformationBlock(propertyId, type, state);
                 // Safe menu removal
                 if (menu.parentNode === document.body) {
                     document.body.removeChild(menu);
@@ -809,10 +820,27 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
         menu.appendChild(menuItem);
     });
 
-    // Position and show menu
+    // Position and show menu with viewport boundary checks
     const rect = addBtn.getBoundingClientRect();
-    menu.style.top = (rect.bottom + window.scrollY) + 'px';
-    menu.style.left = rect.left + 'px';
+    const menuWidth = 200; // Approximate width
+    const menuHeight = Object.keys(BLOCK_TYPES).length * 40; // Approximate height
+    
+    let top = rect.bottom + window.scrollY + 5;
+    let left = rect.left + window.scrollX;
+    
+    // Check if menu would go off the right edge
+    if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 10;
+    }
+    
+    // Check if menu would go off the bottom edge
+    if (top + menuHeight > window.innerHeight + window.scrollY) {
+        // Position above the button instead
+        top = rect.top + window.scrollY - menuHeight - 5;
+    }
+    
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
     
     document.body.appendChild(menu);
     
@@ -829,3 +857,22 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
     
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
 }
+
+// Set up event listeners for transformation engine events
+document.addEventListener('refresh-transformation-ui', (event) => {
+    const { propertyId, state, sampleValue } = event.detail;
+    const container = event.target;
+    if (container) {
+        renderTransformationBlocks(propertyId, sampleValue, container, state);
+    }
+});
+
+document.addEventListener('refresh-stage3-ui', (event) => {
+    const { keyData, state } = event.detail;
+    const container = event.target;
+    if (container) {
+        container.innerHTML = '';
+        const newUI = renderValueTransformationUI(keyData, state);
+        container.appendChild(newUI);
+    }
+});
