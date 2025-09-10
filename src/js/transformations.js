@@ -451,34 +451,10 @@ export function extractAllFields(obj, basePath = '', results = []) {
             if (value && typeof value === 'object') {
                 // Also check if this object has immediate string values we should extract
                 if (typeof value === 'object' && !Array.isArray(value)) {
-                    // Special handling for @id + o:label combinations
-                    if (value['@id'] && value['o:label'] && typeof value['@id'] === 'string' && typeof value['o:label'] === 'string') {
-                        const idVal = String(value['@id']);
-                        const labelVal = String(value['o:label']);
-                        
-                        // Add the @id field with enhanced preview showing the label
-                        results.push({
-                            path: `${newPath}.@id`,
-                            value: idVal,
-                            preview: `${labelVal} (${idVal.length > 30 ? `${idVal.substring(0, 30)}...` : idVal})`
-                        });
-                        
-                        // Still add the individual o:label field for direct access
-                        results.push({
-                            path: `${newPath}.o:label`,
-                            value: labelVal,
-                            preview: labelVal.length > 50 ? `${labelVal.substring(0, 50)}...` : labelVal
-                        });
-                    }
-                    
-                    // Check for common Omeka S value patterns (but skip @id and o:label if already processed above)
+                    // Check for common Omeka S value patterns
                     const immediateValues = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
                     for (const prop of immediateValues) {
                         if (value[prop] && typeof value[prop] === 'string') {
-                            // Skip if we already processed this as part of @id + o:label combination
-                            if (prop === '@id' && value['o:label'] && typeof value['o:label'] === 'string') continue;
-                            if (prop === 'o:label' && value['@id'] && typeof value['@id'] === 'string') continue;
-                            
                             const val = String(value[prop]);
                             results.push({
                                 path: `${newPath}.${prop}`,
