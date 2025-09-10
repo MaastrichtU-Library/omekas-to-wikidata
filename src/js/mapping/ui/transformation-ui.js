@@ -110,14 +110,18 @@ export function renderValueTransformationUI(keyData, state) {
             className: 'field-selector'
         });
         
+        // Find field with '+' symbol to pre-select, or default to first field
+        const fieldWithPlus = availableFields.findIndex(field => field.key.includes('+'));
+        const defaultSelectedIndex = fieldWithPlus !== -1 ? fieldWithPlus : 0;
+        
         // Add options for each available field
         availableFields.forEach((field, index) => {
             const option = createElement('option', {
                 value: field.key
             }, `${field.label} (${field.sampleValue})`);
             
-            // Select first field by default
-            if (index === 0) {
+            // Select field with '+' symbol if found, otherwise first field
+            if (index === defaultSelectedIndex) {
                 option.selected = true;
             }
             
