@@ -494,11 +494,12 @@ export function setupMappingStep(state) {
                 
                 const p31Property = {
                     property: {
-                        id: 'P31',
+                        id: 'instance-of',
                         label: 'instance of',
                         description: 'that class of which this subject is a particular example and member',
                         datatype: 'wikibase-item',
                         datatypeLabel: 'Item',
+                        isMetadata: true,
                         ...propertyData
                     },
                     defaultValue: '', // User needs to provide a value
@@ -520,11 +521,12 @@ export function setupMappingStep(state) {
                 // Fallback to basic P31 without constraints
                 const p31Property = {
                     property: {
-                        id: 'P31',
+                        id: 'instance-of',
                         label: 'instance of',
                         description: 'that class of which this subject is a particular example and member',
                         datatype: 'wikibase-item',
-                        datatypeLabel: 'Item'
+                        datatypeLabel: 'Item',
+                        isMetadata: true
                     },
                     defaultValue: '',
                     isRequired: true,
@@ -911,27 +913,48 @@ export function setupMappingStep(state) {
             className: 'stage-content'
         });
         
-        // Placeholder section
-        const placeholderSection = createElement('div', {
-            className: 'placeholder-section'
-        });
-        placeholderSection.innerHTML = `
-            <h4>Default Value (Optional)</h4>
-            <div class="placeholder-description">
-                This value will be pre-filled for all items. You can modify individual values during reconciliation.
-            </div>
-            <div class="placeholder-input-container">
-                <input type="text" id="metadata-default-value-input" 
-                       placeholder="Enter a default value..." 
-                       class="default-value-input"
-                       value="${manualProp.defaultValue || ''}">
-                <div class="input-help">Enter a ${manualProp.property.id === 'instance-of' ? 'Wikidata item' : 'text'} value for ${manualProp.property.label}</div>
-            </div>
-            <div class="placeholder-notice">
-                <em>Additional configuration options will be available here in future updates.</em>
-            </div>
-        `;
-        stage3Content.appendChild(placeholderSection);
+        // Default value section - different for instance of vs other metadata
+        if (manualProp.property.id === 'instance-of') {
+            const instanceOfSection = createElement('div', {
+                className: 'instance-of-section'
+            });
+            instanceOfSection.innerHTML = `
+                <h4>Default Value (Optional)</h4>
+                <div class="default-value-description">
+                    This Wikidata item will be pre-filled for all items. You can modify individual values during reconciliation.
+                </div>
+                <div class="wikidata-search-container">
+                    <input type="text" id="metadata-default-value-input" 
+                           placeholder="Search for a Wikidata item..." 
+                           class="wikidata-item-search-input"
+                           value="${manualProp.defaultValue || ''}">
+                    <div class="input-help">Search for and select the Wikidata item that represents what type of thing your items are (e.g., "book", "person", "building")</div>
+                </div>
+            `;
+            stage3Content.appendChild(instanceOfSection);
+        } else {
+            // Regular metadata (label, description, aliases)
+            const metadataSection = createElement('div', {
+                className: 'metadata-section'
+            });
+            metadataSection.innerHTML = `
+                <h4>Default Value (Optional)</h4>
+                <div class="default-value-description">
+                    This value will be pre-filled for all items. You can modify individual values during reconciliation.
+                </div>
+                <div class="default-value-input-container">
+                    <input type="text" id="metadata-default-value-input" 
+                           placeholder="Enter a default value..." 
+                           class="default-value-input"
+                           value="${manualProp.defaultValue || ''}">
+                    <div class="input-help">Enter a text value for ${manualProp.property.label}</div>
+                </div>
+                <div class="placeholder-notice">
+                    <em>Additional configuration options will be available here in future updates.</em>
+                </div>
+            `;
+            stage3Content.appendChild(metadataSection);
+        }
         stage3Section.appendChild(stage3Content);
         container.appendChild(stage3Section);
         
