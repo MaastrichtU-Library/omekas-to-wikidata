@@ -285,25 +285,51 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Sort mapped keys to prioritize label, description, aliases, and instance of
+     * Combine and sort all properties (mapped and manual) to prioritize label, description, aliases, and instance of
      */
-    function sortMappedKeysForDisplay(mappedKeys) {
-        return [...mappedKeys].sort((a, b) => {
-            const aProperty = typeof a === 'string' ? null : a.property;
-            const bProperty = typeof b === 'string' ? null : b.property;
-            
-            const getPriority = (keyObj) => {
-                const property = typeof keyObj === 'string' ? null : keyObj.property;
-                if (!property) return 100; // Non-property items go to end
+    function combineAndSortProperties(mappedKeys, manualProperties) {
+        // Create a unified array with both mapped and manual properties
+        const allProperties = [];
+        
+        // Add mapped properties with a type indicator
+        mappedKeys.forEach((keyObj, index) => {
+            allProperties.push({
+                type: 'mapped',
+                data: keyObj,
+                originalIndex: index
+            });
+        });
+        
+        // Add manual properties with a type indicator  
+        manualProperties.forEach((manualProp, index) => {
+            allProperties.push({
+                type: 'manual',
+                data: manualProp,
+                originalIndex: index + mappedKeys.length // Offset by mapped keys length
+            });
+        });
+        
+        // Sort the combined array
+        return allProperties.sort((a, b) => {
+            const getPriority = (item) => {
+                let label = '';
+                let id = '';
                 
-                const label = property.label ? property.label.toLowerCase() : '';
-                const id = property.id || '';
+                if (item.type === 'mapped') {
+                    const property = typeof item.data === 'string' ? null : item.data.property;
+                    if (!property) return 100;
+                    label = property.label ? property.label.toLowerCase() : '';
+                    id = property.id || '';
+                } else if (item.type === 'manual') {
+                    label = item.data.property.label ? item.data.property.label.toLowerCase() : '';
+                    id = item.data.property.id || '';
+                }
                 
                 // Priority order: label, description, aliases, instance of (P31), then everything else
                 if (label === 'label') return 1;
                 if (label === 'description') return 2;
                 if (label === 'aliases' || label === 'alias') return 3;
-                if (id === 'P31') return 4; // instance of
+                if (id === 'P31' || label === 'instance of') return 4;
                 
                 return 50; // All other properties maintain relative order
             };
@@ -315,8 +341,8 @@ export function setupReconciliationStep(state) {
                 return aPriority - bPriority;
             }
             
-            // If same priority, maintain original order by finding index in original array
-            return mappedKeys.indexOf(a) - mappedKeys.indexOf(b);
+            // If same priority, maintain original order
+            return a.originalIndex - b.originalIndex;
         });
     }
     
@@ -325,8 +351,8 @@ export function setupReconciliationStep(state) {
      */
     async function createReconciliationTable(data, mappedKeys, manualProperties = [], isReturningToStep = false) {
         
-        // Sort mapped keys for display priority
-        const sortedMappedKeys = sortMappedKeysForDisplay(mappedKeys);
+        // Combine and sort all properties for display priority
+        const sortedProperties = combineAndSortProperties(mappedKeys, manualProperties);
         
         // Clear existing content
         if (propertyHeaders) {
@@ -338,123 +364,127 @@ export function setupReconciliationStep(state) {
             }, 'Item');
             propertyHeaders.appendChild(itemHeader);
             
-            // Add property headers for mapped keys (using sorted order)
-            sortedMappedKeys.forEach(keyObj => {
-                const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                
-                // Create header content with property label and clickable QID
-                let headerContent;
-                let clickHandler = null;
-                
-                if (keyObj.property && keyObj.property.label && keyObj.property.id) {
-                    // Create header with property label and clickable QID
-                    headerContent = createElement('div', { 
+            // Add property headers for all properties in sorted order
+            sortedProperties.forEach(propItem => {
+                if (propItem.type === 'mapped') {
+                    // Handle mapped property
+                    const keyObj = propItem.data;
+                    const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                    
+                    // Create header content with property label and clickable QID
+                    let headerContent;
+                    let clickHandler = null;
+                    
+                    if (keyObj.property && keyObj.property.label && keyObj.property.id) {
+                        // Create header with property label and clickable QID
+                        headerContent = createElement('div', { 
+                            className: 'property-header-content' 
+                        });
+                        
+                        // Property label (clickable span - will be handled by header click)
+                        const labelSpan = createElement('span', {
+                            className: 'property-label'
+                        }, keyObj.property.label);
+                        headerContent.appendChild(labelSpan);
+                        
+                        // Space and opening bracket
+                        headerContent.appendChild(document.createTextNode(' ('));
+                        
+                        // Clickable QID link - smart routing based on property type
+                        const wikidataUrl = getWikidataUrlForProperty(keyObj.property);
+                        const qidLink = createElement('a', {
+                            className: 'property-qid-link',
+                            href: wikidataUrl,
+                            target: '_blank',
+                            onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
+                        }, keyObj.property.id);
+                        headerContent.appendChild(qidLink);
+                        
+                        // Closing bracket
+                        headerContent.appendChild(document.createTextNode(')'));
+                        
+                        // Set click handler to open mapping modal
+                        clickHandler = () => {
+                            if (window.openMappingModal) {
+                                window.openMappingModal(keyObj);
+                            }
+                        };
+                    } else {
+                        // Fallback to original key name if no property info available
+                        headerContent = keyName;
+                        clickHandler = () => {
+                            if (window.openMappingModal) {
+                                window.openMappingModal(keyObj);
+                            }
+                        };
+                    }
+                    
+                    const th = createElement('th', {
+                        className: 'property-header clickable-header',
+                        dataset: { property: keyName },
+                        onClick: clickHandler,
+                        style: { cursor: 'pointer' },
+                        title: 'Click to modify mapping'
+                    }, headerContent);
+                    
+                    propertyHeaders.appendChild(th);
+                } else if (propItem.type === 'manual') {
+                    // Handle manual property
+                    const manualProp = propItem.data;
+                    
+                    // Create header content with property label and clickable QID
+                    const headerContent = createElement('div', { 
                         className: 'property-header-content' 
                     });
                     
                     // Property label (clickable span - will be handled by header click)
                     const labelSpan = createElement('span', {
                         className: 'property-label'
-                    }, keyObj.property.label);
+                    }, manualProp.property.label);
                     headerContent.appendChild(labelSpan);
                     
                     // Space and opening bracket
                     headerContent.appendChild(document.createTextNode(' ('));
                     
                     // Clickable QID link - smart routing based on property type
-                    const wikidataUrl = getWikidataUrlForProperty(keyObj.property);
+                    const wikidataUrl = getWikidataUrlForProperty(manualProp.property);
                     const qidLink = createElement('a', {
                         className: 'property-qid-link',
                         href: wikidataUrl,
                         target: '_blank',
                         onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
-                    }, keyObj.property.id);
+                    }, manualProp.property.id);
                     headerContent.appendChild(qidLink);
                     
                     // Closing bracket
                     headerContent.appendChild(document.createTextNode(')'));
                     
-                    // Set click handler to open mapping modal
-                    clickHandler = () => {
-                        if (window.openMappingModal) {
-                            window.openMappingModal(keyObj);
-                        }
-                    };
-                } else {
-                    // Fallback to original key name if no property info available
-                    headerContent = keyName;
-                    clickHandler = () => {
-                        if (window.openMappingModal) {
-                            window.openMappingModal(keyObj);
-                        }
-                    };
+                    // Add required indicator if applicable
+                    if (manualProp.isRequired) {
+                        const requiredIndicator = createElement('span', {
+                            className: 'required-indicator-header'
+                        }, ' *');
+                        headerContent.appendChild(requiredIndicator);
+                    }
+                    
+                    const th = createElement('th', {
+                        className: 'property-header manual-property-header clickable-header',
+                        dataset: { 
+                            property: manualProp.property.id,
+                            isManual: 'true'
+                        },
+                        title: `${manualProp.property.description}\nClick to modify property settings`,
+                        onClick: () => {
+                            // Open the manual property edit modal
+                            if (window.openManualPropertyEditModal) {
+                                window.openManualPropertyEditModal(manualProp);
+                            }
+                        },
+                        style: { cursor: 'pointer' }
+                    }, headerContent);
+                    
+                    propertyHeaders.appendChild(th);
                 }
-                
-                const th = createElement('th', {
-                    className: 'property-header clickable-header',
-                    dataset: { property: keyName },
-                    onClick: clickHandler,
-                    style: { cursor: 'pointer' },
-                    title: 'Click to modify mapping'
-                }, headerContent);
-                
-                propertyHeaders.appendChild(th);
-            });
-            
-            // Add property headers for manual properties
-            manualProperties.forEach(manualProp => {
-                // Create header content with property label and clickable QID
-                const headerContent = createElement('div', { 
-                    className: 'property-header-content' 
-                });
-                
-                // Property label (clickable span - will be handled by header click)
-                const labelSpan = createElement('span', {
-                    className: 'property-label'
-                }, manualProp.property.label);
-                headerContent.appendChild(labelSpan);
-                
-                // Space and opening bracket
-                headerContent.appendChild(document.createTextNode(' ('));
-                
-                // Clickable QID link - smart routing based on property type
-                const wikidataUrl = getWikidataUrlForProperty(manualProp.property);
-                const qidLink = createElement('a', {
-                    className: 'property-qid-link',
-                    href: wikidataUrl,
-                    target: '_blank',
-                    onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
-                }, manualProp.property.id);
-                headerContent.appendChild(qidLink);
-                
-                // Closing bracket
-                headerContent.appendChild(document.createTextNode(')'));
-                
-                // Add required indicator if applicable
-                if (manualProp.isRequired) {
-                    const requiredIndicator = createElement('span', {
-                        className: 'required-indicator-header'
-                    }, ' *');
-                    headerContent.appendChild(requiredIndicator);
-                }
-                
-                const th = createElement('th', {
-                    className: 'property-header manual-property-header clickable-header',
-                    dataset: { 
-                        property: manualProp.property.id,
-                        isManual: 'true'
-                    },
-                    title: `${manualProp.property.description}\nClick to modify property settings`,
-                    onClick: () => {
-                        // Open the manual property edit modal
-                        if (window.openManualPropertyEditModal) {
-                            window.openManualPropertyEditModal(manualProp);
-                        }
-                    },
-                    style: { cursor: 'pointer' }
-                }, headerContent);
-                
-                propertyHeaders.appendChild(th);
             });
         }
         
@@ -477,47 +507,50 @@ export function setupReconciliationStep(state) {
                 tr.appendChild(itemCell);
                 
                 // Add property cells (using sorted order to match headers)
-                sortedMappedKeys.forEach(keyObj => {
-                    const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                    const values = extractPropertyValues(item, keyName);
-                    
-                    if (values.length === 0) {
-                        // Empty cell
-                        const td = createElement('td', {
-                            className: 'property-cell empty-cell'
-                        }, '—');
-                        tr.appendChild(td);
-                    } else if (values.length === 1) {
-                        // Single value cell
-                        const td = createPropertyCell(itemId, keyName, 0, values[0]);
-                        tr.appendChild(td);
-                    } else {
-                        // Multiple values cell
-                        const td = createElement('td', {
-                            className: 'property-cell multi-value-cell',
-                            dataset: {
-                                itemId: itemId,
-                                property: keyName
-                            }
-                        });
+                sortedProperties.forEach(propItem => {
+                    if (propItem.type === 'mapped') {
+                        // Handle mapped property cell
+                        const keyObj = propItem.data;
+                        const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                        const values = extractPropertyValues(item, keyName);
                         
-                        values.forEach((value, valueIndex) => {
-                            const valueDiv = createValueElement(itemId, keyName, valueIndex, value);
-                            td.appendChild(valueDiv);
-                        });
+                        if (values.length === 0) {
+                            // Empty cell
+                            const td = createElement('td', {
+                                className: 'property-cell empty-cell'
+                            }, '—');
+                            tr.appendChild(td);
+                        } else if (values.length === 1) {
+                            // Single value cell
+                            const td = createPropertyCell(itemId, keyName, 0, values[0]);
+                            tr.appendChild(td);
+                        } else {
+                            // Multiple values cell
+                            const td = createElement('td', {
+                                className: 'property-cell multi-value-cell',
+                                dataset: {
+                                    itemId: itemId,
+                                    property: keyName
+                                }
+                            });
+                            
+                            values.forEach((value, valueIndex) => {
+                                const valueDiv = createValueElement(itemId, keyName, valueIndex, value);
+                                td.appendChild(valueDiv);
+                            });
+                            
+                            tr.appendChild(td);
+                        }
+                    } else if (propItem.type === 'manual') {
+                        // Handle manual property cell
+                        const manualProp = propItem.data;
+                        const propertyId = manualProp.property.id;
+                        const defaultValue = manualProp.defaultValue || '';
                         
+                        // Create a cell for the manual property with the default value
+                        const td = createManualPropertyCell(itemId, propertyId, defaultValue, manualProp);
                         tr.appendChild(td);
                     }
-                });
-                
-                // Add manual property cells
-                manualProperties.forEach(manualProp => {
-                    const propertyId = manualProp.property.id;
-                    const defaultValue = manualProp.defaultValue || '';
-                    
-                    // Create a cell for the manual property with the default value
-                    const td = createManualPropertyCell(itemId, propertyId, defaultValue, manualProp);
-                    tr.appendChild(td);
                 });
                 
                 reconciliationRows.appendChild(tr);
