@@ -8,6 +8,7 @@
 import { eventSystem } from '../../events.js';
 import { showMessage, createElement, createListItem } from '../../ui/components.js';
 import { getCompletePropertyData } from '../../api/wikidata.js';
+import { refreshStage3TransformationUI as refreshStage3UI } from './transformation-engine.js';
 
 // Additional imports needed for the functions
 // TODO: These helper functions will need to be extracted to mapping-helpers.js module:
@@ -52,14 +53,17 @@ function openRawJsonModal(propertyData) {
 }
 
 function refreshStage3TransformationUI() {
-    // Import and call the real refresh function
-    import('../core/transformation-engine.js').then(({ refreshStage3TransformationUI: realRefresh }) => {
-        const keyData = window.currentMappingKeyData;
-        const state = window.mappingStepState;
-        if (keyData && state) {
-            realRefresh(keyData, state);
-        }
-    });
+    const keyData = window.currentMappingKeyData || {};
+    const state = window.mappingStepState;
+    
+    // Ensure the keyData includes the currently selected property
+    if (window.currentMappingSelectedProperty) {
+        keyData.property = window.currentMappingSelectedProperty;
+    }
+    
+    if (keyData && state) {
+        refreshStage3UI(keyData, state);
+    }
 }
 
 /**

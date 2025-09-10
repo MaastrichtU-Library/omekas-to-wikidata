@@ -114,11 +114,14 @@ export function refreshStage3TransformationUI(keyData, state) {
     if (stage3Container) {
         const transformationContainer = stage3Container.querySelector('.stage-content');
         if (transformationContainer) {
+            // Clear and rebuild the transformation UI
+            transformationContainer.innerHTML = '';
             // Trigger a custom event that the UI module can listen to
             const event = new CustomEvent('refresh-stage3-ui', {
-                detail: { keyData, state }
+                detail: { keyData, state, container: transformationContainer },
+                bubbles: true
             });
-            transformationContainer.dispatchEvent(event);
+            document.dispatchEvent(event);
         }
     }
 }

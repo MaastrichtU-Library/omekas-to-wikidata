@@ -868,10 +868,12 @@ document.addEventListener('refresh-transformation-ui', (event) => {
 });
 
 document.addEventListener('refresh-stage3-ui', (event) => {
-    const { keyData, state } = event.detail;
-    const container = event.target;
-    if (container) {
-        container.innerHTML = '';
+    const { keyData, state, container } = event.detail;
+    if (container && keyData) {
+        // Update the global property reference
+        if (keyData.property) {
+            window.currentMappingSelectedProperty = keyData.property;
+        }
         const newUI = renderValueTransformationUI(keyData, state);
         container.appendChild(newUI);
     }
