@@ -5,7 +5,7 @@
 import { eventSystem } from '../events.js';
 import { showMessage, createElement, createListItem, createDownloadLink } from '../ui/components.js';
 import { getCompletePropertyData } from '../api/wikidata.js';
-import { BLOCK_TYPES, BLOCK_METADATA, createTransformationBlock, getTransformationPreview } from '../transformations.js';
+import { BLOCK_TYPES, BLOCK_METADATA, createTransformationBlock, getTransformationPreview, extractAllFields, searchFields, COMMON_REGEX_PATTERNS } from '../transformations.js';
 export function setupMappingStep(state) {
     // Store state globally for access in modal functions
     window.mappingStepState = state;
@@ -3000,8 +3000,10 @@ export function setupMappingStep(state) {
                 return renderFindReplaceConfigUI(propertyId, block, state);
                 
             case BLOCK_TYPES.COMPOSE:
+                return renderComposeConfigUI(propertyId, block, state);
+                
             case BLOCK_TYPES.REGEX:
-                return renderPlaceholderConfigUI(block);
+                return renderRegexConfigUI(propertyId, block, state);
                 
             default:
                 return createElement('div', {}, 'Unknown block type');
@@ -3092,25 +3094,250 @@ export function setupMappingStep(state) {
     }
 
     /**
-     * Renders placeholder configuration for coming soon blocks
+     * Renders compose configuration UI
      */
-    function renderPlaceholderConfigUI(block) {
-        const metadata = BLOCK_METADATA[block.type];
-        return createElement('div', { 
-            className: 'placeholder-config' 
-        }, `${metadata.description} - This feature will be available in a future update.`);
+    function renderComposeConfigUI(propertyId, block, state) {
+        const container = createElement('div', { className: 'config-fields' });
+        
+        // Pattern field
+        const patternField = createElement('div', { className: 'config-field' });
+        patternField.appendChild(createElement('label', {}, 'Pattern:'));
+        
+        const patternTextarea = createElement('textarea', {
+            rows: 3,
+            value: block.config.pattern || '{{value}}',
+            placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
+            className: 'pattern-input',
+            onInput: (e) => {
+                state.updateTransformationBlock(propertyId, block.id, { pattern: e.target.value });
+                updateTransformationPreview(propertyId, state);
+            }
+        });
+        patternField.appendChild(patternTextarea);
+        
+        // Help text
+        const helpText = createElement('div', { 
+            className: 'help-text' 
+        }, '💡 Use {{value}} for the current value and {{field:path}} to insert other fields from this item');
+        patternField.appendChild(helpText);
+        
+        // Field search and insertion
+        const fieldSearchSection = createElement('div', { className: 'field-search-section' });
+        const fieldSearchLabel = createElement('label', {}, 'Insert Field:');
+        fieldSearchSection.appendChild(fieldSearchLabel);
+        
+        const fieldSearchInput = createElement('input', {
+            type: 'text',
+            placeholder: 'Search fields to insert...',
+            className: 'field-search-input',
+            onInput: (e) => updateFieldSearchResults(e.target.value, propertyId, block, fieldResultsContainer)
+        });
+        fieldSearchSection.appendChild(fieldSearchInput);
+        
+        const fieldResultsContainer = createElement('div', { className: 'field-results' });
+        fieldSearchSection.appendChild(fieldResultsContainer);
+        
+        // Initialize with empty search to show all fields
+        setTimeout(() => updateFieldSearchResults('', propertyId, block, fieldResultsContainer), 100);
+        
+        container.appendChild(patternField);
+        container.appendChild(fieldSearchSection);
+        return container;
     }
 
+    /**
+     * Renders regex configuration UI
+     */
+    function renderRegexConfigUI(propertyId, block, state) {
+        const container = createElement('div', { className: 'config-fields' });
+        
+        // Common patterns section
+        const patternsSection = createElement('div', { className: 'config-field' });
+        patternsSection.appendChild(createElement('label', {}, 'Common Patterns:'));
+        
+        const patternSelect = createElement('select', {
+            className: 'pattern-select',
+            onChange: (e) => {
+                if (e.target.value && COMMON_REGEX_PATTERNS[e.target.value]) {
+                    const pattern = COMMON_REGEX_PATTERNS[e.target.value];
+                    state.updateTransformationBlock(propertyId, block.id, {
+                        pattern: pattern.pattern,
+                        replacement: pattern.replacement
+                    });
+                    updateTransformationPreview(propertyId, state);
+                    // Refresh UI to show the populated values
+                    refreshTransformationUI(propertyId, state);
+                }
+            }
+        });
+        
+        // Add empty option
+        patternSelect.appendChild(createElement('option', { value: '' }, 'Select a common pattern...'));
+        
+        // Add common patterns
+        Object.entries(COMMON_REGEX_PATTERNS).forEach(([name, pattern]) => {
+            const option = createElement('option', { value: name }, `${name} - ${pattern.description}`);
+            patternSelect.appendChild(option);
+        });
+        
+        patternsSection.appendChild(patternSelect);
+        
+        // Pattern field
+        const patternField = createElement('div', { className: 'config-field' });
+        patternField.appendChild(createElement('label', {}, 'Regex Pattern:'));
+        const patternInput = createElement('input', {
+            type: 'text',
+            value: block.config.pattern || '',
+            placeholder: 'Regular expression pattern...',
+            className: 'regex-pattern-input',
+            onInput: (e) => {
+                state.updateTransformationBlock(propertyId, block.id, { pattern: e.target.value });
+                updateTransformationPreview(propertyId, state);
+            }
+        });
+        patternField.appendChild(patternInput);
+        
+        // Replacement field
+        const replacementField = createElement('div', { className: 'config-field' });
+        replacementField.appendChild(createElement('label', {}, 'Replacement:'));
+        const replacementInput = createElement('input', {
+            type: 'text',
+            value: block.config.replacement || '',
+            placeholder: 'Replacement pattern (use $1, $2 for capture groups)...',
+            onInput: (e) => {
+                state.updateTransformationBlock(propertyId, block.id, { replacement: e.target.value });
+                updateTransformationPreview(propertyId, state);
+            }
+        });
+        replacementField.appendChild(replacementInput);
+        
+        // Flags field
+        const flagsField = createElement('div', { className: 'config-field' });
+        flagsField.appendChild(createElement('label', {}, 'Flags:'));
+        
+        const flagsContainer = createElement('div', { className: 'regex-flags' });
+        
+        const flags = [
+            { flag: 'g', label: 'Global (all matches)', checked: (block.config.flags || 'g').includes('g') },
+            { flag: 'i', label: 'Case insensitive', checked: (block.config.flags || '').includes('i') },
+            { flag: 'm', label: 'Multiline', checked: (block.config.flags || '').includes('m') },
+            { flag: 's', label: 'Dot matches newlines', checked: (block.config.flags || '').includes('s') }
+        ];
+        
+        flags.forEach(({ flag, label, checked }) => {
+            const flagWrapper = createElement('div', { className: 'flag-option' });
+            const checkbox = createElement('input', {
+                type: 'checkbox',
+                id: `flag-${flag}-${block.id}`,
+                checked: checked,
+                onChange: (e) => {
+                    const currentFlags = block.config.flags || 'g';
+                    let newFlags;
+                    if (e.target.checked) {
+                        newFlags = currentFlags.includes(flag) ? currentFlags : currentFlags + flag;
+                    } else {
+                        newFlags = currentFlags.replace(flag, '');
+                    }
+                    state.updateTransformationBlock(propertyId, block.id, { flags: newFlags });
+                    updateTransformationPreview(propertyId, state);
+                }
+            });
+            
+            const checkboxLabel = createElement('label', {
+                htmlFor: `flag-${flag}-${block.id}`
+            }, label);
+            
+            flagWrapper.appendChild(checkbox);
+            flagWrapper.appendChild(checkboxLabel);
+            flagsContainer.appendChild(flagWrapper);
+        });
+        
+        flagsField.appendChild(flagsContainer);
+        
+        container.appendChild(patternsSection);
+        container.appendChild(patternField);
+        container.appendChild(replacementField);
+        container.appendChild(flagsField);
+        return container;
+    }
+
+    /**
+     * Updates field search results for Compose transformer
+     */
+    function updateFieldSearchResults(searchTerm, propertyId, block, resultsContainer) {
+        resultsContainer.innerHTML = '';
+        
+        // Get the original item data for this property
+        const keyData = window.currentMappingKeyData;
+        if (!keyData || !keyData.sampleValue) {
+            resultsContainer.appendChild(createElement('div', { 
+                className: 'no-fields-message' 
+            }, 'No field data available'));
+            return;
+        }
+        
+        // Extract all fields from the sample data
+        const allFields = extractAllFields(keyData.sampleValue);
+        const filteredFields = searchFields(allFields, searchTerm);
+        
+        if (filteredFields.length === 0) {
+            resultsContainer.appendChild(createElement('div', { 
+                className: 'no-fields-message' 
+            }, 'No matching fields found'));
+            return;
+        }
+        
+        // Limit results to avoid UI clutter
+        const displayFields = filteredFields.slice(0, 10);
+        
+        displayFields.forEach(field => {
+            const fieldItem = createElement('div', {
+                className: 'field-result-item',
+                onClick: () => {
+                    // Insert the field path into the pattern at cursor position
+                    const patternTextarea = document.querySelector(`textarea.pattern-input`);
+                    if (patternTextarea) {
+                        const fieldPlaceholder = `{{field:${field.path}}}`;
+                        const start = patternTextarea.selectionStart;
+                        const end = patternTextarea.selectionEnd;
+                        const currentPattern = patternTextarea.value;
+                        const newPattern = currentPattern.substring(0, start) + fieldPlaceholder + currentPattern.substring(end);
+                        patternTextarea.value = newPattern;
+                        
+                        // Update the state and preview
+                        const state = window.mappingStepState;
+                        state.updateTransformationBlock(propertyId, block.id, { 
+                            pattern: newPattern,
+                            sourceData: keyData.sampleValue 
+                        });
+                        updateTransformationPreview(propertyId, state);
+                        
+                        // Focus back to textarea and position cursor
+                        patternTextarea.focus();
+                        patternTextarea.setSelectionRange(start + fieldPlaceholder.length, start + fieldPlaceholder.length);
+                    }
+                }
+            });
+            
+            const pathElement = createElement('div', { className: 'field-path' }, field.path);
+            const previewElement = createElement('div', { className: 'field-preview' }, field.preview);
+            
+            fieldItem.appendChild(pathElement);
+            fieldItem.appendChild(previewElement);
+            resultsContainer.appendChild(fieldItem);
+        });
+        
+        if (filteredFields.length > 10) {
+            resultsContainer.appendChild(createElement('div', { 
+                className: 'more-results-message' 
+            }, `... and ${filteredFields.length - 10} more results`));
+        }
+    }
+    
     /**
      * Adds a new transformation block
      */
     function addTransformationBlock(propertyId, blockType, state) {
-        const metadata = BLOCK_METADATA[blockType];
-        if (metadata?.isPlaceholder) {
-            showMessage('This transformation type is not yet available', 'info');
-            return;
-        }
-
         const newBlock = createTransformationBlock(blockType);
         state.addTransformationBlock(propertyId, newBlock);
         refreshTransformationUI(propertyId, state);

@@ -47,19 +47,17 @@ export const BLOCK_METADATA = {
         }
     },
     [BLOCK_TYPES.COMPOSE]: {
-        name: 'Compose (Coming Soon)',
+        name: 'Compose',
         description: 'Combine multiple values and text patterns',
         icon: '🧩',
-        isPlaceholder: true,
         defaultConfig: {
             pattern: '{{value}}'
         }
     },
     [BLOCK_TYPES.REGEX]: {
-        name: 'Regular Expression (Coming Soon)',
+        name: 'Regular Expression',
         description: 'Advanced pattern matching and transformation',
         icon: '🔍',
-        isPlaceholder: true,
         defaultConfig: {
             pattern: '',
             replacement: '',
@@ -91,9 +89,10 @@ export function applyTransformation(value, block) {
                 return applyFindReplaceTransformation(value, block.config);
                 
             case BLOCK_TYPES.COMPOSE:
+                return applyComposeTransformation(value, block.config);
+                
             case BLOCK_TYPES.REGEX:
-                // Placeholder blocks - return original value
-                return value;
+                return applyRegexTransformation(value, block.config);
                 
             default:
                 console.warn(`Unknown transformation type: ${block.type}`);
@@ -179,6 +178,111 @@ function applyFindReplaceTransformation(value, config) {
 }
 
 /**
+ * Apply compose transformation
+ * @param {string} value - Input value
+ * @param {Object} config - Configuration {pattern, sourceData}
+ * @returns {string} Transformed value
+ */
+function applyComposeTransformation(value, config) {
+    const { pattern = '{{value}}', sourceData = {} } = config;
+    
+    if (!pattern) return value;
+    
+    let result = pattern;
+    
+    // Replace {{value}} with the current value
+    result = result.replace(/\{\{value\}\}/g, value || '');
+    
+    // Replace {{field:path}} with values from source data
+    result = result.replace(/\{\{field:([^}]+)\}\}/g, (match, fieldPath) => {
+        const fieldValue = getValueByPath(sourceData, fieldPath);
+        return fieldValue || '';
+    });
+    
+    return result;
+}
+
+/**
+ * Apply regex transformation
+ * @param {string} value - Input value
+ * @param {Object} config - Configuration {pattern, replacement, flags}
+ * @returns {string} Transformed value
+ */
+function applyRegexTransformation(value, config) {
+    const { pattern, replacement = '', flags = 'g' } = config;
+    
+    if (!pattern) return value;
+    
+    try {
+        // Sanitize flags to prevent dangerous operations
+        const safeFlags = sanitizeRegexFlags(flags);
+        const regex = new RegExp(pattern, safeFlags);
+        return value.replace(regex, replacement);
+    } catch (error) {
+        console.warn('Invalid regex pattern:', pattern, error);
+        return value;
+    }
+}
+
+/**
+ * Get value from object by dot-notation path
+ * @param {Object} obj - Source object
+ * @param {string} path - Dot-notation path (e.g., 'publisher.o:label')
+ * @returns {string} Value at path or empty string
+ */
+function getValueByPath(obj, path) {
+    if (!obj || !path) return '';
+    
+    try {
+        const keys = path.split('.');
+        let current = obj;
+        
+        for (const key of keys) {
+            if (current && typeof current === 'object' && current[key] !== undefined) {
+                current = current[key];
+            } else {
+                return '';
+            }
+        }
+        
+        // Convert final value to string
+        if (typeof current === 'string') {
+            return current;
+        } else if (current && typeof current === 'object') {
+            // Try to extract meaningful value from Omeka S structures
+            if (current['@value']) return String(current['@value']);
+            if (current['o:label']) return String(current['o:label']);
+            if (current['value']) return String(current['value']);
+            if (current['name']) return String(current['name']);
+            if (current['title']) return String(current['title']);
+            if (current['label']) return String(current['label']);
+            if (current['display_title']) return String(current['display_title']);
+        }
+        
+        return String(current || '');
+    } catch (error) {
+        console.warn('Error getting value by path:', path, error);
+        return '';
+    }
+}
+
+/**
+ * Sanitize regex flags to prevent dangerous operations
+ * @param {string} flags - Input flags
+ * @returns {string} Safe flags
+ */
+function sanitizeRegexFlags(flags) {
+    if (!flags || typeof flags !== 'string') return 'g';
+    
+    // Allow only safe flags
+    const safeFlags = flags.toLowerCase().split('').filter(flag => 
+        ['g', 'i', 'm', 's', 'u'].includes(flag)
+    ).join('');
+    
+    return safeFlags || 'g';
+}
+
+/**
  * Validates a transformation block configuration
  * @param {Object} block - The transformation block
  * @returns {Object} Validation result {isValid, errors}
@@ -222,6 +326,27 @@ export function validateTransformationBlock(block) {
                 errors.push('Replace text must be a string');
             }
             break;
+            
+        case BLOCK_TYPES.COMPOSE:
+            if (typeof block.config.pattern !== 'string') {
+                errors.push('Pattern must be a string');
+            }
+            break;
+            
+        case BLOCK_TYPES.REGEX:
+            if (!block.config.pattern) {
+                errors.push('Regex pattern is required');
+            }
+            if (typeof block.config.pattern !== 'string') {
+                errors.push('Regex pattern must be a string');
+            }
+            // Test if pattern is valid
+            try {
+                new RegExp(block.config.pattern, sanitizeRegexFlags(block.config.flags));
+            } catch (e) {
+                errors.push('Invalid regex pattern');
+            }
+            break;
     }
     
     return { isValid: errors.length === 0, errors };
@@ -249,21 +374,47 @@ export function createTransformationBlock(type, customConfig = {}) {
 }
 
 /**
- * Gets a preview of the transformation result
- * @param {string} value - Sample value to transform
- * @param {Array} blocks - Array of transformation blocks
- * @returns {Object} Preview result with steps
+ * Common regex patterns for quick selection
  */
-export function getTransformationPreview(value, blocks) {
-    if (!value) {
-        return { steps: [], finalValue: '' };
+export const COMMON_REGEX_PATTERNS = {
+    'Extract Year': {
+        pattern: '\\b(\\d{4})\\b',
+        replacement: '$1',
+        description: 'Extract 4-digit year from text'
+    },
+    'Remove HTML Tags': {
+        pattern: '<[^>]*>',
+        replacement: '',
+        description: 'Remove all HTML tags from text'
+    },
+    'Extract Numbers': {
+        pattern: '\\d+',
+        replacement: '$&',
+        description: 'Extract all numbers from text'
+    },
+    'Remove Special Characters': {
+        pattern: '[^a-zA-Z0-9\\s]',
+        replacement: '',
+        description: 'Remove special characters, keep only letters, numbers and spaces'
+    },
+    'Extract Email': {
+        pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}',
+        replacement: '$&',
+        description: 'Extract email addresses'
+    },
+    'Clean Whitespace': {
+        pattern: '\\s+',
+        replacement: ' ',
+        description: 'Replace multiple whitespace with single space'
+    },
+    'Extract Parentheses Content': {
+        pattern: '\\(([^)]+)\\)',
+        replacement: '$1',
+        description: 'Extract content from parentheses'
+    },
+    'Remove Brackets': {
+        pattern: '[\\[\\]{}()]',
+        replacement: '',
+        description: 'Remove all types of brackets'
     }
-    
-    const steps = applyTransformationChain(value, blocks);
-    const finalValue = steps[steps.length - 1]?.value || value;
-    
-    return {
-        steps,
-        finalValue
-    };
-}
+};\n\n/**\n * Recursively extract all field paths and values from an Omeka S object\n * @param {Object} obj - The Omeka S data object\n * @param {string} basePath - Current path being processed\n * @param {Array} results - Array to collect results\n * @returns {Array} Array of {path, value, preview} objects\n */\nexport function extractAllFields(obj, basePath = '', results = []) {\n    if (!obj || typeof obj !== 'object') {\n        if (basePath && obj !== null && obj !== undefined) {\n            const value = String(obj);\n            results.push({\n                path: basePath,\n                value: value,\n                preview: value.length > 50 ? `${value.substring(0, 50)}...` : value\n            });\n        }\n        return results;\n    }\n    \n    if (Array.isArray(obj)) {\n        obj.forEach((item, index) => {\n            const newPath = basePath ? `${basePath}.${index}` : String(index);\n            extractAllFields(item, newPath, results);\n        });\n    } else {\n        Object.entries(obj).forEach(([key, value]) => {\n            const newPath = basePath ? `${basePath}.${key}` : key;\n            \n            if (value && typeof value === 'object') {\n                // Also check if this object has immediate string values we should extract\n                if (typeof value === 'object' && !Array.isArray(value)) {\n                    // Check for common Omeka S value patterns\n                    const immediateValues = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];\n                    for (const prop of immediateValues) {\n                        if (value[prop] && typeof value[prop] === 'string') {\n                            const val = String(value[prop]);\n                            results.push({\n                                path: `${newPath}.${prop}`,\n                                value: val,\n                                preview: val.length > 50 ? `${val.substring(0, 50)}...` : val\n                            });\n                        }\n                    }\n                }\n                // Continue recursive extraction\n                extractAllFields(value, newPath, results);\n            } else if (value !== null && value !== undefined) {\n                const val = String(value);\n                results.push({\n                    path: newPath,\n                    value: val,\n                    preview: val.length > 50 ? `${val.substring(0, 50)}...` : val\n                });\n            }\n        });\n    }\n    \n    return results;\n}\n\n/**\n * Search through extracted fields by key or value (case-insensitive)\n * @param {Array} fields - Array of field objects from extractAllFields\n * @param {string} searchTerm - Search term\n * @returns {Array} Filtered array of matching fields\n */\nexport function searchFields(fields, searchTerm) {\n    if (!searchTerm || !fields) return fields;\n    \n    const term = searchTerm.toLowerCase();\n    return fields.filter(field => \n        field.path.toLowerCase().includes(term) || \n        field.value.toLowerCase().includes(term)\n    );\n}\n\n/**\n * Gets a preview of the transformation result\n * @param {string} value - Sample value to transform\n * @param {Array} blocks - Array of transformation blocks\n * @returns {Object} Preview result with steps\n */\nexport function getTransformationPreview(value, blocks) {\n    if (!value) {\n        return { steps: [], finalValue: '' };  \n    }\n    \n    const steps = applyTransformationChain(value, blocks);\n    const finalValue = steps[steps.length - 1]?.value || value;\n    \n    return {\n        steps,\n        finalValue\n    };\n}
