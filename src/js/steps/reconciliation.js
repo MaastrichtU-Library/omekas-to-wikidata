@@ -894,160 +894,18 @@ export function setupReconciliationStep(state) {
      * Escape HTML to prevent XSS in match data
      */
     
-    /**
-     * Display high confidence matches in a horizontal scrollable container
-     */
-    function displayHighConfidenceMatches(matches) {
-        const container = document.querySelector('.high-confidence-matches');
-        if (!container) return;
-        
-        container.innerHTML = `
-            <h5 class="matches-title">High Confidence Matches (≥80%)</h5>
-            <div class="matches-scroll-container">
-                ${matches.map((match, index) => {
-                    const matchName = match.name || match.label || 'Unnamed item';
-                    const matchDescription = match.description || match.desc || 'No description available';
-                    return `
-                    <div class="confidence-match-card ${index === 0 ? 'best-match' : ''}" data-match-id="${match.id}">
-                        <div class="match-confidence">${match.score.toFixed(1)}% confidence</div>
-                        <div class="match-name">${matchName}</div>
-                        <div class="match-description">${matchDescription}</div>
-                        <div class="match-id">
-                            <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank">${match.id}</a>
-                        </div>
-                        <button class="btn small primary select-match-btn" onclick="selectMatchAndAdvance('${match.id}')">
-                            ${index === 0 ? '🎯 Select Best Match' : 'Select'}
-                        </button>
-                    </div>
-                    `;
-                }).join('')}
-            </div>
-            <p class="scroll-hint">← Scroll for more high-confidence matches →</p>
-        `;
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
-    /**
-     * Display fallback options for low/no confidence scenarios
-     */
-    function displayFallbackOptions(value, matches) {
-        const container = document.querySelector('.fallback-options');
-        if (!container) return;
-        
-        // Show the fallback options container
-        container.style.display = 'block';
-        
-        // Populate the search input with the original value
-        const searchInput = container.querySelector('.search-input');
-        if (searchInput) {
-            searchInput.value = value || '';
-        }
-        
-        // Setup manual search functionality
-        setTimeout(() => {
-            setupManualSearchInFallback();
-        }, 100);
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
-    /**
-     * Show custom input interface for non-Wikidata properties
-     */
-    function showCustomInputInterface(propertyType, value) {
-        const container = document.querySelector('.primary-recommendations');
-        if (!container) return;
-        
-        const inputConfig = getInputFieldConfig(propertyType);
-        const customInputHTML = createInputHTML(propertyType, value);
-        
-        container.innerHTML = `
-            <div class="non-wikidata-input">
-                <h5>Enter ${inputConfig.description}</h5>
-                <div class="custom-input-container">
-                    ${customInputHTML}
-                </div>
-                <div class="input-actions">
-                    <button class="btn primary" onclick="confirmCustomValue()">Confirm Value</button>
-                </div>
-            </div>
-        `;
-        
-        // Show the container
-        container.style.display = 'block';
-        
-        // Setup date precision for date inputs
-        if (propertyType === 'time') {
-            setTimeout(() => {
-                const dateInput = container.querySelector('.flexible-date-input');
-                if (dateInput) {
-                    setupDynamicDatePrecision(dateInput);
-                }
-            }, 100);
-        }
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
-    /**
-     * Setup manual search functionality in fallback options
-     */
-    function setupManualSearchInFallback() {
-        const searchBtn = document.querySelector('.search-btn');
-        const searchInput = document.querySelector('.search-input');
-        
-        if (searchBtn && searchInput) {
-            const performSearch = async () => {
-                const query = searchInput.value.trim();
-                if (!query) return;
-                
-                try {
-                    const matches = await tryDirectWikidataSearch(query);
-                    displayFallbackSearchResults(matches);
-                } catch (error) {
-                    console.error('Search error:', error);
-                    displayFallbackSearchResults([]);
-                }
-            };
-            
-            searchBtn.onclick = performSearch;
-        }
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
     /**
      * Display search results in fallback options
      */
-    function displayFallbackSearchResults(matches) {
-        const fallbackContainer = document.querySelector('.fallback-options');
-        if (!fallbackContainer) return;
-        
-        const existingResults = fallbackContainer.querySelector('.fallback-search-results');
-        if (existingResults) {
-            existingResults.remove();
-        }
-        
-        if (matches.length > 0) {
-            const resultsHTML = `
-                <div class="fallback-search-results">
-                    <h6>Search Results</h6>
-                    ${matches.map(match => `
-                        <div class="fallback-result-item" data-match-id="${match.id}">
-                            <div class="result-info">
-                                <div class="result-name">${match.name}</div>
-                                <div class="result-description">${match.description}</div>
-                                <div class="result-id">
-                                    <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank">${match.id}</a>
-                                </div>
-                            </div>
-                            <button class="btn small primary" onclick="selectMatchAndAdvance('${match.id}')">Select</button>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-            fallbackContainer.insertAdjacentHTML('beforeend', resultsHTML);
-        } else {
-            fallbackContainer.insertAdjacentHTML('beforeend', `
-                <div class="fallback-search-results">
-                    <p>No results found.</p>
-                </div>
-            `);
-        }
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
     /**
      * Perform automatic reconciliation using Wikidata APIs with progressive disclosure
@@ -1344,45 +1202,7 @@ export function setupReconciliationStep(state) {
     /**
      * Setup expanded search functionality in progressive disclosure
      */
-    function setupExpandedSearch() {
-        const searchBtn = document.querySelector('.search-btn-expanded');
-        const searchInput = document.querySelector('.search-input-expanded');
-        const resultsContainer = document.querySelector('.search-results-expanded');
-        
-        if (searchBtn && searchInput && resultsContainer) {
-            const performSearch = async () => {
-                const query = searchInput.value.trim();
-                if (!query) return;
-                
-                resultsContainer.innerHTML = '<div class="loading">Searching...</div>';
-                
-                try {
-                    const matches = await tryDirectWikidataSearch(query);
-                    
-                    if (matches.length > 0) {
-                        resultsContainer.innerHTML = matches.map(match => `
-                            <div class="expanded-result-item" data-match-id="${match.id}">
-                                <div class="result-info">
-                                    <div class="result-name">${match.name}</div>
-                                    <div class="result-description">${match.description}</div>
-                                    <div class="result-id">
-                                        <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank">${match.id}</a>
-                                    </div>
-                                </div>
-                                <button class="btn small primary" onclick="selectMatchAndAdvance('${match.id}')">Select</button>
-                            </div>
-                        `).join('');
-                    } else {
-                        resultsContainer.innerHTML = '<div class="no-results">No results found.</div>';
-                    }
-                } catch (error) {
-                    resultsContainer.innerHTML = `<div class="error">Search error: ${error.message}</div>`;
-                }
-            };
-            
-            searchBtn.onclick = performSearch;
-        }
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
     /**
      * Setup auto-advance toggle functionality
@@ -1586,48 +1406,7 @@ export function setupReconciliationStep(state) {
         }
     };
     
-    /**
-     * Setup manual search functionality
-     */
-    function setupManualSearch() {
-        const searchBtn = document.querySelector('.search-btn');
-        const searchInput = document.querySelector('.search-input');
-        const searchResults = document.querySelector('.search-results');
-        
-        const performSearch = async () => {
-            const query = searchInput.value.trim();
-            if (!query) return;
-            
-            searchResults.innerHTML = '<div class="loading">Searching...</div>';
-            
-            try {
-                const matches = await tryDirectWikidataSearch(query);
-                
-                if (matches.length > 0) {
-                    searchResults.innerHTML = matches.map(match => `
-                        <div class="search-result-item" data-match-id="${match.id}">
-                            <div class="result-info">
-                                <div class="result-name">${match.name}</div>
-                                <div class="result-description">${match.description}</div>
-                                <div class="result-id">
-                                    <a href="https://www.wikidata.org/wiki/${match.id}" target="_blank">${match.id}</a>
-                                </div>
-                            </div>
-                            <div class="result-actions">
-                                <button class="btn small primary" onclick="selectManualMatch('${match.id}')">Select</button>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    searchResults.innerHTML = '<div class="no-results">No results found.</div>';
-                }
-            } catch (error) {
-                searchResults.innerHTML = `<div class="error">Search error: ${error.message}</div>`;
-            }
-        };
-        
-        searchBtn.onclick = performSearch;
-    }
+    // [REMOVED] Moved to reconciliation-modal.js module
     
     window.selectManualMatch = function(matchId) {
         // Mark as selected and enable confirm
