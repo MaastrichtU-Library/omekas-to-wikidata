@@ -5610,6 +5610,7 @@ pre.sample-value {
 .flag-option input[type="checkbox"] {
     margin: 0 6px 0 0;
     flex-shrink: 0;
+    width: fit-content;
 }
 
 .flag-option label {
