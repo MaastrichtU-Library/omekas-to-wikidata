@@ -783,12 +783,17 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
         const menuItem = createElement('button', {
             className: 'menu-item',
             style: 'display: block; width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer;',
-            onClick: () => {
+            onClick: (e) => {
+                // Prevent event bubbling to avoid double-removal error
+                e.stopPropagation();
                 // Import addTransformationBlock to avoid circular dependency
                 import('../core/transformation-engine.js').then(({ addTransformationBlock }) => {
                     addTransformationBlock(propertyId, type, state);
                 });
-                document.body.removeChild(menu);
+                // Safe menu removal
+                if (menu.parentNode === document.body) {
+                    document.body.removeChild(menu);
+                }
             },
             onMouseOver: (e) => e.target.style.backgroundColor = '#f0f0f0',
             onMouseOut: (e) => e.target.style.backgroundColor = 'transparent'
@@ -807,7 +812,10 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
     // Close menu when clicking outside
     const closeMenu = (e) => {
         if (!menu.contains(e.target) && e.target !== addBtn) {
-            document.body.removeChild(menu);
+            // Only remove if menu is still a child of document.body
+            if (menu.parentNode === document.body) {
+                document.body.removeChild(menu);
+            }
             document.removeEventListener('click', closeMenu);
         }
     };
