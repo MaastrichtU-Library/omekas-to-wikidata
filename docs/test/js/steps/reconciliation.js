@@ -6,6 +6,7 @@
 
 import { setupModalUI } from '../ui/modal-ui.js';
 import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes, setupDynamicDatePrecision, standardizeDateInput } from '../utils/property-types.js';
+import { getConstraintBasedTypes, buildContextualProperties, validateAgainstFormatConstraints, scoreMatchWithConstraints, getConstraintSummary } from '../utils/constraint-helpers.js';
 import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
@@ -127,6 +128,9 @@ export function setupReconciliationStep(state) {
         // Filter out keys that are not in the current dataset
         const mappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
         
+        // Get manual properties
+        const manualProperties = currentState.mappings.manualProperties || [];
+        
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         
         // Check if we already have reconciliation data from a previous session
@@ -137,7 +141,7 @@ export function setupReconciliationStep(state) {
         } else {
             
             // Initialize reconciliation progress
-            const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
+            const totalCells = calculateTotalReconciliableCells(data, mappedKeys, manualProperties);
             state.setReconciliationProgress(0, totalCells);
             
             // Initialize reconciliation data structure
@@ -156,11 +160,36 @@ export function setupReconciliationStep(state) {
                     reconciliationData[itemId].properties[keyName] = {
                         originalValues: values,
                         references: [], // References specific to this property
+                        propertyMetadata: typeof keyObj === 'object' ? keyObj : null, // Store full property object with constraints
                         reconciled: values.map(() => ({
                             status: 'pending', // pending, reconciled, skipped, failed
                             matches: [],
                             selectedMatch: null,
                             manualValue: null,
+                            qualifiers: {},
+                            confidence: 0
+                        }))
+                    };
+                });
+                
+                // Initialize each manual property with default values
+                manualProperties.forEach(manualProp => {
+                    const propertyId = manualProp.property.id;
+                    const defaultValue = manualProp.defaultValue;
+                    
+                    // Create default values array - manual properties get one value per item
+                    const values = defaultValue ? [defaultValue] : [''];
+                    
+                    reconciliationData[itemId].properties[propertyId] = {
+                        originalValues: values,
+                        references: [], // References specific to this property
+                        isManualProperty: true, // Mark as manual property
+                        manualPropertyData: manualProp, // Store complete manual property data
+                        reconciled: values.map(() => ({
+                            status: 'pending', // pending, reconciled, skipped, failed
+                            matches: [],
+                            selectedMatch: null,
+                            manualValue: defaultValue || null,
                             qualifiers: {},
                             confidence: 0
                         }))
@@ -173,7 +202,7 @@ export function setupReconciliationStep(state) {
         updateProceedButton();
         
         // Create reconciliation table
-        await createReconciliationTable(data, mappedKeys, isReturningToStep);
+        await createReconciliationTable(data, mappedKeys, manualProperties, isReturningToStep);
         
         // Update state
         state.updateState('reconciliationData', reconciliationData);
@@ -210,14 +239,18 @@ export function setupReconciliationStep(state) {
     /**
      * Calculate total number of reconcilable cells
      */
-    function calculateTotalReconciliableCells(data, mappedKeys) {
+    function calculateTotalReconciliableCells(data, mappedKeys, manualProperties = []) {
         let total = 0;
         data.forEach(item => {
+            // Count mapped property cells
             mappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
                 const values = extractPropertyValues(item, keyName);
                 total += values.length;
             });
+            
+            // Count manual property cells (each manual property counts as 1 cell per item)
+            total += manualProperties.length;
         });
         return total;
     }
@@ -254,7 +287,7 @@ export function setupReconciliationStep(state) {
     /**
      * Create the reconciliation table interface
      */
-    async function createReconciliationTable(data, mappedKeys, isReturningToStep = false) {
+    async function createReconciliationTable(data, mappedKeys, manualProperties = [], isReturningToStep = false) {
         
         // Clear existing content
         if (propertyHeaders) {
@@ -266,13 +299,36 @@ export function setupReconciliationStep(state) {
             }, 'Item');
             propertyHeaders.appendChild(itemHeader);
             
-            // Add property headers
+            // Add property headers for mapped keys
             mappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
                 const th = createElement('th', {
                     className: 'property-header',
                     dataset: { property: keyName }
                 }, keyName);
+                propertyHeaders.appendChild(th);
+            });
+            
+            // Add property headers for manual properties
+            manualProperties.forEach(manualProp => {
+                const propertyLabel = `${manualProp.property.label} (${manualProp.property.id})`;
+                const th = createElement('th', {
+                    className: 'property-header manual-property-header',
+                    dataset: { 
+                        property: manualProp.property.id,
+                        isManual: 'true'
+                    },
+                    title: manualProp.property.description
+                }, propertyLabel);
+                
+                // Add required indicator if applicable
+                if (manualProp.isRequired) {
+                    const requiredIndicator = createElement('span', {
+                        className: 'required-indicator-header'
+                    }, ' *');
+                    th.appendChild(requiredIndicator);
+                }
+                
                 propertyHeaders.appendChild(th);
             });
         }
@@ -329,14 +385,24 @@ export function setupReconciliationStep(state) {
                     }
                 });
                 
+                // Add manual property cells
+                manualProperties.forEach(manualProp => {
+                    const propertyId = manualProp.property.id;
+                    const defaultValue = manualProp.defaultValue || '';
+                    
+                    // Create a cell for the manual property with the default value
+                    const td = createManualPropertyCell(itemId, propertyId, defaultValue, manualProp);
+                    tr.appendChild(td);
+                });
+                
                 reconciliationRows.appendChild(tr);
             });
             
             // Only perform batch auto-acceptance for fresh initialization, not when returning to step
             if (!isReturningToStep) {
-                await performBatchAutoAcceptance(data, mappedKeys);
+                await performBatchAutoAcceptance(data, mappedKeys, manualProperties);
             } else {
-                restoreReconciliationDisplay(data, mappedKeys);
+                restoreReconciliationDisplay(data, mappedKeys, manualProperties);
             }
             
         } else {
@@ -347,7 +413,7 @@ export function setupReconciliationStep(state) {
     /**
      * Perform batch auto-acceptance for all values in the table
      */
-    async function performBatchAutoAcceptance(data, mappedKeys) {
+    async function performBatchAutoAcceptance(data, mappedKeys, manualProperties = []) {
         const batchJobs = [];
         let autoAcceptedCount = 0;
         
@@ -787,6 +853,47 @@ export function setupReconciliationStep(state) {
         return valueDiv;
     }
     
+    /**
+     * Create a property cell for manual properties
+     */
+    function createManualPropertyCell(itemId, propertyId, defaultValue, manualProp) {
+        const td = createElement('td', {
+            className: 'property-cell manual-property-cell',
+            dataset: {
+                itemId: itemId,
+                property: propertyId,
+                isManual: 'true'
+            }
+        });
+        
+        // Create a value element for the manual property
+        const valueDiv = createElement('div', {
+            className: 'property-value manual-property-value',
+            dataset: { status: 'pending' }
+        });
+        
+        const textSpan = createElement('span', {
+            className: 'value-text'
+        }, defaultValue || 'Click to set value');
+        
+        const statusSpan = createElement('span', {
+            className: 'value-status'
+        }, manualProp.isRequired ? 'Required - click to set' : 'Click to reconcile');
+        
+        valueDiv.appendChild(textSpan);
+        valueDiv.appendChild(statusSpan);
+        
+        // Add click handler for manual property reconciliation
+        const clickHandler = () => {
+            openReconciliationModal(itemId, propertyId, 0, defaultValue, manualProp);
+        };
+        
+        valueDiv.addEventListener('click', clickHandler);
+        
+        td.appendChild(valueDiv);
+        
+        return td;
+    }
 
     /**
      * Calculate current progress from reconciliation data
@@ -922,8 +1029,23 @@ export function setupReconciliationStep(state) {
     
     /**
      * Create modal content for reconciliation with simplified design based on Q&A requirements
+     * Enhanced with constraint information display
      */
     async function createReconciliationModalContent(itemId, property, valueIndex, value) {
+        // Get property metadata from reconciliation data if available
+        let propertyObj = null;
+        if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
+            const propData = reconciliationData[itemId].properties[property];
+            
+            // Get property object from stored metadata
+            if (propData.propertyMetadata) {
+                propertyObj = propData.propertyMetadata;
+            } else if (propData.manualPropertyData) {
+                // For manual properties, use the property data
+                propertyObj = propData.manualPropertyData.property;
+            }
+        }
+        
         // Detect property type for dynamic input fields
         const propertyType = detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
@@ -932,6 +1054,9 @@ export function setupReconciliationStep(state) {
         const propertyInfo = await getPropertyDisplayInfo(property);
         const originalKeyInfo = getOriginalKeyInfo(itemId, property);
         const itemTitle = reconciliationData[itemId]?.originalData?.['o:title'] || `Item ${itemId.replace('item-', '')}`;
+        
+        // Get constraint information for display
+        const constraintInfo = propertyObj ? getConstraintSummary(propertyObj) : null;
         
         // Determine why Wikidata item is required (Entity Schema vs property constraint)
         const requirementReason = getReconciliationRequirementReason(property);
@@ -947,6 +1072,30 @@ export function setupReconciliationStep(state) {
                         </a>
                     </div>
                     <p class="property-description">${propertyInfo.description}</p>
+                    
+                    ${constraintInfo && constraintInfo.hasConstraints ? `
+                    <!-- Property Constraints Information -->
+                    <div class="property-constraints">
+                        <div class="constraint-info-notice">
+                            Property constraints from Wikidata:
+                        </div>
+                        ${constraintInfo.datatype ? `
+                        <div class="constraint-datatype">
+                            <strong>Expects:</strong> ${constraintInfo.datatype}
+                        </div>
+                        ` : ''}
+                        ${constraintInfo.valueTypes.length > 0 ? `
+                        <div class="constraint-value-types">
+                            <strong>Must be:</strong> ${constraintInfo.valueTypes.join(', ')}
+                        </div>
+                        ` : ''}
+                        ${constraintInfo.formatRequirements.length > 0 ? `
+                        <div class="constraint-format">
+                            <strong>Format:</strong> ${constraintInfo.formatRequirements.join('; ')}
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
                     
                     <div class="original-info">
                         <span class="original-label">Original key:</span>
@@ -1514,8 +1663,25 @@ export function setupReconciliationStep(state) {
     
     /**
      * Perform automatic reconciliation using Wikidata APIs with progressive disclosure
+     * Enhanced with constraint-based validation and property metadata
      */
     async function performAutomaticReconciliation(value, property, itemId, valueIndex) {
+        // Get property metadata from reconciliation data if available
+        let propertyObj = null;
+        let propData = null;
+        
+        if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
+            propData = reconciliationData[itemId].properties[property];
+            
+            // Get property object from stored metadata
+            if (propData.propertyMetadata) {
+                propertyObj = propData.propertyMetadata;
+            } else if (propData.manualPropertyData) {
+                // For manual properties, use the property data
+                propertyObj = propData.manualPropertyData.property;
+            }
+        }
+        
         // Check if this property type requires reconciliation
         const propertyType = detectPropertyType(property);
         const inputConfig = getInputFieldConfig(propertyType);
@@ -1531,24 +1697,34 @@ export function setupReconciliationStep(state) {
             let hasBeenReconciled = false;
             
             // Check if we already have reconciliation data from batch reconciliation
-            if (itemId && valueIndex !== undefined && reconciliationData[itemId]) {
-                const propData = reconciliationData[itemId].properties[property];
-                if (propData && propData.reconciled[valueIndex]) {
-                    const reconciledData = propData.reconciled[valueIndex];
-                    
-                    // Check if reconciliation has been attempted (regardless of results)
-                    if (reconciledData.matches !== undefined) {
-                        hasBeenReconciled = true;
-                        matches = reconciledData.matches || [];
-                    }
+            if (propData && propData.reconciled[valueIndex]) {
+                const reconciledData = propData.reconciled[valueIndex];
+                
+                // Check if reconciliation has been attempted (regardless of results)
+                if (reconciledData.matches !== undefined) {
+                    hasBeenReconciled = true;
+                    matches = reconciledData.matches || [];
                 }
             }
             
             // Only fetch new matches if reconciliation has never been attempted
             if (!hasBeenReconciled) {
                 
-                // Try reconciliation API first
-                matches = await tryReconciliationApi(value, property);
+                // Validate against format constraints before making API calls
+                if (propertyObj) {
+                    const formatValidation = validateAgainstFormatConstraints(value, propertyObj);
+                    if (!formatValidation.isValid) {
+                        console.warn(`⚠️ Format constraint violation for ${propertyObj.id}:`, formatValidation.violations);
+                        // Still proceed with reconciliation but log the issue
+                    }
+                }
+                
+                // Get all mapped keys for contextual property building
+                const currentState = state.getState();
+                const allMappings = currentState.mappings?.mappedKeys || [];
+                
+                // Try reconciliation API first with property object and context
+                matches = await tryReconciliationApi(value, propertyObj || property, allMappings);
                 
                 // If no good matches, try direct Wikidata search
                 if (!matches || matches.length === 0) {
@@ -1605,22 +1781,26 @@ export function setupReconciliationStep(state) {
     
     /**
      * Try Wikidata Reconciliation API with fallback handling
+     * Enhanced with constraint-based type filtering and contextual properties
      */
-    async function tryReconciliationApi(value, property) {
+    async function tryReconciliationApi(value, propertyObj, allMappings = []) {
         // Primary endpoint - wikidata.reconci.link
         const primaryApiUrl = 'https://wikidata.reconci.link/en/api';
         // Fallback endpoint - tools.wmflabs.org
         const fallbackApiUrl = 'https://tools.wmflabs.org/openrefine-wikidata/en/api';
         
-        // Get suggested entity types based on property
-        const entityTypes = getSuggestedEntityTypes(property);
+        // Get constraint-based entity types (falls back to heuristic if no constraints)
+        const entityTypes = getConstraintBasedTypes(propertyObj);
+        
+        // Build contextual properties for better disambiguation
+        const contextualProperties = buildContextualProperties(propertyObj, allMappings);
         
         const query = {
             queries: {
                 q1: {
                     query: value,
                     type: entityTypes,
-                    properties: []
+                    properties: contextualProperties
                 }
             }
         };
@@ -1643,7 +1823,7 @@ export function setupReconciliationStep(state) {
             }
             
             const data = await response.json();
-            return parseReconciliationResults(data, value);
+            return parseReconciliationResults(data, value, propertyObj);
             
         } catch (primaryError) {
             console.warn(`⚠️ Primary reconciliation API failed for "${value}":`, primaryError.message);
@@ -1664,7 +1844,7 @@ export function setupReconciliationStep(state) {
                 }
                 
                 const data = await response.json();
-                return parseReconciliationResults(data, value);
+                return parseReconciliationResults(data, value, propertyObj);
                 
             } catch (fallbackError) {
                 console.error(`❌ Both reconciliation APIs failed for "${value}"`);
@@ -1678,12 +1858,13 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Parse reconciliation API results
+     * Parse reconciliation API results with constraint-based scoring
      */
-    function parseReconciliationResults(data, value) {
+    function parseReconciliationResults(data, value, propertyObj) {
         if (data.q1 && data.q1.result) {
             return data.q1.result.map(match => {
-                return {
+                // Create base match object
+                const baseMatch = {
                     id: match.id,
                     name: match.name || match.label || 'Unnamed item',
                     description: match.description || match.desc || 'No description available',
@@ -1691,6 +1872,13 @@ export function setupReconciliationStep(state) {
                     type: match.type || [],
                     source: 'reconciliation'
                 };
+                
+                // Apply constraint-based scoring if property object available
+                if (propertyObj) {
+                    return scoreMatchWithConstraints(baseMatch, propertyObj, value);
+                }
+                
+                return baseMatch;
             });
         }
         
@@ -1801,7 +1989,7 @@ export function setupReconciliationStep(state) {
     /**
      * Restore reconciliation display states when returning to the step
      */
-    function restoreReconciliationDisplay(data, mappedKeys) {
+    function restoreReconciliationDisplay(data, mappedKeys, manualProperties = []) {
         
         data.forEach((item, index) => {
             const itemId = `item-${index}`;

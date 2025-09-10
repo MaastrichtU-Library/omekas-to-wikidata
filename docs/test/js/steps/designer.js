@@ -730,6 +730,7 @@ export function setupDesignerStep(state) {
         const currentState = state.getState();
         const fetchedData = currentState.fetchedData;
         const mappedKeys = currentState.mappings?.mappedKeys || [];
+        const manualProperties = currentState.mappings?.manualProperties || [];
         const reconciliationData = currentState.reconciliationData || {};
         
         
@@ -751,8 +752,8 @@ export function setupDesignerStep(state) {
             }
         });
         
-        // Display available properties
-        displayPropertiesSubset(itemProperties, selectedItem, reconciliationData);
+        // Display available properties (all manual properties are always available)
+        displayPropertiesSubset(itemProperties, manualProperties, selectedItem, reconciliationData);
         
         // Display unavailable properties
         if (missingProperties.length > 0) {
@@ -1220,6 +1221,7 @@ export function setupDesignerStep(state) {
     function displayProperties() {
         const currentState = state.getState();
         const mappedKeys = currentState.mappings?.mappedKeys || [];
+        const manualProperties = currentState.mappings?.manualProperties || [];
         const reconciliationData = currentState.reconciliationData || {};
         const fetchedData = currentState.fetchedData || [];
         
@@ -1229,11 +1231,11 @@ export function setupDesignerStep(state) {
         if (mappedKeys.length > 0) {
         }
         
-        displayPropertiesSubset(mappedKeys, null, reconciliationData);
+        displayPropertiesSubset(mappedKeys, manualProperties, null, reconciliationData);
     }
     
     // Display a subset of properties
-    function displayPropertiesSubset(mappedKeys, specificItem, reconciliationData) {
+    function displayPropertiesSubset(mappedKeys, manualProperties = [], specificItem, reconciliationData) {
         
         // Get the properties list element fresh each time
         const propertiesList = document.getElementById('properties-list');
@@ -1245,8 +1247,8 @@ export function setupDesignerStep(state) {
         
         propertiesList.innerHTML = '';
         
-        if (!mappedKeys || mappedKeys.length === 0) {
-            console.warn('Designer - No mapped keys found, showing placeholder');
+        if ((!mappedKeys || mappedKeys.length === 0) && (!manualProperties || manualProperties.length === 0)) {
+            console.warn('Designer - No mapped keys or manual properties found, showing placeholder');
             const placeholder = createElement('div', {
                 className: 'placeholder'
             }, 'Properties will appear here after reconciliation');
@@ -1716,6 +1718,140 @@ export function setupDesignerStep(state) {
             
             // Add actions to value section
             propertyValueSection.appendChild(statementActions);
+            
+            // Assemble the complete statement
+            propertyItem.appendChild(propertyLabelSection);
+            propertyItem.appendChild(propertyValueSection);
+            
+            propertiesList.appendChild(propertyItem);
+        });
+        
+        // Display manual properties
+        manualProperties.forEach(manualProp => {
+            const propertyItem = createElement('div', {
+                className: 'wikidata-statement manual-property-statement'
+            });
+            
+            // Property label section for manual property
+            const propertyLabelSection = createElement('div', {
+                className: 'statement-property'
+            });
+            
+            const propertyHeaderRow = createElement('div', {
+                className: 'property-header-row'
+            });
+            
+            const propertyLabel = createElement('span', {
+                className: 'property-label'
+            }, manualProp.property.label);
+            
+            const propertyId = createElement('span', {
+                className: 'property-id'
+            }, `(${manualProp.property.id})`);
+            
+            // Add required indicator if applicable
+            if (manualProp.isRequired) {
+                const requiredIndicator = createElement('span', {
+                    className: 'required-indicator'
+                }, ' *');
+                propertyHeaderRow.appendChild(propertyLabel);
+                propertyHeaderRow.appendChild(propertyId);
+                propertyHeaderRow.appendChild(requiredIndicator);
+            } else {
+                propertyHeaderRow.appendChild(propertyLabel);
+                propertyHeaderRow.appendChild(propertyId);
+            }
+            
+            propertyLabelSection.appendChild(propertyHeaderRow);
+            
+            // Property value section for manual property
+            const propertyValueSection = createElement('div', {
+                className: 'statement-value'
+            });
+            
+            // Get reconciled value for manual property
+            let exampleValue = manualProp.defaultValue || 'Not set';
+            let reconciledDisplay = '';
+            
+            if (specificItem) {
+                // For specific item view
+                const itemIndex = fetchedData.indexOf(specificItem);
+                const itemKey = `item-${itemIndex}`;
+                
+                const reconciledData = reconciliationData[itemKey]?.properties[manualProp.property.id]?.reconciled?.[0];
+                
+                if (reconciledData?.selectedMatch) {
+                    const match = reconciledData.selectedMatch;
+                    if (match.type === 'wikidata') {
+                        exampleValue = `${match.label} (${match.id})`;
+                        reconciledDisplay = `✓ Reconciled to: ${match.label} (${match.id})`;
+                    } else {
+                        exampleValue = match.value || 'Custom value';
+                        reconciledDisplay = `✓ Custom value: ${match.value || 'Set'}`;
+                    }
+                } else if (reconciledData?.manualValue) {
+                    exampleValue = reconciledData.manualValue;
+                    reconciledDisplay = '⚠️ Manual value set, not reconciled';
+                } else if (manualProp.defaultValue) {
+                    exampleValue = `Default: ${manualProp.defaultValue}`;
+                    reconciledDisplay = '⚠️ Using default value, not reconciled';
+                }
+            } else {
+                // For multi-item view, show first reconciled value or default
+                let foundReconciled = false;
+                const fetchedData = state.getState().fetchedData || [];
+                
+                for (let i = 0; i < fetchedData.length; i++) {
+                    const itemKey = `item-${i}`;
+                    const reconciledData = reconciliationData[itemKey]?.properties[manualProp.property.id]?.reconciled?.[0];
+                    
+                    if (reconciledData?.selectedMatch) {
+                        const match = reconciledData.selectedMatch;
+                        if (match.type === 'wikidata') {
+                            exampleValue = `${match.label} (${match.id})`;
+                            reconciledDisplay = `Example: ${match.label} (${match.id})`;
+                        } else {
+                            exampleValue = match.value || 'Custom value';
+                            reconciledDisplay = `Example: ${match.value || 'Custom value'}`;
+                        }
+                        foundReconciled = true;
+                        break;
+                    } else if (reconciledData?.manualValue) {
+                        exampleValue = reconciledData.manualValue;
+                        reconciledDisplay = 'Example: Manual value';
+                        foundReconciled = true;
+                        break;
+                    }
+                }
+                
+                if (!foundReconciled) {
+                    exampleValue = manualProp.defaultValue || 'No value set';
+                    reconciledDisplay = manualProp.defaultValue ? 'Default value' : 'No values reconciled yet';
+                }
+            }
+            
+            // Main value display
+            const statementMainValue = createElement('div', {
+                className: 'statement-main-value'
+            });
+            
+            const valueRow = createElement('div', {
+                className: 'value-display-row'
+            });
+            
+            const valueSpan = createElement('span', {
+                className: 'value-label manual-property-value'
+            }, exampleValue);
+            valueRow.appendChild(valueSpan);
+            
+            // Add manual property indicator
+            const manualIndicator = createElement('span', {
+                className: 'manual-property-indicator'
+            }, ' (manual)');
+            valueRow.appendChild(manualIndicator);
+            
+            statementMainValue.appendChild(valueRow);
+            propertyValueSection.appendChild(statementMainValue);
             
             // Assemble the complete statement
             propertyItem.appendChild(propertyLabelSection);
@@ -2251,11 +2387,17 @@ export function setupDesignerStep(state) {
         });
         
         const modal = createElement('div', {
-            className: 'modal-overlay active'
+            className: 'modal-overlay active',
+            onClick: (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            }
         });
         
         const modalContent = createElement('div', {
-            className: 'modal item-specific-references-modal'
+            className: 'modal item-specific-references-modal',
+            onClick: (e) => e.stopPropagation()
         });
         
         const modalHeader = createElement('div', {

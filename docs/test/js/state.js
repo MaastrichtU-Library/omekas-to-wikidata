@@ -31,7 +31,8 @@ export function setupState() {
         mappings: {
             nonLinkedKeys: [],
             mappedKeys: [],
-            ignoredKeys: []
+            ignoredKeys: [],
+            manualProperties: []
         },
         
         // Step 3: Reconciliation
@@ -151,6 +152,13 @@ export function setupState() {
         // Show modal
         modal.style.display = 'flex';
         
+        // Prevent modal content from closing the modal when clicked
+        const modalContent = modal.querySelector('.modal');
+        const handleContentClick = (e) => e.stopPropagation();
+        if (modalContent) {
+            modalContent.addEventListener('click', handleContentClick);
+        }
+        
         // Handle button clicks
         const handleRestore = () => {
             modal.style.display = 'none';
@@ -164,13 +172,26 @@ export function setupState() {
             cleanup();
         };
         
+        const handleOverlayClick = (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                clearPersistedState();
+                cleanup();
+            }
+        };
+        
         const cleanup = () => {
             restoreBtn.removeEventListener('click', handleRestore);
             freshBtn.removeEventListener('click', handleFresh);
+            modal.removeEventListener('click', handleOverlayClick);
+            if (modalContent) {
+                modalContent.removeEventListener('click', handleContentClick);
+            }
         };
         
         restoreBtn.addEventListener('click', handleRestore);
         freshBtn.addEventListener('click', handleFresh);
+        modal.addEventListener('click', handleOverlayClick);
     }
     
     /**
@@ -601,6 +622,9 @@ export function setupState() {
         if (!state.mappings.ignoredKeys) {
             state.mappings.ignoredKeys = [];
         }
+        if (!state.mappings.manualProperties) {
+            state.mappings.manualProperties = [];
+        }
     }
     
     /**
@@ -658,6 +682,54 @@ export function setupState() {
             oldValue: oldProgress,
             newValue: JSON.parse(JSON.stringify(state.reconciliationProgress))
         });
+    }
+    
+    /**
+     * Adds a manual property
+     * @param {Object} manualProperty - Manual property object with property, defaultValue, isRequired
+     */
+    function addManualProperty(manualProperty) {
+        ensureMappingArrays();
+        
+        const oldValue = [...state.mappings.manualProperties];
+        
+        // Check if property already exists
+        const existingIndex = state.mappings.manualProperties.findIndex(p => p.property.id === manualProperty.property.id);
+        if (existingIndex === -1) {
+            state.mappings.manualProperties.push({
+                ...manualProperty,
+                addedAt: new Date().toISOString()
+            });
+            state.hasUnsavedChanges = true;
+            
+            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                path: 'mappings.manualProperties',
+                oldValue,
+                newValue: [...state.mappings.manualProperties]
+            });
+        }
+    }
+    
+    /**
+     * Removes a manual property by property ID
+     * @param {String} propertyId - The Wikidata property ID to remove
+     */
+    function removeManualProperty(propertyId) {
+        ensureMappingArrays();
+        
+        const oldValue = [...state.mappings.manualProperties];
+        const index = state.mappings.manualProperties.findIndex(p => p.property.id === propertyId);
+        
+        if (index > -1) {
+            state.mappings.manualProperties.splice(index, 1);
+            state.hasUnsavedChanges = true;
+            
+            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                path: 'mappings.manualProperties',
+                oldValue,
+                newValue: [...state.mappings.manualProperties]
+            });
+        }
     }
     
     /**
@@ -724,6 +796,8 @@ export function setupState() {
         addToMappingCategory,
         removeFromMappingCategory,
         ensureMappingArrays,
+        addManualProperty,
+        removeManualProperty,
         // Convenience methods for reconciliation progress
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,
