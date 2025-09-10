@@ -388,8 +388,8 @@ export const COMMON_REGEX_PATTERNS = {
         description: 'Remove all HTML tags from text'
     },
     'Extract Numbers': {
-        pattern: '\\d+',
-        replacement: '$&',
+        pattern: '[^\\d]+',
+        replacement: '',
         description: 'Extract all numbers from text'
     },
     'Remove Special Characters': {
