@@ -1964,7 +1964,7 @@ export function setupMappingStep(state) {
         // Get all stages
         const stage1 = document.getElementById('stage-1-property-selection');
         const stage2 = document.getElementById('stage-2-value-type-detection');
-        const stage3 = document.getElementById('stage-3-value-manipulation');
+        const stage3 = document.getElementById('stage-3-value-transformation');
         
         if (stage1 && stage2 && stage3) {
             // Mark stages 1 and 2 as completed
