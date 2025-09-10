@@ -382,11 +382,6 @@ export const COMMON_REGEX_PATTERNS = {
         replacement: '$1',
         description: 'Extract 4-digit year from text'
     },
-    'Remove HTML Tags': {
-        pattern: '<[^>]*>',
-        replacement: '',
-        description: 'Remove all HTML tags from text'
-    },
     'Extract Numbers': {
         pattern: '[^\\d]+',
         replacement: '',
@@ -402,15 +397,10 @@ export const COMMON_REGEX_PATTERNS = {
         replacement: '$1',
         description: 'Extract email addresses'
     },
-    'Clean Whitespace': {
-        pattern: '\\s+',
-        replacement: ' ',
-        description: 'Replace multiple whitespace with single space'
-    },
-    'Extract Parentheses Content': {
-        pattern: '\\(([^)]+)\\)',
-        replacement: '$1',
-        description: 'Extract content from parentheses'
+    'Remove Whitespace': {
+        pattern: '\\s',
+        replacement: '',
+        description: 'Remove all whitespace characters'
     },
     'Remove Brackets': {
         pattern: '[\\[\\]{}()]',
