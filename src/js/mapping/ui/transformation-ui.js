@@ -668,7 +668,7 @@ export function updateFieldSearchResults(searchTerm, propertyId, block, resultsC
                 const templateInput = document.querySelector(`.transformation-block[data-block-id="${block.id}"] .template-input`);
                 if (templateInput) {
                     const cursorPos = templateInput.selectionStart;
-                    const fieldPlaceholder = `{${field.key}}`;
+                    const fieldPlaceholder = `{${field.path}}`;
                     const newValue = templateInput.value.substring(0, cursorPos) + 
                                    fieldPlaceholder + 
                                    templateInput.value.substring(templateInput.selectionEnd);
@@ -682,10 +682,10 @@ export function updateFieldSearchResults(searchTerm, propertyId, block, resultsC
                     templateInput.dispatchEvent(inputEvent);
                 }
             }
-        }, `{${field.key}}`);
+        }, `{${field.path}}`);
         
         // Add tooltip with sample value
-        fieldButton.title = `Sample value: ${field.sampleValue}`;
+        fieldButton.title = `Sample value: ${field.preview || field.value}`;
         
         resultsContainer.appendChild(fieldButton);
     });
