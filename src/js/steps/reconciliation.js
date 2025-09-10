@@ -313,23 +313,20 @@ export function setupReconciliationStep(state) {
                         className: 'property-header-content' 
                     });
                     
-                    // Property label (clickable link to help page)
-                    const labelSpan = createElement('a', {
-                        className: 'property-label-help-link',
-                        href: 'https://www.wikidata.org/wiki/Help:Label',
-                        target: '_blank',
-                        title: 'Learn about Wikidata labels',
-                        onClick: (e) => e.stopPropagation() // Prevent header click when clicking label
+                    // Property label (clickable span - will be handled by header click)
+                    const labelSpan = createElement('span', {
+                        className: 'property-label'
                     }, keyObj.property.label);
                     headerContent.appendChild(labelSpan);
                     
                     // Space and opening bracket
                     headerContent.appendChild(document.createTextNode(' ('));
                     
-                    // Clickable QID link
+                    // Clickable QID link - smart routing based on property type
+                    const wikidataUrl = getWikidataUrlForProperty(keyObj.property);
                     const qidLink = createElement('a', {
                         className: 'property-qid-link',
-                        href: `https://www.wikidata.org/wiki/Property:${keyObj.property.id}`,
+                        href: wikidataUrl,
                         target: '_blank',
                         onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
                     }, keyObj.property.id);
@@ -372,23 +369,20 @@ export function setupReconciliationStep(state) {
                     className: 'property-header-content' 
                 });
                 
-                // Property label (clickable link to help page)
-                const labelSpan = createElement('a', {
-                    className: 'property-label-help-link',
-                    href: 'https://www.wikidata.org/wiki/Help:Label',
-                    target: '_blank',
-                    title: 'Learn about Wikidata labels',
-                    onClick: (e) => e.stopPropagation() // Prevent header click when clicking label
+                // Property label (clickable span - will be handled by header click)
+                const labelSpan = createElement('span', {
+                    className: 'property-label'
                 }, manualProp.property.label);
                 headerContent.appendChild(labelSpan);
                 
                 // Space and opening bracket
                 headerContent.appendChild(document.createTextNode(' ('));
                 
-                // Clickable QID link
+                // Clickable QID link - smart routing based on property type
+                const wikidataUrl = getWikidataUrlForProperty(manualProp.property);
                 const qidLink = createElement('a', {
                     className: 'property-qid-link',
-                    href: `https://www.wikidata.org/wiki/Property:${manualProp.property.id}`,
+                    href: wikidataUrl,
                     target: '_blank',
                     onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
                 }, manualProp.property.id);
@@ -1381,6 +1375,27 @@ export function setupReconciliationStep(state) {
         }
         
         return `Property describing ${property.replace(/[_-]/g, ' ')}`;
+    }
+    
+    /**
+     * Get the correct Wikidata URL for a property based on its type
+     */
+    function getWikidataUrlForProperty(property) {
+        const label = property.label?.toLowerCase();
+        
+        // Special cases for core Wikidata concepts
+        if (label === 'label') {
+            return 'https://www.wikidata.org/wiki/Help:Label';
+        }
+        if (label === 'description') {
+            return 'https://www.wikidata.org/wiki/Help:Description';
+        }
+        if (label === 'aliases' || label === 'alias') {
+            return 'https://www.wikidata.org/wiki/Help:Aliases';
+        }
+        
+        // For regular properties, use the property page
+        return `https://www.wikidata.org/wiki/Property:${property.id}`;
     }
     
     /**

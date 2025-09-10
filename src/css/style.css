@@ -1566,24 +1566,6 @@ pre.sample-value {
     color: #333;
 }
 
-.property-label-help-link {
-    font-weight: 600;
-    color: #333;
-    text-decoration: none;
-    transition: color 0.2s;
-}
-
-.property-label-help-link:hover {
-    color: var(--primary-color);
-    text-decoration: underline;
-}
-
-.property-label-help-link:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-    border-radius: 2px;
-}
-
 .property-qid-link {
     color: var(--primary-color);
     text-decoration: none;
