@@ -11,6 +11,53 @@ import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
 
+/**
+ * Sort properties/keys by priority for column ordering
+ * Priority: label, description, aliases, instance of, then maintain original order
+ */
+function sortColumnsByPriority(items) {
+    const priorityOrder = {
+        // Label properties
+        'label': 1,
+        'P1476': 1, // title
+        'rdfs:label': 1,
+        'schema:name': 1,
+        'dcterms:title': 1,
+        'foaf:name': 1,
+        
+        // Description properties  
+        'description': 2,
+        'schema:description': 2,
+        'dcterms:description': 2,
+        'P1813': 2, // short name
+        
+        // Aliases properties
+        'aliases': 3,
+        'P1449': 3, // nickname
+        'P2561': 3, // name
+        'skos:altLabel': 3,
+        
+        // Instance of
+        'P31': 4 // instance of
+    };
+    
+    return items.sort((a, b) => {
+        // Get property ID for both items
+        const aId = (a.property && a.property.id) || a.key || a;
+        const bId = (b.property && b.property.id) || b.key || b;
+        
+        const aPriority = priorityOrder[aId] || 999;
+        const bPriority = priorityOrder[bId] || 999;
+        
+        if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+        }
+        
+        // If same priority, maintain original order
+        return 0;
+    });
+}
+
 export function setupReconciliationStep(state) {
     
     // Initialize modal UI
@@ -289,6 +336,22 @@ export function setupReconciliationStep(state) {
      */
     async function createReconciliationTable(data, mappedKeys, manualProperties = [], isReturningToStep = false) {
         
+        // Sort columns to prioritize: label, description, aliases, instance of, then default order
+        const sortedMappedKeys = sortColumnsByPriority([...mappedKeys]);
+        const sortedManualProperties = sortColumnsByPriority([...manualProperties]);
+        
+        // Debug: Log column ordering
+        console.log('📊 Reconciliation table column order:', [
+            ...sortedMappedKeys.map(key => {
+                const id = (key.property && key.property.id) || key.key || key;
+                const label = (key.property && key.property.label) || 'Unknown';
+                return `${label} (${id})`;
+            }),
+            ...sortedManualProperties.map(prop => {
+                return `${prop.property.label} (${prop.property.id})`;
+            })
+        ]);
+        
         // Clear existing content
         if (propertyHeaders) {
             propertyHeaders.innerHTML = '';
@@ -300,7 +363,7 @@ export function setupReconciliationStep(state) {
             propertyHeaders.appendChild(itemHeader);
             
             // Add property headers for mapped keys
-            mappedKeys.forEach(keyObj => {
+            sortedMappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
                 
                 // Create header content with property label and clickable QID
@@ -363,7 +426,7 @@ export function setupReconciliationStep(state) {
             });
             
             // Add property headers for manual properties
-            manualProperties.forEach(manualProp => {
+            sortedManualProperties.forEach(manualProp => {
                 // Create header content with property label and clickable QID
                 const headerContent = createElement('div', { 
                     className: 'property-header-content' 
@@ -438,7 +501,7 @@ export function setupReconciliationStep(state) {
                 tr.appendChild(itemCell);
                 
                 // Add property cells
-                mappedKeys.forEach(keyObj => {
+                sortedMappedKeys.forEach(keyObj => {
                     const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
                     const values = extractPropertyValues(item, keyName);
                     
@@ -472,7 +535,7 @@ export function setupReconciliationStep(state) {
                 });
                 
                 // Add manual property cells
-                manualProperties.forEach(manualProp => {
+                sortedManualProperties.forEach(manualProp => {
                     const propertyId = manualProp.property.id;
                     const defaultValue = manualProp.defaultValue || '';
                     
@@ -486,9 +549,9 @@ export function setupReconciliationStep(state) {
             
             // Only perform batch auto-acceptance for fresh initialization, not when returning to step
             if (!isReturningToStep) {
-                await performBatchAutoAcceptance(data, mappedKeys, manualProperties);
+                await performBatchAutoAcceptance(data, sortedMappedKeys, sortedManualProperties);
             } else {
-                restoreReconciliationDisplay(data, mappedKeys, manualProperties);
+                restoreReconciliationDisplay(data, sortedMappedKeys, sortedManualProperties);
             }
             
         } else {
