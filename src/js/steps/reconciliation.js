@@ -11,6 +11,50 @@ import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
 
+/**
+ * Sort properties with priority ordering: label, description, aliases, instance of, then rest
+ * @param {Array} mappedKeys - Array of mapped key objects
+ * @returns {Array} Sorted array with priority properties first
+ */
+function sortPropertiesByPriority(mappedKeys) {
+    const priorityOrder = {
+        // Label properties (priority 1)
+        'P1476': 1, // title
+        'rdfs:label': 1, // rdfs label
+        'schema:name': 1, // schema.org name
+        'dcterms:title': 1, // Dublin Core title
+        'foaf:name': 1, // FOAF name
+        
+        // Description properties (priority 2) 
+        'schema:description': 2, // schema.org description
+        'dcterms:description': 2, // Dublin Core description
+        'P1813': 2, // short name
+        
+        // Aliases properties (priority 3)
+        'P1449': 3, // nickname
+        'P2561': 3, // name
+        'skos:altLabel': 3, // alternative label
+        
+        // Instance of (priority 4)
+        'P31': 4   // instance of
+    };
+    
+    return mappedKeys.sort((a, b) => {
+        const aId = (a.property && a.property.id) || a.key || a;
+        const bId = (b.property && b.property.id) || b.key || b;
+        
+        const aPriority = priorityOrder[aId] || 999;
+        const bPriority = priorityOrder[bId] || 999;
+        
+        if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+        }
+        
+        // If same priority, maintain original order
+        return 0;
+    });
+}
+
 export function setupReconciliationStep(state) {
     
     // Initialize modal UI
@@ -126,7 +170,17 @@ export function setupReconciliationStep(state) {
         
         
         // Filter out keys that are not in the current dataset
-        const mappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
+        const filteredMappedKeys = currentState.mappings.mappedKeys.filter(keyObj => !keyObj.notInCurrentDataset);
+        
+        // Sort mappedKeys with priority order: label, description, aliases, instance of, then rest
+        const mappedKeys = sortPropertiesByPriority(filteredMappedKeys);
+        
+        // Log the sorted order for debugging
+        console.log('📊 Column ordering applied:', mappedKeys.map(key => {
+            const id = (key.property && key.property.id) || key.key || key;
+            const label = (key.property && key.property.label) || 'Unknown';
+            return `${label} (${id})`;
+        }));
         
         // Get manual properties
         const manualProperties = currentState.mappings.manualProperties || [];
