@@ -407,11 +407,10 @@ export function setupReconciliationStep(state) {
                     },
                     title: `${manualProp.property.description}\nClick to modify property settings`,
                     onClick: () => {
-                        // For manual properties, we could open the manual property edit modal
-                        // But since it's not immediately clear how to create the keyObj for manual properties,
-                        // let's just add a message for now indicating this functionality
-                        console.log('Manual property header clicked:', manualProp);
-                        // TODO: Implement manual property editing via modal
+                        // Open the manual property edit modal
+                        if (window.openManualPropertyEditModal) {
+                            window.openManualPropertyEditModal(manualProp);
+                        }
                     },
                     style: { cursor: 'pointer' }
                 }, headerContent);
