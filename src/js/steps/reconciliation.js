@@ -285,9 +285,48 @@ export function setupReconciliationStep(state) {
     }
     
     /**
+     * Sort mapped keys to prioritize label, description, aliases, and instance of
+     */
+    function sortMappedKeysForDisplay(mappedKeys) {
+        return [...mappedKeys].sort((a, b) => {
+            const aProperty = typeof a === 'string' ? null : a.property;
+            const bProperty = typeof b === 'string' ? null : b.property;
+            
+            const getPriority = (keyObj) => {
+                const property = typeof keyObj === 'string' ? null : keyObj.property;
+                if (!property) return 100; // Non-property items go to end
+                
+                const label = property.label ? property.label.toLowerCase() : '';
+                const id = property.id || '';
+                
+                // Priority order: label, description, aliases, instance of (P31), then everything else
+                if (label === 'label') return 1;
+                if (label === 'description') return 2;
+                if (label === 'aliases' || label === 'alias') return 3;
+                if (id === 'P31') return 4; // instance of
+                
+                return 50; // All other properties maintain relative order
+            };
+            
+            const aPriority = getPriority(a);
+            const bPriority = getPriority(b);
+            
+            if (aPriority !== bPriority) {
+                return aPriority - bPriority;
+            }
+            
+            // If same priority, maintain original order by finding index in original array
+            return mappedKeys.indexOf(a) - mappedKeys.indexOf(b);
+        });
+    }
+    
+    /**
      * Create the reconciliation table interface
      */
     async function createReconciliationTable(data, mappedKeys, manualProperties = [], isReturningToStep = false) {
+        
+        // Sort mapped keys for display priority
+        const sortedMappedKeys = sortMappedKeysForDisplay(mappedKeys);
         
         // Clear existing content
         if (propertyHeaders) {
@@ -299,8 +338,8 @@ export function setupReconciliationStep(state) {
             }, 'Item');
             propertyHeaders.appendChild(itemHeader);
             
-            // Add property headers for mapped keys
-            mappedKeys.forEach(keyObj => {
+            // Add property headers for mapped keys (using sorted order)
+            sortedMappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
                 
                 // Create header content with property label and clickable QID
@@ -437,8 +476,8 @@ export function setupReconciliationStep(state) {
                 }, itemTitle);
                 tr.appendChild(itemCell);
                 
-                // Add property cells
-                mappedKeys.forEach(keyObj => {
+                // Add property cells (using sorted order to match headers)
+                sortedMappedKeys.forEach(keyObj => {
                     const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
                     const values = extractPropertyValues(item, keyName);
                     
