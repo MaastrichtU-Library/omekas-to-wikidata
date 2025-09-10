@@ -217,15 +217,17 @@ export function setupReconciliationStep(state) {
         const createReconciliationModalContent = createReconciliationModalContentFactory({
             reconciliationData,
             getPropertyDisplayInfo,
-            fetchWikidataPropertyInfo,
-            getWikidataUrlForProperty
+            getOriginalKeyInfo,
+            getReconciliationRequirementReason,
+            getConstraintSummary
         });
         
         const openReconciliationModal = createOpenReconciliationModalFactory({
             modalUI,
             performAutomaticReconciliation,
             setupDynamicDatePrecision,
-            setupAutoAdvanceToggle: () => setupAutoAdvanceToggle()
+            setupAutoAdvanceToggle: () => setupAutoAdvanceToggle(),
+            createReconciliationModalContent
         });
         
         // Table UI functions

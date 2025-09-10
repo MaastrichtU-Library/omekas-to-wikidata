@@ -379,7 +379,8 @@ export function createOpenReconciliationModalFactory(dependencies) {
         modalUI,
         performAutomaticReconciliation,
         setupDynamicDatePrecision,
-        setupAutoAdvanceToggle
+        setupAutoAdvanceToggle,
+        createReconciliationModalContent
     } = dependencies;
 
     let currentReconciliationCell = null;
@@ -419,7 +420,8 @@ export function createReconciliationModalContentFactory(dependencies) {
         reconciliationData,
         getPropertyDisplayInfo,
         getOriginalKeyInfo,
-        getReconciliationRequirementReason
+        getReconciliationRequirementReason,
+        getConstraintSummary
     } = dependencies;
     
     return async function createReconciliationModalContent(itemId, property, valueIndex, value, manualProp = null) {
