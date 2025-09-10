@@ -3022,9 +3022,37 @@ export function setupMappingStep(state) {
             id: 'value-transformation-section'
         });
 
-        // Property ID for transformation blocks - check both current selection and keyData
-        const currentProperty = window.currentMappingSelectedProperty || keyData?.property;
-        const propertyId = currentProperty?.id;
+        // Property ID for transformation blocks - check multiple sources
+        let currentProperty = window.currentMappingSelectedProperty || keyData?.property;
+        let propertyId = currentProperty?.id;
+        
+        // For already-mapped keys, if we don't have the property yet, show placeholder and retry
+        if (!propertyId && keyData) {
+            // Check if this appears to be a mapped key based on the modal title or other indicators
+            const modalTitle = document.querySelector('.modal-title');
+            if (modalTitle && modalTitle.textContent.includes('→')) {
+                // This is likely a mapped key - create placeholder and set up retry mechanism
+                const placeholder = createElement('div', {
+                    className: 'transformation-message',
+                    id: 'transformation-placeholder'
+                }, 'Loading value transformation options...');
+                container.appendChild(placeholder);
+                
+                // Retry getting the property after a short delay to allow setup to complete
+                setTimeout(() => {
+                    const updatedProperty = window.currentMappingSelectedProperty || keyData?.property;
+                    if (updatedProperty?.id) {
+                        // Replace placeholder with actual transformation UI
+                        const actualContainer = renderValueTransformationUI(keyData, state);
+                        if (container.parentNode) {
+                            container.parentNode.replaceChild(actualContainer, container);
+                        }
+                    }
+                }, 200);
+                
+                return container;
+            }
+        }
         
         if (!propertyId) {
             container.appendChild(createElement('div', {
