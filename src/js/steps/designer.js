@@ -1,9 +1,62 @@
 /**
- * Handles the Wikidata Designer step functionality
+ * Handles the Wikidata Designer step - final data structuring and reference management
+ * 
+ * The Designer step is the final preparation phase before export, focusing on:
+ * - Multilingual label and description management for Wikidata entities
+ * - Reference application and sourcing for statement reliability
+ * - Statement property configuration and value validation
+ * - Preview generation of final Wikidata structure
+ * - Issue detection and resolution guidance
+ * 
+ * This step is critical because it determines the final quality and completeness
+ * of the Wikidata export. Poor design choices here can result in:
+ * - Inconsistent or missing multilingual content
+ * - Unsourced statements that may be challenged or removed
+ * - Invalid property configurations that cause import failures
+ * - Incomplete entity descriptions affecting discoverability
+ * 
+ * Reference Management:
+ * The system supports sophisticated reference application with:
+ * - Automatic reference detection from reconciled data
+ * - Manual reference addition and configuration
+ * - Reference scope control (single statement vs. entire entity)
+ * - Validation against Wikidata reference property requirements
+ * 
+ * @module designer
  */
 import { createElement, createButton, showMessage } from '../ui/components.js';
 import { eventSystem } from '../events.js';
 
+/**
+ * Initializes the Wikidata Designer interface with comprehensive data management
+ * 
+ * This function sets up the final step in the workflow where users configure
+ * the exact structure of their Wikidata export. It handles complex tasks including:
+ * - Multilingual content management (labels, descriptions, aliases)
+ * - Reference application and validation systems  
+ * - Property value finalization and type checking
+ * - Export preview generation and issue identification
+ * 
+ * The Designer step requires complete data from all previous steps:
+ * - Raw Omeka S data (step 1)
+ * - Property mappings to Wikidata (step 2)  
+ * - Entity reconciliation results (step 3)
+ * 
+ * @param {Object} state - Application state management instance
+ * @param {Function} state.getState - Retrieves complete application state
+ * @param {Function} state.updateState - Updates designer configuration
+ * @param {Object} state.reconciliationData - Entity matching results from step 3
+ * @param {Array} state.mappedProperties - Property mappings from step 2
+ * 
+ * @description
+ * Designer workflow:
+ * 1. Analyzes reconciliation results to identify available content
+ * 2. Generates preview of Wikidata entity structure
+ * 3. Provides interface for multilingual content management
+ * 4. Enables reference detection, addition, and application
+ * 5. Validates final configuration against Wikidata requirements
+ * 6. Prepares optimized data structure for QuickStatements export
+ */
 export function setupDesignerStep(state) {
     
     // Get DOM elements with correct IDs
