@@ -412,6 +412,15 @@ export function setupMappingStep(state) {
             }
         }
         
+        // Always auto-open Extra Wikidata properties and metadata section
+        const manualPropertiesListElement = document.getElementById('manual-properties');
+        if (manualPropertiesListElement) {
+            const manualPropertiesSection = manualPropertiesListElement.closest('details');
+            if (manualPropertiesSection) {
+                manualPropertiesSection.open = true;
+            }
+        }
+        
         // Enable continue button if there are mapped keys
         if (proceedToReconciliationBtn) {
             proceedToReconciliationBtn.disabled = !finalState.mappings.mappedKeys.length;
@@ -499,6 +508,7 @@ export function setupMappingStep(state) {
                         description: 'that class of which this subject is a particular example and member',
                         datatype: 'wikibase-item',
                         datatypeLabel: 'Item',
+                        isMetadata: true,
                         ...propertyData
                     },
                     defaultValue: '', // User needs to provide a value
@@ -524,7 +534,8 @@ export function setupMappingStep(state) {
                         label: 'instance of',
                         description: 'that class of which this subject is a particular example and member',
                         datatype: 'wikibase-item',
-                        datatypeLabel: 'Item'
+                        datatypeLabel: 'Item',
+                        isMetadata: true
                     },
                     defaultValue: '',
                     isRequired: true,
@@ -728,8 +739,8 @@ export function setupMappingStep(state) {
             
             // Check if this is a metadata field
             if (manualProp.property.isMetadata) {
-                // Create simplified modal content for metadata
-                const modalContent = createMetadataEditModalContent(manualProp);
+                // Create consolidated modal content for metadata with automatic data type detection
+                const modalContent = createConsolidatedMetadataModalContent(manualProp);
                 
                 // Create buttons for metadata
                 const buttons = [
@@ -813,40 +824,148 @@ export function setupMappingStep(state) {
         });
     }
     
-    // Create modal content for metadata fields
-    function createMetadataEditModalContent(manualProp) {
+    // Create consolidated modal content for metadata fields with automatic data type detection
+    function createConsolidatedMetadataModalContent(manualProp) {
         const container = createElement('div', {
-            className: 'metadata-edit-modal-content'
+            className: 'metadata-consolidated-modal-content'
         });
         
-        // Description section
-        const descriptionSection = createElement('div', {
-            className: 'metadata-description-section',
-            style: 'margin-bottom: 20px;'
+        // Stage 1: Property Information (Collapsible, closed by default)
+        const stage1Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'metadata-stage-1-property-info'
         });
-        descriptionSection.innerHTML = `
-            <p>${manualProp.property.description}</p>
-        `;
-        container.appendChild(descriptionSection);
         
-        // Default value section
-        const defaultValueSection = createElement('div', {
-            className: 'default-value-section'
+        const stage1Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 1: Property Information');
+        stage1Section.appendChild(stage1Summary);
+        
+        const stage1Content = createElement('div', {
+            className: 'stage-content'
         });
-        defaultValueSection.innerHTML = `
-            <h4>Default Value (Optional)</h4>
-            <div class="default-value-description">
-                This value will be pre-filled for all items. You can modify individual values during reconciliation.
+        
+        // Property information section
+        const propertyInfo = createElement('div', {
+            className: 'property-info'
+        });
+        propertyInfo.innerHTML = `
+            <h4>Property Details</h4>
+            <p><strong>Property:</strong> ${manualProp.property.label}</p>
+            <p><strong>Description:</strong> ${manualProp.property.description}</p>
+        `;
+        stage1Content.appendChild(propertyInfo);
+        stage1Section.appendChild(stage1Content);
+        container.appendChild(stage1Section);
+        
+        // Stage 2: Value Type Detection (Collapsible)
+        const stage2Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'metadata-stage-2-value-type-detection',
+            open: true
+        });
+        
+        const stage2Summary = createElement('summary', {
+            className: 'stage-summary',
+            id: 'metadata-stage-2-summary'
+        });
+        
+        // Automatically detect data type based on property
+        let detectedDataType;
+        if (manualProp.property.id === 'P31') {
+            detectedDataType = 'Wikidata item';
+        } else {
+            detectedDataType = 'metadata';
+        }
+        
+        stage2Summary.textContent = `Stage 2: Value type is ${detectedDataType}`;
+        stage2Section.appendChild(stage2Summary);
+        
+        const stage2Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Data type display section
+        const dataTypeSection = createElement('div', {
+            className: 'detected-datatype-section'
+        });
+        dataTypeSection.innerHTML = `
+            <h4>Detected Data Type</h4>
+            <div class="datatype-display">
+                <span class="datatype-label">${detectedDataType}</span>
             </div>
-            <div class="default-value-input-container">
-                <input type="text" id="metadata-default-value-input" 
-                       placeholder="Enter a default value..." 
-                       class="default-value-input"
-                       value="${manualProp.defaultValue || ''}">
-                <div class="input-help">Enter a text value for ${manualProp.property.label}</div>
+            <div class="datatype-description">
+                ${manualProp.property.id === 'P31' 
+                    ? 'Values will link to Wikidata items representing the type or class of each item.' 
+                    : manualProp.property.id === 'description'
+                        ? 'Expecting a language-specific string value. Descriptions are always specific to each language and cannot have a default value for all languages.'
+                        : 'Expecting a string value. Labels and aliases can have a default value for all languages, with optional language-specific overrides. <a href="https://www.wikidata.org/wiki/Help:Default_values_for_labels_and_aliases" target="_blank" rel="noopener">Learn more about default values</a>.'}
             </div>
         `;
-        container.appendChild(defaultValueSection);
+        stage2Content.appendChild(dataTypeSection);
+        stage2Section.appendChild(stage2Content);
+        container.appendChild(stage2Section);
+        
+        // Stage 3: Options (Collapsible)
+        const stage3Section = createElement('details', {
+            className: 'mapping-stage',
+            id: 'metadata-stage-3-options',
+            open: true
+        });
+        
+        const stage3Summary = createElement('summary', {
+            className: 'stage-summary'
+        }, 'Stage 3: Options');
+        stage3Section.appendChild(stage3Summary);
+        
+        const stage3Content = createElement('div', {
+            className: 'stage-content'
+        });
+        
+        // Default value section - different for instance of vs other metadata
+        if (manualProp.property.id === 'P31') {
+            const instanceOfSection = createElement('div', {
+                className: 'instance-of-section'
+            });
+            instanceOfSection.innerHTML = `
+                <h4>Default Value (Optional)</h4>
+                <div class="default-value-description">
+                    This Wikidata item will be pre-filled for all items. You can modify individual values during reconciliation.
+                </div>
+                <div class="wikidata-search-container">
+                    <input type="text" id="metadata-default-value-input" 
+                           placeholder="Search for a Wikidata item..." 
+                           class="wikidata-item-search-input"
+                           value="${manualProp.defaultValue || ''}">
+                    <div class="input-help">Search for and select the Wikidata item that represents what type of thing your items are (e.g., "book", "person", "building")</div>
+                </div>
+            `;
+            stage3Content.appendChild(instanceOfSection);
+        } else {
+            // Regular metadata (label, description, aliases)
+            const metadataSection = createElement('div', {
+                className: 'metadata-section'
+            });
+            metadataSection.innerHTML = `
+                <h4>Default Value (Optional)</h4>
+                <div class="default-value-description">
+                    This value will be pre-filled for all items. You can modify individual values during reconciliation.
+                </div>
+                <div class="default-value-input-container">
+                    <input type="text" id="metadata-default-value-input" 
+                           placeholder="Enter a default value..." 
+                           class="default-value-input"
+                           value="${manualProp.defaultValue || ''}">
+                    <div class="input-help">Enter a text value for ${manualProp.property.label}</div>
+                </div>
+                <div class="placeholder-notice">
+                    <em>Additional configuration options will be available here in future updates.</em>
+                </div>
+            `;
+            stage3Content.appendChild(metadataSection);
+        }
+        stage3Section.appendChild(stage3Content);
+        container.appendChild(stage3Section);
         
         return container;
     }
@@ -1012,7 +1131,8 @@ export function setupMappingStep(state) {
         });
         
         const stage2Summary = createElement('summary', {
-            className: 'stage-summary'
+            className: 'stage-summary',
+            id: 'stage-2-summary'
         }, 'Stage 2: Value Type Detection');
         stage2Section.appendChild(stage2Summary);
         
@@ -1496,6 +1616,14 @@ export function setupMappingStep(state) {
         }
     }
     
+    // Update Stage 2 summary to show detected data type
+    function updateStage2Summary(property) {
+        const stage2Summary = document.getElementById('stage-2-summary');
+        if (stage2Summary && property && property.datatypeLabel) {
+            stage2Summary.textContent = `Stage 2: Value type is ${property.datatypeLabel}`;
+        }
+    }
+    
     // Display data type configuration in Stage 2
     async function displayDataTypeConfiguration(property) {
         const datatypeContainer = document.getElementById('detected-datatype');
@@ -1555,6 +1683,9 @@ export function setupMappingStep(state) {
             // Replace loading with content
             datatypeContainer.innerHTML = '';
             datatypeContainer.appendChild(datatypeDisplay);
+            
+            // Update Stage 2 summary with detected data type
+            updateStage2Summary(propertyData);
             
             // Hide the redundant description section
             if (descriptionContainer) {
