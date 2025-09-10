@@ -313,9 +313,13 @@ export function setupReconciliationStep(state) {
                         className: 'property-header-content' 
                     });
                     
-                    // Property label
-                    const labelSpan = createElement('span', {
-                        className: 'property-label'
+                    // Property label (clickable link to help page)
+                    const labelSpan = createElement('a', {
+                        className: 'property-label-help-link',
+                        href: 'https://www.wikidata.org/wiki/Help:Label',
+                        target: '_blank',
+                        title: 'Learn about Wikidata labels',
+                        onClick: (e) => e.stopPropagation() // Prevent header click when clicking label
                     }, keyObj.property.label);
                     headerContent.appendChild(labelSpan);
                     
@@ -368,9 +372,13 @@ export function setupReconciliationStep(state) {
                     className: 'property-header-content' 
                 });
                 
-                // Property label
-                const labelSpan = createElement('span', {
-                    className: 'property-label'
+                // Property label (clickable link to help page)
+                const labelSpan = createElement('a', {
+                    className: 'property-label-help-link',
+                    href: 'https://www.wikidata.org/wiki/Help:Label',
+                    target: '_blank',
+                    title: 'Learn about Wikidata labels',
+                    onClick: (e) => e.stopPropagation() // Prevent header click when clicking label
                 }, manualProp.property.label);
                 headerContent.appendChild(labelSpan);
                 
@@ -1156,7 +1164,12 @@ export function setupReconciliationStep(state) {
                             ${propertyInfo.isMock ? ' <span class="mock-indicator">[estimated]</span>' : ''}
                         </a>
                     </div>
-                    <p class="property-description">${propertyInfo.description}</p>
+                    <p class="property-description">
+                        ${propertyInfo.description}
+                        <a href="https://www.wikidata.org/wiki/Help:Description" target="_blank" class="help-link" title="Learn about Wikidata descriptions">
+                            <span class="help-icon">ⓘ</span>
+                        </a>
+                    </p>
                     
                     ${constraintInfo && constraintInfo.hasConstraints ? `
                     <!-- Property Constraints Information -->
