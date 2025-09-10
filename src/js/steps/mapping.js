@@ -2803,13 +2803,24 @@ export function setupMappingStep(state) {
                 }
             });
             
+            // Find the most logical default field (prefer keys with "@")
+            let defaultField = availableFields.find(field => field.key.startsWith('@'));
+            if (!defaultField) {
+                // Fallback to first field if no @ field found
+                defaultField = availableFields[0];
+            }
+            
             // Populate field options
             availableFields.forEach(field => {
                 const option = createElement('option', {
-                    value: field.key
+                    value: field.key,
+                    selected: field.key === defaultField.key
                 }, `${field.key}: ${field.preview}`);
                 fieldSelect.appendChild(option);
             });
+            
+            // Set the default selection explicitly
+            fieldSelect.value = defaultField.key;
             
             fieldSelectorSection.appendChild(selectorLabel);
             fieldSelectorSection.appendChild(fieldSelect);
@@ -2818,9 +2829,17 @@ export function setupMappingStep(state) {
 
         // Sample value for preview - convert to string for transformations
         const currentState = state.getState();
+        
+        // Find the most logical default field (prefer keys with "@")
+        let defaultFieldKey = null;
+        if (availableFields.length > 0) {
+            const defaultField = availableFields.find(field => field.key.startsWith('@'));
+            defaultFieldKey = defaultField ? defaultField.key : availableFields[0].key;
+        }
+        
         const selectedField = availableFields.length > 1 ? 
-            (document.getElementById(`field-selector-${propertyId}`)?.value || availableFields[0].key) :
-            (availableFields[0]?.key || null);
+            (document.getElementById(`field-selector-${propertyId}`)?.value || defaultFieldKey) :
+            defaultFieldKey;
         
         const sampleValue = selectedField ? 
             getFieldValueFromSample(rawSampleValue, selectedField) :
