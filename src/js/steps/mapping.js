@@ -1012,7 +1012,8 @@ export function setupMappingStep(state) {
         });
         
         const stage2Summary = createElement('summary', {
-            className: 'stage-summary'
+            className: 'stage-summary',
+            id: 'stage-2-summary'
         }, 'Stage 2: Value Type Detection');
         stage2Section.appendChild(stage2Summary);
         
@@ -1496,6 +1497,14 @@ export function setupMappingStep(state) {
         }
     }
     
+    // Update Stage 2 summary to show detected data type
+    function updateStage2Summary(property) {
+        const stage2Summary = document.getElementById('stage-2-summary');
+        if (stage2Summary && property && property.datatypeLabel) {
+            stage2Summary.textContent = `Stage 2: Value Type Detection - Data type is ${property.datatypeLabel}`;
+        }
+    }
+    
     // Display data type configuration in Stage 2
     async function displayDataTypeConfiguration(property) {
         const datatypeContainer = document.getElementById('detected-datatype');
@@ -1555,6 +1564,9 @@ export function setupMappingStep(state) {
             // Replace loading with content
             datatypeContainer.innerHTML = '';
             datatypeContainer.appendChild(datatypeDisplay);
+            
+            // Update Stage 2 summary with detected data type
+            updateStage2Summary(propertyData);
             
             // Hide the redundant description section
             if (descriptionContainer) {
