@@ -30,38 +30,39 @@ import { getConstraintBasedTypes, buildContextualProperties, validateAgainstForm
 import { eventSystem } from '../events.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
-import { 
+import {
+    // Core data processing
     calculateTotalReconciliableCells, 
     extractPropertyValues, 
     combineAndSortProperties,
     createMockDataLoader,
     createOriginalKeyInfoGetter,
     generateLodUri,
-    createReconciliationRequirementReasonGetter
-} from '../reconciliation/core/reconciliation-data.js';
-import {
+    createReconciliationRequirementReasonGetter,
+    
+    // Progress tracking
     createProgressCalculator,
     createProceedButtonUpdater,
     createMatchesStorer,
     createEmptyMatchesStorer,
     updateCellQueueStatus,
-    createCellMarkers
-} from '../reconciliation/core/reconciliation-progress.js';
-import {
+    createCellMarkers,
+    
+    // Entity matching
     isDateValue,
     escapeHtml,
     createAutomaticReconciliation,
     tryReconciliationApi,
     parseReconciliationResults,
-    tryDirectWikidataSearch
-} from '../reconciliation/core/entity-matcher.js';
-import {
+    tryDirectWikidataSearch,
+    
+    // Batch processing
     createBatchAutoAcceptanceProcessor,
     createNextUnprocessedCellReconciler,
     createAutoAdvanceSettingGetter,
-    createAutoAdvanceToggleSetup
-} from '../reconciliation/core/batch-processor.js';
-import {
+    createAutoAdvanceToggleSetup,
+    
+    // Table UI
     updateCellLoadingState,
     updateCellDisplayAsNoMatches,
     updateCellDisplayWithMatch,
@@ -69,9 +70,9 @@ import {
     createPropertyCellFactory,
     createManualPropertyCellFactory,
     createReconciliationTableFactory,
-    createRestoreReconciliationDisplayFactory
-} from '../reconciliation/ui/reconciliation-table.js';
-import {
+    createRestoreReconciliationDisplayFactory,
+    
+    // Modal UI
     displayReconciliationResults,
     displayHighConfidenceMatches,
     displayFallbackOptions,
@@ -81,9 +82,9 @@ import {
     setupExpandedSearch,
     setupManualSearch,
     createOpenReconciliationModalFactory,
-    createReconciliationModalContentFactory
-} from '../reconciliation/ui/reconciliation-modal.js';
-import {
+    createReconciliationModalContentFactory,
+    
+    // Display utilities
     createGetPropertyDisplayInfoFactory,
     fetchWikidataPropertyInfo,
     generateMockPid,
@@ -91,7 +92,7 @@ import {
     getWikidataUrlForProperty,
     displayAutomaticMatches,
     displayReconciliationError
-} from '../reconciliation/ui/reconciliation-display.js';
+} from '../reconciliation/index.js';
 
 /**
  * Initializes the reconciliation step interface and processing engine
