@@ -3122,9 +3122,17 @@ export function setupMappingStep(state) {
         const patternField = createElement('div', { className: 'config-field' });
         patternField.appendChild(createElement('label', {}, 'Pattern:'));
         
+        // Ensure pattern has a value, default to {{value}} if empty
+        const currentPattern = (block.config.pattern && block.config.pattern.trim()) || '{{value}}';
+        
+        // If the pattern was empty, update the block config with the default
+        if (!block.config.pattern || !block.config.pattern.trim()) {
+            state.updateTransformationBlock(propertyId, block.id, { pattern: '{{value}}' });
+        }
+        
         const patternTextarea = createElement('textarea', {
             rows: 3,
-            value: (block.config.pattern && block.config.pattern.trim()) || '{{value}}',
+            value: currentPattern,
             placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
             className: 'pattern-input',
             onInput: (e) => {
