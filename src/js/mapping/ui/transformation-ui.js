@@ -41,11 +41,25 @@ export function renderValueTransformationUI(keyData, state) {
     let currentProperty = window.currentMappingSelectedProperty || keyData?.property;
     let propertyId = currentProperty?.id;
     
+    console.log('=== Stage 3 Property Detection ===');
+    console.log('window.currentMappingSelectedProperty:', window.currentMappingSelectedProperty);
+    console.log('keyData:', keyData);
+    console.log('keyData.property:', keyData?.property);
+    console.log('currentProperty:', currentProperty);
+    console.log('propertyId:', propertyId);
+    
     // If keyData has property info but global variable doesn't, set it
     if (!window.currentMappingSelectedProperty && keyData?.property) {
         window.currentMappingSelectedProperty = keyData.property;
         currentProperty = keyData.property;
         propertyId = currentProperty.id;
+        console.log('Updated propertyId from keyData:', propertyId);
+    }
+    
+    // If still no property ID, try to use a placeholder for testing
+    if (!propertyId) {
+        console.warn('No property ID found, using placeholder P123');
+        propertyId = 'P123'; // Temporary placeholder to prevent errors
     }
     
     // If we still don't have a property ID, show loading message and set up retry
@@ -157,7 +171,17 @@ export function renderValueTransformationUI(keyData, state) {
     // Add transformation block button
     const addBlockBtn = createElement('button', {
         className: 'button button--secondary add-transformation-btn',
-        onClick: () => showAddTransformationMenu(propertyId, state, addBlockBtn)
+        onClick: () => {
+            // Get the current property ID at click time
+            const currentPropertyId = window.currentMappingSelectedProperty?.id || currentProperty?.id || propertyId;
+            console.log('Add Transformation button clicked, currentPropertyId:', currentPropertyId);
+            if (!currentPropertyId || currentPropertyId === 'P123') {
+                console.error('No valid property ID available!');
+                alert('Please select a property first in Stage 1');
+                return;
+            }
+            showAddTransformationMenu(currentPropertyId, state, addBlockBtn);
+        }
     }, 'Add Transformation');
     
     transformationHeader.appendChild(transformationTitle);
