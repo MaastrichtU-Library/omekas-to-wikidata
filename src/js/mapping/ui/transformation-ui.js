@@ -787,6 +787,12 @@ export function addDragHandlers(blockElement, dragHandle, propertyId, state) {
 
 // Helper function to show add transformation menu
 function showAddTransformationMenu(propertyId, state, addBtn) {
+    console.log('=== showAddTransformationMenu DEBUG ===');
+    console.log('propertyId:', propertyId);
+    console.log('state:', state);
+    console.log('BLOCK_TYPES:', BLOCK_TYPES);
+    console.log('BLOCK_METADATA:', BLOCK_METADATA);
+    
     // Remove any existing menu first
     const existingMenu = document.querySelector('.add-transformation-menu');
     if (existingMenu) {
@@ -810,9 +816,15 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
         }
     };
 
+    console.log('Creating menu items for BLOCK_TYPES:', Object.entries(BLOCK_TYPES));
+    
     Object.entries(BLOCK_TYPES).forEach(([key, type]) => {
+        console.log(`Processing block type: key=${key}, type=${type}`);
         const metadata = BLOCK_METADATA[type];
+        console.log(`Metadata for ${type}:`, metadata);
+        
         if (!metadata) {
+            console.warn(`No metadata found for block type: ${type}`);
             return; // Skip if no metadata found
         }
         
@@ -820,6 +832,7 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
             className: 'menu-item',
             style: 'display: block; width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer;',
             onClick: (e) => {
+                console.log(`Menu item clicked! Type: ${type}, PropertyId: ${propertyId}`);
                 // Prevent event bubbling
                 e.stopPropagation();
                 e.preventDefault();
@@ -833,11 +846,19 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
                 document.removeEventListener('click', closeMenu);
                 
                 // Add the transformation block
+                console.log('Calling addTransformationBlock with:', propertyId, type, state);
                 addTransformationBlock(propertyId, type, state);
             },
             onMouseOver: (e) => e.target.style.backgroundColor = '#f0f0f0',
             onMouseOut: (e) => e.target.style.backgroundColor = 'transparent'
         }, `${metadata.icon} ${metadata.name}`);
+        
+        console.log(`Created menu item for ${type}, appending to menu`);
+        
+        // Test if click handler is attached
+        console.log('Menu item element:', menuItem);
+        console.log('Has onclick?', menuItem.onclick);
+        console.log('Event listeners:', menuItem._listeners || 'none visible');
         
         menu.appendChild(menuItem);
     });
@@ -864,7 +885,21 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
     menu.style.top = top + 'px';
     menu.style.left = left + 'px';
     
+    console.log('Final menu element:', menu);
+    console.log('Menu children count:', menu.children.length);
+    console.log('Menu HTML:', menu.outerHTML);
+    
     document.body.appendChild(menu);
+    
+    // Test: Try to click the first button programmatically after a delay
+    setTimeout(() => {
+        const firstButton = menu.querySelector('button');
+        if (firstButton) {
+            console.log('TEST: Found first button, checking if clickable');
+            console.log('First button:', firstButton);
+            console.log('First button onclick:', firstButton.onclick);
+        }
+    }, 100);
     
     // Add close menu listener after a delay to prevent immediate closing
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
