@@ -807,13 +807,23 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
     
     // Close menu function needs to be defined before menu items
     const closeMenu = (e) => {
-        if (!menu.contains(e.target) && e.target !== addBtn) {
-            // Only remove if menu is still a child of document.body
-            if (menu.parentNode === document.body) {
-                document.body.removeChild(menu);
-            }
-            document.removeEventListener('click', closeMenu);
+        console.log('closeMenu called, target:', e.target);
+        // Don't close if clicking on menu items
+        if (menu.contains(e.target)) {
+            console.log('Click was inside menu, not closing');
+            return;
         }
+        // Don't close if clicking the add button
+        if (e.target === addBtn) {
+            console.log('Click was on add button, not closing');
+            return;
+        }
+        // Close the menu
+        console.log('Closing menu');
+        if (menu.parentNode === document.body) {
+            document.body.removeChild(menu);
+        }
+        document.removeEventListener('click', closeMenu);
     };
 
     console.log('Creating menu items for BLOCK_TYPES:', Object.entries(BLOCK_TYPES));
@@ -828,37 +838,39 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
             return; // Skip if no metadata found
         }
         
-        const menuItem = createElement('button', {
-            className: 'menu-item',
-            style: 'display: block; width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer;',
-            onClick: (e) => {
-                console.log(`Menu item clicked! Type: ${type}, PropertyId: ${propertyId}`);
-                // Prevent event bubbling
-                e.stopPropagation();
-                e.preventDefault();
-                
-                // Remove menu first
-                if (menu.parentNode === document.body) {
-                    document.body.removeChild(menu);
-                }
-                
-                // Remove the close menu listener
-                document.removeEventListener('click', closeMenu);
-                
-                // Add the transformation block
-                console.log('Calling addTransformationBlock with:', propertyId, type, state);
-                addTransformationBlock(propertyId, type, state);
-            },
-            onMouseOver: (e) => e.target.style.backgroundColor = '#f0f0f0',
-            onMouseOut: (e) => e.target.style.backgroundColor = 'transparent'
-        }, `${metadata.icon} ${metadata.name}`);
+        // Create button directly to ensure event handlers work
+        const menuItem = document.createElement('button');
+        menuItem.className = 'menu-item';
+        menuItem.style.cssText = 'display: block; width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer;';
+        menuItem.textContent = `${metadata.icon} ${metadata.name}`;
+        
+        // Add click handler directly
+        menuItem.onclick = (e) => {
+            console.log(`Menu item clicked! Type: ${type}, PropertyId: ${propertyId}`);
+            // Prevent event bubbling
+            e.stopPropagation();
+            e.preventDefault();
+            
+            // Remove menu first
+            if (menu.parentNode === document.body) {
+                document.body.removeChild(menu);
+            }
+            
+            // Remove the close menu listener
+            document.removeEventListener('click', closeMenu);
+            
+            // Add the transformation block
+            console.log('Calling addTransformationBlock with:', propertyId, type, state);
+            addTransformationBlock(propertyId, type, state);
+        };
+        
+        // Add hover effects
+        menuItem.onmouseover = (e) => e.target.style.backgroundColor = '#f0f0f0';
+        menuItem.onmouseout = (e) => e.target.style.backgroundColor = 'transparent';
         
         console.log(`Created menu item for ${type}, appending to menu`);
-        
-        // Test if click handler is attached
         console.log('Menu item element:', menuItem);
         console.log('Has onclick?', menuItem.onclick);
-        console.log('Event listeners:', menuItem._listeners || 'none visible');
         
         menu.appendChild(menuItem);
     });
@@ -902,7 +914,10 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
     }, 100);
     
     // Add close menu listener after a delay to prevent immediate closing
-    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    setTimeout(() => {
+        console.log('Adding closeMenu listener');
+        document.addEventListener('click', closeMenu);
+    }, 100); // Increased delay to ensure menu items are clickable
 }
 
 // Set up event listeners for transformation engine events
