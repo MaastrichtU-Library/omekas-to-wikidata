@@ -8,7 +8,7 @@
 import { createElement, showMessage } from '../../../ui/components.js';
 import { getCompletePropertyData } from '../../../api/wikidata.js';
 import { setupUnifiedPropertySearch } from '../../core/property-searcher.js';
-import { renderValueTransformationUI } from '../transformation-ui.js';
+import { renderValueTransformationUI } from '../../core/transformation-engine.js';
 import { populateLists } from '../mapping-lists.js';
 import { addManualPropertyToState } from './add-property-modal.js';
 
