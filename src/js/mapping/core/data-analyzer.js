@@ -291,27 +291,16 @@ export async function extractAndAnalyzeKeys(data) {
 /**
  * Extracts available fields from a sample value for transformation configuration
  * @param {*} sampleValue - The sample value to analyze
- * @returns {Array} Array of field objects with key, label, and sampleValue
+ * @returns {Array} Array of field objects with key and preview
  */
 export function extractAvailableFields(sampleValue) {
     if (!sampleValue || typeof sampleValue !== 'object') {
-        const valueStr = String(sampleValue || 'N/A');
-        return [{ 
-            key: '_value', 
-            label: 'Value',
-            sampleValue: valueStr 
-        }];
+        return [{ key: '_value', preview: String(sampleValue || 'N/A') }];
     }
 
     // Handle arrays - get fields from first object
     if (Array.isArray(sampleValue)) {
-        if (sampleValue.length === 0) {
-            return [{ 
-                key: '_value', 
-                label: 'Value',
-                sampleValue: 'Empty Array' 
-            }];
-        }
+        if (sampleValue.length === 0) return [{ key: '_value', preview: 'Empty Array' }];
         return extractAvailableFields(sampleValue[0]);
     }
 
@@ -329,23 +318,10 @@ export function extractAvailableFields(sampleValue) {
             preview = '[Object/Array]';
         }
         
-        // Convert key to human-readable label
-        const label = key.replace(/[@_]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2')
-                        .split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                        .join(' ').trim() || key;
-        
-        fields.push({ 
-            key, 
-            label,
-            sampleValue: preview 
-        });
+        fields.push({ key, preview });
     });
 
-    return fields.length > 0 ? fields : [{ 
-        key: '_value', 
-        label: 'Value',
-        sampleValue: 'No fields available' 
-    }];
+    return fields.length > 0 ? fields : [{ key: '_value', preview: 'No fields available' }];
 }
 
 /**
