@@ -5474,8 +5474,12 @@ pre.sample-value {
 }
 
 /* Block type specific styles */
-.transformation-block--prefix_suffix {
+.transformation-block--prefix {
     border-left: 4px solid #17a2b8;
+}
+
+.transformation-block--suffix {
+    border-left: 4px solid #6f42c1;
 }
 
 .transformation-block--findReplace {

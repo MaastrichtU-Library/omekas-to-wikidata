@@ -7,7 +7,7 @@
 // Import dependencies
 import { createElement } from '../../../ui/components.js';
 import { setupPropertySearch } from '../../core/property-searcher.js';
-import { renderValueTransformationUI } from '../transformation-ui.js';
+import { renderValueTransformationUI } from '../../core/transformation-engine.js';
 import { moveKeyToCategory, mapKeyToProperty, moveToNextUnmappedKey } from '../mapping-lists.js';
 import { formatSampleValue } from './modal-helpers.js';
 import { showMessage } from '../../../ui/components.js';

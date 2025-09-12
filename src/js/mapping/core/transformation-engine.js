@@ -9,32 +9,31 @@
 import { createTransformationBlock, getTransformationPreview } from '../../transformations.js';
 import { getFieldValueFromSample } from './data-analyzer.js';
 
+// Re-export all UI functions for backward compatibility
+export * from '../ui/transformation-ui.js';
+
 /**
  * Refreshes the transformation field preview when field selection changes
  * @param {string} propertyId - The property ID
  * @param {Object} state - Application state
  */
 export function refreshTransformationFieldPreview(propertyId, state) {
-    try {
-        const fieldSelector = document.getElementById(`field-selector-${propertyId}`);
-        const container = document.getElementById(`transformation-blocks-${propertyId}`);
-        
-        if (!fieldSelector || !container) return;
+    const fieldSelector = document.getElementById(`field-selector-${propertyId}`);
+    const container = document.getElementById(`transformation-blocks-${propertyId}`);
+    
+    if (!fieldSelector || !container) return;
 
-        const keyData = window.currentMappingKeyData;
-        if (!keyData) return;
+    const keyData = window.currentMappingKeyData;
+    if (!keyData) return;
 
-        const selectedField = fieldSelector.value;
-        const newSampleValue = getFieldValueFromSample(keyData.sampleValue, selectedField);
-        
-        // Update stored sample value
-        container.dataset.sampleValue = newSampleValue;
-        
-        // Update the preview
-        updateTransformationPreview(propertyId, state);
-    } catch (error) {
-        console.error('Error refreshing transformation field preview:', error);
-    }
+    const selectedField = fieldSelector.value;
+    const newSampleValue = getFieldValueFromSample(keyData.sampleValue, selectedField);
+    
+    // Update stored sample value
+    container.dataset.sampleValue = newSampleValue;
+    
+    // Update the preview
+    updateTransformationPreview(propertyId, state);
 }
 
 /**
@@ -44,34 +43,9 @@ export function refreshTransformationFieldPreview(propertyId, state) {
  * @param {Object} state - Application state
  */
 export function addTransformationBlock(propertyId, blockType, state) {
-    console.log('=== addTransformationBlock DEBUG ===');
-    console.log('propertyId:', propertyId);
-    console.log('blockType:', blockType);
-    console.log('state:', state);
-    
-    try {
-        console.log('Creating transformation block...');
-        const newBlock = createTransformationBlock(blockType);
-        console.log('Created block:', newBlock);
-        
-        console.log('Adding block to state...');
-        const result = state.addTransformationBlock(propertyId, newBlock);
-        console.log('Add block result:', result);
-        
-        console.log('Refreshing UI...');
-        refreshTransformationUI(propertyId, state);
-        console.log('UI refresh complete');
-        
-        return result;
-    } catch (error) {
-        console.error('Error adding transformation block:', error);
-        console.error('Error stack:', error.stack);
-        // Import showMessage for user notification
-        import('../../ui/components.js').then(({ showMessage }) => {
-            showMessage('Failed to add transformation block: ' + error.message, 'error', 5000);
-        });
-        throw error; // Re-throw to see in console
-    }
+    const newBlock = createTransformationBlock(blockType);
+    state.addTransformationBlock(propertyId, newBlock);
+    refreshTransformationUI(propertyId, state);
 }
 
 /**
@@ -81,27 +55,23 @@ export function addTransformationBlock(propertyId, blockType, state) {
  * @param {Object} state - Application state
  */
 export function updateTransformationPreview(propertyId, state) {
-    try {
-        const container = document.getElementById(`transformation-blocks-${propertyId}`);
-        if (!container || !container.dataset.sampleValue) return;
+    const container = document.getElementById(`transformation-blocks-${propertyId}`);
+    if (!container || !container.dataset.sampleValue) return;
 
-        const sampleValue = container.dataset.sampleValue;
-        const blocks = state.getTransformationBlocks(propertyId);
-        const preview = getTransformationPreview(sampleValue, blocks);
+    const sampleValue = container.dataset.sampleValue;
+    const blocks = state.getTransformationBlocks(propertyId);
+    const preview = getTransformationPreview(sampleValue, blocks);
 
-        // Update each value state display
-        const valueStates = container.querySelectorAll('.transformation-value-state');
-        preview.steps.forEach((step, index) => {
-            if (valueStates[index]) {
-                const valueContent = valueStates[index].querySelector('.value-content');
-                if (valueContent) {
-                    valueContent.textContent = step.value || '(empty)';
-                }
+    // Update each value state display
+    const valueStates = container.querySelectorAll('.transformation-value-state');
+    preview.steps.forEach((step, index) => {
+        if (valueStates[index]) {
+            const valueContent = valueStates[index].querySelector('.value-content');
+            if (valueContent) {
+                valueContent.textContent = step.value || '(empty)';
             }
-        });
-    } catch (error) {
-        console.error('Error updating transformation preview:', error);
-    }
+        }
+    });
 }
 
 /**
@@ -113,11 +83,10 @@ export function updateTransformationPreview(propertyId, state) {
 export function refreshTransformationUI(propertyId, state) {
     const container = document.getElementById(`transformation-blocks-${propertyId}`);
     if (container && container.dataset.sampleValue) {
-        // Trigger a custom event that the UI module can listen to
-        const event = new CustomEvent('refresh-transformation-ui', {
-            detail: { propertyId, state, sampleValue: container.dataset.sampleValue }
+        // Import UI function to avoid circular dependency
+        import('../ui/transformation-ui.js').then(({ renderTransformationBlocks }) => {
+            renderTransformationBlocks(propertyId, container.dataset.sampleValue, container, state);
         });
-        container.dispatchEvent(event);
     }
 }
 
@@ -131,14 +100,12 @@ export function refreshStage3TransformationUI(keyData, state) {
     if (stage3Container) {
         const transformationContainer = stage3Container.querySelector('.stage-content');
         if (transformationContainer) {
-            // Clear and rebuild the transformation UI
             transformationContainer.innerHTML = '';
-            // Trigger a custom event that the UI module can listen to
-            const event = new CustomEvent('refresh-stage3-ui', {
-                detail: { keyData, state, container: transformationContainer },
-                bubbles: true
+            // Import UI function to avoid circular dependency
+            import('../ui/transformation-ui.js').then(({ renderValueTransformationUI }) => {
+                const newUI = renderValueTransformationUI(keyData, state);
+                transformationContainer.appendChild(newUI);
             });
-            document.dispatchEvent(event);
         }
     }
 }
