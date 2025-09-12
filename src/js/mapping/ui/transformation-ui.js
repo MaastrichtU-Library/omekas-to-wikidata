@@ -157,17 +157,7 @@ export function renderValueTransformationUI(keyData, state) {
     // Add transformation block button
     const addBlockBtn = createElement('button', {
         className: 'button button--secondary add-transformation-btn',
-        onClick: () => {
-            // Get the current property ID at click time
-            const currentPropertyId = window.currentMappingSelectedProperty?.id || propertyId;
-            if (!currentPropertyId) {
-                import('../../ui/components.js').then(({ showMessage }) => {
-                    showMessage('Please select a property first in Stage 1', 'warning', 3000);
-                });
-                return;
-            }
-            showAddTransformationMenu(currentPropertyId, state, addBlockBtn);
-        }
+        onClick: () => showAddTransformationMenu(propertyId, state, addBlockBtn)
     }, 'Add Transformation');
     
     transformationHeader.appendChild(transformationTitle);

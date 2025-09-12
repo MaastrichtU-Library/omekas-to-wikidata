@@ -46,14 +46,13 @@ export function refreshTransformationFieldPreview(propertyId, state) {
 export function addTransformationBlock(propertyId, blockType, state) {
     try {
         const newBlock = createTransformationBlock(blockType);
-        const result = state.addTransformationBlock(propertyId, newBlock);
+        state.addTransformationBlock(propertyId, newBlock);
         refreshTransformationUI(propertyId, state);
-        return result;
     } catch (error) {
         console.error('Error adding transformation block:', error);
         // Import showMessage for user notification
         import('../../ui/components.js').then(({ showMessage }) => {
-            showMessage('Failed to add transformation block: ' + error.message, 'error', 5000);
+            showMessage('Failed to add transformation block', 'error', 3000);
         });
     }
 }
