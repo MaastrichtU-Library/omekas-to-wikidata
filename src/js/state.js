@@ -33,7 +33,8 @@ export function setupState() {
             mappedKeys: [],
             ignoredKeys: [],
             manualProperties: [],
-            transformationBlocks: {} // propertyId -> array of transformation blocks
+            transformationBlocks: {}, // mappingId -> array of transformation blocks
+            selectedTransformationFields: {} // mappingId -> selected field key
         },
         
         // Step 3: Reconciliation
@@ -653,6 +654,9 @@ export function setupState() {
         if (!state.mappings.transformationBlocks) {
             state.mappings.transformationBlocks = {};
         }
+        if (!state.mappings.selectedTransformationFields) {
+            state.mappings.selectedTransformationFields = {};
+        }
     }
     
     /**
@@ -971,6 +975,38 @@ export function setupState() {
     }
     
     /**
+     * Sets the selected transformation field for a mapping
+     * @param {string} mappingId - The mapping ID
+     * @param {string} fieldKey - The selected field key
+     */
+    function setSelectedTransformationField(mappingId, fieldKey) {
+        ensureMappingArrays();
+        
+        const oldValue = state.mappings.selectedTransformationFields[mappingId];
+        state.mappings.selectedTransformationFields[mappingId] = fieldKey;
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.selectedTransformationFields.${mappingId}`,
+            oldValue,
+            newValue: fieldKey
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets the selected transformation field for a mapping
+     * @param {string} mappingId - The mapping ID
+     * @returns {string|null} The selected field key or null
+     */
+    function getSelectedTransformationField(mappingId) {
+        ensureMappingArrays();
+        return state.mappings.selectedTransformationFields[mappingId] || null;
+    }
+    
+    /**
      * Clear persisted state from localStorage
      */
     function clearPersistedState() {
@@ -1013,6 +1049,8 @@ export function setupState() {
         updateTransformationBlock,
         reorderTransformationBlocks,
         getTransformationBlocks,
+        setSelectedTransformationField,
+        getSelectedTransformationField,
         // Convenience methods for reconciliation progress
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,

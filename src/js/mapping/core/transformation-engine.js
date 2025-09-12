@@ -58,14 +58,43 @@ export function renderValueTransformationUI(keyData, state) {
             className: 'field-selector',
             id: `field-selector-${mappingId}`,
             onChange: (e) => {
+                // Save the selected field to state
+                state.setSelectedTransformationField(mappingId, e.target.value);
                 refreshTransformationFieldPreview(mappingId, state);
             }
         });
         
-        // Find the most logical default field (prefer keys with "@")
-        let defaultField = availableFields.find(field => field.key.startsWith('@'));
+        // Check if there's a previously saved selection for this mapping
+        const savedFieldKey = state.getSelectedTransformationField(mappingId);
+        let defaultField = null;
+        
+        if (savedFieldKey) {
+            // Try to find the saved field in available fields
+            defaultField = availableFields.find(field => field.key === savedFieldKey);
+        }
+        
         if (!defaultField) {
-            defaultField = availableFields[0];
+            // Find the most logical default field
+            // Priority: @id > @value > other @ fields > first available (but ignore @type)
+            defaultField = availableFields.find(field => field.key === '@id');
+            if (!defaultField) {
+                defaultField = availableFields.find(field => field.key === '@value');
+            }
+            if (!defaultField) {
+                // Look for other @ fields, but exclude @type
+                defaultField = availableFields.find(field => 
+                    field.key.startsWith('@') && field.key !== '@type'
+                );
+            }
+            if (!defaultField) {
+                // Fall back to first non-@type field
+                defaultField = availableFields.find(field => field.key !== '@type') || availableFields[0];
+            }
+            
+            // Save the default selection
+            if (defaultField) {
+                state.setSelectedTransformationField(mappingId, defaultField.key);
+            }
         }
         
         // Populate field options
@@ -83,9 +112,16 @@ export function renderValueTransformationUI(keyData, state) {
     }
 
     // Sample value for transformations
-    const selectedField = availableFields.length > 1 ? 
-        (document.getElementById(`field-selector-${mappingId}`)?.value || availableFields[0]?.key) :
-        availableFields[0]?.key;
+    let selectedField;
+    if (availableFields.length > 1) {
+        selectedField = document.getElementById(`field-selector-${mappingId}`)?.value || availableFields[0]?.key;
+    } else {
+        // Only one field available, save it if not already saved
+        selectedField = availableFields[0]?.key;
+        if (selectedField && !state.getSelectedTransformationField(mappingId)) {
+            state.setSelectedTransformationField(mappingId, selectedField);
+        }
+    }
     
     const sampleValue = selectedField ? 
         getFieldValueFromSample(rawSampleValue, selectedField) :
