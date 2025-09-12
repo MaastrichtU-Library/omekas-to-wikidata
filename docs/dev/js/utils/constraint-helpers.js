@@ -232,8 +232,24 @@ export function validateAgainstFormatConstraints(value, propertyObj) {
  * @returns {Object} Enhanced match with constraint-based scoring
  */
 export function scoreMatchWithConstraints(match, propertyObj, originalValue) {
-    if (!match || !propertyObj) {
+    if (!match) {
         return match;
+    }
+    
+    // If no propertyObj, return match with its original score preserved
+    if (!propertyObj) {
+        return {
+            ...match,
+            score: match.score || 50,
+            originalScore: match.score || 50,
+            constraintScore: 100,
+            constraintDetails: {
+                typeConstraintSatisfied: null,
+                formatConstraintSatisfied: null,
+                datatypeCompatible: null,
+                confidenceAdjustments: ['No property constraints to validate']
+            }
+        };
     }
     
     const enhancedMatch = { ...match };
