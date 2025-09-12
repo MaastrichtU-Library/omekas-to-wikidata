@@ -493,8 +493,127 @@ export function renderComposeConfigUI(propertyId, block, state) {
     }, '💡 Use {{value}} for the current value and {{field:path}} to insert other fields from this item');
     patternField.appendChild(helpText);
     
+    // Field search and insertion
+    const fieldSearchSection = createElement('div', { className: 'field-search-section' });
+    const fieldSearchLabel = createElement('label', {}, 'Insert Field:');
+    fieldSearchSection.appendChild(fieldSearchLabel);
+    
+    const fieldSearchInput = createElement('input', {
+        type: 'text',
+        placeholder: 'Search fields to insert...',
+        className: 'field-search-input',
+        onInput: (e) => updateFieldSearchResults(e.target.value, propertyId, block, fieldResultsContainer)
+    });
+    fieldSearchSection.appendChild(fieldSearchInput);
+    
+    const fieldResultsContainer = createElement('div', { className: 'field-results' });
+    fieldSearchSection.appendChild(fieldResultsContainer);
+    
+    // Initialize with empty search to show all fields
+    setTimeout(() => updateFieldSearchResults('', propertyId, block, fieldResultsContainer), 100);
+    
     container.appendChild(patternField);
+    container.appendChild(fieldSearchSection);
     return container;
+}
+
+/**
+ * Updates field search results for compose transformation UI
+ * @param {string} searchTerm - The search term
+ * @param {string} propertyId - The property ID
+ * @param {Object} block - The transformation block
+ * @param {HTMLElement} resultsContainer - Container for search results
+ */
+export function updateFieldSearchResults(searchTerm, propertyId, block, resultsContainer) {
+    resultsContainer.innerHTML = '';
+    
+    // Get the original item data for this property
+    const keyData = window.currentMappingKeyData;
+    if (!keyData || !keyData.sampleValue) {
+        resultsContainer.appendChild(createElement('div', { 
+            className: 'no-fields-message' 
+        }, 'No field data available'));
+        return;
+    }
+    
+    // Get the full item data from state to extract all fields
+    const state = window.mappingStepState;
+    const currentState = state.getState();
+    let fullItemData = null;
+    
+    if (currentState.fetchedData) {
+        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+        
+        // Find the item that contains this property value
+        // We'll match based on the key and sampleValue
+        fullItemData = items.find(item => {
+            if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
+                return true;
+            }
+            return false;
+        });
+        
+        // If we couldn't find a specific item, use the first item as fallback
+        if (!fullItemData && items.length > 0) {
+            fullItemData = items[0];
+        }
+    }
+    
+    if (!fullItemData) {
+        resultsContainer.appendChild(createElement('div', { 
+            className: 'no-fields-message' 
+        }, 'No full item data available'));
+        return;
+    }
+    
+    // Extract all fields from the full item data instead of just the property value
+    const allFields = extractAllFields(fullItemData);
+    const filteredFields = searchFields(allFields, searchTerm);
+    
+    if (filteredFields.length === 0) {
+        resultsContainer.appendChild(createElement('div', { 
+            className: 'no-fields-message' 
+        }, 'No matching fields found'));
+        return;
+    }
+    
+    // Show all results - container will be scrollable
+    filteredFields.forEach(field => {
+        const fieldItem = createElement('div', {
+            className: 'field-result-item',
+            onClick: () => {
+                // Insert the field path into the pattern at cursor position
+                const patternTextarea = document.querySelector(`textarea.pattern-input`);
+                if (patternTextarea) {
+                    const fieldPlaceholder = `{{field:${field.path}}}`;
+                    const start = patternTextarea.selectionStart;
+                    const end = patternTextarea.selectionEnd;
+                    const currentPattern = patternTextarea.value;
+                    const newPattern = currentPattern.substring(0, start) + fieldPlaceholder + currentPattern.substring(end);
+                    patternTextarea.value = newPattern;
+                    
+                    // Update the state and preview
+                    const state = window.mappingStepState;
+                    state.updateTransformationBlock(propertyId, block.id, { 
+                        pattern: newPattern,
+                        sourceData: fullItemData 
+                    });
+                    updateTransformationPreview(propertyId, state);
+                    
+                    // Focus back to textarea and position cursor
+                    patternTextarea.focus();
+                    patternTextarea.setSelectionRange(start + fieldPlaceholder.length, start + fieldPlaceholder.length);
+                }
+            }
+        });
+        
+        const pathElement = createElement('div', { className: 'field-path' }, field.path);
+        const previewElement = createElement('div', { className: 'field-preview' }, field.preview);
+        
+        fieldItem.appendChild(pathElement);
+        fieldItem.appendChild(previewElement);
+        resultsContainer.appendChild(fieldItem);
+    });
 }
 
 /**
