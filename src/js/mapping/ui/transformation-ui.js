@@ -637,7 +637,7 @@ export function renderRegexConfigUI(propertyId, block, state, container = null) 
 
     // Add common regex patterns - use key as value for proper selection
     Object.entries(COMMON_REGEX_PATTERNS).forEach(([key, pattern]) => {
-        patternsSelect.appendChild(createElement('option', { value: key }, key));
+        patternsSelect.appendChild(createElement('option', { value: pattern.pattern }, pattern.name));
     });
 
     patternsContainer.appendChild(patternsLabel);
