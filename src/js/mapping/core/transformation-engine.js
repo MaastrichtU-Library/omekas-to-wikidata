@@ -90,21 +90,26 @@ export function renderValueTransformationUI(keyData, state) {
                 // Fall back to first non-@type field
                 defaultField = availableFields.find(field => field.key !== '@type') || availableFields[0];
             }
-            
-            // Save the default selection
-            if (defaultField) {
-                state.setSelectedTransformationField(mappingId, defaultField.key);
-            }
+        }
+        
+        // Always save the selected field (even if it's the default)
+        if (defaultField) {
+            state.setSelectedTransformationField(mappingId, defaultField.key);
         }
         
         // Populate field options
         availableFields.forEach(field => {
             const option = createElement('option', {
                 value: field.key,
-                selected: field.key === defaultField.key
+                selected: field.key === defaultField?.key
             }, `${field.key}: ${field.preview || field.sampleValue}`);
             fieldSelect.appendChild(option);
         });
+        
+        // Explicitly set the value to ensure proper selection
+        if (defaultField) {
+            fieldSelect.value = defaultField.key;
+        }
         
         fieldSelectorSection.appendChild(selectorLabel);
         fieldSelectorSection.appendChild(fieldSelect);
@@ -114,11 +119,12 @@ export function renderValueTransformationUI(keyData, state) {
     // Sample value for transformations
     let selectedField;
     if (availableFields.length > 1) {
-        selectedField = document.getElementById(`field-selector-${mappingId}`)?.value || availableFields[0]?.key;
+        // Use the saved/selected field key
+        selectedField = state.getSelectedTransformationField(mappingId) || availableFields[0]?.key;
     } else {
-        // Only one field available, save it if not already saved
+        // Only one field available, save it
         selectedField = availableFields[0]?.key;
-        if (selectedField && !state.getSelectedTransformationField(mappingId)) {
+        if (selectedField) {
             state.setSelectedTransformationField(mappingId, selectedField);
         }
     }
