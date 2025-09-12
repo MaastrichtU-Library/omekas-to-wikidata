@@ -505,10 +505,14 @@ export function moveKeyToCategory(keyData, category, state) {
  * Maps a key to a property
  */
 export function mapKeyToProperty(keyData, property, state) {
-    // Create enhanced key data with property information
+    // Generate the mapping ID for this key-property combination
+    const mappingId = state.generateMappingId(keyData.key, property.id);
+    
+    // Create enhanced key data with property information and mapping ID
     const mappedKey = {
         ...keyData,
         property: property,
+        mappingId: mappingId,
         mappedAt: new Date().toISOString()
     };
     

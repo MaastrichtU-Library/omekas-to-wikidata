@@ -40,6 +40,9 @@ export function renderValueTransformationUI(keyData, state) {
         }, 'Select a property first to configure value transformations'));
         return container;
     }
+    
+    // Generate mapping-specific ID for transformation storage
+    const mappingId = state.generateMappingId(keyData.key, propertyId);
 
     // Field selector section
     const rawSampleValue = keyData.sampleValue;
@@ -53,9 +56,9 @@ export function renderValueTransformationUI(keyData, state) {
         
         const fieldSelect = createElement('select', {
             className: 'field-selector',
-            id: `field-selector-${propertyId}`,
+            id: `field-selector-${mappingId}`,
             onChange: (e) => {
-                refreshTransformationFieldPreview(propertyId, state);
+                refreshTransformationFieldPreview(mappingId, state);
             }
         });
         
@@ -81,7 +84,7 @@ export function renderValueTransformationUI(keyData, state) {
 
     // Sample value for transformations
     const selectedField = availableFields.length > 1 ? 
-        (document.getElementById(`field-selector-${propertyId}`)?.value || availableFields[0]?.key) :
+        (document.getElementById(`field-selector-${mappingId}`)?.value || availableFields[0]?.key) :
         availableFields[0]?.key;
     
     const sampleValue = selectedField ? 
@@ -91,14 +94,15 @@ export function renderValueTransformationUI(keyData, state) {
     // Transformation blocks container
     const blocksContainer = createElement('div', {
         className: 'transformation-blocks-container',
-        id: `transformation-blocks-${propertyId}`
+        id: `transformation-blocks-${mappingId}`,
+        'data-mapping-id': mappingId
     });
 
     // Add transformation section - SIMPLE dropdown approach (original working method)
     const addBlockSection = createElement('div', { className: 'add-block-section' });
     const blockTypeSelect = createElement('select', {
         className: 'block-type-select',
-        id: `block-type-select-${propertyId}`
+        id: `block-type-select-${mappingId}`
     });
 
     // Add options for each block type
@@ -113,7 +117,7 @@ export function renderValueTransformationUI(keyData, state) {
     // SIMPLE add button - original working approach
     const addBlockBtn = createElement('button', {
         className: 'button button--secondary',
-        onClick: () => addTransformationBlock(propertyId, blockTypeSelect.value, state)
+        onClick: () => addTransformationBlock(mappingId, blockTypeSelect.value, state)
     }, '+ Add Transformation');
 
     addBlockSection.appendChild(blockTypeSelect);
@@ -123,7 +127,7 @@ export function renderValueTransformationUI(keyData, state) {
     blocksContainer.dataset.sampleValue = sampleValue;
 
     // Initial render of transformation blocks
-    renderTransformationBlocks(propertyId, sampleValue, blocksContainer, state);
+    renderTransformationBlocks(mappingId, sampleValue, blocksContainer, state);
 
     container.appendChild(blocksContainer);
     container.appendChild(addBlockSection);
@@ -133,12 +137,12 @@ export function renderValueTransformationUI(keyData, state) {
 
 /**
  * Refreshes the transformation field preview when field selection changes
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} state - Application state
  */
-export function refreshTransformationFieldPreview(propertyId, state) {
-    const fieldSelector = document.getElementById(`field-selector-${propertyId}`);
-    const container = document.getElementById(`transformation-blocks-${propertyId}`);
+export function refreshTransformationFieldPreview(mappingId, state) {
+    const fieldSelector = document.getElementById(`field-selector-${mappingId}`);
+    const container = document.getElementById(`transformation-blocks-${mappingId}`);
     
     if (!fieldSelector || !container) return;
 
@@ -152,33 +156,33 @@ export function refreshTransformationFieldPreview(propertyId, state) {
     container.dataset.sampleValue = newSampleValue;
     
     // Update the preview
-    updateTransformationPreview(propertyId, state);
+    updateTransformationPreview(mappingId, state);
 }
 
 /**
  * Adds a new transformation block to a property
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {string} blockType - The type of block to add
  * @param {Object} state - Application state
  */
-export function addTransformationBlock(propertyId, blockType, state) {
+export function addTransformationBlock(mappingId, blockType, state) {
     const newBlock = createTransformationBlock(blockType);
-    state.addTransformationBlock(propertyId, newBlock);
-    refreshTransformationUI(propertyId, state);
+    state.addTransformationBlock(mappingId, newBlock);
+    refreshTransformationUI(mappingId, state);
 }
 
 /**
  * Updates only the transformation preview values without re-rendering the entire UI
  * This prevents input fields from losing focus on every keystroke
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} state - Application state
  */
-export function updateTransformationPreview(propertyId, state) {
-    const container = document.getElementById(`transformation-blocks-${propertyId}`);
+export function updateTransformationPreview(mappingId, state) {
+    const container = document.getElementById(`transformation-blocks-${mappingId}`);
     if (!container || !container.dataset.sampleValue) return;
 
     const sampleValue = container.dataset.sampleValue;
-    const blocks = state.getTransformationBlocks(propertyId);
+    const blocks = state.getTransformationBlocks(mappingId);
     const preview = getTransformationPreview(sampleValue, blocks);
 
     // Update each value state display
@@ -196,13 +200,13 @@ export function updateTransformationPreview(propertyId, state) {
 /**
  * Refreshes the transformation UI for a property (full re-render)
  * Use sparingly as this will cause input fields to lose focus
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} state - Application state
  */
-export function refreshTransformationUI(propertyId, state) {
-    const container = document.getElementById(`transformation-blocks-${propertyId}`);
+export function refreshTransformationUI(mappingId, state) {
+    const container = document.getElementById(`transformation-blocks-${mappingId}`);
     if (container && container.dataset.sampleValue) {
-        renderTransformationBlocks(propertyId, container.dataset.sampleValue, container, state);
+        renderTransformationBlocks(mappingId, container.dataset.sampleValue, container, state);
     }
 }
 
@@ -225,16 +229,16 @@ export function refreshStage3TransformationUI(keyData, state) {
 
 /**
  * Renders the list of transformation blocks for a property
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {string} sampleValue - Sample value for preview
  * @param {HTMLElement} container - Container to render into
  * @param {Object} state - Application state
  */
-export function renderTransformationBlocks(propertyId, sampleValue, container, state) {
+export function renderTransformationBlocks(mappingId, sampleValue, container, state) {
     // Clear existing content
     container.innerHTML = '';
 
-    const blocks = state.getTransformationBlocks(propertyId);
+    const blocks = state.getTransformationBlocks(mappingId);
     
     if (blocks.length === 0) {
         container.appendChild(createElement('div', {
@@ -269,7 +273,7 @@ export function renderTransformationBlocks(propertyId, sampleValue, container, s
         if (index < preview.steps.length - 1) {
             const block = blocks.find(b => b.id === preview.steps[index + 1].blockId);
             if (block) {
-                const blockUI = renderTransformationBlockUI(propertyId, block, state);
+                const blockUI = renderTransformationBlockUI(mappingId, block, state);
                 flowContainer.appendChild(blockUI);
             }
         }
@@ -280,12 +284,12 @@ export function renderTransformationBlocks(propertyId, sampleValue, container, s
 
 /**
  * Renders a single transformation block UI
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
  * @returns {HTMLElement} Block UI element
  */
-export function renderTransformationBlockUI(propertyId, block, state) {
+export function renderTransformationBlockUI(mappingId, block, state) {
     const metadata = BLOCK_METADATA[block.type];
     const blockElement = createElement('div', {
         className: `transformation-block transformation-block--${block.type}`,
@@ -312,8 +316,8 @@ export function renderTransformationBlockUI(propertyId, block, state) {
         className: 'remove-block-btn',
         title: 'Remove transformation',
         onClick: () => {
-            state.removeTransformationBlock(propertyId, block.id);
-            refreshTransformationUI(propertyId, state);
+            state.removeTransformationBlock(mappingId, block.id);
+            refreshTransformationUI(mappingId, state);
         }
     }, '×');
     
@@ -325,42 +329,42 @@ export function renderTransformationBlockUI(propertyId, block, state) {
 
     // Block configuration
     const blockConfig = createElement('div', { className: 'block-config' });
-    blockConfig.appendChild(renderBlockConfigUI(propertyId, block, state));
+    blockConfig.appendChild(renderBlockConfigUI(mappingId, block, state));
 
     blockElement.appendChild(blockHeader);
     blockElement.appendChild(blockConfig);
 
     // Add drag and drop handlers
-    addDragHandlers(blockElement, blockHeader, propertyId, state);
+    addDragHandlers(blockElement, blockHeader, mappingId, state);
 
     return blockElement;
 }
 
 /**
  * Renders the configuration UI for a specific block type
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
  * @returns {HTMLElement} Configuration UI
  */
-export function renderBlockConfigUI(propertyId, block, state) {
+export function renderBlockConfigUI(mappingId, block, state) {
     const configContainer = createElement('div', { className: 'block-config-content' });
     
     switch (block.type) {
         case BLOCK_TYPES.PREFIX:
-            return renderPrefixSuffixConfigUI(propertyId, block, state, 'Prefix text:');
+            return renderPrefixSuffixConfigUI(mappingId, block, state, 'Prefix text:');
         
         case BLOCK_TYPES.SUFFIX:
-            return renderPrefixSuffixConfigUI(propertyId, block, state, 'Suffix text:');
+            return renderPrefixSuffixConfigUI(mappingId, block, state, 'Suffix text:');
             
         case BLOCK_TYPES.FIND_REPLACE:
-            return renderFindReplaceConfigUI(propertyId, block, state);
+            return renderFindReplaceConfigUI(mappingId, block, state);
             
         case BLOCK_TYPES.COMPOSE:
-            return renderComposeConfigUI(propertyId, block, state);
+            return renderComposeConfigUI(mappingId, block, state);
             
         case BLOCK_TYPES.REGEX:
-            return renderRegexConfigUI(propertyId, block, state);
+            return renderRegexConfigUI(mappingId, block, state);
             
         default:
             return createElement('div', {}, 'Unknown block type');
@@ -369,13 +373,13 @@ export function renderBlockConfigUI(propertyId, block, state) {
 
 /**
  * Renders prefix/suffix configuration UI
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
  * @param {string} label - Label for the input field
  * @returns {HTMLElement} Configuration UI
  */
-export function renderPrefixSuffixConfigUI(propertyId, block, state, label) {
+export function renderPrefixSuffixConfigUI(mappingId, block, state, label) {
     const container = createElement('div', { className: 'config-field' });
     
     const labelElement = createElement('label', {}, label);
@@ -384,8 +388,8 @@ export function renderPrefixSuffixConfigUI(propertyId, block, state, label) {
         value: block.config.text || '',
         placeholder: `Enter ${block.type} text...`,
         onInput: (e) => {
-            state.updateTransformationBlock(propertyId, block.id, { text: e.target.value });
-            updateTransformationPreview(propertyId, state);
+            state.updateTransformationBlock(mappingId, block.id, { text: e.target.value });
+            updateTransformationPreview(mappingId, state);
         }
     });
     
@@ -396,12 +400,12 @@ export function renderPrefixSuffixConfigUI(propertyId, block, state, label) {
 
 /**
  * Renders find/replace configuration UI
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
  * @returns {HTMLElement} Configuration UI
  */
-export function renderFindReplaceConfigUI(propertyId, block, state) {
+export function renderFindReplaceConfigUI(mappingId, block, state) {
     const container = createElement('div', { className: 'config-fields' });
     
     // Find field
@@ -412,8 +416,8 @@ export function renderFindReplaceConfigUI(propertyId, block, state) {
         value: block.config.find || '',
         placeholder: 'Text to find...',
         onInput: (e) => {
-            state.updateTransformationBlock(propertyId, block.id, { find: e.target.value });
-            updateTransformationPreview(propertyId, state);
+            state.updateTransformationBlock(mappingId, block.id, { find: e.target.value });
+            updateTransformationPreview(mappingId, state);
         }
     });
     findField.appendChild(findInput);
@@ -426,8 +430,8 @@ export function renderFindReplaceConfigUI(propertyId, block, state) {
         value: block.config.replace || '',
         placeholder: 'Replacement text...',
         onInput: (e) => {
-            state.updateTransformationBlock(propertyId, block.id, { replace: e.target.value });
-            updateTransformationPreview(propertyId, state);
+            state.updateTransformationBlock(mappingId, block.id, { replace: e.target.value });
+            updateTransformationPreview(mappingId, state);
         }
     });
     replaceField.appendChild(replaceInput);
@@ -440,8 +444,8 @@ export function renderFindReplaceConfigUI(propertyId, block, state) {
         id: `case-sensitive-${block.id}`,
         checked: block.config.caseSensitive || false,
         onChange: (e) => {
-            state.updateTransformationBlock(propertyId, block.id, { caseSensitive: e.target.checked });
-            updateTransformationPreview(propertyId, state);
+            state.updateTransformationBlock(mappingId, block.id, { caseSensitive: e.target.checked });
+            updateTransformationPreview(mappingId, state);
         }
     });
     
@@ -461,12 +465,12 @@ export function renderFindReplaceConfigUI(propertyId, block, state) {
 
 /**
  * Renders compose configuration UI
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
  * @returns {HTMLElement} Configuration UI
  */
-export function renderComposeConfigUI(propertyId, block, state) {
+export function renderComposeConfigUI(mappingId, block, state) {
     const container = createElement('div', { className: 'config-fields' });
     
     // Pattern field
@@ -481,8 +485,8 @@ export function renderComposeConfigUI(propertyId, block, state) {
         placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
         className: 'pattern-input',
         onInput: (e) => {
-            state.updateTransformationBlock(propertyId, block.id, { pattern: e.target.value });
-            updateTransformationPreview(propertyId, state);
+            state.updateTransformationBlock(mappingId, block.id, { pattern: e.target.value });
+            updateTransformationPreview(mappingId, state);
         }
     }, currentPattern);
     patternField.appendChild(patternTextarea);
@@ -502,7 +506,7 @@ export function renderComposeConfigUI(propertyId, block, state) {
         type: 'text',
         placeholder: 'Search fields to insert...',
         className: 'field-search-input',
-        onInput: (e) => updateFieldSearchResults(e.target.value, propertyId, block, fieldResultsContainer)
+        onInput: (e) => updateFieldSearchResults(e.target.value, mappingId, block, fieldResultsContainer)
     });
     fieldSearchSection.appendChild(fieldSearchInput);
     
@@ -510,7 +514,7 @@ export function renderComposeConfigUI(propertyId, block, state) {
     fieldSearchSection.appendChild(fieldResultsContainer);
     
     // Initialize with empty search to show all fields
-    setTimeout(() => updateFieldSearchResults('', propertyId, block, fieldResultsContainer), 100);
+    setTimeout(() => updateFieldSearchResults('', mappingId, block, fieldResultsContainer), 100);
     
     container.appendChild(patternField);
     container.appendChild(fieldSearchSection);
@@ -520,11 +524,11 @@ export function renderComposeConfigUI(propertyId, block, state) {
 /**
  * Updates field search results for compose transformation UI
  * @param {string} searchTerm - The search term
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {HTMLElement} resultsContainer - Container for search results
  */
-export function updateFieldSearchResults(searchTerm, propertyId, block, resultsContainer) {
+export function updateFieldSearchResults(searchTerm, mappingId, block, resultsContainer) {
     resultsContainer.innerHTML = '';
     
     // Get the original item data for this property
@@ -594,11 +598,11 @@ export function updateFieldSearchResults(searchTerm, propertyId, block, resultsC
                     
                     // Update the state and preview
                     const state = window.mappingStepState;
-                    state.updateTransformationBlock(propertyId, block.id, { 
+                    state.updateTransformationBlock(mappingId, block.id, { 
                         pattern: newPattern,
                         sourceData: fullItemData 
                     });
-                    updateTransformationPreview(propertyId, state);
+                    updateTransformationPreview(mappingId, state);
                     
                     // Focus back to textarea and position cursor
                     patternTextarea.focus();
@@ -618,12 +622,12 @@ export function updateFieldSearchResults(searchTerm, propertyId, block, resultsC
 
 /**
  * Renders regex configuration UI
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
  * @returns {HTMLElement} Configuration UI
  */
-export function renderRegexConfigUI(propertyId, block, state) {
+export function renderRegexConfigUI(mappingId, block, state) {
     const container = createElement('div', { className: 'config-fields' });
     
     // Pattern field
@@ -635,8 +639,8 @@ export function renderRegexConfigUI(propertyId, block, state) {
         placeholder: 'Regular expression pattern...',
         className: 'regex-pattern-input',
         onInput: (e) => {
-            state.updateTransformationBlock(propertyId, block.id, { pattern: e.target.value });
-            updateTransformationPreview(propertyId, state);
+            state.updateTransformationBlock(mappingId, block.id, { pattern: e.target.value });
+            updateTransformationPreview(mappingId, state);
         }
     });
     patternField.appendChild(patternInput);
@@ -649,8 +653,8 @@ export function renderRegexConfigUI(propertyId, block, state) {
         value: block.config.replacement || '',
         placeholder: 'Replacement pattern (use $1, $2 for capture groups)...',
         onInput: (e) => {
-            state.updateTransformationBlock(propertyId, block.id, { replacement: e.target.value });
-            updateTransformationPreview(propertyId, state);
+            state.updateTransformationBlock(mappingId, block.id, { replacement: e.target.value });
+            updateTransformationPreview(mappingId, state);
         }
     });
     replacementField.appendChild(replacementInput);
@@ -664,11 +668,11 @@ export function renderRegexConfigUI(propertyId, block, state) {
         onChange: (e) => {
             if (e.target.value && COMMON_REGEX_PATTERNS[e.target.value]) {
                 const pattern = COMMON_REGEX_PATTERNS[e.target.value];
-                state.updateTransformationBlock(propertyId, block.id, {
+                state.updateTransformationBlock(mappingId, block.id, {
                     pattern: pattern.pattern,
                     replacement: pattern.replacement
                 });
-                updateTransformationPreview(propertyId, state);
+                updateTransformationPreview(mappingId, state);
                 
                 // Update the input field values to reflect the selected pattern
                 patternInput.value = pattern.pattern;
@@ -698,10 +702,10 @@ export function renderRegexConfigUI(propertyId, block, state) {
  * Adds drag and drop handlers to a block element
  * @param {HTMLElement} blockElement - The block element
  * @param {HTMLElement} dragHandle - The drag handle element
- * @param {string} propertyId - The property ID
+ * @param {string} mappingId - The mapping ID
  * @param {Object} state - Application state
  */
-export function addDragHandlers(blockElement, dragHandle, propertyId, state) {
+export function addDragHandlers(blockElement, dragHandle, mappingId, state) {
     dragHandle.addEventListener('dragstart', (e) => {
         currentDraggedElement = blockElement;
         blockElement.classList.add('dragging');
@@ -754,8 +758,8 @@ export function addDragHandlers(blockElement, dragHandle, propertyId, state) {
                 const draggedId = blockIds.splice(draggedIndex, 1)[0];
                 blockIds.splice(targetIndex, 0, draggedId);
                 
-                state.reorderTransformationBlocks(propertyId, blockIds);
-                refreshTransformationUI(propertyId, state);
+                state.reorderTransformationBlocks(mappingId, blockIds);
+                refreshTransformationUI(mappingId, state);
             }
         }
     });

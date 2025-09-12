@@ -767,33 +767,44 @@ export function setupState() {
     }
     
     /**
-     * Adds a transformation block to a property
-     * @param {string} propertyId - The property ID to add the block to
+     * Generates a mapping ID from key and property ID
+     * @param {string} key - The source data key
+     * @param {string} propertyId - The Wikidata property ID
+     * @returns {string} The mapping ID
+     */
+    function generateMappingId(key, propertyId) {
+        if (!key || !propertyId) return propertyId || key || 'unknown';
+        return `${key}::${propertyId}`;
+    }
+    
+    /**
+     * Adds a transformation block to a property mapping
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
      * @param {Object} block - The transformation block to add
      */
-    function addTransformationBlock(propertyId, block) {
+    function addTransformationBlock(mappingId, block) {
         ensureMappingArrays();
         
-        if (!state.mappings.transformationBlocks[propertyId]) {
-            state.mappings.transformationBlocks[propertyId] = [];
+        if (!state.mappings.transformationBlocks[mappingId]) {
+            state.mappings.transformationBlocks[mappingId] = [];
         }
         
-        const oldValue = JSON.parse(JSON.stringify(state.mappings.transformationBlocks[propertyId]));
+        const oldValue = JSON.parse(JSON.stringify(state.mappings.transformationBlocks[mappingId]));
         
         // Generate unique ID if not provided
         const blockWithId = {
             ...block,
             id: block.id || `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            order: state.mappings.transformationBlocks[propertyId].length
+            order: state.mappings.transformationBlocks[mappingId].length
         };
         
-        state.mappings.transformationBlocks[propertyId].push(blockWithId);
+        state.mappings.transformationBlocks[mappingId].push(blockWithId);
         state.hasUnsavedChanges = true;
         
         eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-            path: `mappings.transformationBlocks.${propertyId}`,
+            path: `mappings.transformationBlocks.${mappingId}`,
             oldValue,
-            newValue: [...state.mappings.transformationBlocks[propertyId]]
+            newValue: [...state.mappings.transformationBlocks[mappingId]]
         });
         
         return blockWithId;
@@ -801,73 +812,73 @@ export function setupState() {
     
     /**
      * Removes a transformation block by ID
-     * @param {string} propertyId - The property ID 
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
      * @param {string} blockId - The block ID to remove
      */
-    function removeTransformationBlock(propertyId, blockId) {
+    function removeTransformationBlock(mappingId, blockId) {
         ensureMappingArrays();
         
-        if (!state.mappings.transformationBlocks[propertyId]) return;
+        if (!state.mappings.transformationBlocks[mappingId]) return;
         
-        const oldValue = [...state.mappings.transformationBlocks[propertyId]];
-        const index = state.mappings.transformationBlocks[propertyId].findIndex(b => b.id === blockId);
+        const oldValue = [...state.mappings.transformationBlocks[mappingId]];
+        const index = state.mappings.transformationBlocks[mappingId].findIndex(b => b.id === blockId);
         
         if (index > -1) {
-            state.mappings.transformationBlocks[propertyId].splice(index, 1);
+            state.mappings.transformationBlocks[mappingId].splice(index, 1);
             
             // Update order indices for remaining blocks
-            state.mappings.transformationBlocks[propertyId].forEach((block, i) => {
+            state.mappings.transformationBlocks[mappingId].forEach((block, i) => {
                 block.order = i;
             });
             
             state.hasUnsavedChanges = true;
             
             eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-                path: `mappings.transformationBlocks.${propertyId}`,
+                path: `mappings.transformationBlocks.${mappingId}`,
                 oldValue,
-                newValue: [...state.mappings.transformationBlocks[propertyId]]
+                newValue: [...state.mappings.transformationBlocks[mappingId]]
             });
         }
     }
     
     /**
      * Updates a transformation block configuration
-     * @param {string} propertyId - The property ID
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
      * @param {string} blockId - The block ID to update
      * @param {Object} config - The new configuration
      */
-    function updateTransformationBlock(propertyId, blockId, config) {
+    function updateTransformationBlock(mappingId, blockId, config) {
         ensureMappingArrays();
         
-        if (!state.mappings.transformationBlocks[propertyId]) return;
+        if (!state.mappings.transformationBlocks[mappingId]) return;
         
-        const oldValue = [...state.mappings.transformationBlocks[propertyId]];
-        const block = state.mappings.transformationBlocks[propertyId].find(b => b.id === blockId);
+        const oldValue = [...state.mappings.transformationBlocks[mappingId]];
+        const block = state.mappings.transformationBlocks[mappingId].find(b => b.id === blockId);
         
         if (block) {
             block.config = { ...block.config, ...config };
             state.hasUnsavedChanges = true;
             
             eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-                path: `mappings.transformationBlocks.${propertyId}`,
+                path: `mappings.transformationBlocks.${mappingId}`,
                 oldValue,
-                newValue: [...state.mappings.transformationBlocks[propertyId]]
+                newValue: [...state.mappings.transformationBlocks[mappingId]]
             });
         }
     }
     
     /**
-     * Reorders transformation blocks for a property
-     * @param {string} propertyId - The property ID
+     * Reorders transformation blocks for a property mapping
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
      * @param {Array} newOrder - Array of block IDs in new order
      */
-    function reorderTransformationBlocks(propertyId, newOrder) {
+    function reorderTransformationBlocks(mappingId, newOrder) {
         ensureMappingArrays();
         
-        if (!state.mappings.transformationBlocks[propertyId]) return;
+        if (!state.mappings.transformationBlocks[mappingId]) return;
         
-        const oldValue = [...state.mappings.transformationBlocks[propertyId]];
-        const blocks = state.mappings.transformationBlocks[propertyId];
+        const oldValue = [...state.mappings.transformationBlocks[mappingId]];
+        const blocks = state.mappings.transformationBlocks[mappingId];
         
         // Create new ordered array
         const reorderedBlocks = newOrder.map((blockId, index) => {
@@ -878,24 +889,37 @@ export function setupState() {
             }
         }).filter(Boolean);
         
-        state.mappings.transformationBlocks[propertyId] = reorderedBlocks;
+        state.mappings.transformationBlocks[mappingId] = reorderedBlocks;
         state.hasUnsavedChanges = true;
         
         eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-            path: `mappings.transformationBlocks.${propertyId}`,
+            path: `mappings.transformationBlocks.${mappingId}`,
             oldValue,
-            newValue: [...state.mappings.transformationBlocks[propertyId]]
+            newValue: [...state.mappings.transformationBlocks[mappingId]]
         });
     }
     
     /**
-     * Gets transformation blocks for a property
-     * @param {string} propertyId - The property ID
+     * Gets transformation blocks for a property mapping
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
      * @returns {Array} Array of transformation blocks
      */
-    function getTransformationBlocks(propertyId) {
+    function getTransformationBlocks(mappingId) {
         ensureMappingArrays();
-        return state.mappings.transformationBlocks[propertyId] || [];
+        // First try with the mapping ID as-is
+        if (state.mappings.transformationBlocks[mappingId]) {
+            return state.mappings.transformationBlocks[mappingId];
+        }
+        // Backwards compatibility: if not found and doesn't contain '::', it might be a legacy propertyId
+        // Check if any existing keys end with this propertyId
+        if (!mappingId.includes('::')) {
+            for (const key in state.mappings.transformationBlocks) {
+                if (key.endsWith(`::${mappingId}`)) {
+                    return state.mappings.transformationBlocks[key];
+                }
+            }
+        }
+        return [];
     }
     
     /**
@@ -935,6 +959,7 @@ export function setupState() {
         addManualProperty,
         removeManualProperty,
         // Convenience methods for transformation blocks
+        generateMappingId,
         addTransformationBlock,
         removeTransformationBlock,
         updateTransformationBlock,
