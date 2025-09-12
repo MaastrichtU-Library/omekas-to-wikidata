@@ -41,11 +41,25 @@ export function renderValueTransformationUI(keyData, state) {
     let currentProperty = window.currentMappingSelectedProperty || keyData?.property;
     let propertyId = currentProperty?.id;
     
+    console.log('=== Stage 3 Property Detection ===');
+    console.log('window.currentMappingSelectedProperty:', window.currentMappingSelectedProperty);
+    console.log('keyData:', keyData);
+    console.log('keyData.property:', keyData?.property);
+    console.log('currentProperty:', currentProperty);
+    console.log('propertyId:', propertyId);
+    
     // If keyData has property info but global variable doesn't, set it
     if (!window.currentMappingSelectedProperty && keyData?.property) {
         window.currentMappingSelectedProperty = keyData.property;
         currentProperty = keyData.property;
         propertyId = currentProperty.id;
+        console.log('Updated propertyId from keyData:', propertyId);
+    }
+    
+    // If still no property ID, try to use a placeholder for testing
+    if (!propertyId) {
+        console.warn('No property ID found, using placeholder P123');
+        propertyId = 'P123'; // Temporary placeholder to prevent errors
     }
     
     // If we still don't have a property ID, show loading message and set up retry
@@ -155,10 +169,20 @@ export function renderValueTransformationUI(keyData, state) {
     const transformationTitle = createElement('h4', {}, 'Value Transformation Pipeline');
     
     // Add transformation block button
-    const addBlockBtn = createButton('Add Transformation', {
-        className: 'add-transformation-btn',
-        onClick: () => showAddTransformationMenu(propertyId, state, addBlockBtn)
-    });
+    const addBlockBtn = createElement('button', {
+        className: 'button button--secondary add-transformation-btn',
+        onClick: () => {
+            // Get the current property ID at click time
+            const currentPropertyId = window.currentMappingSelectedProperty?.id || currentProperty?.id || propertyId;
+            console.log('Add Transformation button clicked, currentPropertyId:', currentPropertyId);
+            if (!currentPropertyId || currentPropertyId === 'P123') {
+                console.error('No valid property ID available!');
+                alert('Please select a property first in Stage 1');
+                return;
+            }
+            showAddTransformationMenu(currentPropertyId, state, addBlockBtn);
+        }
+    }, 'Add Transformation');
     
     transformationHeader.appendChild(transformationTitle);
     transformationHeader.appendChild(addBlockBtn);
@@ -787,6 +811,12 @@ export function addDragHandlers(blockElement, dragHandle, propertyId, state) {
 
 // Helper function to show add transformation menu
 function showAddTransformationMenu(propertyId, state, addBtn) {
+    console.log('=== showAddTransformationMenu DEBUG ===');
+    console.log('propertyId:', propertyId);
+    console.log('state:', state);
+    console.log('BLOCK_TYPES:', BLOCK_TYPES);
+    console.log('BLOCK_METADATA:', BLOCK_METADATA);
+    
     // Remove any existing menu first
     const existingMenu = document.querySelector('.add-transformation-menu');
     if (existingMenu) {
@@ -798,24 +828,73 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
         className: 'add-transformation-menu',
         style: 'position: absolute; z-index: 1000; background: white; border: 1px solid #ccc; border-radius: 4px; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);'
     });
+    
+    // Close menu function needs to be defined before menu items
+    const closeMenu = (e) => {
+        console.log('closeMenu called, target:', e.target);
+        // Don't close if clicking on menu items
+        if (menu.contains(e.target)) {
+            console.log('Click was inside menu, not closing');
+            return;
+        }
+        // Don't close if clicking the add button
+        if (e.target === addBtn) {
+            console.log('Click was on add button, not closing');
+            return;
+        }
+        // Close the menu
+        console.log('Closing menu');
+        if (menu.parentNode === document.body) {
+            document.body.removeChild(menu);
+        }
+        document.removeEventListener('click', closeMenu);
+    };
 
+    console.log('Creating menu items for BLOCK_TYPES:', Object.entries(BLOCK_TYPES));
+    
     Object.entries(BLOCK_TYPES).forEach(([key, type]) => {
+        console.log(`Processing block type: key=${key}, type=${type}`);
         const metadata = BLOCK_METADATA[type];
-        const menuItem = createElement('button', {
-            className: 'menu-item',
-            style: 'display: block; width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer;',
-            onClick: (e) => {
-                // Prevent event bubbling to avoid double-removal error
-                e.stopPropagation();
-                addTransformationBlock(propertyId, type, state);
-                // Safe menu removal
-                if (menu.parentNode === document.body) {
-                    document.body.removeChild(menu);
-                }
-            },
-            onMouseOver: (e) => e.target.style.backgroundColor = '#f0f0f0',
-            onMouseOut: (e) => e.target.style.backgroundColor = 'transparent'
-        }, `${metadata.icon} ${metadata.name}`);
+        console.log(`Metadata for ${type}:`, metadata);
+        
+        if (!metadata) {
+            console.warn(`No metadata found for block type: ${type}`);
+            return; // Skip if no metadata found
+        }
+        
+        // Create button directly to ensure event handlers work
+        const menuItem = document.createElement('button');
+        menuItem.className = 'menu-item';
+        menuItem.style.cssText = 'display: block; width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer;';
+        menuItem.textContent = `${metadata.icon} ${metadata.name}`;
+        
+        // Add click handler directly
+        menuItem.onclick = (e) => {
+            console.log(`Menu item clicked! Type: ${type}, PropertyId: ${propertyId}`);
+            // Prevent event bubbling
+            e.stopPropagation();
+            e.preventDefault();
+            
+            // Remove menu first
+            if (menu.parentNode === document.body) {
+                document.body.removeChild(menu);
+            }
+            
+            // Remove the close menu listener
+            document.removeEventListener('click', closeMenu);
+            
+            // Add the transformation block
+            console.log('Calling addTransformationBlock with:', propertyId, type, state);
+            addTransformationBlock(propertyId, type, state);
+        };
+        
+        // Add hover effects
+        menuItem.onmouseover = (e) => e.target.style.backgroundColor = '#f0f0f0';
+        menuItem.onmouseout = (e) => e.target.style.backgroundColor = 'transparent';
+        
+        console.log(`Created menu item for ${type}, appending to menu`);
+        console.log('Menu item element:', menuItem);
+        console.log('Has onclick?', menuItem.onclick);
         
         menu.appendChild(menuItem);
     });
@@ -842,20 +921,27 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
     menu.style.top = top + 'px';
     menu.style.left = left + 'px';
     
+    console.log('Final menu element:', menu);
+    console.log('Menu children count:', menu.children.length);
+    console.log('Menu HTML:', menu.outerHTML);
+    
     document.body.appendChild(menu);
     
-    // Close menu when clicking outside
-    const closeMenu = (e) => {
-        if (!menu.contains(e.target) && e.target !== addBtn) {
-            // Only remove if menu is still a child of document.body
-            if (menu.parentNode === document.body) {
-                document.body.removeChild(menu);
-            }
-            document.removeEventListener('click', closeMenu);
+    // Test: Try to click the first button programmatically after a delay
+    setTimeout(() => {
+        const firstButton = menu.querySelector('button');
+        if (firstButton) {
+            console.log('TEST: Found first button, checking if clickable');
+            console.log('First button:', firstButton);
+            console.log('First button onclick:', firstButton.onclick);
         }
-    };
+    }, 100);
     
-    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    // Add close menu listener after a delay to prevent immediate closing
+    setTimeout(() => {
+        console.log('Adding closeMenu listener');
+        document.addEventListener('click', closeMenu);
+    }, 100); // Increased delay to ensure menu items are clickable
 }
 
 // Set up event listeners for transformation engine events
@@ -874,8 +960,6 @@ document.addEventListener('refresh-stage3-ui', (event) => {
         if (keyData.property) {
             window.currentMappingSelectedProperty = keyData.property;
         }
-        // Clear the container first to replace old UI
-        container.innerHTML = '';
         const newUI = renderValueTransformationUI(keyData, state);
         container.appendChild(newUI);
     }

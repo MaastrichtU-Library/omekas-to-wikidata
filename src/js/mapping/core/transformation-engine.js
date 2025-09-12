@@ -44,16 +44,33 @@ export function refreshTransformationFieldPreview(propertyId, state) {
  * @param {Object} state - Application state
  */
 export function addTransformationBlock(propertyId, blockType, state) {
+    console.log('=== addTransformationBlock DEBUG ===');
+    console.log('propertyId:', propertyId);
+    console.log('blockType:', blockType);
+    console.log('state:', state);
+    
     try {
+        console.log('Creating transformation block...');
         const newBlock = createTransformationBlock(blockType);
-        state.addTransformationBlock(propertyId, newBlock);
+        console.log('Created block:', newBlock);
+        
+        console.log('Adding block to state...');
+        const result = state.addTransformationBlock(propertyId, newBlock);
+        console.log('Add block result:', result);
+        
+        console.log('Refreshing UI...');
         refreshTransformationUI(propertyId, state);
+        console.log('UI refresh complete');
+        
+        return result;
     } catch (error) {
         console.error('Error adding transformation block:', error);
+        console.error('Error stack:', error.stack);
         // Import showMessage for user notification
         import('../../ui/components.js').then(({ showMessage }) => {
-            showMessage('Failed to add transformation block', 'error', 3000);
+            showMessage('Failed to add transformation block: ' + error.message, 'error', 5000);
         });
+        throw error; // Re-throw to see in console
     }
 }
 
