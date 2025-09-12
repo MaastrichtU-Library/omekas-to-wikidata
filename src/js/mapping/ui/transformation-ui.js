@@ -820,7 +820,6 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
             className: 'menu-item',
             style: 'display: block; width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; cursor: pointer;',
             onClick: (e) => {
-                console.log(`Menu item clicked! Type: ${type}, PropertyId: ${propertyId}`);
                 // Prevent event bubbling
                 e.stopPropagation();
                 e.preventDefault();
@@ -834,19 +833,11 @@ function showAddTransformationMenu(propertyId, state, addBtn) {
                 document.removeEventListener('click', closeMenu);
                 
                 // Add the transformation block
-                console.log('Calling addTransformationBlock with:', propertyId, type, state);
                 addTransformationBlock(propertyId, type, state);
             },
             onMouseOver: (e) => e.target.style.backgroundColor = '#f0f0f0',
             onMouseOut: (e) => e.target.style.backgroundColor = 'transparent'
         }, `${metadata.icon} ${metadata.name}`);
-        
-        console.log(`Created menu item for ${type}, appending to menu`);
-        
-        // Test if click handler is attached
-        console.log('Menu item element:', menuItem);
-        console.log('Has onclick?', menuItem.onclick);
-        console.log('Event listeners:', menuItem._listeners || 'none visible');
         
         menu.appendChild(menuItem);
     });
