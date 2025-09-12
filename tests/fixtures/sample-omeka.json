@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "total": 3,
+    "export_date": "2025-01-15T10:00:00Z",
+    "source": "test-fixture"
+  },
+  "items": [
+    {
+      "id": 1,
+      "title": "Van Gogh Self-Portrait",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "Van Gogh Self-Portrait"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Vincent van Gogh"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "1889"
+      }],
+      "dcterms:description": [{
+        "type": "literal",
+        "property_id": 3,
+        "@value": "A self-portrait by Vincent van Gogh painted in 1889"
+      }],
+      "dcterms:subject": [{
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Self-portrait"
+      }, {
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Post-Impressionism"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "The Starry Night Study",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "The Starry Night Study"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Vincent van Gogh"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "1889-06"
+      }],
+      "dcterms:description": [{
+        "type": "literal",
+        "property_id": 3,
+        "@value": "A preparatory study for The Starry Night painting"
+      }],
+      "dcterms:medium": [{
+        "type": "literal",
+        "property_id": 6,
+        "@value": "Oil on canvas"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "Café Terrace at Night",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "Café Terrace at Night"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Vincent van Gogh"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "1888-09-16"
+      }],
+      "dcterms:description": [{
+        "type": "literal",
+        "property_id": 3,
+        "@value": "The first painting in which van Gogh used a starry background"
+      }],
+      "dcterms:spatial": [{
+        "type": "literal",
+        "property_id": 7,
+        "@value": "Arles, France"
+      }]
+    }
+  ]
+}

@@ -26,6 +26,7 @@ function initializeApp() {
     
     // Initialize core modules
     const navigation = setupNavigation(state);
+    window.navigation = navigation; // Expose for testing
     const modals = setupModals(state);
     
     // Initialize step modules
