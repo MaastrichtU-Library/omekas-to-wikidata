@@ -310,6 +310,9 @@ export function setupState() {
             oldValue: oldState,
             newValue: state
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -328,6 +331,9 @@ export function setupState() {
             oldState,
             newState: state
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -356,6 +362,9 @@ export function setupState() {
             oldStep,
             newStep: step
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -382,6 +391,9 @@ export function setupState() {
             oldHighestStep,
             newHighestStep: step
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -519,6 +531,9 @@ export function setupState() {
             oldMode,
             newMode
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -541,6 +556,9 @@ export function setupState() {
             oldValue: oldMappings,
             newValue: JSON.parse(JSON.stringify(state.mappings))
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -574,6 +592,9 @@ export function setupState() {
             oldValue,
             newValue: [...state.mappings[category]]
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -608,6 +629,9 @@ export function setupState() {
             oldValue,
             newValue: [...state.mappings[category]]
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -645,6 +669,9 @@ export function setupState() {
             oldValue: oldProgress.completed,
             newValue: state.reconciliationProgress.completed
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -666,6 +693,9 @@ export function setupState() {
             oldValue: oldSkipped,
             newValue: state.reconciliationProgress.skipped
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -686,6 +716,9 @@ export function setupState() {
             oldValue: oldProgress,
             newValue: JSON.parse(JSON.stringify(state.reconciliationProgress))
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -764,6 +797,9 @@ export function setupState() {
             oldValue: null,
             newValue: { mockItems, mockMapping }
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -807,6 +843,9 @@ export function setupState() {
             newValue: [...state.mappings.transformationBlocks[mappingId]]
         });
         
+        // Persist state to localStorage
+        persistState();
+        
         return blockWithId;
     }
     
@@ -838,6 +877,9 @@ export function setupState() {
                 oldValue,
                 newValue: [...state.mappings.transformationBlocks[mappingId]]
             });
+            
+            // Persist state to localStorage
+            persistState();
         }
     }
     
@@ -864,6 +906,9 @@ export function setupState() {
                 oldValue,
                 newValue: [...state.mappings.transformationBlocks[mappingId]]
             });
+            
+            // Persist state to localStorage
+            persistState();
         }
     }
     
@@ -897,6 +942,9 @@ export function setupState() {
             oldValue,
             newValue: [...state.mappings.transformationBlocks[mappingId]]
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
