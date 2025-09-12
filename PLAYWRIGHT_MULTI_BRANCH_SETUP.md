@@ -8,9 +8,9 @@ When working with multiple branches that create separate copies of the repositor
 - Committing thousands of node_modules files to git
 - Playwright browser binaries downloaded multiple times
 
-## The Solution: Lightweight Branch Setup
+## The Solution: Global Installation + Symlinks 
 
-### 1. Global Playwright Installation (One-time Setup)
+### 1. One-Time Global Setup
 
 Install Playwright globally once on your system:
 
@@ -22,11 +22,22 @@ npm install -g @playwright/test
 npx playwright install
 ```
 
-### 2. Branch Configuration
+### 2. Branch Setup (Zero Downloads!)
+
+For each new branch, simply run the setup script:
+
+```bash
+./setup-playwright.sh
+```
+
+This creates lightweight symlinks (0 bytes total!) that provide module resolution without downloading anything.
+
+### 3. Branch Configuration
 
 Each branch only needs:
-- **package.json** with Playwright scripts and dependency reference
+- **package.json** with Playwright scripts (no local dependencies!)
 - **playwright.config.js** with test configuration  
+- **setup-playwright.sh** for instant setup
 - **.gitignore** excluding node_modules
 - **tests/** directory structure
 
@@ -48,8 +59,8 @@ your-branch/
 
 ### Creating a New Branch
 1. Create your branch as usual
-2. The configuration files are already set up
-3. Run tests directly:
+2. Run the setup script: `./setup-playwright.sh`
+3. Start testing immediately:
 
 ```bash
 # In any branch
@@ -88,26 +99,29 @@ cd src && python3 -m http.server 8080
 
 ## Benefits of This Approach
 
-✅ **No repeated installs** - Playwright is available globally
+✅ **Zero downloads** - Only 0 bytes of symlinks per branch
+✅ **Instant setup** - One command creates full testing environment  
 ✅ **Clean git history** - No node_modules committed  
-✅ **Fast branch switching** - No dependency downloads
-✅ **Shared browser binaries** - One installation for all branches
-✅ **Consistent test environment** - Same config across all branches
+✅ **Shared everything** - Browsers, dependencies, all from global installation
+✅ **Full compatibility** - Works exactly like local npm install
+✅ **Fast branch switching** - No waiting, no downloads, no hassle
 
-## Alternative: Symlink Approach (If Preferred)
+## Setup Script Details
 
-If you prefer local node_modules, you can create a shared dependency directory:
+The `setup-playwright.sh` script:
+
+- ✅ Detects your global Playwright installation automatically
+- ✅ Creates minimal symlink structure (0 bytes)
+- ✅ Provides clear success confirmation
+- ✅ Shows available commands and next steps
+- ✅ Works across different Node.js installation paths
 
 ```bash
-# One-time setup
-mkdir ~/playwright-shared
-cd ~/playwright-shared
-npm init -y
-npm install @playwright/test
-npx playwright install
+# What the script does:
+mkdir -p node_modules/@playwright
+ln -s /opt/homebrew/lib/node_modules/@playwright/test node_modules/@playwright/test
 
-# In each branch
-ln -s ~/playwright-shared/node_modules ./node_modules
+# Result: Full Playwright functionality with zero disk usage!
 ```
 
 ## Troubleshooting
