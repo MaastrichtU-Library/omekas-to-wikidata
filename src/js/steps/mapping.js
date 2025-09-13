@@ -293,26 +293,20 @@ function updateSchemaPropertySuggestions(schema, properties, state) {
 function createPropertySuggestion(property, type, state) {
     const suggestion = createElement('div', { className: `property-suggestion ${type}` });
     
-    // Create elements using createElement instead of innerHTML
-    const propertyInfo = createElement('div', { className: 'property-info' });
-    const propertyId = createElement('span', { className: 'property-id' }, property.id);
-    const propertyStatus = createElement('span', { className: `property-status ${type}` }, type);
-    propertyInfo.appendChild(propertyId);
-    propertyInfo.appendChild(propertyStatus);
+    suggestion.innerHTML = `
+        <div class="property-info">
+            <span class="property-id">${property.id}</span>
+            <span class="property-status ${type}">${type}</span>
+        </div>
+        <div class="property-actions">
+            <button class="add-property-btn" data-property-id="${property.id}" data-type="${type}">
+                Add Property
+            </button>
+        </div>
+    `;
     
-    const propertyActions = createElement('div', { className: 'property-actions' });
-    const addPropertyBtn = createElement('button', {
-        className: 'add-property-btn',
-        'data-property-id': property.id,
-        'data-type': type
-    }, 'Add Property');
-    propertyActions.appendChild(addPropertyBtn);
-    
-    suggestion.appendChild(propertyInfo);
-    suggestion.appendChild(propertyActions);
-    
-    // Add click handler (using variable reference)
-    const addBtn = addPropertyBtn;
+    // Add click handler
+    const addBtn = suggestion.querySelector('.add-property-btn');
     addBtn.addEventListener('click', async () => {
         try {
             addBtn.disabled = true;
