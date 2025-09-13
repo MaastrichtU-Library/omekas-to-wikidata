@@ -5,6 +5,7 @@
  */
 
 import { detectSourceRequirement } from './schema-property-mapper.js';
+import { parseShExCode } from './shex-parser.js';
 
 /**
  * Default Entity Schemas for the application
@@ -191,10 +192,88 @@ export async function fetchEntitySchemaDetails(schemaId) {
 
 /**
  * Parse ShEx code to extract property information
+ * Enhanced with backwards-compatible dual parser implementation
+ * 
+ * @param {string} shexCode - ShEx code from Entity Schema  
+ * @param {Object} options - Parsing options (optional)
+ * @param {boolean} options.useNewParser - Use new parser (default: false for backwards compatibility)
+ * @param {boolean} options.strictMode - Throw errors on parsing failures (default: false)
+ * @param {boolean} options.enableFallback - Enable fallback to legacy parser (default: true)
+ * @returns {Object} Object with required and optional properties
+ */
+export function parseShExProperties(shexCode, options = {}) {
+    const opts = {
+        useNewParser: false, // Default to legacy for backwards compatibility
+        strictMode: false,
+        enableFallback: true,
+        ...options
+    };
+    
+    // NEW PARSER PATH
+    if (opts.useNewParser) {
+        try {
+            const parsed = parseShExCode(shexCode, {
+                strictMode: opts.strictMode,
+                preserveComments: true
+            });
+            
+            // Convert new parser format to legacy format for backwards compatibility
+            const result = {
+                required: parsed.properties.required.map(prop => ({
+                    id: prop.id,
+                    label: prop.label,
+                    description: prop.description, 
+                    url: prop.url,
+                    requiresSource: prop.requiresSource
+                })),
+                optional: parsed.properties.optional.map(prop => ({
+                    id: prop.id,
+                    label: prop.label,
+                    description: prop.description,
+                    url: prop.url,
+                    requiresSource: prop.requiresSource
+                }))
+            };
+            
+            // Apply legacy fallback behavior if no properties found
+            if (result.required.length === 0 && result.optional.length === 0) {
+                result.required.push({
+                    id: 'P31',
+                    label: 'instance of', 
+                    description: 'that class of which this subject is a particular example',
+                    url: 'https://www.wikidata.org/wiki/Property:P31',
+                    requiresSource: false
+                });
+            }
+            
+            return result;
+            
+        } catch (error) {
+            console.warn('New ShEx parser failed:', error);
+            
+            if (!opts.enableFallback) {
+                throw error;
+            }
+            
+            console.log('Falling back to legacy parser for backwards compatibility');
+            // Continue to legacy parser below
+        }
+    }
+    
+    // LEGACY PARSER PATH (EXACT ORIGINAL IMPLEMENTATION)
+    // This is the original parseShExProperties function preserved for backwards compatibility
+    return parseShExPropertiesLegacy(shexCode);
+}
+
+/**
+ * Legacy ShEx parser implementation
+ * EXACT copy of original parseShExProperties for backwards compatibility
+ * DO NOT MODIFY - used as fallback and reference implementation
+ * 
  * @param {string} shexCode - ShEx code from Entity Schema
  * @returns {Object} Object with required and optional properties
  */
-export function parseShExProperties(shexCode) {
+function parseShExPropertiesLegacy(shexCode) {
     const requiredProperties = [];
     const optionalProperties = [];
     
