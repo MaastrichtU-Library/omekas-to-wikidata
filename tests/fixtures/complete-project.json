@@ -1,0 +1,44 @@
+{
+  "version": "1.0",
+  "created": "2025-01-15T10:00:00Z",
+  "name": "Van Gogh Artworks Test Project",
+  "description": "A test project for validating the Omeka S to Wikidata workflow",
+  "currentStep": 3,
+  "data": {
+    "metadata": {
+      "total": 3,
+      "export_date": "2025-01-15T10:00:00Z",
+      "source": "test-project"
+    },
+    "items": [
+      {
+        "id": 1,
+        "title": "Van Gogh Self-Portrait",
+        "dcterms:title": [{
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Van Gogh Self-Portrait"
+        }],
+        "dcterms:creator": [{
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Vincent van Gogh"
+        }],
+        "dcterms:date": [{
+          "type": "literal",
+          "property_id": 4,
+          "@value": "1889"
+        }]
+      }
+    ]
+  },
+  "mappings": {
+    "mappedKeys": [
+      "dcterms:title",
+      "dcterms:creator", 
+      "dcterms:date"
+    ],
+    "ignoredKeys": [],
+    "entitySchema": "Q3305213"
+  }
+}
