@@ -1,5 +1,10 @@
 # CLAUDE.md – Project Conventions
 
+## JavaScript Module Navigation
+- **ALWAYS consult `JS_MODULE_MAP.md`** to find the right JavaScript module for any task
+- This file contains a complete map of all `.js` files, their purposes, and key exports
+- Use the Quick Reference table to instantly locate functionality
+
 ## Workflow
 - Only edit code inside the `src/` directory
 - After each successful file modification, run:
@@ -8,6 +13,11 @@
   ```
 - Use `git restore` (file) or `git revert` (commit) when the user says "undo"
 - When making changes make sure to keep the documentation up to date.
+- **When modifying any `.js` file:** Update `JS_MODULE_MAP.md` if you:
+  - Add/remove exported functions
+  - Create new modules or files
+  - Change module responsibilities
+  - Add new dependencies
 - Commit changes when logical units of work are complete
 ### GitHub Issues Management
 The project uses an automated local synchronization system for GitHub issues with smart timestamp-based change detection.
@@ -193,6 +203,7 @@ src/js/
 - Document APIs and complex functions
 - Keep README up to date
 - Add JSDoc comments to functions when appropriate
+- **Keep JS_MODULE_MAP.md synchronized** - Update whenever JavaScript module structure changes
 
 ## Code Replacement Policy
 - **ALWAYS fully replace code** - no fallbacks, no legacy methods, no side-by-side implementations
