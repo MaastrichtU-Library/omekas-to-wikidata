@@ -208,11 +208,157 @@ export function displayReconciliationError(error) {
     const matchesContainer = document.querySelector('.matches-container');
     const noMatches = document.querySelector('.no-matches');
     
-    loadingIndicator.style.display = 'none';
-    matchesContainer.style.display = 'none';
-    noMatches.style.display = 'block';
-    noMatches.innerHTML = `
-        <p>Error during reconciliation: ${error.message}</p>
-        <button class="btn secondary" onclick="switchTab('manual')">Try Manual Search</button>
+    if (loadingIndicator) loadingIndicator.style.display = 'none';
+    if (matchesContainer) matchesContainer.style.display = 'none';
+    if (noMatches) {
+        noMatches.style.display = 'block';
+        noMatches.innerHTML = `
+            <p>Error during reconciliation: ${error.message}</p>
+            <button class="btn secondary" onclick="switchTab('manual')">Try Manual Search</button>
+        `;
+    }
+}
+
+/**
+ * Display reconciliation results (compatibility function)
+ * Now redirects to the new modal system
+ */
+export function displayReconciliationResults(matches, propertyType, value) {
+    console.log('displayReconciliationResults called with:', { matches, propertyType, value });
+    
+    // Update the existing matches display if modal is open
+    const existingMatchesContainer = document.getElementById('existing-matches');
+    if (existingMatchesContainer && matches && matches.length > 0) {
+        const topMatches = matches.slice(0, 3);
+        
+        existingMatchesContainer.innerHTML = `
+            <div class="section-title">Existing Matches</div>
+            <div class="matches-list">
+                ${topMatches.map(match => createMatchItemHTML(match)).join('')}
+            </div>
+            ${matches.length > 3 ? `
+                <button class="btn btn-link" onclick="showAllMatches()">Show all ${matches.length} matches</button>
+            ` : ''}
+        `;
+    } else if (existingMatchesContainer) {
+        existingMatchesContainer.innerHTML = `
+            <div class="section-title">Existing Matches</div>
+            <div class="no-matches">No automatic matches found</div>
+        `;
+    }
+}
+
+/**
+ * Display high confidence matches (compatibility function)
+ */
+export function displayHighConfidenceMatches(matches) {
+    console.log('displayHighConfidenceMatches called with:', matches);
+    
+    // Filter high confidence matches (score > 80)
+    const highConfidenceMatches = matches.filter(match => (match.score || 0) > 80);
+    
+    if (highConfidenceMatches.length > 0) {
+        displayReconciliationResults(highConfidenceMatches, 'wikibase-item', '');
+    }
+}
+
+/**
+ * Display fallback options (compatibility function)
+ */
+export function displayFallbackOptions(options = []) {
+    console.log('displayFallbackOptions called with:', options);
+    
+    // This is now handled by the alternative actions in the new modal
+    const alternativeActions = document.querySelector('.alternative-actions');
+    if (alternativeActions) {
+        alternativeActions.style.display = 'flex';
+    }
+}
+
+/**
+ * Show custom input interface (compatibility function)
+ */
+export function showCustomInputInterface(propertyType, value) {
+    console.log('showCustomInputInterface called with:', { propertyType, value });
+    
+    // This is now handled by the string editor in the new modal
+    const stringEditor = document.querySelector('.string-editor');
+    if (stringEditor) {
+        stringEditor.style.display = 'block';
+    }
+}
+
+/**
+ * Setup manual search in fallback (compatibility function)
+ */
+export function setupManualSearchInFallback() {
+    console.log('setupManualSearchInFallback called');
+    
+    // This is now handled by the manual search section in the new modal
+    const manualSearch = document.querySelector('.manual-search');
+    if (manualSearch) {
+        manualSearch.style.display = 'block';
+    }
+}
+
+/**
+ * Display fallback search results (compatibility function)
+ */
+export function displayFallbackSearchResults(results) {
+    console.log('displayFallbackSearchResults called with:', results);
+    
+    // Update search results if modal is open
+    const searchResults = document.getElementById('search-results');
+    if (searchResults && results && results.length > 0) {
+        searchResults.innerHTML = `
+            <div class="search-matches">
+                ${results.slice(0, 5).map(result => createMatchItemHTML(result)).join('')}
+            </div>
+        `;
+    } else if (searchResults) {
+        searchResults.innerHTML = '<div class="no-results">No results found</div>';
+    }
+}
+
+/**
+ * Setup expanded search (compatibility function)
+ */
+export function setupExpandedSearch() {
+    console.log('setupExpandedSearch called');
+    
+    // This functionality is now built into the manual search section
+    const searchContainer = document.querySelector('.search-container');
+    if (searchContainer) {
+        searchContainer.style.display = 'flex';
+    }
+}
+
+/**
+ * Helper function to create match item HTML
+ */
+function createMatchItemHTML(match) {
+    const matchId = match.id || match.concepturi || '';
+    const matchName = match.name || match.label || 'Unnamed';
+    const matchDescription = match.description || 'No description';
+    const confidence = match.score ? Math.round(match.score) + '%' : '';
+    
+    return `
+        <div class="match-item" data-match-id="${matchId}" onclick="selectMatch('${matchId}')">
+            <div class="match-content">
+                <div class="match-name">${escapeHtml(matchName)}</div>
+                <div class="match-description">${escapeHtml(matchDescription)}</div>
+                <div class="match-id">${matchId}</div>
+            </div>
+            ${confidence ? `<div class="match-confidence">${confidence}</div>` : ''}
+        </div>
     `;
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
