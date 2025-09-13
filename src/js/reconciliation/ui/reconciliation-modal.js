@@ -380,8 +380,16 @@ function createMatchItem(match) {
 
 // Global functions for modal interactions
 window.closeReconciliationModal = function() {
-    // Implementation will be provided by the modal system
-    console.log('Close modal');
+    // Try multiple methods to close the modal
+    if (typeof window.modalUI?.closeModal === 'function') {
+        window.modalUI.closeModal();
+    } else if (document.querySelector('.modal-overlay')) {
+        // Fallback: remove modal elements directly
+        document.querySelector('.modal-overlay')?.remove();
+        document.querySelector('#modal-container')?.remove();
+    } else {
+        console.error('Unable to close modal - no modal UI system found');
+    }
 };
 
 window.confirmReconciliation = function() {
@@ -602,27 +610,41 @@ window.showTopMatches = function() {
 
 // New function to directly apply a match without needing confirmation
 window.applyMatchDirectly = function(matchId) {
-    // Directly call selectMatchAndAdvance if available
+    // Get match details first
+    const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
+    const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
+    
+    if (!matchElement) {
+        console.error('Match element not found for ID:', matchId);
+        return;
+    }
+    
+    const matchLabel = matchElement.querySelector('.match-label')?.textContent || 'Unknown';
+    const matchDescription = matchElement.querySelector('.match-description')?.textContent || 'No description';
+    
+    // Check if we have the proper handler functions available
     if (typeof window.selectMatchAndAdvance === 'function') {
+        // Use the proper handler that applies reconciliation and closes modal
         window.selectMatchAndAdvance(matchId);
+    } else if (typeof window.markCellAsReconciled === 'function' && window.currentModalContext) {
+        // Direct reconciliation if we have the function and context
+        window.markCellAsReconciled(window.currentModalContext, {
+            type: 'wikidata',
+            id: matchId,
+            label: matchLabel,
+            description: matchDescription
+        });
+        window.closeReconciliationModal();
     } else {
-        // Fallback: set selection and confirm
-        const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
-        const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
-        if (matchElement) {
-            const matchLabel = matchElement.querySelector('.match-label')?.textContent;
-            const matchDescription = matchElement.querySelector('.match-description')?.textContent;
-            
-            window.selectedMatch = {
-                id: matchId,
-                name: matchLabel || 'Unknown',
-                label: matchLabel || 'Unknown',
-                description: matchDescription || 'No description'
-            };
-            
-            // Directly confirm the selection
-            window.confirmReconciliation();
-        }
+        // Last resort: store selection and try to confirm
+        console.warn('No proper reconciliation handlers available, attempting fallback');
+        window.selectedMatch = {
+            id: matchId,
+            name: matchLabel,
+            label: matchLabel,
+            description: matchDescription
+        };
+        window.confirmReconciliation();
     }
 };
 

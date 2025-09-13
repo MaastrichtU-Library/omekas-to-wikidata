@@ -509,11 +509,7 @@ export function setupReconciliationStep(state) {
         return autoAdvanceSetting;
     }
     
-    
-    /**
-    // All factory functions available via modules object
-    
-    // Set up modal interaction handlers
+    // Set up modal interaction handlers (moved inside function to access modules)
     const currentReconciliationCellRef = { current: null };
     
     // Update references to use the new ref pattern
@@ -547,14 +543,12 @@ export function setupReconciliationStep(state) {
     window.showAllMatches = modalInteractionHandlers.showAllMatches;
     window.showTopMatches = modalInteractionHandlers.showTopMatches;
     window.selectManualMatch = modalInteractionHandlers.selectManualMatch;
+    
+    // Also expose modalUI to global scope for modal closing
+    window.modalUI = modalUI;
+    
     window.applyTypeOverride = modalInteractionHandlers.applyTypeOverride;
     window.confirmReconciliation = modalInteractionHandlers.confirmReconciliation; // Legacy
-    
-    
-    
-    /**
-     * Setup expanded search functionality in progressive disclosure
-     */
     
     /**
      * Setup auto-advance toggle functionality
