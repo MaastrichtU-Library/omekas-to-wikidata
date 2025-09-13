@@ -78,19 +78,63 @@ export async function searchEntitySchemas(query) {
             const data = await response.json();
 
             if (data.query && data.query.search && data.query.search.length > 0) {
-                schemaResults = data.query.search
+                // Get the IDs of matching schemas
+                const schemaIds = data.query.search
                     .filter(item => item.title.match(/^EntitySchema:E\d+$/))
                     .slice(0, 10)
-                    .map(item => {
-                        const id = item.title.replace('EntitySchema:', '');
-                        const snippet = item.snippet ? item.snippet.replace(/<[^>]+>/g, '') : '';
+                    .map(item => item.title.replace('EntitySchema:', ''));
+                
+                // Fetch proper labels and descriptions for each schema
+                const schemaPromises = schemaIds.map(async (id) => {
+                    try {
+                        // Try to get cached or fetch detailed info
+                        const cachedSchema = entitySchemaCache.get(id);
+                        if (cachedSchema && cachedSchema.label && cachedSchema.description) {
+                            return cachedSchema;
+                        }
+                        
+                        // Fetch just the label and description using a simpler API call
+                        const parseUrl = `https://www.wikidata.org/w/api.php?action=parse&page=EntitySchema:${id}&format=json&origin=*&prop=displaytitle`;
+                        const parseResponse = await fetch(parseUrl);
+                        
+                        let label = `Entity Schema ${id}`;
+                        let description = `Entity Schema ${id}`;
+                        
+                        if (parseResponse.ok) {
+                            const parseData = await parseResponse.json();
+                            if (parseData.parse && parseData.parse.displaytitle) {
+                                // Extract label from displaytitle
+                                const displayTitle = parseData.parse.displaytitle.replace(/<[^>]*>/g, '');
+                                // If the display title has content beyond just the ID, use it
+                                if (displayTitle && displayTitle !== `EntitySchema:${id}`) {
+                                    label = displayTitle.replace('EntitySchema:', '').trim();
+                                    // Clean up label if it contains both label and ID
+                                    const labelParts = label.match(/^(.+?)\s*\(E\d+\)$/);
+                                    if (labelParts) {
+                                        label = labelParts[1].trim();
+                                    }
+                                }
+                            }
+                        }
+                        
                         return {
                             id: id,
-                            label: item.title.replace('EntitySchema:', '') || `Entity Schema ${id}`,
-                            description: snippet || `Entity Schema ${id}`,
+                            label: label,
+                            description: description,
                             url: `https://www.wikidata.org/wiki/EntitySchema:${id}`
                         };
-                    });
+                    } catch (e) {
+                        console.error(`Error fetching schema ${id}:`, e);
+                        return {
+                            id: id,
+                            label: `Entity Schema ${id}`,
+                            description: `Entity Schema ${id}`,
+                            url: `https://www.wikidata.org/wiki/EntitySchema:${id}`
+                        };
+                    }
+                });
+                
+                schemaResults = await Promise.all(schemaPromises);
             }
         }
 

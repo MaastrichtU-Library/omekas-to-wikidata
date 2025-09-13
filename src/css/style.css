@@ -511,16 +511,17 @@ button {
 .property-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
 }
 
 .property-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 5px 8px;
     border-radius: 6px;
     transition: background-color 0.2s ease;
+    border-bottom: 1px solid #eee;
+
 }
 
 .property-item:hover {

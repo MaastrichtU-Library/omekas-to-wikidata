@@ -287,29 +287,17 @@ export function initializeSchemaOverview(state) {
             }, '📎');
         }
         
-        // Schema comment indicator if present
-        let schemaCommentIndicator = null;
-        if (property.schemaComment) {
-            schemaCommentIndicator = createElement('span', {
-                className: 'schema-comment-indicator',
-                title: `Schema note: ${property.schemaComment}`,
-                style: 'cursor: help; opacity: 0.7; margin-left: 4px;'
-            }, 'ℹ️');
-        }
-
         item.appendChild(statusIndicator);
         item.appendChild(label);
         item.appendChild(createElement('span', {}, ' '));
-        item.appendChild(idLink);
         
+        // Add source indicator BEFORE the P-ID
         if (sourceIndicator) {
-            item.appendChild(createElement('span', {}, ' '));
             item.appendChild(sourceIndicator);
+            item.appendChild(createElement('span', {}, ' '));
         }
         
-        if (schemaCommentIndicator) {
-            item.appendChild(schemaCommentIndicator);
-        }
+        item.appendChild(idLink);
 
         return item;
     }
