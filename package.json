@@ -7,7 +7,15 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:smoke": "playwright test --grep @smoke",
+    "test:e2e:critical": "playwright test --grep @critical",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:codegen": "playwright codegen http://localhost:8080",
+    "test:report": "playwright show-report"
   },
   "devDependencies": {
     "@babel/core": "^7.23.3",
