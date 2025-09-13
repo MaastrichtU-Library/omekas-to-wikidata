@@ -5709,10 +5709,6 @@ pre.sample-value {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-    border-radius: 8px 8px 0 0;
 }
 
 .data-type-indicator {
@@ -5736,31 +5732,6 @@ pre.sample-value {
     font-size: 0.85rem;
 }
 
-.entity-schema-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.schema-label {
-    font-weight: 600;
-    color: #495057;
-    font-size: 0.9rem;
-}
-
-.schema-link {
-    color: #0d6efd;
-    text-decoration: none;
-    font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    background: #e7f1ff;
-    border-radius: 4px;
-    font-size: 0.85rem;
-}
-
-.schema-link:hover {
-    background: #d1ecf1;
-}
 
 /* Transformation Result Section */
 .transformation-result {
@@ -6333,8 +6304,7 @@ pre.sample-value {
         align-items: stretch;
     }
     
-    .data-type-indicator,
-    .entity-schema-info {
+    .data-type-indicator {
         justify-content: center;
     }
     

@@ -8,7 +8,6 @@
  */
 
 import { createElement } from '../../ui/components.js';
-import { tryDirectWikidataSearch } from '../core/entity-matcher.js';
 import { 
     extractRegexConstraints, 
     validateStringValue, 
@@ -22,13 +21,6 @@ import {
  * Create the simplified reconciliation modal content
  */
 export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null) {
-    // Placeholder entity schema information
-    const entitySchema = {
-        id: 'E473',
-        label: 'edition or translation of a written work, Maastricht University Library',
-        url: 'https://www.wikidata.org/wiki/EntitySchema:E473'
-    };
-    
     // Determine data type from property
     const dataType = getDataTypeFromProperty(property, propertyData);
     const transformedValue = getTransformedValue(value, property);
@@ -53,10 +45,6 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
             <div class="data-type-indicator">
                 <span class="data-type-label">Expected:</span>
                 <span class="data-type-value">${getDataTypeDisplayName(dataType)}</span>
-            </div>
-            <div class="entity-schema-info">
-                <span class="schema-label">Schema:</span>
-                <a href="${entitySchema.url}" target="_blank" class="schema-link">${entitySchema.id}</a>
             </div>
         </div>
 
@@ -166,7 +154,6 @@ function createWikidataItemSection(value) {
 
             <!-- Alternative Actions -->
             <div class="alternative-actions">
-                <button class="btn btn-outline" onclick="useAsString()">Use as String Instead</button>
                 <button class="btn btn-outline" onclick="createNewWikidataItem()">Create New Item</button>
             </div>
         </div>
@@ -277,6 +264,36 @@ function getTransformedValue(value, property) {
     return value.trim();
 }
 
+/**
+ * Simple Wikidata search without artificial scoring or complex metadata
+ */
+async function searchWikidataItems(query) {
+    try {
+        const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=item&limit=10`;
+        
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error(`Wikidata API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.search || data.search.length === 0) {
+            return [];
+        }
+        
+        // Return simple format: id, label, description
+        return data.search.map(result => ({
+            id: result.id,
+            label: result.label || result.id,
+            description: result.description || ''
+        }));
+        
+    } catch (error) {
+        console.error('Wikidata search failed:', error);
+        return [];
+    }
+}
 
 /**
  * Escape HTML to prevent XSS
@@ -295,7 +312,7 @@ export async function loadExistingMatches(value) {
     if (!matchesContainer) return;
     
     try {
-        const matches = await tryDirectWikidataSearch(value);
+        const matches = await searchWikidataItems(value);
         
         if (matches && matches.length > 0) {
             const topMatches = matches.slice(0, 3); // Show top 3 matches
@@ -336,11 +353,12 @@ function createMatchItem(match) {
     return `
         <div class="match-item" data-match-id="${safeMatchId}" onclick="selectMatch('${jsEscapedId}')">
             <div class="match-content">
-                <div class="match-name">${escapeHtml(match.name || match.label || 'Unnamed')}</div>
+                <div class="match-label">${escapeHtml(match.label || 'Unnamed')}</div>
+                <div class="match-id">
+                    <a href="https://www.wikidata.org/wiki/${safeMatchId}" target="_blank">${safeMatchId}</a>
+                </div>
                 <div class="match-description">${escapeHtml(match.description || 'No description')}</div>
-                <div class="match-id">${safeMatchId}</div>
             </div>
-            <div class="match-confidence">${match.score ? Math.round(match.score) + '%' : ''}</div>
         </div>
     `;
 }
@@ -352,8 +370,27 @@ window.closeReconciliationModal = function() {
 };
 
 window.confirmReconciliation = function() {
-    // Implementation will be provided by the modal system
-    console.log('Confirm reconciliation');
+    if (!window.currentModalContext) {
+        console.error('No modal context available');
+        return;
+    }
+    
+    // Check if a match was selected
+    if (window.selectedMatch) {
+        // Use selected match
+        if (window.selectMatchAndAdvance) {
+            window.selectMatchAndAdvance(window.selectedMatch.id);
+        } else {
+            console.log('Selected match:', window.selectedMatch);
+        }
+    } else {
+        // Use current value as custom value
+        if (window.confirmCustomValue) {
+            window.confirmCustomValue();
+        } else {
+            console.log('Confirm custom value:', window.currentModalContext.currentValue || window.currentModalContext.transformedValue);
+        }
+    }
 };
 
 window.performWikidataSearch = async function() {
@@ -368,7 +405,7 @@ window.performWikidataSearch = async function() {
     resultsContainer.innerHTML = '<div class="loading">Searching...</div>';
     
     try {
-        const matches = await tryDirectWikidataSearch(query);
+        const matches = await searchWikidataItems(query);
         
         if (matches && matches.length > 0) {
             resultsContainer.innerHTML = `
@@ -405,7 +442,7 @@ window.selectMatch = function(matchId) {
         // Store selected match for confirmation
         window.selectedMatch = {
             id: matchId,
-            name: matchElement.querySelector('.match-name')?.textContent,
+            name: matchElement.querySelector('.match-label')?.textContent,
             description: matchElement.querySelector('.match-description')?.textContent
         };
     }
@@ -500,7 +537,7 @@ window.showAllMatches = async function() {
     if (!matchesContainer) return;
     
     try {
-        const matches = await tryDirectWikidataSearch(value);
+        const matches = await searchWikidataItems(value);
         
         if (matches && matches.length > 0) {
             matchesContainer.innerHTML = `
@@ -640,7 +677,7 @@ export function createModalInteractionHandlers(dependencies) {
             const matchCard = document.querySelector(`[data-match-id="${matchId}"]`);
             if (!matchCard) return;
             
-            const matchName = matchCard.querySelector('.match-name, .result-name')?.textContent || 'Unknown';
+            const matchName = matchCard.querySelector('.match-label, .result-name')?.textContent || 'Unknown';
             const matchDescription = matchCard.querySelector('.match-description, .result-description')?.textContent || 'No description';
             
             // Mark as reconciled
