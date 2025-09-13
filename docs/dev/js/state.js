@@ -27,7 +27,9 @@ export function setupState() {
         selectedExample: null,
         
         // Step 2: Mapping
-        entitySchema: '',
+        entitySchema: '', // Deprecated - use selectedEntitySchema instead
+        selectedEntitySchema: null, // Current selected Entity Schema object
+        entitySchemaHistory: [], // Recently selected schemas for quick access
         mappings: {
             nonLinkedKeys: [],
             mappedKeys: [],
@@ -35,6 +37,15 @@ export function setupState() {
             manualProperties: [],
             transformationBlocks: {}, // mappingId -> array of transformation blocks
             selectedTransformationFields: {} // mappingId -> selected field key
+        },
+        
+        // Entity Schema mapping status tracking
+        schemaMappingStatus: {
+            requiredMapped: [],
+            requiredUnmapped: [],
+            optionalMapped: [],
+            optionalUnmapped: [],
+            lastUpdated: null
         },
         
         // Step 3: Reconciliation
@@ -1007,6 +1018,113 @@ export function setupState() {
     }
     
     /**
+     * Sets the selected Entity Schema
+     * @param {Object} schema - The Entity Schema object
+     */
+    function setSelectedEntitySchema(schema) {
+        const oldValue = state.selectedEntitySchema;
+        state.selectedEntitySchema = schema;
+        
+        // Add to history if not already present
+        if (schema && schema.id) {
+            ensureEntitySchemaHistory();
+            const existingIndex = state.entitySchemaHistory.findIndex(s => s.id === schema.id);
+            if (existingIndex > -1) {
+                // Move to front
+                state.entitySchemaHistory.splice(existingIndex, 1);
+            }
+            // Add to front, keep only last 10
+            state.entitySchemaHistory.unshift(schema);
+            state.entitySchemaHistory = state.entitySchemaHistory.slice(0, 10);
+        }
+        
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'selectedEntitySchema',
+            oldValue,
+            newValue: schema
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets the currently selected Entity Schema
+     * @returns {Object|null} The selected Entity Schema or null
+     */
+    function getSelectedEntitySchema() {
+        return state.selectedEntitySchema;
+    }
+    
+    /**
+     * Gets the Entity Schema history
+     * @returns {Array} Array of recently selected Entity Schemas
+     */
+    function getEntitySchemaHistory() {
+        ensureEntitySchemaHistory();
+        return [...state.entitySchemaHistory];
+    }
+    
+    /**
+     * Ensures the Entity Schema history array is initialized
+     */
+    function ensureEntitySchemaHistory() {
+        if (!state.entitySchemaHistory) {
+            state.entitySchemaHistory = [];
+        }
+    }
+    
+    /**
+     * Clears the Entity Schema history
+     */
+    function clearEntitySchemaHistory() {
+        const oldValue = [...(state.entitySchemaHistory || [])];
+        state.entitySchemaHistory = [];
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'entitySchemaHistory',
+            oldValue,
+            newValue: []
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Updates the Entity Schema mapping status
+     * @param {Object} status - Mapping status object with categorized properties
+     */
+    function updateSchemaMappingStatus(status) {
+        const oldValue = { ...state.schemaMappingStatus };
+        state.schemaMappingStatus = {
+            ...status,
+            lastUpdated: new Date().toISOString()
+        };
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'schemaMappingStatus',
+            oldValue,
+            newValue: state.schemaMappingStatus
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets the current Entity Schema mapping status
+     * @returns {Object} Current mapping status
+     */
+    function getSchemaMappingStatus() {
+        return { ...state.schemaMappingStatus };
+    }
+    
+    /**
      * Clear persisted state from localStorage
      */
     function clearPersistedState() {
@@ -1055,6 +1173,13 @@ export function setupState() {
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,
         setReconciliationProgress,
+        // Convenience methods for Entity Schema
+        setSelectedEntitySchema,
+        getSelectedEntitySchema,
+        getEntitySchemaHistory,
+        clearEntitySchemaHistory,
+        updateSchemaMappingStatus,
+        getSchemaMappingStatus,
         // Utility methods
         loadMockData,
         // Persistence methods
