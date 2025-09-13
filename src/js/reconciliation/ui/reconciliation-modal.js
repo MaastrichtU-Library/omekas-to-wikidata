@@ -20,7 +20,7 @@ import {
 /**
  * Create the simplified reconciliation modal content
  */
-export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null) {
+export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
     // Determine data type from property
     const dataType = getDataTypeFromProperty(property, propertyData);
     const transformedValue = getTransformedValue(value, property);
@@ -34,7 +34,8 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
         transformedValue,
         currentValue: transformedValue,
         propertyData,
-        dataType
+        dataType,
+        existingMatches
     };
     
     const modalContent = createElement('div', { className: 'reconciliation-modal-redesign' });
@@ -105,7 +106,8 @@ export function initializeReconciliationModal() {
 function initializeModalInteractions(dataType, value, property, propertyData) {
     if (dataType === 'wikibase-item') {
         // Load existing matches for Wikidata items
-        loadExistingMatches(value);
+        const existingMatches = window.currentModalContext?.existingMatches;
+        loadExistingMatches(value, existingMatches);
     } else if (dataType === 'string') {
         // Set up live validation for string inputs
         const stringEditor = document.getElementById('string-editor');
@@ -306,12 +308,17 @@ function escapeHtml(text) {
 /**
  * Load existing matches for Wikidata items
  */
-export async function loadExistingMatches(value) {
+export async function loadExistingMatches(value, existingMatches = null) {
     const matchesContainer = document.getElementById('existing-matches');
     if (!matchesContainer) return;
     
     try {
-        const matches = await searchWikidataItems(value);
+        let matches = existingMatches;
+        
+        // If no existing matches provided, search for new ones
+        if (!matches || matches.length === 0) {
+            matches = await searchWikidataItems(value);
+        }
         
         if (matches && matches.length > 0) {
             const topMatches = matches.slice(0, 3); // Show top 3 matches
@@ -325,6 +332,15 @@ export async function loadExistingMatches(value) {
                     <button class="btn btn-link" onclick="showAllMatches()">Show all ${matches.length} matches</button>
                 ` : ''}
             `;
+            
+            // Auto-select high-confidence matches (≥90%)
+            const highConfidenceMatch = matches.find(match => match.score >= 90);
+            if (highConfidenceMatch) {
+                setTimeout(() => {
+                    selectMatch(highConfidenceMatch.id);
+                }, 100);
+            }
+            
         } else {
             matchesContainer.innerHTML = `
                 <div class="section-title">Existing Matches</div>
@@ -354,7 +370,7 @@ function createMatchItem(match) {
             <div class="match-content">
                 <div class="match-label">${escapeHtml(match.label || 'Unnamed')}</div>
                 <div class="match-id">
-                    <a href="https://www.wikidata.org/wiki/${safeMatchId}" target="_blank">${safeMatchId}</a>
+                    <a href="https://www.wikidata.org/wiki/${safeMatchId}" target="_blank" onclick="event.stopPropagation()">${safeMatchId}</a>
                 </div>
                 <div class="match-description">${escapeHtml(match.description || 'No description')}</div>
             </div>
@@ -375,19 +391,32 @@ window.confirmReconciliation = function() {
     }
     
     // Check if a match was selected
-    if (window.selectedMatch) {
-        // Use selected match
-        if (window.selectMatchAndAdvance) {
+    if (window.selectedMatch && window.selectedMatch.id) {
+        // Call the global selectMatchAndAdvance function that should be set up by the reconciliation system
+        if (typeof window.selectMatchAndAdvance === 'function') {
             window.selectMatchAndAdvance(window.selectedMatch.id);
         } else {
-            console.log('Selected match:', window.selectedMatch);
+            // Fallback: manually trigger the reconciliation logic
+            console.log('Confirm selected match:', window.selectedMatch);
+            // Try to find and call the modal close and reconciliation logic
+            if (typeof window.closeModal === 'function') {
+                window.closeModal();
+            } else if (typeof window.closeReconciliationModal === 'function') {
+                window.closeReconciliationModal();
+            }
         }
     } else {
         // Use current value as custom value
-        if (window.confirmCustomValue) {
+        if (typeof window.confirmCustomValue === 'function') {
             window.confirmCustomValue();
         } else {
             console.log('Confirm custom value:', window.currentModalContext.currentValue || window.currentModalContext.transformedValue);
+            // Try to find and call the modal close logic
+            if (typeof window.closeModal === 'function') {
+                window.closeModal();
+            } else if (typeof window.closeReconciliationModal === 'function') {
+                window.closeReconciliationModal();
+            }
         }
     }
 };
@@ -439,11 +468,17 @@ window.selectMatch = function(matchId) {
         }
         
         // Store selected match for confirmation
+        const matchLabel = matchElement.querySelector('.match-label')?.textContent;
+        const matchDescription = matchElement.querySelector('.match-description')?.textContent;
+        
         window.selectedMatch = {
             id: matchId,
-            name: matchElement.querySelector('.match-label')?.textContent,
-            description: matchElement.querySelector('.match-description')?.textContent
+            name: matchLabel || 'Unknown',
+            label: matchLabel || 'Unknown', // Add label as well for compatibility
+            description: matchDescription || 'No description'
         };
+        
+        console.log('Selected match:', window.selectedMatch);
     }
 };
 
@@ -536,7 +571,12 @@ window.showAllMatches = async function() {
     if (!matchesContainer) return;
     
     try {
-        const matches = await searchWikidataItems(value);
+        let matches = window.currentModalContext?.existingMatches;
+        
+        // If no existing matches, search for new ones
+        if (!matches || matches.length === 0) {
+            matches = await searchWikidataItems(value);
+        }
         
         if (matches && matches.length > 0) {
             matchesContainer.innerHTML = `
@@ -555,7 +595,8 @@ window.showAllMatches = async function() {
 window.showTopMatches = function() {
     const value = document.querySelector('.transformed-value')?.textContent;
     if (value) {
-        loadExistingMatches(value);
+        const existingMatches = window.currentModalContext?.existingMatches;
+        loadExistingMatches(value, existingMatches);
     }
 };
 
@@ -602,7 +643,8 @@ export function createOpenReconciliationModalFactory(dependencies) {
         performAutomaticReconciliation,
         setupDynamicDatePrecision,
         setupAutoAdvanceToggle,
-        createReconciliationModalContent
+        createReconciliationModalContent,
+        state
     } = dependencies;
 
     let currentReconciliationCell = null;
@@ -610,8 +652,17 @@ export function createOpenReconciliationModalFactory(dependencies) {
     return async function openReconciliationModal(itemId, property, valueIndex, value, manualProp = null) {
         currentReconciliationCell = { itemId, property, valueIndex, value, manualProp };
         
+        // Get existing matches from reconciliation data if available
+        let existingMatches = null;
+        const currentState = state.getState();
+        const reconciliationData = currentState.reconciliation?.data || {};
+        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property] && 
+            reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
+            existingMatches = reconciliationData[itemId].properties[property].reconciled[valueIndex].matches;
+        }
+        
         // Create modal content using the new function
-        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property);
+        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches);
         
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
