@@ -1,5 +1,10 @@
 # CLAUDE.md – Project Conventions
 
+## JavaScript Module Navigation
+- **ALWAYS consult `JS_MODULE_MAP.md`** to find the right JavaScript module for any task
+- This file contains a complete map of all `.js` files, their purposes, and key exports
+- Use the Quick Reference table to instantly locate functionality
+
 ## Workflow
 - Only edit code inside the `src/` directory
 - After each successful file modification, run:
@@ -8,7 +13,12 @@
   ```
 - Use `git restore` (file) or `git revert` (commit) when the user says "undo"
 - When making changes make sure to keep the documentation up to date.
-- ALWAYS end by commiting the changes you have made!
+- **When modifying any `.js` file:** Update `JS_MODULE_MAP.md` if you:
+  - Add/remove exported functions
+  - Create new modules or files
+  - Change module responsibilities
+  - Add new dependencies
+- Commit changes when logical units of work are complete
 ### GitHub Issues Management
 The project uses an automated local synchronization system for GitHub issues with smart timestamp-based change detection.
 
@@ -83,11 +93,41 @@ node .issues/sync-issues.js --issue 42
 - Keep related functions and components together
 - Create modular components that can be reused
 - Separate concerns: data management, UI rendering, and application logic
+- **File size limit:** Maximum 1000 lines per JavaScript file
+
+### Module Organization
+- **Feature-based structure:** Group by domain (`mapping/`, `reconciliation/`, `steps/`)
+- **Layer separation:** 
+  - `core/` - Business logic and data processing
+  - `ui/` - Interface components and interactions
+  - `utils/` - Helper functions and utilities
+- **Shared modules:** Place at root level (`state.js`, `events.js`, `api/`)
+- **File naming:** Use kebab-case with descriptive names
+- **Import paths:** Use relative imports within features, absolute for shared modules
+- **Index files:** Create `index.js` files to expose public APIs from modules
+
+**Example structure:**
+```
+src/js/
+├── mapping/
+│   ├── core/           # Business logic
+│   ├── ui/             # Interface components
+│   │   └── modals/     # Modal-specific components
+│   └── index.js        # Public API
+├── reconciliation/
+│   ├── core/
+│   ├── ui/
+│   └── index.js
+├── steps/              # Workflow step handlers
+├── ui/                 # Shared UI components
+├── utils/              # Cross-cutting utilities
+└── api/                # External service interfaces
+```
 
 ### UI Component Creation
 - **ALWAYS use the component factory system** from `src/js/ui/components.js`
 - **NEVER use `document.createElement()` directly** - use standardized factory functions instead
-- **Integration Status:** 100% integrated across all core application files (as of 2025-07-02)
+- **Integration Status:** Fully integrated across all core application files
 - **Available factory functions:**
   - `createElement(tag, attrs, content)` - Base element creation with attributes and content
   - `createButton(text, options)` - Standardized buttons with consistent styling
@@ -139,13 +179,31 @@ node .issues/sync-issues.js --issue 42
 - **Benefits:** Atomic operations, cleaner code, consistent state changes, proper event notifications
 
 ## Testing
-- Test all new functionality in different browsers
-- Test error cases and edge conditions
+
+### Test Environment Setup
+- Uses Python local server with automatic port rotation for concurrent branch development
+- Run `./setup-playwright.sh` to create symlinks to global Playwright installation
+- Server automatically starts on available port (default 8080, rotates if busy)
+- Multiple branches can run tests simultaneously without conflicts
+
+### Playwright E2E Testing
+- **Test everything built** - All new functionality requires E2E test coverage
+- **Available commands:**
+  - `npm run test:e2e:smoke` - Quick smoke tests
+  - `npm run test:e2e` - Full test suite
+  - `npm run test:e2e:ui` - Interactive test runner
+  - `npm run test:e2e:codegen` - Record new tests
+- **Test organization:**
+  - Place tests in `tests/e2e/`
+  - Use `@smoke` and `@critical` tags for test categorization
+  - Test error cases and edge conditions
+  - Test across different browser contexts
 
 ## Documentation
 - Document APIs and complex functions
 - Keep README up to date
 - Add JSDoc comments to functions when appropriate
+- **Keep JS_MODULE_MAP.md synchronized** - Update whenever JavaScript module structure changes
 
 ## Code Replacement Policy
 - **ALWAYS fully replace code** - no fallbacks, no legacy methods, no side-by-side implementations
