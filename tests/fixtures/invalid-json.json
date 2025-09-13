@@ -1,0 +1,12 @@
+{
+  "metadata": {
+    "total": 1,
+    "export_date": "2025-01-15T10:00:00Z"
+    // Missing comma here - invalid JSON
+  },
+  "items": [
+    {
+      "id": 1
+      "title": "Invalid JSON Item"
+    }
+  ]

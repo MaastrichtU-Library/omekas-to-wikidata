@@ -1,0 +1,47 @@
+{
+  "metadata": {
+    "total": 2,
+    "export_date": "2025-01-15T10:00:00Z",
+    "source": "test-simple"
+  },
+  "items": [
+    {
+      "id": 1,
+      "title": "Test Artwork",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "Test Artwork"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Test Artist"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "2023"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "Another Artwork",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "Another Artwork"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Another Artist"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "2022"
+      }]
+    }
+  ]
+}

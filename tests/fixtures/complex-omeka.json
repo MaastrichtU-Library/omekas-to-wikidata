@@ -1,0 +1,234 @@
+{
+  "metadata": {
+    "total": 5,
+    "export_date": "2025-01-15T10:00:00Z",
+    "source": "test-complex"
+  },
+  "items": [
+    {
+      "id": 1,
+      "title": "Mona Lisa",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "Mona Lisa"
+      }, {
+        "type": "literal",
+        "property_id": 1,
+        "@value": "La Gioconda",
+        "@language": "it"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Leonardo da Vinci"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "1503-1519"
+      }],
+      "dcterms:description": [{
+        "type": "literal",
+        "property_id": 3,
+        "@value": "A half-length portrait painting by Italian artist Leonardo da Vinci"
+      }],
+      "dcterms:subject": [{
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Portrait"
+      }, {
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Renaissance art"
+      }],
+      "dcterms:medium": [{
+        "type": "literal",
+        "property_id": 6,
+        "@value": "Oil on poplar panel"
+      }],
+      "dcterms:spatial": [{
+        "type": "literal",
+        "property_id": 7,
+        "@value": "Paris, France"
+      }],
+      "dcterms:extent": [{
+        "type": "literal",
+        "property_id": 8,
+        "@value": "77 cm × 53 cm"
+      }],
+      "dcterms:rights": [{
+        "type": "literal",
+        "property_id": 9,
+        "@value": "Public domain"
+      }],
+      "dcterms:identifier": [{
+        "type": "literal",
+        "property_id": 10,
+        "@value": "INV. 779"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "The Starry Night",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "The Starry Night"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Vincent van Gogh"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "1889-06"
+      }],
+      "dcterms:description": [{
+        "type": "literal",
+        "property_id": 3,
+        "@value": "A painting showing a swirling night sky over a village"
+      }],
+      "dcterms:subject": [{
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Landscape"
+      }, {
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Post-Impressionism"
+      }],
+      "dcterms:medium": [{
+        "type": "literal",
+        "property_id": 6,
+        "@value": "Oil on canvas"
+      }],
+      "dcterms:spatial": [{
+        "type": "literal",
+        "property_id": 7,
+        "@value": "New York, USA"
+      }],
+      "dcterms:extent": [{
+        "type": "literal",
+        "property_id": 8,
+        "@value": "73.7 cm × 92.1 cm"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "Guernica",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "Guernica"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Pablo Picasso"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "1937"
+      }],
+      "dcterms:description": [{
+        "type": "literal",
+        "property_id": 3,
+        "@value": "A large oil painting depicting the suffering of people and animals"
+      }],
+      "dcterms:subject": [{
+        "type": "literal",
+        "property_id": 5,
+        "@value": "War"
+      }, {
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Cubism"
+      }, {
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Anti-war"
+      }],
+      "dcterms:medium": [{
+        "type": "literal",
+        "property_id": 6,
+        "@value": "Oil on canvas"
+      }],
+      "dcterms:spatial": [{
+        "type": "literal",
+        "property_id": 7,
+        "@value": "Madrid, Spain"
+      }],
+      "dcterms:extent": [{
+        "type": "literal",
+        "property_id": 8,
+        "@value": "349.3 cm × 776.6 cm"
+      }]
+    },
+    {
+      "id": 4,
+      "title": "The Persistence of Memory",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "The Persistence of Memory"
+      }],
+      "dcterms:creator": [{
+        "type": "literal",
+        "property_id": 2,
+        "@value": "Salvador Dalí"
+      }],
+      "dcterms:date": [{
+        "type": "literal",
+        "property_id": 4,
+        "@value": "1931"
+      }],
+      "dcterms:description": [{
+        "type": "literal",
+        "property_id": 3,
+        "@value": "A surrealist painting showing melting clocks in a landscape"
+      }],
+      "dcterms:subject": [{
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Surrealism"
+      }, {
+        "type": "literal",
+        "property_id": 5,
+        "@value": "Time"
+      }],
+      "dcterms:medium": [{
+        "type": "literal",
+        "property_id": 6,
+        "@value": "Oil on canvas"
+      }],
+      "dcterms:spatial": [{
+        "type": "literal",
+        "property_id": 7,
+        "@value": "New York, USA"
+      }],
+      "dcterms:extent": [{
+        "type": "literal",
+        "property_id": 8,
+        "@value": "24 cm × 33 cm"
+      }]
+    },
+    {
+      "id": 5,
+      "title": "Item with Missing Properties",
+      "dcterms:title": [{
+        "type": "literal",
+        "property_id": 1,
+        "@value": "Item with Missing Properties"
+      }],
+      "dcterms:description": [{
+        "type": "literal",
+        "property_id": 3,
+        "@value": "This item has some missing properties to test edge cases"
+      }]
+    }
+  ]
+}

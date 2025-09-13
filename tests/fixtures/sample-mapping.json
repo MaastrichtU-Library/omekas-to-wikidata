@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "created": "2025-01-15T10:00:00Z",
+  "entitySchema": "Q3331189",
+  "mappings": {
+    "dcterms:title": {
+      "wikidataProperty": "P1476",
+      "propertyType": "string",
+      "constraints": [],
+      "category": "mapped"
+    },
+    "dcterms:creator": {
+      "wikidataProperty": "P170",
+      "propertyType": "wikibase-item",
+      "constraints": [],
+      "category": "mapped"
+    },
+    "dcterms:date": {
+      "wikidataProperty": "P571",
+      "propertyType": "time",
+      "constraints": [],
+      "category": "mapped"
+    },
+    "dcterms:description": {
+      "wikidataProperty": "P1343",
+      "propertyType": "string",
+      "constraints": [],
+      "category": "mapped"
+    },
+    "dcterms:subject": {
+      "wikidataProperty": "P921",
+      "propertyType": "wikibase-item",
+      "constraints": [],
+      "category": "mapped"
+    },
+    "dcterms:medium": {
+      "wikidataProperty": "P186",
+      "propertyType": "wikibase-item",
+      "constraints": [],
+      "category": "mapped"
+    },
+    "dcterms:spatial": {
+      "wikidataProperty": "P276",
+      "propertyType": "wikibase-item",
+      "constraints": [],
+      "category": "mapped"
+    },
+    "dcterms:extent": {
+      "wikidataProperty": "P2048",
+      "propertyType": "string",
+      "constraints": [],
+      "category": "ignored"
+    },
+    "dcterms:rights": {
+      "wikidataProperty": null,
+      "propertyType": null,
+      "constraints": [],
+      "category": "ignored"
+    },
+    "dcterms:identifier": {
+      "wikidataProperty": null,
+      "propertyType": null,
+      "constraints": [],
+      "category": "ignored"
+    }
+  },
+  "manualProperties": [
+    {
+      "wikidataProperty": "P31",
+      "propertyType": "wikibase-item",
+      "defaultValue": "Q3305213",
+      "constraints": []
+    }
+  ]
+}
