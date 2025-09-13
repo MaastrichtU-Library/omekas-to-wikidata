@@ -9,7 +9,7 @@ import { DEFAULT_SCHEMAS, searchEntitySchemas, getEntitySchema } from './entity-
 import { eventSystem } from '../events.js';
 
 /**
- * Create the Entity Schema selector dropdown component
+ * Create the Entity Schema selector custom dropdown component
  * @param {Object} options - Configuration options
  * @param {string} options.selectedSchemaId - Currently selected schema ID
  * @param {Function} options.onSchemaSelect - Callback when schema is selected
@@ -19,95 +19,125 @@ export function createEntitySchemaSelector(options = {}) {
     const { selectedSchemaId = '', onSchemaSelect = () => {} } = options;
     
     const container = createElement('div', { 
-        className: 'entity-schema-selector' 
+        className: 'entity-schema-selector-custom' 
     });
     
-    // Create label
-    const label = createElement('label', {
-        htmlFor: 'entity-schema-select',
-        className: 'entity-schema-selector__label'
-    }, 'Entity Schema:');
-    
-    // Create select dropdown
-    const select = createElement('select', {
-        id: 'entity-schema-select',
-        className: 'entity-schema-selector__select'
-    });
-    
-    // Add default option
-    select.appendChild(createElement('option', {
-        value: '',
-        disabled: true,
-        selected: !selectedSchemaId
-    }, 'Select Entity Schema'));
-    
-    // Add default schemas
-    DEFAULT_SCHEMAS.forEach(schema => {
-        select.appendChild(createElement('option', {
-            value: schema.id,
-            selected: selectedSchemaId === schema.id
-        }, `${schema.id}: ${schema.label}`));
-    });
-    
-    // Add "Custom/Other" option
-    select.appendChild(createElement('option', {
-        value: 'custom'
-    }, 'Custom/Other...'));
-    
-    // Create external link button
-    const linkButton = createElement('button', {
+    // Create dropdown button
+    const dropdownButton = createElement('button', {
         type: 'button',
-        className: 'entity-schema-selector__link-button',
-        title: 'View Entity Schema on Wikidata',
-        disabled: !selectedSchemaId,
-        onClick: () => {
-            if (selectedSchemaId && selectedSchemaId !== 'custom') {
-                window.open(`https://www.wikidata.org/wiki/EntitySchema:${selectedSchemaId}`, '_blank');
-            }
-        }
-    }, '🔗');
-    
-    // Handle select changes
-    select.addEventListener('change', async (e) => {
-        const selectedValue = e.target.value;
-        
-        if (selectedValue === 'custom') {
-            // Reset select to previous value temporarily
-            e.target.value = selectedSchemaId || '';
-            // Open custom schema search modal
-            openEntitySchemaSearchModal({
-                onSchemaSelect: (schema) => {
-                    onSchemaSelect(schema);
-                    updateSelectorDisplay(container, schema);
-                }
-            });
-        } else if (selectedValue) {
-            // Load default schema
-            try {
-                const schema = await getEntitySchema(selectedValue);
-                if (schema) {
-                    onSchemaSelect(schema);
-                    updateSelectorDisplay(container, schema);
-                } else {
-                    showMessage('Failed to load Entity Schema', 'error');
-                    e.target.value = selectedSchemaId || '';
-                }
-            } catch (error) {
-                console.error('Error loading schema:', error);
-                showMessage('Error loading Entity Schema', 'error');
-                e.target.value = selectedSchemaId || '';
-            }
-        }
+        className: 'entity-schema-selector-custom__button'
     });
+    
+    // Create dropdown content
+    const dropdownContent = createElement('div', {
+        className: 'entity-schema-selector-custom__content'
+    });
+    
+    let isOpen = false;
+    let currentSchema = selectedSchemaId ? DEFAULT_SCHEMAS.find(s => s.id === selectedSchemaId) : null;
+    
+    // Update button text
+    function updateButtonText() {
+        if (currentSchema) {
+            dropdownButton.textContent = `${currentSchema.id}: ${currentSchema.label}`;
+        } else {
+            dropdownButton.textContent = 'Select Entity Schema';
+        }
+    }
+    
+    updateButtonText();
+    
+    // Toggle dropdown
+    function toggleDropdown() {
+        isOpen = !isOpen;
+        dropdownContent.style.display = isOpen ? 'block' : 'none';
+        dropdownButton.setAttribute('aria-expanded', isOpen);
+        
+        if (isOpen) {
+            // Position dropdown below button
+            const rect = dropdownButton.getBoundingClientRect();
+            dropdownContent.style.top = `${rect.bottom + window.scrollY}px`;
+            dropdownContent.style.left = `${rect.left + window.scrollX}px`;
+            dropdownContent.style.width = `${rect.width}px`;
+        }
+    }
+    
+    // Close dropdown when clicking outside
+    function handleOutsideClick(e) {
+        if (!container.contains(e.target)) {
+            if (isOpen) {
+                toggleDropdown();
+            }
+        }
+    }
+    
+    dropdownButton.addEventListener('click', toggleDropdown);
+    document.addEventListener('click', handleOutsideClick);
+    
+    // Create dropdown options
+    function createDropdownOptions() {
+        dropdownContent.innerHTML = '';
+        
+        // Add default schemas
+        DEFAULT_SCHEMAS.forEach(schema => {
+            const option = createElement('div', {
+                className: 'entity-schema-selector-custom__option',
+                onClick: async () => {
+                    try {
+                        const fullSchema = await getEntitySchema(schema.id);
+                        if (fullSchema) {
+                            currentSchema = fullSchema;
+                            updateButtonText();
+                            onSchemaSelect(fullSchema);
+                            toggleDropdown();
+                        } else {
+                            showMessage('Failed to load Entity Schema', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error loading schema:', error);
+                        showMessage('Error loading Entity Schema', 'error');
+                    }
+                }
+            }, `${schema.id}: ${schema.label}`);
+            
+            dropdownContent.appendChild(option);
+        });
+        
+        // Add Custom/Other option
+        const customOption = createElement('div', {
+            className: 'entity-schema-selector-custom__option entity-schema-selector-custom__option--custom',
+            onClick: () => {
+                toggleDropdown();
+                openEntitySchemaSearchModal({
+                    onSchemaSelect: (schema) => {
+                        currentSchema = schema;
+                        updateButtonText();
+                        onSchemaSelect(schema);
+                    }
+                });
+            }
+        }, 'Custom/Other...');
+        
+        dropdownContent.appendChild(customOption);
+    }
+    
+    createDropdownOptions();
     
     // Assemble container
-    container.appendChild(label);
-    container.appendChild(select);
-    container.appendChild(linkButton);
+    container.appendChild(dropdownButton);
+    container.appendChild(dropdownContent);
     
-    // Store references for later updates
-    container._select = select;
-    container._linkButton = linkButton;
+    // Store references for cleanup
+    container._cleanup = () => {
+        document.removeEventListener('click', handleOutsideClick);
+    };
+    
+    // Store current schema for updates
+    container._currentSchema = currentSchema;
+    container._updateSchema = (schema) => {
+        currentSchema = schema;
+        updateButtonText();
+    };
     
     return container;
 }
@@ -118,37 +148,9 @@ export function createEntitySchemaSelector(options = {}) {
  * @param {Object} schema - Selected schema
  */
 function updateSelectorDisplay(container, schema) {
-    const select = container._select;
-    const linkButton = container._linkButton;
-    
-    if (!select || !linkButton) {
-        console.error('Selector elements not found in container');
-        return;
+    if (container._updateSchema) {
+        container._updateSchema(schema);
     }
-    
-    // Check if this is a custom schema not in the default list
-    const isCustomSchema = !DEFAULT_SCHEMAS.find(s => s.id === schema.id);
-    
-    if (isCustomSchema) {
-        // Add custom option if not already present
-        let customOption = select.querySelector(`option[value="${schema.id}"]`);
-        if (!customOption) {
-            customOption = createElement('option', {
-                value: schema.id
-            }, `${schema.id}: ${schema.label}`);
-            // Insert before "Custom/Other" option
-            const customOptionElement = select.querySelector('option[value="custom"]');
-            select.insertBefore(customOption, customOptionElement);
-        }
-    }
-    
-    // Set selected value
-    select.value = schema.id;
-    
-    // Enable/update link button
-    linkButton.disabled = false;
-    linkButton.removeAttribute('disabled');
-    linkButton.title = `View ${schema.id} on Wikidata`;
 }
 
 /**
@@ -212,7 +214,32 @@ function createEntitySchemaSearchContent(onSchemaSelect) {
         className: 'entity-schema-search'
     });
     
-    // Suggested schemas section
+    
+    // Search section
+    const searchSection = createElement('div', {
+        className: 'entity-schema-search__section'
+    });
+    
+    const searchTitle = createElement('h4', {
+        className: 'entity-schema-search__section-title'
+    }, 'Search Entity Schemas');
+    
+    const searchInput = createElement('input', {
+        type: 'text',
+        className: 'entity-schema-search__input',
+        placeholder: 'Search for entity schemas (e.g., E471, book, person)...'
+    });
+    
+    const searchStatus = createElement('div', {
+        className: 'entity-schema-search__status'
+    });
+    
+    const searchResults = createElement('div', {
+        className: 'entity-schema-search__results',
+        style: { display: 'none' }
+    });
+    
+    // Suggested schemas section (shown below search results)
     const suggestedSection = createElement('div', {
         className: 'entity-schema-search__suggested'
     });
@@ -240,30 +267,6 @@ function createEntitySchemaSearchContent(onSchemaSelect) {
     
     suggestedSection.appendChild(suggestedTitle);
     suggestedSection.appendChild(suggestedGrid);
-    
-    // Search section
-    const searchSection = createElement('div', {
-        className: 'entity-schema-search__section'
-    });
-    
-    const searchTitle = createElement('h4', {
-        className: 'entity-schema-search__section-title'
-    }, 'Search Entity Schemas');
-    
-    const searchInput = createElement('input', {
-        type: 'text',
-        className: 'entity-schema-search__input',
-        placeholder: 'Search for entity schemas (e.g., E471, book, person)...'
-    });
-    
-    const searchStatus = createElement('div', {
-        className: 'entity-schema-search__status'
-    });
-    
-    const searchResults = createElement('div', {
-        className: 'entity-schema-search__results',
-        style: { display: 'none' }
-    });
     
     // Search functionality
     let searchTimeout = null;
@@ -304,14 +307,14 @@ function createEntitySchemaSearchContent(onSchemaSelect) {
     searchSection.appendChild(searchResults);
     
     // Assemble container
-    container.appendChild(suggestedSection);
     container.appendChild(searchSection);
+    container.appendChild(suggestedSection);
     
     return container;
 }
 
 /**
- * Create an Entity Schema card component
+ * Create an Entity Schema card component with new formatting
  * @param {Object} schema - Schema object
  * @param {Function} onSelect - Selection callback
  * @returns {HTMLElement} Schema card element
@@ -324,24 +327,31 @@ function createEntitySchemaCard(schema, onSelect) {
         }
     });
     
-    const schemaId = createElement('div', {
-        className: 'entity-schema-card__id',
+    // Create label (title) and E-number combination
+    const labelText = createElement('span', {
+        className: 'entity-schema-card__label-text'
+    }, schema.label);
+    
+    const schemaId = createElement('span', {
+        className: 'entity-schema-card__id-link',
         onClick: (e) => {
             e.stopPropagation();
             window.open(schema.url, '_blank');
         }
-    }, schema.id);
+    }, `(${schema.id})`);
     
-    const schemaLabel = createElement('div', {
+    const labelContainer = createElement('div', {
         className: 'entity-schema-card__label'
-    }, schema.label);
+    });
+    labelContainer.appendChild(labelText);
+    labelContainer.appendChild(document.createTextNode(' '));
+    labelContainer.appendChild(schemaId);
     
     const schemaDescription = createElement('div', {
         className: 'entity-schema-card__description'
     }, schema.description);
     
-    card.appendChild(schemaId);
-    card.appendChild(schemaLabel);
+    card.appendChild(labelContainer);
     card.appendChild(schemaDescription);
     
     return card;
@@ -384,23 +394,30 @@ function displaySearchResults(results, statusElement, resultsElement, onSchemaSe
             }
         });
         
-        const resultId = createElement('div', {
+        // Create label (title) and E-number combination
+        const resultLabelText = createElement('span', {
+            className: 'entity-schema-search__result-label-text'
+        }, result.label || 'No label');
+        
+        const resultId = createElement('span', {
             className: 'entity-schema-search__result-id',
             onClick: (e) => {
                 e.stopPropagation();
                 window.open(result.url, '_blank');
             }
-        }, result.id);
+        }, `(${result.id})`);
         
         const resultLabel = createElement('div', {
             className: 'entity-schema-search__result-label'
-        }, result.label || 'No label');
+        });
+        resultLabel.appendChild(resultLabelText);
+        resultLabel.appendChild(document.createTextNode(' '));
+        resultLabel.appendChild(resultId);
         
         const resultDescription = createElement('div', {
             className: 'entity-schema-search__result-description'
         }, result.description || 'No description available');
         
-        resultCard.appendChild(resultId);
         resultCard.appendChild(resultLabel);
         resultCard.appendChild(resultDescription);
         
@@ -424,7 +441,7 @@ export function initializeEntitySchemaSelector(state) {
             state.updateState('selectedEntitySchema', schema);
             
             // Emit event for other components to react
-            eventSystem.emit('entitySchemaSelected', { schema });
+            eventSystem.publish('entitySchemaSelected', { schema });
             
             // Mark changes as unsaved
             state.markChangesUnsaved();
