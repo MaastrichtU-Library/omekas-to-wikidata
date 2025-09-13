@@ -462,3 +462,210 @@ window.showEditor = function() {
         successMessage.remove();
     }
 };
+
+/**
+ * Factory function for creating modal content (backward compatibility)
+ * @param {Object} dependencies - Dependencies for the modal content factory
+ * @returns {Function} Function that creates modal content
+ */
+export function createReconciliationModalContentFactory(dependencies) {
+    const {
+        reconciliationData,
+        getPropertyDisplayInfo,
+        getOriginalKeyInfo,
+        getReconciliationRequirementReason,
+        getConstraintSummary
+    } = dependencies;
+    
+    return async function createReconciliationModalContent(itemId, property, valueIndex, value, manualProp = null) {
+        // Extract property data from dependencies or manual prop
+        let propertyData = null;
+        if (manualProp) {
+            propertyData = manualProp.property;
+        } else if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
+            const propData = reconciliationData[itemId].properties[property];
+            propertyData = propData.propertyMetadata || propData.manualPropertyData?.property;
+        }
+        
+        // Use the main createReconciliationModal function
+        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, propertyData);
+        
+        // Return just the innerHTML content for compatibility
+        return modalElement.innerHTML;
+    };
+}
+
+/**
+ * Factory function for opening reconciliation modal (backward compatibility)
+ * @param {Object} dependencies - Dependencies for the modal opening factory
+ * @returns {Function} Function that opens the modal
+ */
+export function createOpenReconciliationModalFactory(dependencies) {
+    const {
+        modalUI,
+        performAutomaticReconciliation,
+        setupDynamicDatePrecision,
+        setupAutoAdvanceToggle,
+        createReconciliationModalContent
+    } = dependencies;
+
+    let currentReconciliationCell = null;
+    
+    return async function openReconciliationModal(itemId, property, valueIndex, value, manualProp = null) {
+        currentReconciliationCell = { itemId, property, valueIndex, value, manualProp };
+        
+        // Create modal content using the new function
+        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property);
+        
+        // Open modal using the modal UI system
+        modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
+            currentReconciliationCell = null;
+            window.currentModalContext = null;
+        });
+        
+        // Setup modal functionality after DOM is rendered
+        setTimeout(() => {
+            const modalContent = document.querySelector('#modal-content');
+            if (modalContent) {
+                setupDynamicDatePrecision(modalContent);
+                setupAutoAdvanceToggle();
+            }
+        }, 100);
+        
+        // Start automatic reconciliation for Wikidata items
+        const dataType = getDataTypeFromProperty(property, manualProp?.property);
+        if (dataType === 'wikibase-item') {
+            await performAutomaticReconciliation(value, property, itemId, valueIndex);
+        }
+    };
+}
+
+/**
+ * Factory function for modal interaction handlers (backward compatibility)
+ * @param {Object} dependencies - Dependencies for the interaction handlers
+ * @returns {Object} Object with interaction handler functions
+ */
+export function createModalInteractionHandlers(dependencies) {
+    const {
+        currentReconciliationCell,
+        modalUI,
+        markCellAsReconciled,
+        markCellAsSkipped,
+        markCellAsNoItem,
+        markCellAsString,
+        getAutoAdvanceSetting,
+        reconcileNextUnprocessedCell,
+        setupExpandedSearch
+    } = dependencies;
+
+    return {
+        selectMatchAndAdvance(matchId) {
+            if (!window.currentModalContext) return;
+            
+            // Find the match details
+            const matchCard = document.querySelector(`[data-match-id="${matchId}"]`);
+            if (!matchCard) return;
+            
+            const matchName = matchCard.querySelector('.match-name, .result-name')?.textContent || 'Unknown';
+            const matchDescription = matchCard.querySelector('.match-description, .result-description')?.textContent || 'No description';
+            
+            // Mark as reconciled
+            markCellAsReconciled(window.currentModalContext, {
+                type: 'wikidata',
+                id: matchId,
+                label: matchName,
+                description: matchDescription
+            });
+            
+            modalUI.closeModal();
+            
+            // Auto-advance if enabled
+            if (getAutoAdvanceSetting()) {
+                setTimeout(() => {
+                    reconcileNextUnprocessedCell();
+                }, 300);
+            }
+        },
+
+        confirmCustomValue() {
+            if (!window.currentModalContext) return;
+            
+            const currentValue = window.currentModalContext.currentValue || window.currentModalContext.transformedValue;
+            
+            markCellAsReconciled(window.currentModalContext, {
+                type: 'custom',
+                value: currentValue,
+                datatype: window.currentModalContext.dataType
+            });
+            
+            modalUI.closeModal();
+            
+            // Auto-advance if enabled
+            if (getAutoAdvanceSetting()) {
+                setTimeout(() => {
+                    reconcileNextUnprocessedCell();
+                }, 300);
+            }
+        },
+
+        skipReconciliation() {
+            if (window.currentModalContext) {
+                markCellAsSkipped(window.currentModalContext);
+                modalUI.closeModal();
+                
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            }
+        },
+
+        markAsNoWikidataItem() {
+            if (window.currentModalContext) {
+                markCellAsNoItem(window.currentModalContext);
+                modalUI.closeModal();
+                
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            }
+        },
+
+        ignoreCurrentValue() {
+            if (window.currentModalContext) {
+                markCellAsSkipped(window.currentModalContext);
+                modalUI.closeModal();
+                
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            }
+        },
+
+        useCurrentValueAsString() {
+            if (window.currentModalContext) {
+                markCellAsString(window.currentModalContext);
+                modalUI.closeModal();
+                
+                if (getAutoAdvanceSetting()) {
+                    setTimeout(() => {
+                        reconcileNextUnprocessedCell();
+                    }, 300);
+                }
+            }
+        },
+
+        createNewWikidataItem() {
+            const value = window.currentModalContext?.transformedValue;
+            if (value) {
+                const url = `https://www.wikidata.org/wiki/Special:NewItem?label=${encodeURIComponent(value)}`;
+                window.open(url, '_blank');
+            }
+        }
+    };
+}
