@@ -126,8 +126,8 @@ button {
     font-size: 0.9em;
     cursor: pointer;
     transition: all 0.2s;
-    min-width: 200px;
-    max-width: 300px;
+    min-width: 400px;
+    max-width: 600px;
     text-align: left;
     position: relative;
 }
@@ -158,7 +158,7 @@ button {
     border-radius: 4px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     z-index: 1000;
-    max-height: 300px;
+    max-height: 200px;
     overflow-y: auto;
 }
 
@@ -185,6 +185,33 @@ button {
 
 .entity-schema-selector-custom__option--custom:hover {
     background-color: #e7f3ff;
+}
+
+.entity-schema-selector-custom__option-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.entity-schema-selector-custom__option-label {
+    flex: 1;
+    cursor: pointer;
+}
+
+.entity-schema-selector-custom__option-link {
+    color: var(--primary-color);
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 2px 4px;
+    border-radius: 2px;
+    transition: background-color 0.2s;
+}
+
+.entity-schema-selector-custom__option-link:hover {
+    background-color: var(--primary-color);
+    color: white;
+    text-decoration: none;
 }
 
 /* Entity Schema Search Modal Styles */
@@ -346,8 +373,8 @@ button {
     }
     
     .entity-schema-selector-custom__button {
-        min-width: 150px;
-        max-width: 250px;
+        min-width: 300px;
+        max-width: 500px;
     }
     
     .entity-schema-search__grid {

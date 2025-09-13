@@ -73,7 +73,16 @@ export function createEntitySchemaSelector(options = {}) {
         // Add default schemas
         DEFAULT_SCHEMAS.forEach(schema => {
             const option = createElement('div', {
-                className: 'entity-schema-selector-custom__option',
+                className: 'entity-schema-selector-custom__option'
+            });
+
+            const optionContent = createElement('div', {
+                className: 'entity-schema-selector-custom__option-content'
+            });
+
+            // Create clickable label (for selection)
+            const optionLabel = createElement('span', {
+                className: 'entity-schema-selector-custom__option-label',
                 onClick: async () => {
                     try {
                         const fullSchema = await getEntitySchema(schema.id);
@@ -90,7 +99,20 @@ export function createEntitySchemaSelector(options = {}) {
                         showMessage('Error loading Entity Schema', 'error');
                     }
                 }
-            }, `${schema.id}: ${schema.label}`);
+            }, `${schema.label}`);
+
+            // Create clickable E-number link
+            const optionLink = createElement('span', {
+                className: 'entity-schema-selector-custom__option-link',
+                onClick: (e) => {
+                    e.stopPropagation();
+                    window.open(`https://www.wikidata.org/wiki/EntitySchema:${schema.id}`, '_blank');
+                }
+            }, schema.id);
+
+            optionContent.appendChild(optionLabel);
+            optionContent.appendChild(optionLink);
+            option.appendChild(optionContent);
             
             dropdownContent.appendChild(option);
         });
