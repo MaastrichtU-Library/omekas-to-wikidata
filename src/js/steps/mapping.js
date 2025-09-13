@@ -81,6 +81,9 @@ import {
     createUnifiedPropertyModalContent,
     openRawJsonModal 
 } from '../mapping/ui/property-modals.js';
+import { 
+    createEntitySchemaManager 
+} from '../mapping/core/entity-schema.js';
 
 /**
  * Initializes the mapping step interface and sets up all event handlers
@@ -106,12 +109,40 @@ export function setupMappingStep(state) {
     // Store state globally for access in modal functions
     window.mappingStepState = state;
     
+    // Initialize Entity Schema Manager
+    const entitySchemaManager = createEntitySchemaManager(state);
+    
     // Initialize DOM elements
     const entitySchemaInput = document.getElementById('entity-schema');
+    const entitySchemaSelector = document.querySelector('.entity-schema-selector');
     const addManualPropertyBtn = document.getElementById('add-manual-property');
     const loadMappingBtn = document.getElementById('load-mapping');
     const saveMappingBtn = document.getElementById('save-mapping');
     const loadMappingFileInput = document.getElementById('load-mapping-file');
+    
+    // Initialize Entity Schema interface
+    if (entitySchemaSelector) {
+        entitySchemaManager.renderSchemaSelector(entitySchemaSelector);
+    }
+    
+    // Listen for Entity Schema selection events
+    eventSystem.subscribe('ENTITY_SCHEMA_SELECTED', (data) => {
+        const { schema, properties } = data;
+        
+        // Update manual properties suggestions based on schema
+        updateSchemaPropertySuggestions(schema, properties, state);
+        
+        // Update property search to prioritize schema properties
+        updatePropertySearchWithSchema(schema, properties);
+        
+        showMessage(`Entity Schema ${schema.id} selected. ${properties.length} properties loaded.`, 'success');
+    });
+    
+    eventSystem.subscribe('ENTITY_SCHEMA_CLEARED', (data) => {
+        clearSchemaPropertySuggestions();
+        clearPropertySearchSchema();
+        showMessage('Entity Schema cleared', 'info');
+    });
     
     // Listen for step changes via event system
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
@@ -196,4 +227,147 @@ export function setupMappingStep(state) {
     // Export functions globally for use by other modules
     window.openMappingModal = openMappingModal;
     window.openManualPropertyEditModal = openManualPropertyEditModal;
+}
+
+/**
+ * Update property suggestions based on selected Entity Schema
+ */
+function updateSchemaPropertySuggestions(schema, properties, state) {
+    // Add suggested properties section to manual properties area
+    const manualPropertiesSection = document.querySelector('#manual-properties').parentElement;
+    
+    // Remove existing suggestions
+    const existingSuggestions = manualPropertiesSection.querySelector('.schema-property-suggestions');
+    if (existingSuggestions) {
+        existingSuggestions.remove();
+    }
+    
+    if (properties.length > 0) {
+        const suggestionsSection = createElement('div', { className: 'schema-property-suggestions' });
+        
+        const suggestionsHeader = createElement('div', { className: 'suggestions-header' }, `
+            <h4>Entity Schema Properties (${schema.id})</h4>
+            <p>Properties from the selected Entity Schema. Click to add to your mapping:</p>
+        `);
+        suggestionsSection.appendChild(suggestionsHeader);
+        
+        const suggestionsGrid = createElement('div', { className: 'suggestions-grid' });
+        
+        // Group properties by required/optional
+        const requiredProperties = properties.filter(p => p.required);
+        const optionalProperties = properties.filter(p => !p.required);
+        
+        // Add required properties first
+        if (requiredProperties.length > 0) {
+            const requiredHeader = createElement('div', { className: 'property-group-header required' }, 'Required Properties');
+            suggestionsGrid.appendChild(requiredHeader);
+            
+            requiredProperties.forEach(property => {
+                const suggestion = createPropertySuggestion(property, 'required', state);
+                suggestionsGrid.appendChild(suggestion);
+            });
+        }
+        
+        // Add optional properties
+        if (optionalProperties.length > 0) {
+            const optionalHeader = createElement('div', { className: 'property-group-header optional' }, 'Optional Properties');
+            suggestionsGrid.appendChild(optionalHeader);
+            
+            optionalProperties.forEach(property => {
+                const suggestion = createPropertySuggestion(property, 'optional', state);
+                suggestionsGrid.appendChild(suggestion);
+            });
+        }
+        
+        suggestionsSection.appendChild(suggestionsGrid);
+        
+        // Insert before the manual properties actions
+        const actionsDiv = manualPropertiesSection.querySelector('.manual-properties-actions');
+        manualPropertiesSection.insertBefore(suggestionsSection, actionsDiv);
+    }
+}
+
+/**
+ * Create a property suggestion element
+ */
+function createPropertySuggestion(property, type, state) {
+    const suggestion = createElement('div', { className: `property-suggestion ${type}` });
+    
+    suggestion.innerHTML = `
+        <div class="property-info">
+            <span class="property-id">${property.id}</span>
+            <span class="property-status ${type}">${type}</span>
+        </div>
+        <div class="property-actions">
+            <button class="add-property-btn" data-property-id="${property.id}" data-type="${type}">
+                Add Property
+            </button>
+        </div>
+    `;
+    
+    // Add click handler
+    const addBtn = suggestion.querySelector('.add-property-btn');
+    addBtn.addEventListener('click', async () => {
+        try {
+            addBtn.disabled = true;
+            addBtn.textContent = 'Adding...';
+            
+            // Fetch complete property data
+            const propertyData = await getCompletePropertyData(property.id);
+            
+            if (propertyData) {
+                // Create manual property object
+                const manualProperty = {
+                    property: propertyData,
+                    defaultValue: '',
+                    isRequired: type === 'required',
+                    source: 'entity-schema'
+                };
+                
+                // Add to state
+                state.addManualProperty(manualProperty);
+                
+                // Remove suggestion from UI
+                suggestion.remove();
+                
+                showMessage(`Property ${property.id} added from Entity Schema`, 'success');
+            } else {
+                throw new Error('Failed to fetch property details');
+            }
+        } catch (error) {
+            console.error('Error adding schema property:', error);
+            showMessage(`Failed to add property ${property.id}`, 'error');
+            addBtn.disabled = false;
+            addBtn.textContent = 'Add Property';
+        }
+    });
+    
+    return suggestion;
+}
+
+/**
+ * Clear schema property suggestions
+ */
+function clearSchemaPropertySuggestions() {
+    const suggestions = document.querySelector('.schema-property-suggestions');
+    if (suggestions) {
+        suggestions.remove();
+    }
+}
+
+/**
+ * Update property search to prioritize schema properties
+ */
+function updatePropertySearchWithSchema(schema, properties) {
+    // Store schema properties globally for property search prioritization
+    window.selectedSchemaProperties = properties.map(p => p.id);
+    window.selectedSchemaId = schema.id;
+}
+
+/**
+ * Clear property search schema prioritization
+ */
+function clearPropertySearchSchema() {
+    window.selectedSchemaProperties = null;
+    window.selectedSchemaId = null;
 }
