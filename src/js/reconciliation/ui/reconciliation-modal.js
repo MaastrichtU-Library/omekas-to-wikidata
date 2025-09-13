@@ -366,7 +366,7 @@ function createMatchItem(match) {
     const jsEscapedId = match.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
     
     return `
-        <div class="match-item" data-match-id="${safeMatchId}" onclick="selectMatch('${jsEscapedId}')">
+        <div class="match-item" data-match-id="${safeMatchId}" onclick="applyMatchDirectly('${jsEscapedId}')">
             <div class="match-content">
                 <div class="match-label">${escapeHtml(match.label || 'Unnamed')}</div>
                 <div class="match-id">
@@ -597,6 +597,32 @@ window.showTopMatches = function() {
     if (value) {
         const existingMatches = window.currentModalContext?.existingMatches;
         loadExistingMatches(value, existingMatches);
+    }
+};
+
+// New function to directly apply a match without needing confirmation
+window.applyMatchDirectly = function(matchId) {
+    // Directly call selectMatchAndAdvance if available
+    if (typeof window.selectMatchAndAdvance === 'function') {
+        window.selectMatchAndAdvance(matchId);
+    } else {
+        // Fallback: set selection and confirm
+        const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
+        const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
+        if (matchElement) {
+            const matchLabel = matchElement.querySelector('.match-label')?.textContent;
+            const matchDescription = matchElement.querySelector('.match-description')?.textContent;
+            
+            window.selectedMatch = {
+                id: matchId,
+                name: matchLabel || 'Unknown',
+                label: matchLabel || 'Unknown',
+                description: matchDescription || 'No description'
+            };
+            
+            // Directly confirm the selection
+            window.confirmReconciliation();
+        }
     }
 };
 
