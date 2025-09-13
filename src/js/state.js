@@ -39,6 +39,15 @@ export function setupState() {
             selectedTransformationFields: {} // mappingId -> selected field key
         },
         
+        // Entity Schema mapping status tracking
+        schemaMappingStatus: {
+            requiredMapped: [],
+            requiredUnmapped: [],
+            optionalMapped: [],
+            optionalUnmapped: [],
+            lastUpdated: null
+        },
+        
         // Step 3: Reconciliation
         reconciliationProgress: {
             total: 0,
@@ -1086,6 +1095,36 @@ export function setupState() {
     }
     
     /**
+     * Updates the Entity Schema mapping status
+     * @param {Object} status - Mapping status object with categorized properties
+     */
+    function updateSchemaMappingStatus(status) {
+        const oldValue = { ...state.schemaMappingStatus };
+        state.schemaMappingStatus = {
+            ...status,
+            lastUpdated: new Date().toISOString()
+        };
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'schemaMappingStatus',
+            oldValue,
+            newValue: state.schemaMappingStatus
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets the current Entity Schema mapping status
+     * @returns {Object} Current mapping status
+     */
+    function getSchemaMappingStatus() {
+        return { ...state.schemaMappingStatus };
+    }
+    
+    /**
      * Clear persisted state from localStorage
      */
     function clearPersistedState() {
@@ -1139,6 +1178,8 @@ export function setupState() {
         getSelectedEntitySchema,
         getEntitySchemaHistory,
         clearEntitySchemaHistory,
+        updateSchemaMappingStatus,
+        getSchemaMappingStatus,
         // Utility methods
         loadMockData,
         // Persistence methods

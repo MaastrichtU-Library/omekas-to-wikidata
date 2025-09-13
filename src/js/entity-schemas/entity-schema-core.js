@@ -4,6 +4,8 @@
  * @module entity-schemas/entity-schema-core
  */
 
+import { detectSourceRequirement } from './schema-property-mapper.js';
+
 /**
  * Default Entity Schemas for the application
  */
@@ -211,7 +213,8 @@ export function parseShExProperties(shexCode) {
                     id: propertyId,
                     label: comment || propertyId,
                     description: `Constraint: ${constraint}`,
-                    url: `https://www.wikidata.org/wiki/Property:${propertyId}`
+                    url: `https://www.wikidata.org/wiki/Property:${propertyId}`,
+                    requiresSource: detectSourceRequirement(constraint)
                 };
                 
                 // Determine if required (no ? or *)
@@ -230,7 +233,8 @@ export function parseShExProperties(shexCode) {
             id: 'P31',
             label: 'instance of',
             description: 'that class of which this subject is a particular example',
-            url: 'https://www.wikidata.org/wiki/Property:P31'
+            url: 'https://www.wikidata.org/wiki/Property:P31',
+            requiresSource: false
         });
     }
     

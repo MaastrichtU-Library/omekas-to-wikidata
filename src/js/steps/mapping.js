@@ -82,6 +82,7 @@ import {
     openRawJsonModal 
 } from '../mapping/ui/property-modals.js';
 import { initializeEntitySchemaSelector } from '../entity-schemas/entity-schema-selector.js';
+import { initializeSchemaOverview } from '../entity-schemas/entity-schema-overview.js';
 
 /**
  * Initializes the mapping step interface and sets up all event handlers
@@ -124,6 +125,13 @@ export function setupMappingStep(state) {
             console.log('Entity Schema selected:', data.schema);
             // Additional logic can be added here when schema is selected
         });
+    }
+
+    // Initialize Entity Schema Overview
+    const overviewContainer = document.getElementById('entity-schema-overview-container');
+    if (overviewContainer) {
+        const overview = initializeSchemaOverview(state);
+        overviewContainer.appendChild(overview);
     }
     
     // Listen for step changes via event system

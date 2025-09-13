@@ -391,6 +391,227 @@ button {
     }
 }
 
+/* Entity Schema Overview Styles */
+.entity-schema-overview {
+    margin: 20px 0;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.schema-overview-header {
+    padding: 16px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.schema-overview-header:hover {
+    background-color: #f8f9fa;
+}
+
+.schema-overview-header.expanded {
+    border-bottom-color: var(--border-color);
+}
+
+.schema-overview-collapsed {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.schema-label {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.schema-id-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.schema-id-link:hover {
+    text-decoration: underline;
+}
+
+.required-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.required-progress.complete {
+    color: #28a745;
+}
+
+.required-progress.incomplete {
+    color: #dc3545;
+}
+
+.optional-progress {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.toggle-indicator {
+    color: var(--primary-color);
+    font-weight: bold;
+    transition: transform 0.2s ease;
+    user-select: none;
+}
+
+.schema-overview-expanded {
+    padding: 0 20px 20px 20px;
+    border-top: 1px solid var(--border-color);
+    animation: expandSection 0.3s ease-out;
+}
+
+@keyframes expandSection {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.property-list-section {
+    margin-bottom: 24px;
+}
+
+.property-list-section:last-child {
+    margin-bottom: 0;
+}
+
+.property-section-header {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-color);
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 8px;
+}
+
+.required-section .property-section-header {
+    color: #495057;
+}
+
+.optional-section .property-section-header {
+    color: #6c757d;
+}
+
+.property-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.property-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.property-item:hover {
+    background-color: #f8f9fa;
+}
+
+.property-item.mapped {
+    background-color: #f8fff8;
+}
+
+.property-item.unmapped.required {
+    background-color: #fff5f5;
+}
+
+.status-indicator {
+    font-weight: bold;
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.status-indicator.mapped {
+    color: #28a745;
+}
+
+.status-indicator.unmapped.required {
+    color: #dc3545;
+}
+
+.status-indicator.unmapped.optional {
+    color: #6c757d;
+}
+
+.property-label {
+    font-weight: 500;
+    color: var(--text-color);
+    flex: 1;
+}
+
+.property-id-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.property-id-link:hover {
+    text-decoration: underline;
+}
+
+.source-indicator {
+    font-size: 14px;
+    opacity: 0.7;
+    title: "This property requires a source/reference";
+}
+
+.no-properties-message {
+    padding: 20px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Responsive adjustments for Entity Schema Overview */
+@media (max-width: 768px) {
+    .schema-overview-header {
+        padding: 12px 16px;
+    }
+    
+    .schema-overview-collapsed {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .schema-overview-expanded {
+        padding: 0 16px 16px 16px;
+    }
+    
+    .property-item {
+        padding: 6px 8px;
+        gap: 6px;
+    }
+    
+    .property-label {
+        font-size: 14px;
+    }
+}
+
 /* Manual JSON Input Styles */
 .input-alternatives {
     margin-top: 10px;
