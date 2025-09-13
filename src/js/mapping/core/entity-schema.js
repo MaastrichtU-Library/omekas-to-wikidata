@@ -4,7 +4,7 @@
  * @module mapping/core/entity-schema
  */
 
-import { createElement, createButton, showMessage } from '../../ui/components.js';
+import { createElement, createButton, createModal, showMessage } from '../../ui/components.js';
 import { eventSystem } from '../../events.js';
 
 /**
@@ -104,7 +104,10 @@ export class EntitySchemaManager {
      * Render schema selection interface
      */
     renderSchemaSelector(container) {
-        container.innerHTML = '';
+        // Clear container using DOM methods instead of innerHTML
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
+        }
         
         // Create header
         const header = createElement('div', { className: 'schema-selector-header' }, `
@@ -162,23 +165,32 @@ export class EntitySchemaManager {
             'data-schema-id': schema.id
         });
         
-        card.innerHTML = `
-            <div class="schema-id">${schema.id}</div>
-            <div class="schema-label">${schema.label}</div>
-            <div class="schema-organization">${schema.organization}</div>
-            <div class="schema-description">${schema.description}</div>
-            <div class="schema-actions">
-                <button class="select-schema-btn" data-schema-id="${schema.id}">
-                    ${isSelected ? 'Selected' : 'Select'}
-                </button>
-                <button class="view-schema-btn" data-schema-id="${schema.id}">View Details</button>
-            </div>
-        `;
-
-        // Add event listeners
-        const selectBtn = card.querySelector('.select-schema-btn');
-        const viewBtn = card.querySelector('.view-schema-btn');
+        // Create elements using createElement instead of innerHTML
+        const schemaIdEl = createElement('div', { className: 'schema-id' }, schema.id);
+        const schemaLabelEl = createElement('div', { className: 'schema-label' }, schema.label);
+        const schemaOrgEl = createElement('div', { className: 'schema-organization' }, schema.organization);
+        const schemaDescEl = createElement('div', { className: 'schema-description' }, schema.description);
         
+        const actionsDiv = createElement('div', { className: 'schema-actions' });
+        const selectBtn = createElement('button', {
+            className: 'select-schema-btn',
+            'data-schema-id': schema.id
+        }, isSelected ? 'Selected' : 'Select');
+        const viewBtn = createElement('button', {
+            className: 'view-schema-btn', 
+            'data-schema-id': schema.id
+        }, 'View Details');
+        
+        actionsDiv.appendChild(selectBtn);
+        actionsDiv.appendChild(viewBtn);
+        
+        card.appendChild(schemaIdEl);
+        card.appendChild(schemaLabelEl);
+        card.appendChild(schemaOrgEl);
+        card.appendChild(schemaDescEl);
+        card.appendChild(actionsDiv);
+
+        // Event listeners already attached to variables above
         selectBtn.addEventListener('click', () => this.selectSchema(schema));
         viewBtn.addEventListener('click', () => this.viewSchemaDetails(schema));
         
@@ -211,7 +223,12 @@ export class EntitySchemaManager {
      */
     async performSchemaSearch(query, resultsContainer) {
         resultsContainer.style.display = 'block';
-        resultsContainer.innerHTML = '<div class="search-loading">Searching...</div>';
+        // Clear and add loading message using createElement
+        while (resultsContainer.firstChild) {
+            resultsContainer.removeChild(resultsContainer.firstChild);
+        }
+        const loadingDiv = createElement('div', { className: 'search-loading' }, 'Searching...');
+        resultsContainer.appendChild(loadingDiv);
         
         try {
             // Check if it's a direct schema ID
@@ -229,7 +246,11 @@ export class EntitySchemaManager {
             
         } catch (error) {
             console.error('Schema search error:', error);
-            resultsContainer.innerHTML = '<div class="search-error">Search failed. Please try again.</div>';
+            while (resultsContainer.firstChild) {
+                resultsContainer.removeChild(resultsContainer.firstChild);
+            }
+            const errorDiv = createElement('div', { className: 'search-error' }, 'Search failed. Please try again.');
+            resultsContainer.appendChild(errorDiv);
         }
     }
 
@@ -321,29 +342,46 @@ export class EntitySchemaManager {
      */
     displaySearchResults(results, container) {
         if (results.length === 0) {
-            container.innerHTML = '<div class="no-results">No Entity Schemas found.</div>';
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            const noResultsDiv = createElement('div', { className: 'no-results' }, 'No Entity Schemas found.');
+            container.appendChild(noResultsDiv);
             return;
         }
         
-        container.innerHTML = '';
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
+        }
         
         results.forEach(schema => {
             const resultItem = createElement('div', { className: 'search-result-item' });
-            resultItem.innerHTML = `
-                <div class="result-id">${schema.id}</div>
-                <div class="result-label">${schema.label}</div>
-                <div class="result-description">${schema.description}</div>
-                <div class="result-actions">
-                    <button class="select-result-btn" data-schema-id="${schema.id}">Select</button>
-                    <button class="view-result-btn" data-schema-id="${schema.id}">Details</button>
-                </div>
-            `;
+            // Create result elements using createElement
+            const resultIdEl = createElement('div', { className: 'result-id' }, schema.id);
+            const resultLabelEl = createElement('div', { className: 'result-label' }, schema.label);
+            const resultDescEl = createElement('div', { className: 'result-description' }, schema.description);
             
-            const selectBtn = resultItem.querySelector('.select-result-btn');
-            const viewBtn = resultItem.querySelector('.view-result-btn');
+            const resultActionsDiv = createElement('div', { className: 'result-actions' });
+            const selectResultBtn = createElement('button', {
+                className: 'select-result-btn',
+                'data-schema-id': schema.id
+            }, 'Select');
+            const viewResultBtn = createElement('button', {
+                className: 'view-result-btn',
+                'data-schema-id': schema.id
+            }, 'Details');
             
-            selectBtn.addEventListener('click', () => this.selectSchema(schema));
-            viewBtn.addEventListener('click', () => this.viewSchemaDetails(schema));
+            resultActionsDiv.appendChild(selectResultBtn);
+            resultActionsDiv.appendChild(viewResultBtn);
+            
+            resultItem.appendChild(resultIdEl);
+            resultItem.appendChild(resultLabelEl);
+            resultItem.appendChild(resultDescEl);
+            resultItem.appendChild(resultActionsDiv);
+            
+            // Event listeners already attached via variables above
+            selectResultBtn.addEventListener('click', () => this.selectSchema(schema));
+            viewResultBtn.addEventListener('click', () => this.viewSchemaDetails(schema));
             
             container.appendChild(resultItem);
         });
@@ -553,15 +591,53 @@ export class EntitySchemaManager {
      * Show schema details in a modal
      */
     showSchemaDetailsModal(schema) {
-        // Implementation would create a modal showing schema details
-        // For now, just show basic info
-        const info = `
-            Schema: ${schema.id}
-            Label: ${schema.label}
-            Description: ${schema.description}
-            URL: ${schema.url || 'N/A'}
-        `;
-        alert(info);
+        // Create modal content
+        const modalContent = createElement('div', { className: 'schema-details-content' });
+        
+        const schemaInfo = createElement('div', { className: 'schema-info' });
+        
+        const schemaIdSection = createElement('div', { className: 'info-section' });
+        schemaIdSection.appendChild(createElement('strong', {}, 'Schema ID: '));
+        schemaIdSection.appendChild(createElement('span', {}, schema.id));
+        
+        const labelSection = createElement('div', { className: 'info-section' });
+        labelSection.appendChild(createElement('strong', {}, 'Label: '));
+        labelSection.appendChild(createElement('span', {}, schema.label));
+        
+        const descSection = createElement('div', { className: 'info-section' });
+        descSection.appendChild(createElement('strong', {}, 'Description: '));
+        descSection.appendChild(createElement('span', {}, schema.description));
+        
+        const urlSection = createElement('div', { className: 'info-section' });
+        urlSection.appendChild(createElement('strong', {}, 'URL: '));
+        if (schema.url) {
+            const link = createElement('a', { href: schema.url, target: '_blank' }, schema.url);
+            urlSection.appendChild(link);
+        } else {
+            urlSection.appendChild(createElement('span', {}, 'N/A'));
+        }
+        
+        schemaInfo.appendChild(schemaIdSection);
+        schemaInfo.appendChild(labelSection);
+        schemaInfo.appendChild(descSection);
+        schemaInfo.appendChild(urlSection);
+        
+        if (schema.shexCode) {
+            const shexSection = createElement('div', { className: 'info-section' });
+            shexSection.appendChild(createElement('strong', {}, 'ShEx Code:'));
+            const codeBlock = createElement('pre', { className: 'shex-code' }, schema.shexCode.substring(0, 500) + (schema.shexCode.length > 500 ? '...' : ''));
+            shexSection.appendChild(codeBlock);
+            schemaInfo.appendChild(shexSection);
+        }
+        
+        modalContent.appendChild(schemaInfo);
+        
+        // Create and show modal
+        createModal({
+            title: `Entity Schema ${schema.id}`,
+            content: modalContent,
+            size: 'large'
+        });
     }
 
     /**
