@@ -183,7 +183,7 @@ export function displayAutomaticMatches(matches) {
                     </div>
                 </div>
                 <div class="match-actions">
-                    <button class="btn small primary" onclick="selectMatch('${match.id}')">Select</button>
+                    <button class="btn small primary" onclick="applyMatchDirectly('${match.id}')">Select</button>
                 </div>
             </div>
         `).join('');
@@ -343,7 +343,7 @@ function createMatchItemHTML(match) {
     const confidence = match.score ? Math.round(match.score) + '%' : '';
     
     return `
-        <div class="match-item" data-match-id="${matchId}" onclick="selectMatch('${matchId}')">
+        <div class="match-item" data-match-id="${matchId}" onclick="applyMatchDirectly('${matchId}')">
             <div class="match-content">
                 <div class="match-name">${escapeHtml(matchName)}</div>
                 <div class="match-description">${escapeHtml(matchDescription)}</div>

@@ -337,7 +337,7 @@ export async function loadExistingMatches(value, existingMatches = null) {
             const highConfidenceMatch = matches.find(match => match.score >= 90);
             if (highConfidenceMatch) {
                 setTimeout(() => {
-                    selectMatch(highConfidenceMatch.id);
+                    applyMatchDirectly(highConfidenceMatch.id);
                 }, 100);
             }
             
@@ -458,36 +458,8 @@ window.performWikidataSearch = async function() {
 };
 
 window.selectMatch = function(matchId) {
-    // Remove previous selections
-    document.querySelectorAll('.match-item').forEach(item => {
-        item.classList.remove('selected');
-    });
-    
-    // Select current match safely using CSS.escape for the attribute value
-    const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
-    const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
-    if (matchElement) {
-        matchElement.classList.add('selected');
-        
-        // Enable confirm button
-        const confirmBtn = document.getElementById('confirm-btn');
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-        }
-        
-        // Store selected match for confirmation
-        const matchLabel = matchElement.querySelector('.match-label')?.textContent;
-        const matchDescription = matchElement.querySelector('.match-description')?.textContent;
-        
-        window.selectedMatch = {
-            id: matchId,
-            name: matchLabel || 'Unknown',
-            label: matchLabel || 'Unknown', // Add label as well for compatibility
-            description: matchDescription || 'No description'
-        };
-        
-        console.log('Selected match:', window.selectedMatch);
-    }
+    // Directly apply the match instead of just selecting it
+    applyMatchDirectly(matchId);
 };
 
 window.useAsString = function() {
