@@ -121,8 +121,9 @@ function extractPrefixes(shexCode) {
 function extractShapes(shexCode, prefixes, options) {
   const shapes = {};
   
-  // Pattern to match shape definitions: <label> { ... } or SHAPE_NAME { ... }
-  const shapePattern = /<([^>]+)>\s*{([^{}]*(?:{[^{}]*}[^{}]*)*)}/gs;
+  // Enhanced pattern to match shape definitions with optional EXTRA keywords and constraints
+  // Handles: <label> { ... }, <label> EXTRA constraints { ... }, etc.
+  const shapePattern = /<([^>]+)>\s*(?:EXTRA\s+[^{]*?)?\s*{([^{}]*(?:{[^{}]*}[^{}]*)*)}/gs;
   let match;
   
   while ((match = shapePattern.exec(shexCode)) !== null) {
@@ -228,6 +229,11 @@ function parseProperty(predicate, constraint, comment, prefixes, options) {
  */
 function isOptionalProperty(constraint) {
   const cleaned = constraint.trim();
+  
+  // Check for required indicators first (+ means one or more = required)
+  if (cleaned.includes('+')) {
+    return false;
+  }
   
   // Check for explicit optional indicators
   if (cleaned.includes('?') || cleaned.includes('*')) {
@@ -381,11 +387,22 @@ function expandIRI(curie, prefixes) {
 function extractPropertyId(expandedIRI) {
   if (!expandedIRI) return null;
   
-  // Pattern for Wikidata property IRIs
-  const wdtPattern = /http:\/\/www\.wikidata\.org\/prop\/direct\/(P\d+)$/;
-  const match = expandedIRI.match(wdtPattern);
+  // Patterns for different Wikidata property IRIs
+  const patterns = [
+    /http:\/\/www\.wikidata\.org\/prop\/direct\/(P\d+)$/, // wdt: direct properties
+    /http:\/\/www\.wikidata\.org\/prop\/(P\d+)$/, // p: statement properties
+    /http:\/\/www\.wikidata\.org\/prop\/statement\/(P\d+)$/, // ps: statement value properties
+    /http:\/\/www\.wikidata\.org\/prop\/qualifier\/(P\d+)$/, // pq: qualifier properties
+  ];
   
-  return match ? match[1] : null;
+  for (const pattern of patterns) {
+    const match = expandedIRI.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+  
+  return null;
 }
 
 /**
