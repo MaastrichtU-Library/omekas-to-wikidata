@@ -6,6 +6,7 @@
 
 import { detectSourceRequirement } from './schema-property-mapper.js';
 import { parseShExCode } from './shex-parser.js';
+import { fetchPropertyData } from './wikidata-property-service.js';
 
 /**
  * Default Entity Schemas for the application
@@ -176,8 +177,15 @@ export async function fetchEntitySchemaDetails(schemaId) {
             description: description,
             url: `https://www.wikidata.org/wiki/EntitySchema:${schemaId}`,
             shexCode: shexCode,
-            properties: shexCode ? parseShExProperties(shexCode) : null
+            properties: null, // Will be populated asynchronously
+            loading: !!shexCode // Flag to indicate properties are loading
         };
+        
+        // Parse properties asynchronously if ShEx code is available
+        if (shexCode) {
+            schemaDetails.properties = await parseShExProperties(shexCode);
+            schemaDetails.loading = false;
+        }
         
         // Cache the result
         entitySchemaCache.set(schemaId, schemaDetails);
@@ -192,36 +200,48 @@ export async function fetchEntitySchemaDetails(schemaId) {
 
 /**
  * Parse ShEx code to extract property information
- * Uses standards-compliant ShEx parser
+ * Uses standards-compliant ShEx parser and enriches with Wikidata API data
  * 
  * @param {string} shexCode - ShEx code from Entity Schema
  * @param {Object} options - Parsing options (optional)
  * @param {boolean} options.strictMode - Throw errors on parsing failures (default: false)
- * @returns {Object} Object with required and optional properties
+ * @returns {Promise<Object>} Object with required and optional properties
  */
-export function parseShExProperties(shexCode, options = {}) {
+export async function parseShExProperties(shexCode, options = {}) {
     try {
         const parsed = parseShExCode(shexCode, {
             strictMode: options.strictMode || false,
             preserveComments: true
         });
         
-        // Convert to expected format
+        // Collect all property IDs for batch fetching
+        const allPropertyIds = [
+            ...parsed.properties.required.map(p => p.id),
+            ...parsed.properties.optional.map(p => p.id)
+        ];
+        
+        // Batch fetch property data from Wikidata API
+        const propertyData = await fetchPropertyData(allPropertyIds);
+        const propertyMap = new Map(propertyData.map(p => [p.id, p]));
+        
+        // Helper function to enrich property with API data
+        const enrichProperty = (prop) => {
+            const apiData = propertyMap.get(prop.id) || {};
+            return {
+                id: prop.id,
+                label: apiData.label || prop.id, // Fallback to ID if no label
+                description: apiData.description || `Property ${prop.id}`,
+                url: apiData.url || `https://www.wikidata.org/wiki/Property:${prop.id}`,
+                schemaComment: prop.schemaComment, // Preserve for tooltip
+                constraint: prop.constraint,
+                requiresSource: prop.requiresSource
+            };
+        };
+        
+        // Convert to expected format with enriched data
         const result = {
-            required: parsed.properties.required.map(prop => ({
-                id: prop.id,
-                label: prop.label,
-                description: prop.description,
-                url: prop.url,
-                requiresSource: prop.requiresSource
-            })),
-            optional: parsed.properties.optional.map(prop => ({
-                id: prop.id,
-                label: prop.label,
-                description: prop.description,
-                url: prop.url,
-                requiresSource: prop.requiresSource
-            }))
+            required: parsed.properties.required.map(enrichProperty),
+            optional: parsed.properties.optional.map(enrichProperty)
         };
         
         // Apply P31 fallback if no properties found

@@ -174,6 +174,11 @@ function extractPropertiesFromShape(shapeBody, prefixes, options) {
       continue;
     }
     
+    // Skip pure comment lines (lines starting with #)
+    if (predicate.startsWith('#')) {
+      continue;
+    }
+    
     try {
       const property = parseProperty(predicate, constraint, comment, prefixes, options);
       
@@ -214,13 +219,12 @@ function parseProperty(predicate, constraint, comment, prefixes, options) {
   return {
     id: propertyId,
     predicate: expandedPredicate,
-    label: comment ? comment.trim() : propertyId,
-    description: `Constraint: ${constraint.trim()}`,
-    url: `https://www.wikidata.org/wiki/Property:${propertyId}`,
+    schemaComment: comment ? comment.trim() : null, // Preserve schema comment for tooltip
     constraint: constraint.trim(),
     requiresSource: detectSourceRequirement(constraint),
     cardinality: parseCardinality(constraint),
     valueConstraints: parseValueConstraints(constraint, prefixes)
+    // Note: label and description will be added from Wikidata API
   };
 }
 

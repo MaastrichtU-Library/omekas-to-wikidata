@@ -23,10 +23,11 @@ describe('ShEx Parser', () => {
             
             const prop = result.properties.required[0];
             expect(prop.id).toBe('P31');
-            expect(prop.label).toBe('instance of');
+            expect(prop.schemaComment).toBe('instance of'); // Comment preserved for tooltip
             expect(prop.predicate).toBe('http://www.wikidata.org/prop/direct/P31');
             expect(prop.constraint).toBe('@<Q5>');
             expect(prop.requiresSource).toBe(false);
+            // Note: label is now fetched from Wikidata API, not set by parser
         });
         
         test('should parse optional property with ?', () => {
@@ -38,7 +39,7 @@ describe('ShEx Parser', () => {
             
             const prop = result.properties.optional[0];
             expect(prop.id).toBe('P123');
-            expect(prop.label).toBe('optional title');
+            expect(prop.schemaComment).toBe('optional title');
             expect(prop.cardinality).toEqual({ min: 0, max: 1 });
         });
         
@@ -162,7 +163,7 @@ describe('ShEx Parser', () => {
             
             const prop = result.required[0];
             expect(prop.id).toBe('P31');
-            expect(prop.label).toBe('instance of');
+            expect(prop.schemaComment).toBe('instance of');
             expect(prop.description).toBe('Constraint: @<Q5>');
             expect(prop.url).toBe('https://www.wikidata.org/wiki/Property:P31');
         });
@@ -175,7 +176,7 @@ describe('ShEx Parser', () => {
             expect(result.required).toHaveLength(1);
             const prop = result.required[0];
             expect(prop.id).toBe('P31');
-            expect(prop.label).toBe('instance of');
+            expect(prop.schemaComment).toBe('instance of');
         });
         
         test('should fallback to legacy when new parser fails', () => {
@@ -215,7 +216,7 @@ describe('ShEx Parser', () => {
             // Legacy behavior: add P31 fallback
             expect(result.required).toHaveLength(1);
             expect(result.required[0].id).toBe('P31');
-            expect(result.required[0].label).toBe('instance of');
+            expect(result.required[0].schemaComment).toBe('instance of');
             expect(result.required[0].requiresSource).toBe(false);
         });
     });
@@ -227,7 +228,7 @@ describe('ShEx Parser', () => {
             const result = parseShExCode(shexCode);
             
             const prop = result.properties.required[0];
-            expect(prop.label).toBe('P31'); // Should fallback to property ID
+            expect(prop.schemaComment).toBeNull(); // No comment provided
         });
         
         test('should handle properties with complex comments', () => {
@@ -235,7 +236,7 @@ describe('ShEx Parser', () => {
             const result = parseShExCode(shexCode);
             
             const prop = result.properties.required[0];
-            expect(prop.label).toBe('instance of (taxonomic class)');
+            expect(prop.schemaComment).toBe('instance of (taxonomic class)');
         });
         
         test('should handle mixed required and optional properties', () => {

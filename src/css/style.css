@@ -535,6 +535,19 @@ button {
     background-color: #fff5f5;
 }
 
+.schema-comment-indicator {
+    cursor: help;
+    opacity: 0.7;
+    margin-left: 4px;
+    font-size: 0.9em;
+    display: inline-block;
+    transition: opacity 0.2s ease;
+}
+
+.schema-comment-indicator:hover {
+    opacity: 1;
+}
+
 .status-indicator {
     font-weight: bold;
     font-size: 14px;

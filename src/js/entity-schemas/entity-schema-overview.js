@@ -157,6 +157,16 @@ export function initializeSchemaOverview(state) {
             style: isExpanded ? 'display: block;' : 'display: none;'
         });
 
+        // Check if schema is still loading
+        if (currentSchema && currentSchema.loading) {
+            const loadingMessage = createElement('div', {
+                className: 'loading-properties-message',
+                style: 'padding: 10px; font-style: italic; color: #666;'
+            }, 'Loading property information from Wikidata...');
+            body.appendChild(loadingMessage);
+            return body;
+        }
+
         // Required properties section
         if (categorizedProps.required.mapped.length > 0 || categorizedProps.required.unmapped.length > 0) {
             const requiredSection = createPropertySection(
@@ -229,9 +239,17 @@ export function initializeSchemaOverview(state) {
      * @returns {HTMLElement} Property item element
      */
     function createPropertyItem(property, sectionType) {
+        // Build tooltip content
+        let tooltipContent = property.description || '';
+        if (property.schemaComment) {
+            tooltipContent += tooltipContent ? '\n\nSchema note: ' : 'Schema note: ';
+            tooltipContent += property.schemaComment;
+        }
+        
         const item = createElement('div', {
             className: `property-item ${property.isMapped ? 'mapped' : 'unmapped'} ${sectionType}`,
-            'data-property-id': property.id
+            'data-property-id': property.id,
+            title: tooltipContent // Add full tooltip
         });
 
         // Status indicator
@@ -268,6 +286,16 @@ export function initializeSchemaOverview(state) {
                 title: 'This property requires a source/reference'
             }, '📎');
         }
+        
+        // Schema comment indicator if present
+        let schemaCommentIndicator = null;
+        if (property.schemaComment) {
+            schemaCommentIndicator = createElement('span', {
+                className: 'schema-comment-indicator',
+                title: `Schema note: ${property.schemaComment}`,
+                style: 'cursor: help; opacity: 0.7; margin-left: 4px;'
+            }, 'ℹ️');
+        }
 
         item.appendChild(statusIndicator);
         item.appendChild(label);
@@ -277,6 +305,10 @@ export function initializeSchemaOverview(state) {
         if (sourceIndicator) {
             item.appendChild(createElement('span', {}, ' '));
             item.appendChild(sourceIndicator);
+        }
+        
+        if (schemaCommentIndicator) {
+            item.appendChild(schemaCommentIndicator);
         }
 
         return item;
