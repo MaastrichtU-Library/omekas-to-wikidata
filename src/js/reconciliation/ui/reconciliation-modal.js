@@ -46,7 +46,8 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
         entitySchema
     };
     
-    const modalContent = createElement('div', { className: 'reconciliation-modal-redesign' }, `
+    const modalContent = createElement('div', { className: 'reconciliation-modal-redesign' });
+    modalContent.innerHTML = `
         <!-- Header Section -->
         <div class="modal-header">
             <div class="data-type-indicator">
@@ -79,14 +80,36 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
             <button class="btn btn-secondary" onclick="closeReconciliationModal()">Cancel</button>
             <button class="btn btn-primary" id="confirm-btn" onclick="confirmReconciliation()" disabled>Confirm</button>
         </div>
-    `);
+    `;
 
-    // Initialize the modal after DOM insertion
-    setTimeout(() => {
-        initializeModalInteractions(dataType, transformedValue, property, propertyData);
-    }, 100);
+    // Store initialization data on the element for later use
+    modalContent.dataset.initDataType = dataType;
+    modalContent.dataset.initValue = transformedValue;
+    modalContent.dataset.initProperty = property;
+    if (propertyData) {
+        modalContent.dataset.initPropertyData = JSON.stringify(propertyData);
+    }
 
     return modalContent;
+}
+
+/**
+ * Initialize modal from stored data attributes
+ * Can be called after modal is inserted into DOM
+ */
+export function initializeReconciliationModal() {
+    const modalContainer = document.querySelector('.reconciliation-modal-redesign');
+    if (modalContainer) {
+        const dataType = modalContainer.dataset.initDataType;
+        const value = modalContainer.dataset.initValue;
+        const property = modalContainer.dataset.initProperty;
+        const propertyData = modalContainer.dataset.initPropertyData ? 
+            JSON.parse(modalContainer.dataset.initPropertyData) : null;
+        
+        if (dataType && value) {
+            initializeModalInteractions(dataType, value, property, propertyData);
+        }
+    }
 }
 
 /**
@@ -305,12 +328,17 @@ export async function loadExistingMatches(value) {
  * Create match item HTML
  */
 function createMatchItem(match) {
+    // Escape match.id for safe use in HTML attributes
+    const safeMatchId = escapeHtml(match.id);
+    // Escape match.id for safe use in JavaScript string literals
+    const jsEscapedId = match.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    
     return `
-        <div class="match-item" data-match-id="${match.id}" onclick="selectMatch('${match.id}')">
+        <div class="match-item" data-match-id="${safeMatchId}" onclick="selectMatch('${jsEscapedId}')">
             <div class="match-content">
                 <div class="match-name">${escapeHtml(match.name || match.label || 'Unnamed')}</div>
                 <div class="match-description">${escapeHtml(match.description || 'No description')}</div>
-                <div class="match-id">${match.id}</div>
+                <div class="match-id">${safeMatchId}</div>
             </div>
             <div class="match-confidence">${match.score ? Math.round(match.score) + '%' : ''}</div>
         </div>
@@ -362,8 +390,9 @@ window.selectMatch = function(matchId) {
         item.classList.remove('selected');
     });
     
-    // Select current match
-    const matchElement = document.querySelector(`[data-match-id="${matchId}"]`);
+    // Select current match safely using CSS.escape for the attribute value
+    const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
+    const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
     if (matchElement) {
         matchElement.classList.add('selected');
         
@@ -463,6 +492,37 @@ window.showEditor = function() {
     }
 };
 
+window.showAllMatches = async function() {
+    const value = document.querySelector('.transformed-value')?.textContent;
+    if (!value) return;
+    
+    const matchesContainer = document.getElementById('existing-matches');
+    if (!matchesContainer) return;
+    
+    try {
+        const matches = await tryDirectWikidataSearch(value);
+        
+        if (matches && matches.length > 0) {
+            matchesContainer.innerHTML = `
+                <div class="section-title">All Matches</div>
+                <div class="matches-list">
+                    ${matches.map(match => createMatchItem(match)).join('')}
+                </div>
+                <button class="btn btn-link" onclick="showTopMatches()">Show fewer matches</button>
+            `;
+        }
+    } catch (error) {
+        console.error('Error showing all matches:', error);
+    }
+};
+
+window.showTopMatches = function() {
+    const value = document.querySelector('.transformed-value')?.textContent;
+    if (value) {
+        loadExistingMatches(value);
+    }
+};
+
 /**
  * Factory function for creating modal content (backward compatibility)
  * @param {Object} dependencies - Dependencies for the modal content factory
@@ -529,6 +589,20 @@ export function createOpenReconciliationModalFactory(dependencies) {
             if (modalContent) {
                 setupDynamicDatePrecision(modalContent);
                 setupAutoAdvanceToggle();
+                
+                // Initialize modal interactions using stored data
+                const modalContainer = document.querySelector('.reconciliation-modal-redesign');
+                if (modalContainer) {
+                    const dataType = modalContainer.dataset.initDataType;
+                    const value = modalContainer.dataset.initValue;
+                    const property = modalContainer.dataset.initProperty;
+                    const propertyData = modalContainer.dataset.initPropertyData ? 
+                        JSON.parse(modalContainer.dataset.initPropertyData) : null;
+                    
+                    if (dataType && value) {
+                        initializeModalInteractions(dataType, value, property, propertyData);
+                    }
+                }
             }
         }, 100);
         
