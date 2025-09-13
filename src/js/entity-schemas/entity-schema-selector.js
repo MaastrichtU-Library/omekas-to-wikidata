@@ -52,14 +52,6 @@ export function createEntitySchemaSelector(options = {}) {
         isOpen = !isOpen;
         dropdownContent.style.display = isOpen ? 'block' : 'none';
         dropdownButton.setAttribute('aria-expanded', isOpen);
-        
-        if (isOpen) {
-            // Position dropdown below button
-            const rect = dropdownButton.getBoundingClientRect();
-            dropdownContent.style.top = `${rect.bottom + window.scrollY}px`;
-            dropdownContent.style.left = `${rect.left + window.scrollX}px`;
-            dropdownContent.style.width = `${rect.width}px`;
-        }
     }
     
     // Close dropdown when clicking outside
