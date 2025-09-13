@@ -228,7 +228,8 @@ export function setupReconciliationStep(state) {
             performAutomaticReconciliation,
             setupDynamicDatePrecision,
             setupAutoAdvanceToggle: () => setupAutoAdvanceToggle(),
-            createReconciliationModalContent
+            createReconciliationModalContent,
+            state
         });
         
         // Table UI functions
