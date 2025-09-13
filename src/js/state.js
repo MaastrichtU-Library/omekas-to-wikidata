@@ -27,7 +27,9 @@ export function setupState() {
         selectedExample: null,
         
         // Step 2: Mapping
-        entitySchema: '',
+        entitySchema: '', // Deprecated - use selectedEntitySchema instead
+        selectedEntitySchema: null, // Current selected Entity Schema object
+        entitySchemaHistory: [], // Recently selected schemas for quick access
         mappings: {
             nonLinkedKeys: [],
             mappedKeys: [],
@@ -1007,6 +1009,83 @@ export function setupState() {
     }
     
     /**
+     * Sets the selected Entity Schema
+     * @param {Object} schema - The Entity Schema object
+     */
+    function setSelectedEntitySchema(schema) {
+        const oldValue = state.selectedEntitySchema;
+        state.selectedEntitySchema = schema;
+        
+        // Add to history if not already present
+        if (schema && schema.id) {
+            ensureEntitySchemaHistory();
+            const existingIndex = state.entitySchemaHistory.findIndex(s => s.id === schema.id);
+            if (existingIndex > -1) {
+                // Move to front
+                state.entitySchemaHistory.splice(existingIndex, 1);
+            }
+            // Add to front, keep only last 10
+            state.entitySchemaHistory.unshift(schema);
+            state.entitySchemaHistory = state.entitySchemaHistory.slice(0, 10);
+        }
+        
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'selectedEntitySchema',
+            oldValue,
+            newValue: schema
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets the currently selected Entity Schema
+     * @returns {Object|null} The selected Entity Schema or null
+     */
+    function getSelectedEntitySchema() {
+        return state.selectedEntitySchema;
+    }
+    
+    /**
+     * Gets the Entity Schema history
+     * @returns {Array} Array of recently selected Entity Schemas
+     */
+    function getEntitySchemaHistory() {
+        ensureEntitySchemaHistory();
+        return [...state.entitySchemaHistory];
+    }
+    
+    /**
+     * Ensures the Entity Schema history array is initialized
+     */
+    function ensureEntitySchemaHistory() {
+        if (!state.entitySchemaHistory) {
+            state.entitySchemaHistory = [];
+        }
+    }
+    
+    /**
+     * Clears the Entity Schema history
+     */
+    function clearEntitySchemaHistory() {
+        const oldValue = [...(state.entitySchemaHistory || [])];
+        state.entitySchemaHistory = [];
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'entitySchemaHistory',
+            oldValue,
+            newValue: []
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
      * Clear persisted state from localStorage
      */
     function clearPersistedState() {
@@ -1055,6 +1134,11 @@ export function setupState() {
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,
         setReconciliationProgress,
+        // Convenience methods for Entity Schema
+        setSelectedEntitySchema,
+        getSelectedEntitySchema,
+        getEntitySchemaHistory,
+        clearEntitySchemaHistory,
         // Utility methods
         loadMockData,
         // Persistence methods

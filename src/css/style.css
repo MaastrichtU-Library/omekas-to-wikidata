@@ -94,6 +94,230 @@ button {
     cursor: pointer;
 }
 
+/* Entity Schema Selector Styles */
+.mapping-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 20px;
+}
+
+.mapping-header h2 {
+    margin: 0;
+    flex: 1;
+}
+
+.entity-schema-selector-header {
+    flex-shrink: 0;
+}
+
+.entity-schema-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.entity-schema-selector__label {
+    margin: 0;
+    font-weight: 500;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.entity-schema-selector__select {
+    min-width: 300px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: white;
+    font-size: 0.9em;
+}
+
+.entity-schema-selector__link-button {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+
+.entity-schema-selector__link-button:hover:not(:disabled) {
+    background: var(--secondary-color);
+    border-color: var(--primary-color);
+}
+
+.entity-schema-selector__link-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Entity Schema Search Modal Styles */
+.entity-schema-search {
+    max-width: 800px;
+}
+
+.entity-schema-search__suggested {
+    margin-bottom: 30px;
+}
+
+.entity-schema-search__section-title {
+    margin: 0 0 15px 0;
+    color: var(--text-color);
+    font-size: 1.1em;
+}
+
+.entity-schema-search__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+.entity-schema-card {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.entity-schema-card:hover {
+    border-color: var(--primary-color);
+    background: #e7f3ff;
+}
+
+.entity-schema-card__id {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 1.1em;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s;
+    margin-bottom: 5px;
+}
+
+.entity-schema-card__id:hover {
+    color: #0056b3;
+}
+
+.entity-schema-card__label {
+    font-weight: 500;
+    color: var(--text-color);
+    margin-bottom: 5px;
+}
+
+.entity-schema-card__description {
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1.4;
+}
+
+.entity-schema-search__section {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.entity-schema-search__input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1em;
+    margin-bottom: 15px;
+}
+
+.entity-schema-search__input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.entity-schema-search__status {
+    color: #666;
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.entity-schema-search__results {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: white;
+}
+
+.entity-schema-search__result {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.entity-schema-search__result:hover {
+    background: #f8f9fa;
+}
+
+.entity-schema-search__result:last-child {
+    border-bottom: none;
+}
+
+.entity-schema-search__result-id {
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s;
+    margin-bottom: 3px;
+}
+
+.entity-schema-search__result-id:hover {
+    color: #0056b3;
+}
+
+.entity-schema-search__result-label {
+    font-weight: 500;
+    color: var(--text-color);
+    margin-bottom: 3px;
+}
+
+.entity-schema-search__result-description {
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1.4;
+}
+
+/* Responsive Design for Entity Schema Components */
+@media (max-width: 768px) {
+    .mapping-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .entity-schema-selector__select {
+        min-width: 200px;
+    }
+    
+    .entity-schema-search__grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .entity-schema-selector {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+}
+
 /* Manual JSON Input Styles */
 .input-alternatives {
     margin-top: 10px;

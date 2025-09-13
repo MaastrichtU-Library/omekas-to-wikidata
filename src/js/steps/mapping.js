@@ -81,6 +81,7 @@ import {
     createUnifiedPropertyModalContent,
     openRawJsonModal 
 } from '../mapping/ui/property-modals.js';
+import { initializeEntitySchemaSelector } from '../entity-schemas/entity-schema-selector.js';
 
 /**
  * Initializes the mapping step interface and sets up all event handlers
@@ -107,11 +108,23 @@ export function setupMappingStep(state) {
     window.mappingStepState = state;
     
     // Initialize DOM elements
-    const entitySchemaInput = document.getElementById('entity-schema');
     const addManualPropertyBtn = document.getElementById('add-manual-property');
     const loadMappingBtn = document.getElementById('load-mapping');
     const saveMappingBtn = document.getElementById('save-mapping');
     const loadMappingFileInput = document.getElementById('load-mapping-file');
+    
+    // Initialize Entity Schema selector
+    const selectorContainer = document.getElementById('entity-schema-selector-container');
+    if (selectorContainer) {
+        const selector = initializeEntitySchemaSelector(state);
+        selectorContainer.appendChild(selector);
+        
+        // Listen for Entity Schema selection events
+        eventSystem.subscribe('entitySchemaSelected', (data) => {
+            console.log('Entity Schema selected:', data.schema);
+            // Additional logic can be added here when schema is selected
+        });
+    }
     
     // Listen for step changes via event system
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
@@ -141,14 +154,6 @@ export function setupMappingStep(state) {
             setTimeout(() => populateLists(state), 100);
         }
     });
-    
-    // Entity schema input
-    if (entitySchemaInput) {
-        entitySchemaInput.addEventListener('change', () => {
-            state.updateState('entitySchema', entitySchemaInput.value);
-            state.markChangesUnsaved();
-        });
-    }
     
     // Load mapping functionality
     if (loadMappingBtn && loadMappingFileInput) {
