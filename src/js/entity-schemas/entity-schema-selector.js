@@ -121,6 +121,11 @@ function updateSelectorDisplay(container, schema) {
     const select = container._select;
     const linkButton = container._linkButton;
     
+    if (!select || !linkButton) {
+        console.error('Selector elements not found in container');
+        return;
+    }
+    
     // Check if this is a custom schema not in the default list
     const isCustomSchema = !DEFAULT_SCHEMAS.find(s => s.id === schema.id);
     
@@ -142,6 +147,7 @@ function updateSelectorDisplay(container, schema) {
     
     // Enable/update link button
     linkButton.disabled = false;
+    linkButton.removeAttribute('disabled');
     linkButton.title = `View ${schema.id} on Wikidata`;
 }
 
@@ -156,31 +162,40 @@ export function openEntitySchemaSearchModal(options = {}) {
     // Create modal content
     const modalContent = createEntitySchemaSearchContent(onSchemaSelect);
     
-    // Create modal using existing modal system
-    const modal = createModal({
-        title: 'Select Entity Schema',
-        content: modalContent,
-        size: 'large',
-        buttons: [
-            {
-                text: 'Cancel',
-                className: 'button button--secondary',
-                onClick: () => {
-                    document.getElementById('modal-container').style.display = 'none';
-                }
+    // Use the existing modal system structure
+    const modalContainer = document.getElementById('modal-container');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContentEl = document.getElementById('modal-content');
+    const modalFooter = document.getElementById('modal-footer');
+    
+    if (!modalContainer || !modalTitle || !modalContentEl) {
+        console.error('Modal system not available');
+        return;
+    }
+    
+    // Set modal content manually using the existing modal structure
+    modalTitle.textContent = 'Select Entity Schema';
+    modalContentEl.innerHTML = '';
+    modalContentEl.appendChild(modalContent);
+    
+    // Set up cancel button
+    if (modalFooter) {
+        modalFooter.innerHTML = '';
+        const cancelButton = createElement('button', {
+            className: 'button button--secondary',
+            onClick: () => {
+                modalContainer.style.display = 'none';
             }
-        ]
-    });
+        }, 'Cancel');
+        modalFooter.appendChild(cancelButton);
+    }
     
     // Show modal
-    const modalContainer = document.getElementById('modal-container');
-    modalContainer.innerHTML = '';
-    modalContainer.appendChild(modal);
     modalContainer.style.display = 'flex';
     
     // Focus on search input after modal is shown
     setTimeout(() => {
-        const searchInput = modal.querySelector('.entity-schema-search__input');
+        const searchInput = modalContent.querySelector('.entity-schema-search__input');
         if (searchInput) {
             searchInput.focus();
         }
@@ -212,7 +227,14 @@ function createEntitySchemaSearchContent(onSchemaSelect) {
     
     // Add default schemas as suggestions
     DEFAULT_SCHEMAS.forEach(schema => {
-        const schemaCard = createEntitySchemaCard(schema, onSchemaSelect);
+        const schemaCard = createEntitySchemaCard(schema, (selectedSchema) => {
+            onSchemaSelect(selectedSchema);
+            // Close modal
+            const modalContainer = document.getElementById('modal-container');
+            if (modalContainer) {
+                modalContainer.style.display = 'none';
+            }
+        });
         suggestedGrid.appendChild(schemaCard);
     });
     
@@ -260,7 +282,14 @@ function createEntitySchemaSearchContent(onSchemaSelect) {
         searchTimeout = setTimeout(async () => {
             try {
                 const results = await searchEntitySchemas(query);
-                displaySearchResults(results, searchStatus, searchResults, onSchemaSelect);
+                displaySearchResults(results, searchStatus, searchResults, (selectedSchema) => {
+                    onSchemaSelect(selectedSchema);
+                    // Close modal
+                    const modalContainer = document.getElementById('modal-container');
+                    if (modalContainer) {
+                        modalContainer.style.display = 'none';
+                    }
+                });
             } catch (error) {
                 console.error('Search error:', error);
                 searchStatus.textContent = `Search failed: ${error.message}`;
@@ -292,8 +321,6 @@ function createEntitySchemaCard(schema, onSelect) {
         className: 'entity-schema-card',
         onClick: () => {
             onSelect(schema);
-            // Close modal
-            document.getElementById('modal-container').style.display = 'none';
         }
     });
     
@@ -350,8 +377,6 @@ function displaySearchResults(results, statusElement, resultsElement, onSchemaSe
                     } else {
                         onSchemaSelect(result);
                     }
-                    // Close modal
-                    document.getElementById('modal-container').style.display = 'none';
                 } catch (error) {
                     console.error('Error selecting schema:', error);
                     showMessage('Error loading selected schema', 'error');
