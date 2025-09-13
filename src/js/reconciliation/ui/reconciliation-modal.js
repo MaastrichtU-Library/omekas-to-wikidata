@@ -34,8 +34,7 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
         transformedValue,
         currentValue: transformedValue,
         propertyData,
-        dataType,
-        entitySchema
+        dataType
     };
     
     const modalContent = createElement('div', { className: 'reconciliation-modal-redesign' });
