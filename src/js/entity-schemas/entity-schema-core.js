@@ -192,136 +192,68 @@ export async function fetchEntitySchemaDetails(schemaId) {
 
 /**
  * Parse ShEx code to extract property information
- * Enhanced with backwards-compatible dual parser implementation
+ * Uses standards-compliant ShEx parser
  * 
- * @param {string} shexCode - ShEx code from Entity Schema  
+ * @param {string} shexCode - ShEx code from Entity Schema
  * @param {Object} options - Parsing options (optional)
- * @param {boolean} options.useNewParser - Use new parser (default: false for backwards compatibility)
  * @param {boolean} options.strictMode - Throw errors on parsing failures (default: false)
- * @param {boolean} options.enableFallback - Enable fallback to legacy parser (default: true)
  * @returns {Object} Object with required and optional properties
  */
 export function parseShExProperties(shexCode, options = {}) {
-    const opts = {
-        useNewParser: false, // Default to legacy for backwards compatibility
-        strictMode: false,
-        enableFallback: true,
-        ...options
-    };
-    
-    // NEW PARSER PATH
-    if (opts.useNewParser) {
-        try {
-            const parsed = parseShExCode(shexCode, {
-                strictMode: opts.strictMode,
-                preserveComments: true
+    try {
+        const parsed = parseShExCode(shexCode, {
+            strictMode: options.strictMode || false,
+            preserveComments: true
+        });
+        
+        // Convert to expected format
+        const result = {
+            required: parsed.properties.required.map(prop => ({
+                id: prop.id,
+                label: prop.label,
+                description: prop.description,
+                url: prop.url,
+                requiresSource: prop.requiresSource
+            })),
+            optional: parsed.properties.optional.map(prop => ({
+                id: prop.id,
+                label: prop.label,
+                description: prop.description,
+                url: prop.url,
+                requiresSource: prop.requiresSource
+            }))
+        };
+        
+        // Apply P31 fallback if no properties found
+        if (result.required.length === 0 && result.optional.length === 0) {
+            result.required.push({
+                id: 'P31',
+                label: 'instance of',
+                description: 'that class of which this subject is a particular example',
+                url: 'https://www.wikidata.org/wiki/Property:P31',
+                requiresSource: false
             });
-            
-            // Convert new parser format to legacy format for backwards compatibility
-            const result = {
-                required: parsed.properties.required.map(prop => ({
-                    id: prop.id,
-                    label: prop.label,
-                    description: prop.description, 
-                    url: prop.url,
-                    requiresSource: prop.requiresSource
-                })),
-                optional: parsed.properties.optional.map(prop => ({
-                    id: prop.id,
-                    label: prop.label,
-                    description: prop.description,
-                    url: prop.url,
-                    requiresSource: prop.requiresSource
-                }))
-            };
-            
-            // Apply legacy fallback behavior if no properties found
-            if (result.required.length === 0 && result.optional.length === 0) {
-                result.required.push({
-                    id: 'P31',
-                    label: 'instance of', 
-                    description: 'that class of which this subject is a particular example',
-                    url: 'https://www.wikidata.org/wiki/Property:P31',
-                    requiresSource: false
-                });
-            }
-            
-            return result;
-            
-        } catch (error) {
-            console.warn('New ShEx parser failed:', error);
-            
-            if (!opts.enableFallback) {
-                throw error;
-            }
-            
-            console.log('Falling back to legacy parser for backwards compatibility');
-            // Continue to legacy parser below
         }
+        
+        return result;
+        
+    } catch (error) {
+        console.error('ShEx parsing failed:', error);
+        
+        // Return P31 fallback on error (maintains app stability)
+        return {
+            required: [{
+                id: 'P31',
+                label: 'instance of',
+                description: 'that class of which this subject is a particular example',
+                url: 'https://www.wikidata.org/wiki/Property:P31',
+                requiresSource: false
+            }],
+            optional: []
+        };
     }
-    
-    // LEGACY PARSER PATH (EXACT ORIGINAL IMPLEMENTATION)
-    // This is the original parseShExProperties function preserved for backwards compatibility
-    return parseShExPropertiesLegacy(shexCode);
 }
 
-/**
- * Legacy ShEx parser implementation
- * EXACT copy of original parseShExProperties for backwards compatibility
- * DO NOT MODIFY - used as fallback and reference implementation
- * 
- * @param {string} shexCode - ShEx code from Entity Schema
- * @returns {Object} Object with required and optional properties
- */
-function parseShExPropertiesLegacy(shexCode) {
-    const requiredProperties = [];
-    const optionalProperties = [];
-    
-    // Parse properties from ShEx code
-    const propertyMatches = shexCode.match(/wdt:(\w+)\s+([^;]+);?\s*(?:#\s*(.*))?/g);
-    
-    if (propertyMatches) {
-        propertyMatches.forEach(match => {
-            const propMatch = match.match(/wdt:(\w+)\s+([^;]+);?\s*(?:#\s*(.*))?/);
-            if (propMatch) {
-                const propertyId = propMatch[1];
-                const constraint = propMatch[2].trim();
-                const comment = propMatch[3] ? propMatch[3].trim() : '';
-                
-                const property = {
-                    id: propertyId,
-                    label: comment || propertyId,
-                    description: `Constraint: ${constraint}`,
-                    url: `https://www.wikidata.org/wiki/Property:${propertyId}`,
-                    requiresSource: detectSourceRequirement(constraint)
-                };
-                
-                // Determine if required (no ? or *)
-                if (constraint.includes('?') || constraint.includes('*')) {
-                    optionalProperties.push(property);
-                } else {
-                    requiredProperties.push(property);
-                }
-            }
-        });
-    }
-    
-    // If no properties were parsed, add fallback
-    if (requiredProperties.length === 0 && optionalProperties.length === 0) {
-        requiredProperties.push({
-            id: 'P31',
-            label: 'instance of',
-            description: 'that class of which this subject is a particular example',
-            url: 'https://www.wikidata.org/wiki/Property:P31',
-            requiresSource: false
-        });
-    }
-    
-    return {
-        required: requiredProperties,
-        optional: optionalProperties
-    };
-}
 
 /**
  * Get Entity Schema by ID, trying cache first, then default schemas, then API

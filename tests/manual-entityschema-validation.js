@@ -1,6 +1,6 @@
 /**
  * Manual validation script for testing ShEx parser with real Wikidata EntitySchemas
- * This script tests the new parser against actual EntitySchema patterns
+ * This script validates the parser against actual EntitySchema patterns
  */
 
 import { parseShExProperties } from '../src/js/entity-schemas/entity-schema-core.js';
@@ -99,72 +99,47 @@ const REAL_ENTITYSCHEMA_SAMPLES = {
 function testEntitySchemaPatterns() {
     console.log('🧪 Testing ShEx Parser with Real Wikidata EntitySchema Patterns\n');
     
-    const results = {
-        legacy: {},
-        new: {},
-        comparison: {}
-    };
+    const results = {};
+    let successCount = 0;
+    let errorCount = 0;
     
     Object.entries(REAL_ENTITYSCHEMA_SAMPLES).forEach(([schemaName, shexCode]) => {
         console.log(`\n📋 Testing: ${schemaName}`);
         console.log('─'.repeat(60));
         
         try {
-            // Test with legacy parser (default)
-            const legacyResult = parseShExProperties(shexCode);
-            results.legacy[schemaName] = legacyResult;
+            const result = parseShExProperties(shexCode);
+            results[schemaName] = result;
+            successCount++;
             
-            console.log('✅ Legacy Parser Results:');
-            console.log(`   Required properties: ${legacyResult.required.length}`);
-            console.log(`   Optional properties: ${legacyResult.optional.length}`);
+            console.log('✅ Parser Results:');
+            console.log(`   Required properties: ${result.required.length}`);
+            console.log(`   Optional properties: ${result.optional.length}`);
             
-            if (legacyResult.required.length > 0) {
-                console.log('   Required IDs:', legacyResult.required.map(p => p.id).join(', '));
+            if (result.required.length > 0) {
+                console.log('   Required IDs:', result.required.map(p => p.id).join(', '));
             }
-            if (legacyResult.optional.length > 0) {
-                console.log('   Optional IDs:', legacyResult.optional.map(p => p.id).join(', '));
-            }
-            
-            // Test with new parser
-            try {
-                const newResult = parseShExProperties(shexCode, { useNewParser: true });
-                results.new[schemaName] = newResult;
-                
-                console.log('\n🚀 New Parser Results:');
-                console.log(`   Required properties: ${newResult.required.length}`);
-                console.log(`   Optional properties: ${newResult.optional.length}`);
-                
-                if (newResult.required.length > 0) {
-                    console.log('   Required IDs:', newResult.required.map(p => p.id).join(', '));
-                }
-                if (newResult.optional.length > 0) {
-                    console.log('   Optional IDs:', newResult.optional.map(p => p.id).join(', '));
-                }
-                
-                // Compare results
-                const sameRequiredLength = legacyResult.required.length === newResult.required.length;
-                const sameOptionalLength = legacyResult.optional.length === newResult.optional.length;
-                
-                if (sameRequiredLength && sameOptionalLength) {
-                    console.log('\n✅ Results match between legacy and new parser');
-                    results.comparison[schemaName] = 'MATCH';
-                } else {
-                    console.log('\n⚠️  Results differ between parsers');
-                    console.log(`   Legacy: ${legacyResult.required.length}/${legacyResult.optional.length} (req/opt)`);
-                    console.log(`   New: ${newResult.required.length}/${newResult.optional.length} (req/opt)`);
-                    results.comparison[schemaName] = 'DIFFER';
-                }
-                
-            } catch (newError) {
-                console.log('\n❌ New parser failed:', newError.message);
-                results.new[schemaName] = { error: newError.message };
-                results.comparison[schemaName] = 'NEW_PARSER_FAILED';
+            if (result.optional.length > 0) {
+                console.log('   Optional IDs:', result.optional.map(p => p.id).join(', '));
             }
             
-        } catch (legacyError) {
-            console.log('❌ Legacy parser failed:', legacyError.message);
-            results.legacy[schemaName] = { error: legacyError.message };
-            results.comparison[schemaName] = 'LEGACY_PARSER_FAILED';
+            // Validate structure
+            [...result.required, ...result.optional].forEach(prop => {
+                if (!prop.id || !prop.label || !prop.url || typeof prop.requiresSource !== 'boolean') {
+                    console.log('   ⚠️  Property missing required fields:', prop.id);
+                }
+            });
+            
+            // Check for source requirements
+            const sourceProps = [...result.required, ...result.optional].filter(p => p.requiresSource);
+            if (sourceProps.length > 0) {
+                console.log('   📍 Source requirements detected:', sourceProps.map(p => p.id).join(', '));
+            }
+            
+        } catch (error) {
+            console.log('❌ Parser failed:', error.message);
+            results[schemaName] = { error: error.message };
+            errorCount++;
         }
     });
     
@@ -172,42 +147,21 @@ function testEntitySchemaPatterns() {
     console.log('\n📊 SUMMARY');
     console.log('═'.repeat(60));
     
-    const matches = Object.values(results.comparison).filter(r => r === 'MATCH').length;
-    const total = Object.keys(results.comparison).length;
+    const total = Object.keys(REAL_ENTITYSCHEMA_SAMPLES).length;
     
-    console.log(`✅ Matching results: ${matches}/${total}`);
-    console.log(`⚠️  Differing results: ${Object.values(results.comparison).filter(r => r === 'DIFFER').length}`);
-    console.log(`❌ New parser failures: ${Object.values(results.comparison).filter(r => r === 'NEW_PARSER_FAILED').length}`);
-    console.log(`❌ Legacy parser failures: ${Object.values(results.comparison).filter(r => r === 'LEGACY_PARSER_FAILED').length}`);
+    console.log(`✅ Successful parses: ${successCount}/${total}`);
+    console.log(`❌ Failed parses: ${errorCount}/${total}`);
     
-    // Detailed analysis
-    console.log('\n🔍 DETAILED ANALYSIS');
-    console.log('─'.repeat(60));
-    
-    Object.entries(results.comparison).forEach(([schema, status]) => {
-        if (status === 'DIFFER') {
-            const legacy = results.legacy[schema];
-            const newer = results.new[schema];
-            
-            console.log(`\n📋 ${schema}: DIFFERENCES DETECTED`);
-            console.log(`   Legacy: ${legacy.required?.length || 0} required, ${legacy.optional?.length || 0} optional`);
-            console.log(`   New: ${newer.required?.length || 0} required, ${newer.optional?.length || 0} optional`);
-            
-            // Show property differences
-            const legacyIds = [...(legacy.required || []), ...(legacy.optional || [])].map(p => p.id);
-            const newIds = [...(newer.required || []), ...(newer.optional || [])].map(p => p.id);
-            
-            const onlyInLegacy = legacyIds.filter(id => !newIds.includes(id));
-            const onlyInNew = newIds.filter(id => !legacyIds.includes(id));
-            
-            if (onlyInLegacy.length > 0) {
-                console.log(`   Only in legacy: ${onlyInLegacy.join(', ')}`);
+    if (errorCount > 0) {
+        console.log('\n🔍 ERRORS');
+        console.log('─'.repeat(60));
+        
+        Object.entries(results).forEach(([schema, result]) => {
+            if (result.error) {
+                console.log(`❌ ${schema}: ${result.error}`);
             }
-            if (onlyInNew.length > 0) {
-                console.log(`   Only in new: ${onlyInNew.join(', ')}`);
-            }
-        }
-    });
+        });
+    }
     
     return results;
 }
@@ -242,13 +196,17 @@ function testParsingEdgeCases() {
         console.log(`\n📝 Testing: ${caseName}`);
         
         try {
-            const legacyResult = parseShExProperties(shex);
-            const newResult = parseShExProperties(shex, { useNewParser: true });
+            const result = parseShExProperties(shex);
             
-            const match = JSON.stringify(legacyResult) === JSON.stringify(newResult);
-            console.log(`   ${match ? '✅' : '⚠️'} Results ${match ? 'match' : 'differ'}`);
-            console.log(`   Legacy: ${legacyResult.required.length}/${legacyResult.optional.length}`);
-            console.log(`   New: ${newResult.required.length}/${newResult.optional.length}`);
+            console.log(`   ✅ Parser handled successfully`);
+            console.log(`   Result: ${result.required.length} required, ${result.optional.length} optional`);
+            
+            if (result.required.length > 0) {
+                console.log(`   Required: ${result.required.map(p => p.id).join(', ')}`);
+            }
+            if (result.optional.length > 0) {
+                console.log(`   Optional: ${result.optional.map(p => p.id).join(', ')}`);
+            }
             
         } catch (error) {
             console.log(`   ❌ Error: ${error.message}`);

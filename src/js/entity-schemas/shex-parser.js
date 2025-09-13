@@ -428,28 +428,3 @@ function deduplicateProperties(properties) {
   });
 }
 
-/**
- * Legacy compatibility function - mimics the current parseShExProperties behavior
- * This maintains backwards compatibility while using the new parser
- */
-export function parseShExProperties(shexCode, options = {}) {
-  try {
-    const parsed = parseShExCode(shexCode, options);
-    
-    // Return in the format expected by existing code
-    return {
-      required: parsed.properties.required,
-      optional: parsed.properties.optional
-    };
-    
-  } catch (error) {
-    console.warn('New ShEx parser failed, this should be investigated:', error);
-    
-    // For now, return empty structure to avoid breaking the app
-    // TODO: Add fallback to legacy parser if needed
-    return {
-      required: [],
-      optional: []
-    };
-  }
-}
