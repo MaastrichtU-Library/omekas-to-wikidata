@@ -5,6 +5,7 @@
  */
 
 // Import dependencies (minimal for data analysis)
+import { detectIdentifier } from '../../utils/identifier-detection.js';
 
 // Context cache for JSON-LD definitions
 const contextCache = new Map();
@@ -273,6 +274,9 @@ export async function extractAndAnalyzeKeys(data) {
                 }
             }
             
+            // Check if this field contains an identifier
+            const identifierDetection = detectIdentifier(sampleValue, key);
+            
             return {
                 key,
                 frequency,
@@ -280,7 +284,9 @@ export async function extractAndAnalyzeKeys(data) {
                 sampleValue,
                 linkedDataUri,
                 type: Array.isArray(sampleValue) ? 'array' : typeof sampleValue,
-                contextMap: contextMap
+                contextMap: contextMap,
+                hasIdentifier: identifierDetection !== null,
+                identifierInfo: identifierDetection
             };
         })
         .sort((a, b) => b.frequency - a.frequency); // Sort by frequency descending
