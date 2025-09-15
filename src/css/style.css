@@ -1411,6 +1411,7 @@ main {
     border-radius: 8px;
     background: #fafafa;
     overflow-y: auto;
+    max-height: 65vh;
 }
 
 .mapping-column.left-column {
@@ -1464,6 +1465,32 @@ main {
     background-color: var(--secondary-color);
     padding: 1rem;
     border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+/* Two-column layout specific styles */
+.two-column-layout .property-search {
+    flex: 1;
+}
+
+.two-column-layout .property-search-input {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.two-column-layout .property-suggestions {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.two-column-layout .transformation-section {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.two-column-layout .transformation-section h4 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
 }
 
 .key-info h4 {
