@@ -538,3 +538,125 @@ export function extractAtFieldsFromAllItems(keyName, items) {
     
     return result;
 }
+
+/**
+ * Extracts all fields (@ fields and regular fields) from JSON-LD objects, grouped by object index
+ * Shows @ fields first, then regular fields, excluding 'is_public'
+ * 
+ * @param {string} keyName - The property key to analyze (e.g., "schema:itemLocation")
+ * @param {Array} items - Array of all items from fetchedData
+ * @returns {Array} Array of field groups, each containing fields from a specific object index
+ * 
+ * @example
+ * extractAllFieldsFromItems("schema:itemLocation", items)
+ * // Returns: [
+ * //   {
+ * //     objectIndex: 0,
+ * //     fields: [
+ * //       { key: "@value", preview: "MU KEMP 602", isAtField: true },
+ * //       { key: "type", preview: "literal", isAtField: false },
+ * //       { key: "property_id", preview: "1394", isAtField: false }
+ * //     ]
+ * //   },
+ * //   {
+ * //     objectIndex: 1,
+ * //     fields: [
+ * //       { key: "@id", preview: "http://www.geonames.org/12500996", isAtField: true },
+ * //       { key: "type", preview: "valuesuggest:geonames:geonames", isAtField: false }
+ * //     ]
+ * //   }
+ * // ]
+ */
+export function extractAllFieldsFromItems(keyName, items) {
+    const fieldGroups = [];
+    const maxSamples = 3;
+    const excludedFields = ['is_public']; // Fields to exclude from the dropdown
+    
+    if (!Array.isArray(items) || items.length === 0) {
+        return [];
+    }
+    
+    // Track unique field combinations across all items
+    const uniqueObjectSignatures = new Map();
+    
+    // Scan all items for this key
+    for (const item of items) {
+        if (!item || typeof item !== 'object' || !item[keyName]) {
+            continue;
+        }
+        
+        const keyValue = item[keyName];
+        
+        // Handle arrays of values
+        const valuesToProcess = Array.isArray(keyValue) ? keyValue : [keyValue];
+        
+        valuesToProcess.forEach((value, index) => {
+            if (!value || typeof value !== 'object') {
+                return;
+            }
+            
+            // Create a signature for this object structure (keys sorted)
+            const fieldKeys = Object.keys(value)
+                .filter(key => !excludedFields.includes(key))
+                .sort();
+            const signature = fieldKeys.join('|');
+            
+            // Check if we've already seen this object structure
+            if (!uniqueObjectSignatures.has(signature)) {
+                const fields = [];
+                const atFields = [];
+                const regularFields = [];
+                
+                // Separate @ fields and regular fields
+                fieldKeys.forEach(fieldKey => {
+                    const fieldValue = value[fieldKey];
+                    const stringValue = convertSampleValueToString(fieldValue);
+                    const preview = stringValue.length > 40 ? 
+                        `${stringValue.substring(0, 40)}...` : 
+                        stringValue;
+                    
+                    const fieldInfo = {
+                        key: fieldKey,
+                        preview: preview,
+                        sampleValue: stringValue,
+                        isAtField: fieldKey.startsWith('@')
+                    };
+                    
+                    if (fieldKey.startsWith('@')) {
+                        atFields.push(fieldInfo);
+                    } else {
+                        regularFields.push(fieldInfo);
+                    }
+                });
+                
+                // Sort @ fields by preference
+                atFields.sort((a, b) => {
+                    const order = { '@id': 1, '@value': 2, '@type': 3 };
+                    const aOrder = order[a.key] || 999;
+                    const bOrder = order[b.key] || 999;
+                    
+                    if (aOrder !== bOrder) {
+                        return aOrder - bOrder;
+                    }
+                    
+                    return a.key.localeCompare(b.key);
+                });
+                
+                // Sort regular fields alphabetically
+                regularFields.sort((a, b) => a.key.localeCompare(b.key));
+                
+                // Combine @ fields first, then regular fields
+                fields.push(...atFields, ...regularFields);
+                
+                // Add this group to our results
+                uniqueObjectSignatures.set(signature, fields);
+                fieldGroups.push({
+                    objectIndex: fieldGroups.length,
+                    fields: fields
+                });
+            }
+        });
+    }
+    
+    return fieldGroups;
+}

@@ -11,7 +11,7 @@ import { renderValueTransformationUI } from '../../core/transformation-engine.js
 import { moveKeyToCategory, mapKeyToProperty, moveToNextUnmappedKey } from '../mapping-lists.js';
 import { formatSampleValue } from './modal-helpers.js';
 import { showMessage } from '../../../ui/components.js';
-import { extractAtFieldsFromAllItems } from '../../core/data-analyzer.js';
+import { extractAtFieldsFromAllItems, extractAllFieldsFromItems } from '../../core/data-analyzer.js';
 
 /**
  * Opens the mapping modal for a key
@@ -182,18 +182,18 @@ export function createMappingModalContent(keyData) {
     `;
     keyInfo.appendChild(basicInfo);
     
-    // @ Field selector section (for JSON-LD fields)
+    // Field selector section (for JSON-LD fields - both @ fields and regular fields)
     const atFieldSection = createElement('div', {
         className: 'at-field-section'
     });
     
-    // Check if this key has @ fields across all items
+    // Check if this key has fields across all items
     const currentState = window.mappingStepState.getState();
     if (currentState.fetchedData) {
         const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-        const availableAtFields = extractAtFieldsFromAllItems(keyData.key, items);
+        const fieldGroups = extractAllFieldsFromItems(keyData.key, items);
         
-        if (availableAtFields.length > 0) {
+        if (fieldGroups.length > 0) {
             const atFieldLabel = createElement('label', {
                 className: 'at-field-label'
             }, 'Original Key Field:');
@@ -202,7 +202,7 @@ export function createMappingModalContent(keyData) {
                 className: 'at-field-select',
                 id: `at-field-select-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`,
                 onChange: (e) => {
-                    // Store the selected @ field in the keyData for later use
+                    // Store the selected field in the keyData for later use
                     keyData.selectedAtField = e.target.value;
                     
                     // Update sample values if they're already loaded
@@ -214,20 +214,50 @@ export function createMappingModalContent(keyData) {
             });
             
             // Set default selection to @id if available, then @value, then first option
-            let defaultField = availableAtFields.find(field => field.key === '@id') ||
-                              availableAtFields.find(field => field.key === '@value') ||
-                              availableAtFields[0];
+            let defaultField = null;
+            
+            // Find default field from all groups
+            for (const group of fieldGroups) {
+                const idField = group.fields.find(field => field.key === '@id');
+                const valueField = group.fields.find(field => field.key === '@value');
+                
+                if (idField) {
+                    defaultField = idField;
+                    break;
+                } else if (valueField && !defaultField) {
+                    defaultField = valueField;
+                }
+            }
+            
+            // If no @ fields found, use first field
+            if (!defaultField && fieldGroups[0] && fieldGroups[0].fields.length > 0) {
+                defaultField = fieldGroups[0].fields[0];
+            }
             
             // Store the default selection
-            keyData.selectedAtField = defaultField.key;
+            if (defaultField) {
+                keyData.selectedAtField = defaultField.key;
+            }
             
-            // Populate options
-            availableAtFields.forEach(field => {
-                const option = createElement('option', {
-                    value: field.key,
-                    selected: field.key === defaultField.key
-                }, `${field.key}: ${field.preview}`);
-                atFieldSelect.appendChild(option);
+            // Populate options with optgroups for each object structure
+            fieldGroups.forEach((group, groupIndex) => {
+                if (group.fields.length === 0) return;
+                
+                // Create optgroup for this object structure
+                const optGroup = createElement('optgroup', {
+                    label: fieldGroups.length > 1 ? `Object Type ${groupIndex + 1}` : 'Available Fields'
+                });
+                
+                // Add fields to optgroup
+                group.fields.forEach(field => {
+                    const option = createElement('option', {
+                        value: field.key,
+                        selected: defaultField && field.key === defaultField.key
+                    }, `${field.key}: ${field.preview}`);
+                    optGroup.appendChild(option);
+                });
+                
+                atFieldSelect.appendChild(optGroup);
             });
             
             atFieldSection.appendChild(atFieldLabel);

@@ -1638,6 +1638,25 @@ main {
     font-size: 13px;
 }
 
+.at-field-select optgroup {
+    font-weight: bold;
+    color: #666;
+    font-size: 12px;
+    padding-top: 4px;
+}
+
+.at-field-select optgroup option {
+    font-weight: normal;
+    color: #333;
+    padding-left: 12px;
+}
+
+.at-field-select optgroup:not(:first-child) {
+    margin-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 8px;
+}
+
 .key-info h4 {
     margin-bottom: 0.5rem;
     color: var(--primary-color);
