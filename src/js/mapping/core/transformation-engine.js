@@ -45,7 +45,21 @@ export function renderValueTransformationUI(keyData, state) {
     const mappingId = state.generateMappingId(keyData.key, propertyId);
 
     // Field selector section
-    const rawSampleValue = keyData.sampleValue;
+    let rawSampleValue = keyData.sampleValue;
+    
+    // If a specific @ field is selected, extract that field's value as the base sample
+    if (keyData.selectedAtField && rawSampleValue) {
+        const valuesToProcess = Array.isArray(rawSampleValue) ? rawSampleValue : [rawSampleValue];
+        
+        // Look for the selected @ field in the first available value
+        for (const value of valuesToProcess) {
+            if (value && typeof value === 'object' && value[keyData.selectedAtField] !== undefined) {
+                rawSampleValue = value[keyData.selectedAtField];
+                break;
+            }
+        }
+    }
+    
     const availableFields = extractAvailableFields(rawSampleValue);
     
     if (availableFields.length > 1) {

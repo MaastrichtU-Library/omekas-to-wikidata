@@ -1597,6 +1597,47 @@ main {
     text-align: center;
 }
 
+/* @ Field selector section */
+.at-field-section {
+    margin-top: 12px;
+    margin-bottom: 8px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e1e5e9;
+}
+
+.at-field-label {
+    display: block;
+    font-weight: 500;
+    color: var(--text-color);
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.at-field-select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: white;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.at-field-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.at-field-select option {
+    padding: 4px;
+    font-size: 13px;
+}
+
 .key-info h4 {
     margin-bottom: 0.5rem;
     color: var(--primary-color);

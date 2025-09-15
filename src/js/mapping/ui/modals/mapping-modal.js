@@ -11,6 +11,7 @@ import { renderValueTransformationUI } from '../../core/transformation-engine.js
 import { moveKeyToCategory, mapKeyToProperty, moveToNextUnmappedKey } from '../mapping-lists.js';
 import { formatSampleValue } from './modal-helpers.js';
 import { showMessage } from '../../../ui/components.js';
+import { extractAtFieldsFromAllItems } from '../../core/data-analyzer.js';
 
 /**
  * Opens the mapping modal for a key
@@ -139,6 +140,60 @@ export function createMappingModalContent(keyData) {
         <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
     `;
     keyInfo.appendChild(basicInfo);
+    
+    // @ Field selector section (for JSON-LD fields)
+    const atFieldSection = createElement('div', {
+        className: 'at-field-section'
+    });
+    
+    // Check if this key has @ fields across all items
+    const currentState = window.mappingStepState.getState();
+    if (currentState.fetchedData) {
+        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+        const availableAtFields = extractAtFieldsFromAllItems(keyData.key, items);
+        
+        if (availableAtFields.length > 0) {
+            const atFieldLabel = createElement('label', {
+                className: 'at-field-label'
+            }, 'Original Key Field:');
+            
+            const atFieldSelect = createElement('select', {
+                className: 'at-field-select',
+                id: `at-field-select-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`,
+                onChange: (e) => {
+                    // Store the selected @ field in the keyData for later use
+                    keyData.selectedAtField = e.target.value;
+                    
+                    // Update sample values if they're already loaded
+                    const samplesContent = document.querySelector('.samples-content');
+                    if (samplesContent && samplesContent.hasChildNodes()) {
+                        loadSampleValues(samplesContent, keyData, window.mappingStepState);
+                    }
+                }
+            });
+            
+            // Set default selection to @id if available, then @value, then first option
+            let defaultField = availableAtFields.find(field => field.key === '@id') ||
+                              availableAtFields.find(field => field.key === '@value') ||
+                              availableAtFields[0];
+            
+            // Store the default selection
+            keyData.selectedAtField = defaultField.key;
+            
+            // Populate options
+            availableAtFields.forEach(field => {
+                const option = createElement('option', {
+                    value: field.key,
+                    selected: field.key === defaultField.key
+                }, `${field.key}: ${field.preview}`);
+                atFieldSelect.appendChild(option);
+            });
+            
+            atFieldSection.appendChild(atFieldLabel);
+            atFieldSection.appendChild(atFieldSelect);
+            keyInfo.appendChild(atFieldSection);
+        }
+    }
     
     // Sample values section (collapsible)
     const samplesSection = createElement('div', {
@@ -290,7 +345,23 @@ function loadSampleValues(container, keyData, state) {
     for (const item of items) {
         if (samples.length >= maxSamples) break;
         if (item[keyData.key] !== undefined) {
-            const sampleHtml = formatSampleValue(item[keyData.key], keyData.contextMap || new Map());
+            let valueToFormat = item[keyData.key];
+            
+            // If a specific @ field is selected, extract that field's value
+            if (keyData.selectedAtField) {
+                const keyValue = item[keyData.key];
+                const valuesToProcess = Array.isArray(keyValue) ? keyValue : [keyValue];
+                
+                // Look for the selected @ field in the first available value
+                for (const value of valuesToProcess) {
+                    if (value && typeof value === 'object' && value[keyData.selectedAtField] !== undefined) {
+                        valueToFormat = value[keyData.selectedAtField];
+                        break;
+                    }
+                }
+            }
+            
+            const sampleHtml = formatSampleValue(valueToFormat, keyData.contextMap || new Map());
             samples.push(sampleHtml);
         }
     }
