@@ -1339,7 +1339,9 @@ main {
 
 /* Wider modal for mapping */
 .modal.mapping-modal-wide {
-    max-width: 900px;
+    max-width: 900px !important;
+    width: unset !important;
+
 }
 
 .modal-header {
