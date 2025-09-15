@@ -9,6 +9,8 @@ import { eventSystem } from '../../events.js';
 import { createElement, createListItem, showMessage } from '../../ui/components.js';
 import { extractAndAnalyzeKeys, convertCamelCaseToSpaces, extractSampleValue } from '../core/data-analyzer.js';
 import { getCompletePropertyData } from '../../api/wikidata.js';
+import { createIdentifierMapping } from '../../utils/identifier-detection.js';
+import { processItemsForValueIdentifiers } from '../../utils/value-processor.js';
 
 // Get DOM elements that are used across functions
 const nonLinkedKeysList = document.getElementById('non-linked-keys');
@@ -27,8 +29,16 @@ export async function populateLists(state) {
         return;
     }
     
+    // Process value-level identifiers in the fetched data
+    const processedData = await processItemsForValueIdentifiers(currentState.fetchedData);
+    
+    // Update state with processed data (maintains original fetchedData reference)
+    if (processedData !== currentState.fetchedData) {
+        state.updateState('fetchedData', processedData);
+    }
+    
     // Analyze all keys from the complete dataset
-    const keyAnalysis = await extractAndAnalyzeKeys(currentState.fetchedData);
+    const keyAnalysis = await extractAndAnalyzeKeys(processedData);
     
     // Initialize arrays if they don't exist in state
     state.ensureMappingArrays();
@@ -87,17 +97,60 @@ export async function populateLists(state) {
     const ignoredKeys = newKeys.filter(k => shouldIgnoreKey(k.key));
     const regularKeys = newKeys.filter(k => !shouldIgnoreKey(k.key));
     
+    // Process keys with detected identifiers - auto-map them
+    const autoMappedKeys = [];
+    const keysToAddAsNonLinked = [];
+    
+    regularKeys.forEach(keyObj => {
+        if (keyObj.hasIdentifier && keyObj.identifierInfo) {
+            // Create an auto-mapping for this identifier field
+            const mappingObj = createIdentifierMapping(
+                keyObj.key, 
+                keyObj.identifierInfo, 
+                keyObj.sampleValue
+            );
+            
+            // Add the full key data with property mapping
+            const mappedKey = {
+                ...keyObj,
+                property: mappingObj.property,
+                mappingId: state.generateMappingId(keyObj.key, mappingObj.property.id),
+                mappedAt: mappingObj.mappedAt,
+                autoMapped: true,
+                identifierType: mappingObj.identifierType,
+                displayName: mappingObj.displayName
+            };
+            
+            autoMappedKeys.push(mappedKey);
+        } else {
+            keysToAddAsNonLinked.push(keyObj);
+        }
+    });
+    
     // Add ignored keys to ignored list
     const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...ignoredKeys];
     
-    // Add regular keys to non-linked keys
+    // Add regular keys (without identifiers) to non-linked keys
     const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.filter(k => 
         !keyAnalysis.find(ka => ka.key === (k.key || k))
     );
-    const allNonLinkedKeys = [...currentNonLinkedKeys, ...regularKeys];
+    const allNonLinkedKeys = [...currentNonLinkedKeys, ...keysToAddAsNonLinked];
+    
+    // Add auto-mapped keys to existing mapped keys
+    const allMappedKeys = [...updatedState.mappings.mappedKeys, ...autoMappedKeys];
     
     // Update all mappings atomically
-    state.updateMappings(allNonLinkedKeys, updatedState.mappings.mappedKeys, currentIgnoredKeys);
+    state.updateMappings(allNonLinkedKeys, allMappedKeys, currentIgnoredKeys);
+    
+    // If we auto-mapped any keys, show a message
+    if (autoMappedKeys.length > 0) {
+        const identifierTypes = [...new Set(autoMappedKeys.map(k => k.identifierType))].join(', ');
+        showMessage(
+            `Auto-mapped ${autoMappedKeys.length} identifier field(s): ${identifierTypes}`,
+            'success',
+            5000
+        );
+    }
     
     // Get final state for UI update
     const finalState = state.getState();
