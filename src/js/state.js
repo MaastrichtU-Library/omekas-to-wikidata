@@ -821,10 +821,15 @@ export function setupState() {
      * Generates a mapping ID from key and property ID
      * @param {string} key - The source data key
      * @param {string} propertyId - The Wikidata property ID
+     * @param {string} atField - Optional @ field selector (e.g., '@id', '@value')
      * @returns {string} The mapping ID
      */
-    function generateMappingId(key, propertyId) {
+    function generateMappingId(key, propertyId, atField) {
         if (!key || !propertyId) return propertyId || key || 'unknown';
+        // Include @ field in the ID if specified to support duplicate mappings
+        if (atField) {
+            return `${key}::${atField}::${propertyId}`;
+        }
         return `${key}::${propertyId}`;
     }
     

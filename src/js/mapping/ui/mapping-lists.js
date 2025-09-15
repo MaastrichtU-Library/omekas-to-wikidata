@@ -328,9 +328,13 @@ export function populateKeyList(listElement, keys, type) {
                 : 'key-item-compact'
         });
         
+        // Display key name with @ field if present
+        const keyDisplayText = keyData.selectedAtField 
+            ? `${keyData.key} (${keyData.selectedAtField})`
+            : keyData.key;
         const keyName = createElement('span', {
             className: 'key-name-compact'
-        }, keyData.key);
+        }, keyDisplayText);
         keyDisplay.appendChild(keyName);
         
         // Show property info for mapped keys immediately after key name
@@ -460,6 +464,11 @@ export function moveKeyToCategory(keyData, category, state) {
     });
     
     const updatedMappedKeys = currentState.mappings.mappedKeys.filter(k => {
+        // For mapped items with mappingId, use mappingId for comparison to allow duplicates
+        if (keyData.mappingId && k.mappingId) {
+            return k.mappingId !== keyData.mappingId;
+        }
+        // For items without mappingId, use key comparison (fallback)
         const keyToCompare = typeof k === 'string' ? k : k.key;
         return keyToCompare !== targetKey;
     });
@@ -505,8 +514,8 @@ export function moveKeyToCategory(keyData, category, state) {
  * Maps a key to a property
  */
 export function mapKeyToProperty(keyData, property, state) {
-    // Generate the mapping ID for this key-property combination
-    const mappingId = state.generateMappingId(keyData.key, property.id);
+    // Generate the mapping ID for this key-property combination, including @ field if selected
+    const mappingId = state.generateMappingId(keyData.key, property.id, keyData.selectedAtField);
     
     // Create enhanced key data with property information and mapping ID
     const mappedKey = {

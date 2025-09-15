@@ -443,3 +443,220 @@ export function convertSampleValueToString(value) {
     // Fallback for any other types
     return String(value);
 }
+
+/**
+ * Extracts all available @ fields for a specific key from all items in the dataset
+ * Scans through all items to find JSON-LD fields starting with "@" for the given key
+ * 
+ * @param {string} keyName - The property key to analyze (e.g., "schema:publisher")
+ * @param {Array} items - Array of all items from fetchedData
+ * @returns {Array} Array of @ field objects with key, preview, and sampleValue
+ * 
+ * @example
+ * extractAtFieldsFromAllItems("schema:publisher", items)
+ * // Returns: [
+ * //   { key: "@id", preview: "http://viaf.org/viaf/172840804", sampleValue: "http://viaf.org/viaf/172840804" },
+ * //   { key: "@value", preview: "Publisher Name", sampleValue: "Publisher Name" },
+ * //   { key: "@type", preview: "uri", sampleValue: "uri" }
+ * // ]
+ */
+export function extractAtFieldsFromAllItems(keyName, items) {
+    const atFieldsMap = new Map();
+    const maxSamples = 3; // Show up to 3 different sample values per @ field
+    
+    if (!Array.isArray(items) || items.length === 0) {
+        return [];
+    }
+    
+    // Scan all items for this key
+    for (const item of items) {
+        if (!item || typeof item !== 'object' || !item[keyName]) {
+            continue;
+        }
+        
+        const keyValue = item[keyName];
+        
+        // Handle arrays of values
+        const valuesToProcess = Array.isArray(keyValue) ? keyValue : [keyValue];
+        
+        for (const value of valuesToProcess) {
+            if (!value || typeof value !== 'object') {
+                continue;
+            }
+            
+            // Extract all @ fields from this value
+            Object.entries(value).forEach(([fieldKey, fieldValue]) => {
+                if (fieldKey.startsWith('@')) {
+                    if (!atFieldsMap.has(fieldKey)) {
+                        atFieldsMap.set(fieldKey, {
+                            key: fieldKey,
+                            samples: [],
+                            previews: []
+                        });
+                    }
+                    
+                    const fieldData = atFieldsMap.get(fieldKey);
+                    
+                    // Add sample if we don't have too many and it's not already included
+                    if (fieldData.samples.length < maxSamples) {
+                        const stringValue = convertSampleValueToString(fieldValue);
+                        if (!fieldData.samples.includes(stringValue)) {
+                            fieldData.samples.push(stringValue);
+                            
+                            // Create preview (truncate long values)
+                            const preview = stringValue.length > 40 ? 
+                                `${stringValue.substring(0, 40)}...` : 
+                                stringValue;
+                            fieldData.previews.push(preview);
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    // Convert to the expected format with combined preview
+    const result = Array.from(atFieldsMap.values()).map(fieldData => ({
+        key: fieldData.key,
+        preview: fieldData.previews.join(' | '),
+        sampleValue: fieldData.samples[0] || '', // Use first sample as primary
+        allSamples: fieldData.samples
+    }));
+    
+    // Sort by preference: @id, @value, @type, then alphabetically
+    result.sort((a, b) => {
+        const order = { '@id': 1, '@value': 2, '@type': 3 };
+        const aOrder = order[a.key] || 999;
+        const bOrder = order[b.key] || 999;
+        
+        if (aOrder !== bOrder) {
+            return aOrder - bOrder;
+        }
+        
+        return a.key.localeCompare(b.key);
+    });
+    
+    return result;
+}
+
+/**
+ * Extracts all fields (@ fields and regular fields) from JSON-LD objects, grouped by object index
+ * Shows @ fields first, then regular fields, excluding 'is_public'
+ * 
+ * @param {string} keyName - The property key to analyze (e.g., "schema:itemLocation")
+ * @param {Array} items - Array of all items from fetchedData
+ * @returns {Array} Array of field groups, each containing fields from a specific object index
+ * 
+ * @example
+ * extractAllFieldsFromItems("schema:itemLocation", items)
+ * // Returns: [
+ * //   {
+ * //     objectIndex: 0,
+ * //     fields: [
+ * //       { key: "@value", preview: "MU KEMP 602", isAtField: true },
+ * //       { key: "type", preview: "literal", isAtField: false },
+ * //       { key: "property_id", preview: "1394", isAtField: false }
+ * //     ]
+ * //   },
+ * //   {
+ * //     objectIndex: 1,
+ * //     fields: [
+ * //       { key: "@id", preview: "http://www.geonames.org/12500996", isAtField: true },
+ * //       { key: "type", preview: "valuesuggest:geonames:geonames", isAtField: false }
+ * //     ]
+ * //   }
+ * // ]
+ */
+export function extractAllFieldsFromItems(keyName, items) {
+    const fieldGroups = [];
+    const maxSamples = 3;
+    const excludedFields = ['is_public']; // Fields to exclude from the dropdown
+    
+    if (!Array.isArray(items) || items.length === 0) {
+        return [];
+    }
+    
+    // Track unique field combinations across all items
+    const uniqueObjectSignatures = new Map();
+    
+    // Scan all items for this key
+    for (const item of items) {
+        if (!item || typeof item !== 'object' || !item[keyName]) {
+            continue;
+        }
+        
+        const keyValue = item[keyName];
+        
+        // Handle arrays of values
+        const valuesToProcess = Array.isArray(keyValue) ? keyValue : [keyValue];
+        
+        valuesToProcess.forEach((value, index) => {
+            if (!value || typeof value !== 'object') {
+                return;
+            }
+            
+            // Create a signature for this object structure (keys sorted)
+            const fieldKeys = Object.keys(value)
+                .filter(key => !excludedFields.includes(key))
+                .sort();
+            const signature = fieldKeys.join('|');
+            
+            // Check if we've already seen this object structure
+            if (!uniqueObjectSignatures.has(signature)) {
+                const fields = [];
+                const atFields = [];
+                const regularFields = [];
+                
+                // Separate @ fields and regular fields
+                fieldKeys.forEach(fieldKey => {
+                    const fieldValue = value[fieldKey];
+                    const stringValue = convertSampleValueToString(fieldValue);
+                    const preview = stringValue.length > 40 ? 
+                        `${stringValue.substring(0, 40)}...` : 
+                        stringValue;
+                    
+                    const fieldInfo = {
+                        key: fieldKey,
+                        preview: preview,
+                        sampleValue: stringValue,
+                        isAtField: fieldKey.startsWith('@')
+                    };
+                    
+                    if (fieldKey.startsWith('@')) {
+                        atFields.push(fieldInfo);
+                    } else {
+                        regularFields.push(fieldInfo);
+                    }
+                });
+                
+                // Sort @ fields by preference
+                atFields.sort((a, b) => {
+                    const order = { '@id': 1, '@value': 2, '@type': 3 };
+                    const aOrder = order[a.key] || 999;
+                    const bOrder = order[b.key] || 999;
+                    
+                    if (aOrder !== bOrder) {
+                        return aOrder - bOrder;
+                    }
+                    
+                    return a.key.localeCompare(b.key);
+                });
+                
+                // Sort regular fields alphabetically
+                regularFields.sort((a, b) => a.key.localeCompare(b.key));
+                
+                // Combine @ fields first, then regular fields
+                fields.push(...atFields, ...regularFields);
+                
+                // Add this group to our results
+                uniqueObjectSignatures.set(signature, fields);
+                fieldGroups.push({
+                    objectIndex: fieldGroups.length,
+                    fields: fields
+                });
+            }
+        });
+    }
+    
+    return fieldGroups;
+}

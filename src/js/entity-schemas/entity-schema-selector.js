@@ -7,6 +7,8 @@
 import { createElement, createButton, createModal, showMessage } from '../ui/components.js';
 import { DEFAULT_SCHEMAS, searchEntitySchemas, getEntitySchema } from './entity-schema-core.js';
 import { eventSystem } from '../events.js';
+import { getBatchPropertyInfo } from '../api/wikidata.js';
+import { extractEntitySchemaProperties } from '../mapping/core/property-searcher.js';
 
 /**
  * Create the Entity Schema selector custom dropdown component
@@ -440,6 +442,41 @@ function displaySearchResults(results, statusElement, resultsElement, onSchemaSe
 }
 
 /**
+ * Pre-load entity schema properties in background for better UX
+ * @param {Object} schema - The selected entity schema
+ * @param {Object} state - Application state
+ */
+async function preloadEntitySchemaProperties(schema, state) {
+    if (!schema || !schema.properties) {
+        return;
+    }
+    
+    try {
+        // Use a temporary state object to extract properties
+        const tempState = {
+            getState: () => ({ selectedEntitySchema: schema })
+        };
+        
+        const schemaProperties = extractEntitySchemaProperties(tempState);
+        if (schemaProperties.length === 0) {
+            return;
+        }
+        
+        const propertyIds = schemaProperties.map(prop => prop.id);
+        console.log(`🚀 Background pre-loading ${propertyIds.length} entity schema properties:`, propertyIds.join(', '));
+        
+        // Pre-load all properties in background - this populates the cache
+        const batchResults = await getBatchPropertyInfo(propertyIds);
+        
+        console.log(`✅ Background pre-loading complete for ${Object.keys(batchResults).length} properties. Cached for instant mapping modal use.`);
+        
+    } catch (error) {
+        console.warn('Background property pre-loading failed (non-critical):', error);
+        // This is non-critical - mapping modal will still work but with slower first load
+    }
+}
+
+/**
  * Initialize Entity Schema selector in the mapping step
  * @param {Object} state - Application state
  * @returns {HTMLElement} The selector element
@@ -453,6 +490,9 @@ export function initializeEntitySchemaSelector(state) {
         onSchemaSelect: (schema) => {
             // Update state
             state.updateState('selectedEntitySchema', schema);
+            
+            // Pre-load entity schema properties in background for better UX
+            preloadEntitySchemaProperties(schema, state);
             
             // Emit event for other components to react
             eventSystem.publish('entitySchemaSelected', { schema });
