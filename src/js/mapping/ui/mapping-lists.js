@@ -464,6 +464,11 @@ export function moveKeyToCategory(keyData, category, state) {
     });
     
     const updatedMappedKeys = currentState.mappings.mappedKeys.filter(k => {
+        // For mapped items with mappingId, use mappingId for comparison to allow duplicates
+        if (keyData.mappingId && k.mappingId) {
+            return k.mappingId !== keyData.mappingId;
+        }
+        // For items without mappingId, use key comparison (fallback)
         const keyToCompare = typeof k === 'string' ? k : k.key;
         return keyToCompare !== targetKey;
     });
