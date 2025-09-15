@@ -67,6 +67,12 @@ export const IDENTIFIER_PROPERTY_MAPPINGS = {
         label: 'Handle ID',
         description: 'identifier for an item in the Handle system',
         pattern: /hdl\.handle\.net\/(\d+\/\S+)|^hdl:(\d+\/\S+)/i
+    },
+    'oclc': {
+        propertyId: 'P243',
+        label: 'OCLC control number',
+        description: 'identifier for a unique bibliographic record in OCLC WorldCat',
+        pattern: /worldcat\.org\/oclc\/(\d+)|oclc[:\s]?(\d+)/i
     }
 };
 
