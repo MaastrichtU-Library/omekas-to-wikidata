@@ -1538,6 +1538,65 @@ main {
     }
 }
 
+/* Collapsible samples section */
+.samples-section {
+    margin-top: 12px;
+}
+
+.samples-toggle {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 6px 0;
+    font-size: 13px;
+    font-weight: 500;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s;
+}
+
+.samples-toggle:hover {
+    color: var(--primary-color-dark, #2563eb);
+    opacity: 0.8;
+}
+
+.samples-content {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e1e5e9;
+}
+
+.samples-section.expanded .samples-content {
+    display: block;
+    animation: expandSection 0.3s ease-out;
+}
+
+.sample-item {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.sample-item:last-child {
+    margin-bottom: 0;
+}
+
+.no-samples {
+    color: #666;
+    font-style: italic;
+    font-size: 13px;
+    padding: 8px;
+    text-align: center;
+}
+
 .key-info h4 {
     margin-bottom: 0.5rem;
     color: var(--primary-color);

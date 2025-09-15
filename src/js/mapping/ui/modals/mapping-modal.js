@@ -127,18 +127,53 @@ export function createMappingModalContent(keyData) {
         className: 'key-info'
     });
     
-    const sampleValueHtml = formatSampleValue(keyData.sampleValue, keyData.contextMap || new Map());
-    
     const keyDisplay = keyData.linkedDataUri 
         ? `<a href="${keyData.linkedDataUri}" target="_blank" class="clickable-key">${keyData.key}</a>`
         : keyData.key;
     
-    keyInfo.innerHTML = `
+    // Basic key info (always visible)
+    const basicInfo = createElement('div', {});
+    basicInfo.innerHTML = `
         <h4>Key Information</h4>
         <p><strong>Key:</strong> ${keyDisplay}</p>
         <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
-        <div><strong>Sample Value:</strong> ${sampleValueHtml}</div>
     `;
+    keyInfo.appendChild(basicInfo);
+    
+    // Sample values section (collapsible)
+    const samplesSection = createElement('div', {
+        className: 'samples-section'
+    });
+    
+    // Sample toggle button
+    const samplesToggle = createElement('button', {
+        className: 'samples-toggle',
+        onClick: () => {
+            const isExpanded = samplesSection.classList.contains('expanded');
+            if (isExpanded) {
+                samplesSection.classList.remove('expanded');
+                samplesToggle.textContent = '▶ Show Sample Values';
+            } else {
+                samplesSection.classList.add('expanded');
+                samplesToggle.textContent = '▼ Hide Sample Values';
+                
+                // Load samples if not already loaded
+                if (!samplesContent.hasChildNodes()) {
+                    loadSampleValues(samplesContent, keyData, window.mappingStepState);
+                }
+            }
+        }
+    }, '▶ Show Sample Values');
+    
+    samplesSection.appendChild(samplesToggle);
+    
+    // Collapsible samples content
+    const samplesContent = createElement('div', {
+        className: 'samples-content'
+    });
+    
+    samplesSection.appendChild(samplesContent);
+    keyInfo.appendChild(samplesSection);
     leftColumn.appendChild(keyInfo);
     
     // Value transformation section (Stage 3) - Collapsible
@@ -235,6 +270,44 @@ export function createMappingModalContent(keyData) {
     setTimeout(() => setupPropertySearch(keyData, window.mappingStepState), 100);
     
     return container;
+}
+
+/**
+ * Load sample values for the collapsible samples section
+ */
+function loadSampleValues(container, keyData, state) {
+    const currentState = state.getState();
+    if (!currentState.fetchedData) {
+        container.innerHTML = '<div class="no-samples">No sample data available</div>';
+        return;
+    }
+    
+    const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+    const samples = [];
+    const maxSamples = 5;
+    
+    // Extract up to 5 sample values for this key
+    for (const item of items) {
+        if (samples.length >= maxSamples) break;
+        if (item[keyData.key] !== undefined) {
+            const sampleHtml = formatSampleValue(item[keyData.key], keyData.contextMap || new Map());
+            samples.push(sampleHtml);
+        }
+    }
+    
+    if (samples.length === 0) {
+        container.innerHTML = '<div class="no-samples">No sample values found</div>';
+        return;
+    }
+    
+    // Display samples
+    const samplesHtml = samples.map((sample, index) => `
+        <div class="sample-item">
+            <strong>Sample ${index + 1}:</strong> ${sample}
+        </div>
+    `).join('');
+    
+    container.innerHTML = samplesHtml;
 }
 
 /**
