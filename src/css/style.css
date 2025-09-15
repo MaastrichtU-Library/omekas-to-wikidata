@@ -1439,15 +1439,18 @@ main {
 /* Modal header with mapping relationship */
 .mapping-relationship-header {
     display: flex;
+    justify-content: space-evenly;
     align-items: center;
-    gap: 10px;
     font-size: 1.1em;
     font-weight: 600;
+    width: 100%; /* Use full width of parent container */
+    padding-right: 40px; /* Add padding to avoid overlap with close button */
 }
 
 .mapping-arrow {
     color: #666;
     font-size: 1.2em;
+    text-align: center;
 }
 
 .mapping-source, .mapping-target {
@@ -1455,6 +1458,14 @@ main {
     border-radius: 4px;
     background: #fff;
     border: 1px solid var(--border-color);
+}
+
+.mapping-source {
+    text-align: left;
+}
+
+.mapping-target {
+    text-align: right;
 }
 
 .mapping-source.unmapped, .mapping-target.unmapped {
@@ -1927,8 +1938,14 @@ pre.sample-value {
     }
     
     .mapping-relationship-header {
-        flex-wrap: wrap;
+        flex-direction: column;
+        gap: 5px;
         font-size: 1em;
+        padding-right: 20px; /* Reduce padding for mobile */
+    }
+    
+    .mapping-source, .mapping-target {
+        text-align: center;
     }
 }
 
@@ -4481,6 +4498,7 @@ pre.sample-value {
     margin: 0;
     color: var(--primary-color);
     font-size: 1.2rem;
+    flex: 1; /* Take up all available width in modal-header */
 }
 
 .close-button {
