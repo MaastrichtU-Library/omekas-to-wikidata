@@ -25,6 +25,9 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
     const dataType = getDataTypeFromProperty(property, propertyData);
     const transformedValue = getTransformedValue(value, property);
     
+    // Check if transformation actually changed the value
+    const wasTransformed = value !== transformedValue;
+    
     // Set up modal context for validation and interactions
     window.currentModalContext = {
         itemId,
@@ -48,14 +51,19 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
             </div>
         </div>
 
-        <!-- Transformation Result -->
+        <!-- Value Display Section -->
         <div class="transformation-result">
-            <div class="section-title">Transformation Result</div>
-            <div class="transformed-value">${escapeHtml(transformedValue)}</div>
-            <div class="original-context">
-                <span class="original-label">Original:</span>
-                <span class="original-value">${escapeHtml(value)}</span>
-            </div>
+            ${wasTransformed ? 
+                `<div class="section-title">Transformation Result</div>
+                 <div class="transformed-value">${escapeHtml(transformedValue)}</div>
+                 <div class="original-context">
+                     <span class="original-label">Original:</span>
+                     <span class="original-value">${escapeHtml(value)}</span>
+                 </div>` 
+                :
+                `<div class="section-title">Omeka S API Value</div>
+                 <div class="transformed-value">${escapeHtml(value)}</div>`
+            }
         </div>
 
         <!-- Content Section (Data Type Specific) -->
