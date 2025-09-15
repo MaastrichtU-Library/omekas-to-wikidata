@@ -6,7 +6,7 @@
 
 // Import dependencies
 import { createElement } from '../../../ui/components.js';
-import { setupPropertySearch } from '../../core/property-searcher.js';
+import { setupPropertySearch, extractEntitySchemaProperties, setupEntitySchemaPropertySelection } from '../../core/property-searcher.js';
 import { renderValueTransformationUI } from '../../core/transformation-engine.js';
 import { moveKeyToCategory, mapKeyToProperty, moveToNextUnmappedKey } from '../mapping-lists.js';
 import { formatSampleValue } from './modal-helpers.js';
@@ -326,7 +326,25 @@ export function createMappingModalContent(keyData) {
     const searchSection = createElement('div', {
         className: 'property-search'
     });
+    
+    // Check if entity schema is selected to conditionally add dropdown
+    const currentState = window.mappingStepState?.getState();
+    const selectedSchema = currentState?.selectedEntitySchema;
+    const hasEntitySchemaProperties = selectedSchema?.properties && 
+        (selectedSchema.properties.required?.length > 0 || selectedSchema.properties.optional?.length > 0);
+    
+    const entitySchemaDropdownHTML = hasEntitySchemaProperties ? `
+        <div class="entity-schema-properties" id="entity-schema-properties">
+            <label for="entity-schema-property-select">Properties from Entity Schema:</label>
+            <select class="entity-schema-property-select" id="entity-schema-property-select">
+                <option value="">Select a property from schema...</option>
+            </select>
+            <small class="schema-indicator">These properties are recommended by the selected entity schema</small>
+        </div>
+    ` : '';
+    
     searchSection.innerHTML = `
+        ${entitySchemaDropdownHTML}
         <h4>Search Properties</h4>
         <input type="text" id="property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
         <div id="property-suggestions" class="property-suggestions"></div>
@@ -363,7 +381,11 @@ export function createMappingModalContent(keyData) {
     container.appendChild(rightColumn);
     
     // Setup search functionality and pre-populate if mapped
-    setTimeout(() => setupPropertySearch(keyData, window.mappingStepState), 100);
+    setTimeout(() => {
+        setupPropertySearch(keyData, window.mappingStepState);
+        // Setup entity schema property dropdown if it exists
+        setupEntitySchemaPropertySelection(window.mappingStepState);
+    }, 100);
     
     return container;
 }

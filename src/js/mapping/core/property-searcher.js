@@ -219,6 +219,122 @@ function updateUnifiedStage2DataType(propertyData) {
 }
 
 /**
+ * Extract properties from selected entity schema
+ * @param {Object} state - Application state
+ * @returns {Array} Array of property IDs from the entity schema
+ */
+export function extractEntitySchemaProperties(state) {
+    const currentState = state.getState();
+    const selectedSchema = currentState.selectedEntitySchema;
+    
+    if (!selectedSchema || !selectedSchema.properties) {
+        return [];
+    }
+    
+    const properties = [];
+    
+    // Add required properties first (prioritized)
+    if (selectedSchema.properties.required) {
+        selectedSchema.properties.required.forEach(prop => {
+            properties.push({
+                id: prop.id,
+                cardinality: prop.cardinality,
+                constraint: prop.constraint,
+                required: true
+            });
+        });
+    }
+    
+    // Add optional properties second
+    if (selectedSchema.properties.optional) {
+        selectedSchema.properties.optional.forEach(prop => {
+            properties.push({
+                id: prop.id,
+                cardinality: prop.cardinality,
+                constraint: prop.constraint,
+                required: false
+            });
+        });
+    }
+    
+    return properties;
+}
+
+/**
+ * Setup entity schema property selection dropdown
+ * @param {Object} state - Application state
+ */
+export async function setupEntitySchemaPropertySelection(state) {
+    const dropdown = document.getElementById('entity-schema-property-select');
+    if (!dropdown) return;
+    
+    const schemaProperties = extractEntitySchemaProperties(state);
+    if (schemaProperties.length === 0) return;
+    
+    // Populate dropdown options
+    for (const schemaProp of schemaProperties) {
+        try {
+            // Fetch full property data from Wikidata API
+            const propertyData = await fetchPropertyData(schemaProp.id);
+            
+            if (propertyData) {
+                const option = createElement('option', {
+                    value: schemaProp.id
+                });
+                
+                // Format option text with label and datatype
+                const datatype = propertyData.datatype || 'unknown';
+                const requiredIndicator = schemaProp.required ? ' (required)' : ' (optional)';
+                option.textContent = `${schemaProp.id}: ${propertyData.label || schemaProp.id}${requiredIndicator} - ${datatype}`;
+                
+                // Store full property data for selection
+                option.dataset.propertyData = JSON.stringify({
+                    id: schemaProp.id,
+                    label: propertyData.label,
+                    description: propertyData.description || 'Property from entity schema'
+                });
+                
+                dropdown.appendChild(option);
+            }
+        } catch (error) {
+            console.error(`Failed to fetch property data for ${schemaProp.id}:`, error);
+            
+            // Add minimal option if API call fails
+            const option = createElement('option', {
+                value: schemaProp.id
+            });
+            const requiredIndicator = schemaProp.required ? ' (required)' : ' (optional)';
+            option.textContent = `${schemaProp.id}${requiredIndicator}`;
+            
+            // Store minimal property data
+            option.dataset.propertyData = JSON.stringify({
+                id: schemaProp.id,
+                label: schemaProp.id,
+                description: 'Property from entity schema'
+            });
+            
+            dropdown.appendChild(option);
+        }
+    }
+    
+    // Handle dropdown selection
+    dropdown.addEventListener('change', (e) => {
+        const selectedValue = e.target.value;
+        if (selectedValue) {
+            const selectedOption = e.target.querySelector(`option[value="${selectedValue}"]`);
+            if (selectedOption && selectedOption.dataset.propertyData) {
+                try {
+                    const propertyData = JSON.parse(selectedOption.dataset.propertyData);
+                    selectProperty(propertyData, state);
+                } catch (error) {
+                    console.error('Failed to parse property data:', error);
+                }
+            }
+        }
+    });
+}
+
+/**
  * Setup property search functionality
  * 
  * @param {Object} keyData - Data about the metadata key being mapped
