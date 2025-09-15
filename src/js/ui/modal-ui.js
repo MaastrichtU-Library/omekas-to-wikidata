@@ -53,7 +53,12 @@ export function setupModalUI() {
     function openModal(title, content, buttons = [], onClose = null) {
         // Set title
         if (modalTitle) {
-            modalTitle.textContent = title;
+            // Check if title contains HTML tags
+            if (typeof title === 'string' && title.includes('<')) {
+                modalTitle.innerHTML = title;
+            } else {
+                modalTitle.textContent = title;
+            }
         }
         
         // Set content

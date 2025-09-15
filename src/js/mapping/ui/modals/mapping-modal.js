@@ -78,28 +78,28 @@ export function openMappingModal(keyData) {
             }
         ];
         
-        // Add class to modal for wider display
-        const modal = document.querySelector('.modal');
-        if (modal) {
-            modal.classList.add('mapping-modal-wide');
-        }
-        
         // Open modal with mapping relationship header
         const modalTitle = createMappingRelationshipTitle(keyData.key, null);
         modalUI.openModal(
             modalTitle,
             modalContent,
-            buttons
+            buttons,
+            () => {
+                // Remove the wide class when modal closes
+                const modal = document.querySelector('.modal');
+                if (modal) {
+                    modal.classList.remove('mapping-modal-wide');
+                }
+            }
         );
         
-        // Remove the wide class when modal closes
-        const originalClose = modalUI.closeModal;
-        modalUI.closeModal = function() {
+        // Add class to modal for wider display after opening
+        setTimeout(() => {
+            const modal = document.querySelector('.modal');
             if (modal) {
-                modal.classList.remove('mapping-modal-wide');
+                modal.classList.add('mapping-modal-wide');
             }
-            return originalClose.apply(this, arguments);
-        };
+        }, 0);
     });
 }
 
