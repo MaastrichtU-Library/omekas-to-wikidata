@@ -10,6 +10,7 @@ import { createElement, createListItem, showMessage } from '../../ui/components.
 import { extractAndAnalyzeKeys, convertCamelCaseToSpaces, extractSampleValue } from '../core/data-analyzer.js';
 import { getCompletePropertyData } from '../../api/wikidata.js';
 import { createIdentifierMapping } from '../../utils/identifier-detection.js';
+import { processItemsForValueIdentifiers } from '../../utils/value-processor.js';
 
 // Get DOM elements that are used across functions
 const nonLinkedKeysList = document.getElementById('non-linked-keys');
@@ -28,8 +29,16 @@ export async function populateLists(state) {
         return;
     }
     
+    // Process value-level identifiers in the fetched data
+    const processedData = await processItemsForValueIdentifiers(currentState.fetchedData);
+    
+    // Update state with processed data (maintains original fetchedData reference)
+    if (processedData !== currentState.fetchedData) {
+        state.updateState('fetchedData', processedData);
+    }
+    
     // Analyze all keys from the complete dataset
-    const keyAnalysis = await extractAndAnalyzeKeys(currentState.fetchedData);
+    const keyAnalysis = await extractAndAnalyzeKeys(processedData);
     
     // Initialize arrays if they don't exist in state
     state.ensureMappingArrays();

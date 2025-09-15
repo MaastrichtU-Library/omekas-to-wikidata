@@ -73,6 +73,18 @@ export const IDENTIFIER_PROPERTY_MAPPINGS = {
         label: 'OCLC control number',
         description: 'identifier for a unique bibliographic record in OCLC WorldCat',
         pattern: /worldcat\.org\/oclc\/(\d+)|oclc[:\s]?(\d+)/i
+    },
+    'wikidata': {
+        propertyId: null, // Direct Q-number, no property mapping needed
+        label: 'Wikidata Item',
+        description: 'Direct Wikidata entity reference',
+        pattern: /wikidata\.org\/(?:entity|wiki)\/(Q\d+)|^(Q\d+)$/i
+    },
+    'iso639-1': {
+        propertyId: null, // Language codes map directly to Wikidata items
+        label: 'ISO 639-1 Language Code',
+        description: 'Two-letter language code from ISO 639-1 standard',
+        pattern: /id\.loc\.gov\/vocabulary\/iso639-1\/([a-z]{2})/i
     }
 };
 
@@ -268,4 +280,36 @@ export function analyzeFieldsForIdentifiers(items) {
     });
     
     return identifierFields;
+}
+
+/**
+ * Detects identifier in a value object's @id field
+ * @param {Object} valueObj - The value object containing @id field
+ * @returns {Object|null} Detection result with type and extracted ID, or null if no identifier found
+ */
+export function detectValueIdentifier(valueObj) {
+    if (!valueObj || typeof valueObj !== 'object' || !valueObj['@id']) {
+        return null;
+    }
+    
+    const idValue = valueObj['@id'];
+    
+    // Check against each identifier pattern
+    for (const [type, config] of Object.entries(IDENTIFIER_PROPERTY_MAPPINGS)) {
+        const match = idValue.match(config.pattern);
+        if (match) {
+            // Extract the actual identifier value
+            const identifierValue = match[1] || match[2] || match[0];
+            
+            return {
+                type: type,
+                identifierValue: identifierValue,
+                originalValue: idValue,
+                propertyId: config.propertyId,
+                label: config.label
+            };
+        }
+    }
+    
+    return null;
 }
