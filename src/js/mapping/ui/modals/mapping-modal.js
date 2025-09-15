@@ -328,8 +328,8 @@ export function createMappingModalContent(keyData) {
     });
     
     // Check if entity schema is selected to conditionally add dropdown
-    const currentState = window.mappingStepState?.getState();
-    const selectedSchema = currentState?.selectedEntitySchema;
+    const schemaState = window.mappingStepState?.getState();
+    const selectedSchema = schemaState?.selectedEntitySchema;
     const hasEntitySchemaProperties = selectedSchema?.properties && 
         (selectedSchema.properties.required?.length > 0 || selectedSchema.properties.optional?.length > 0);
     
