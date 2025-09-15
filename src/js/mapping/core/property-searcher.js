@@ -9,6 +9,7 @@ import { eventSystem } from '../../events.js';
 import { showMessage, createElement, createListItem } from '../../ui/components.js';
 import { getCompletePropertyData } from '../../api/wikidata.js';
 import { refreshStage3TransformationUI as refreshStage3UI } from './transformation-engine.js';
+import { updateModalTitle, updateStage2Summary } from '../ui/modals/mapping-modal.js';
 
 // Additional imports needed for the functions
 // TODO: These helper functions will need to be extracted to mapping-helpers.js module:
@@ -542,26 +543,7 @@ export async function transitionToDataTypeConfiguration(property) {
     await displayDataTypeConfiguration(property);
 }
 
-/**
- * Update the modal title to show the mapping relationship
- */
-function updateModalTitle(property) {
-    const modalTitle = document.getElementById('modal-title');
-    if (modalTitle && window.currentMappingKeyData) {
-        const keyName = window.currentMappingKeyData.key || 'Key';
-        modalTitle.textContent = `${keyName} → ${property.label} (${property.id})`;
-    }
-}
-
-/**
- * Update Stage 2 summary to show detected data type
- */
-function updateStage2Summary(property) {
-    const stage2Summary = document.getElementById('stage-2-summary');
-    if (stage2Summary && property && property.datatypeLabel) {
-        stage2Summary.textContent = `Stage 2: Value type is ${property.datatypeLabel}`;
-    }
-}
+// updateModalTitle and updateStage2Summary are now imported from mapping-modal.js
 
 /**
  * Display data type configuration in Stage 2
