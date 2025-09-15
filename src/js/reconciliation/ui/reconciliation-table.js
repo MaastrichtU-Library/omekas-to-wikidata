@@ -353,6 +353,15 @@ export function createReconciliationTableFactory(dependencies) {
                         // Closing bracket
                         headerContent.appendChild(document.createTextNode(')'));
                         
+                        // Add @ field indicator if present (for duplicate mappings)
+                        if (keyObj.selectedAtField) {
+                            const atFieldIndicator = createElement('span', {
+                                className: 'at-field-indicator',
+                                title: `Using ${keyObj.selectedAtField} field from ${keyName}`
+                            }, ` ${keyObj.selectedAtField}`);
+                            headerContent.appendChild(atFieldIndicator);
+                        }
+                        
                         // Set click handler to open mapping modal
                         clickHandler = () => {
                             if (window.openMappingModal) {
@@ -462,7 +471,8 @@ export function createReconciliationTableFactory(dependencies) {
                         // Handle mapped property cell
                         const keyObj = propItem.data;
                         const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                        const values = extractPropertyValues(item, keyName);
+                        // Pass the full keyObj to preserve @ field information for duplicate mappings
+                        const values = extractPropertyValues(item, keyObj);
                         
                         if (values.length === 0) {
                             // Empty cell

@@ -6486,3 +6486,45 @@ pre.sample-value {
         font-size: 10px;
     }
 }
+
+/* Duplicate mapping notice */
+.duplicate-notice {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+.duplicate-notice-content {
+    color: #856404;
+}
+
+.duplicate-notice-content strong {
+    color: #664d03;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.duplicate-notice-content p {
+    margin: 0;
+    font-size: 13px;
+}
+
+/* @ field indicator in reconciliation table headers */
+.at-field-indicator {
+    color: #6c757d;
+    font-weight: normal;
+    font-style: italic;
+    font-size: 0.9em;
+    margin-left: 4px;
+}
+
+.property-header-content .at-field-indicator {
+    display: inline-block;
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+}

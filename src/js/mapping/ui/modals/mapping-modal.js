@@ -63,6 +63,33 @@ export function openMappingModal(keyData) {
                 }
             },
             {
+                text: 'Confirm and Duplicate',
+                type: 'secondary',
+                keyboardShortcut: 'd',
+                callback: () => {
+                    const selectedProperty = getSelectedPropertyFromModal();
+                    if (selectedProperty) {
+                        // Save the current mapping
+                        mapKeyToProperty(keyData, selectedProperty, window.mappingStepState);
+                        modalUI.closeModal();
+                        
+                        // Open a new modal for the same key with reset configuration
+                        setTimeout(() => {
+                            // Create a fresh keyData object for the duplicate
+                            const duplicateKeyData = {
+                                ...keyData,
+                                selectedAtField: undefined,  // Reset @ field selection
+                                selectedTransformationField: undefined,  // Reset transformation
+                                isDuplicate: true  // Mark as duplicate
+                            };
+                            openMappingModal(duplicateKeyData);
+                        }, 100);
+                    } else {
+                        showMessage('Please select a Wikidata property first.', 'warning', 3000);
+                    }
+                }
+            },
+            {
                 text: 'Confirm and Next',
                 type: 'primary',
                 keyboardShortcut: 'n',
@@ -111,6 +138,20 @@ export function createMappingModalContent(keyData) {
     const container = createElement('div', {
         className: 'mapping-modal-content two-column-layout'
     });
+    
+    // Add duplicate notice if this is a duplicate mapping
+    if (keyData.isDuplicate) {
+        const duplicateNotice = createElement('div', {
+            className: 'duplicate-notice'
+        });
+        duplicateNotice.innerHTML = `
+            <div class="duplicate-notice-content">
+                <strong>Creating duplicate mapping for:</strong> ${keyData.key}
+                <p>Select a different @ field or property to create an additional mapping for this key.</p>
+            </div>
+        `;
+        container.appendChild(duplicateNotice);
+    }
     
     // LEFT COLUMN - Omeka S Data
     const leftColumn = createElement('div', {

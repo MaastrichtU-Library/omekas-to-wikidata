@@ -41,8 +41,8 @@ export function renderValueTransformationUI(keyData, state) {
         return container;
     }
     
-    // Generate mapping-specific ID for transformation storage
-    const mappingId = state.generateMappingId(keyData.key, propertyId);
+    // Generate mapping-specific ID for transformation storage, including @ field if selected
+    const mappingId = state.generateMappingId(keyData.key, propertyId, keyData.selectedAtField);
 
     // Field selector section
     let rawSampleValue = keyData.sampleValue;

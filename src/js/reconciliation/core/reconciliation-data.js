@@ -21,8 +21,8 @@ export function calculateTotalReconciliableCells(data, mappedKeys, manualPropert
     data.forEach(item => {
         // Count mapped property cells
         mappedKeys.forEach(keyObj => {
-            const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-            const values = extractPropertyValues(item, keyName);
+            // Pass the full keyObj to extractPropertyValues to handle @ field selection
+            const values = extractPropertyValues(item, keyObj);
             total += values.length;
         });
         
@@ -45,9 +45,10 @@ export function calculateTotalReconciliableCells(data, mappedKeys, manualPropert
  * - Resource references with o:label properties
  * - Mixed arrays containing different value types
  * - Nested objects with various value properties
+ * - JSON-LD @ fields (e.g., @id, @value, @type) for duplicate mappings
  * 
  * @param {Object} item - Single Omeka S item object
- * @param {string} key - Property key to extract values from
+ * @param {string|Object} keyOrKeyObj - Property key or key object with selectedAtField
  * @returns {Array<string>} Array of normalized string values for reconciliation
  * 
  * @example
@@ -56,34 +57,53 @@ export function calculateTotalReconciliableCells(data, mappedKeys, manualPropert
  * // Input: [{"@value": "Art"}, {"o:label": "History"}]
  * // Output: ["Art", "History"]
  * 
+ * // With @ field selection:
+ * extractPropertyValues(item, {key: "schema:itemLocation", selectedAtField: "@id"});
+ * // Input: [{"@id": "http://example.org/loc1", "@value": "Location 1"}]
+ * // Output: ["http://example.org/loc1"]
+ * 
  * @description
  * The normalization process is essential because Wikidata reconciliation
  * requires consistent string representations of values. The function prioritizes
  * human-readable labels (o:label) over technical values (@value) when both exist.
  */
-export function extractPropertyValues(item, key) {
+export function extractPropertyValues(item, keyOrKeyObj) {
+    // Handle both string keys and key objects
+    let key, selectedAtField;
+    if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
+        key = keyOrKeyObj.key;
+        selectedAtField = keyOrKeyObj.selectedAtField;
+    } else {
+        key = keyOrKeyObj;
+    }
+    
     const value = item[key];
     if (!value) return [];
     
+    // Helper function to extract value from a single object
+    const extractFromObject = (v) => {
+        // If a specific @ field is selected, try to extract it
+        if (selectedAtField && typeof v === 'object' && v[selectedAtField] !== undefined) {
+            return String(v[selectedAtField]);
+        }
+        
+        // Default extraction logic
+        if (typeof v === 'object' && v['o:label']) {
+            return v['o:label'];
+        } else if (typeof v === 'object' && v['@value']) {
+            return v['@value'];
+        } else if (typeof v === 'string') {
+            return v;
+        } else {
+            return String(v);
+        }
+    };
+    
     // Handle different data structures
     if (Array.isArray(value)) {
-        return value.map(v => {
-            if (typeof v === 'object' && v['o:label']) {
-                return v['o:label'];
-            } else if (typeof v === 'object' && v['@value']) {
-                return v['@value'];
-            } else if (typeof v === 'string') {
-                return v;
-            } else {
-                return String(v);
-            }
-        });
-    } else if (typeof value === 'object' && value['o:label']) {
-        return [value['o:label']];
-    } else if (typeof value === 'object' && value['@value']) {
-        return [value['@value']];
+        return value.map(v => extractFromObject(v));
     } else {
-        return [String(value)];
+        return [extractFromObject(value)];
     }
 }
 
