@@ -230,7 +230,7 @@ function createMappingRelationshipTitle(keyName, property) {
         ? `<span class="mapping-target">${property.label} (${property.id})</span>`
         : `<span class="mapping-target unmapped">unmapped</span>`;
     
-    return `<div class="mapping-relationship-header">${sourceSpan} ${arrow} ${targetSpan}</div>`;
+    return `<div class="mapping-relationship-header">${sourceSpan}${arrow}${targetSpan}</div>`;
 }
 
 /**
