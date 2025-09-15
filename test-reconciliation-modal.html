@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconciliation Modal Test</title>
+    <link rel="stylesheet" href="src/css/style.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .success-message {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Reconciliation Modal Test</h1>
+        <p>This page tests the new reconciliation modal functionality.</p>
+        
+        <div class="test-section">
+            <h2>Import Test</h2>
+            <p>Testing if all functions can be imported without errors:</p>
+            <button class="test-button" onclick="testImports()">Test Imports</button>
+            <div id="import-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Wikidata Item Modal</h2>
+            <p>Test the modal for a Wikidata item property:</p>
+            <button class="test-button" onclick="testWikidataModal()">Open Wikidata Item Modal</button>
+            <div id="wikidata-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>String Validation Modal</h2>
+            <p>Test the modal with string validation (ISBN example):</p>
+            <button class="test-button" onclick="testStringModal()">Open String Validation Modal</button>
+            <div id="string-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Validation Engine Test</h2>
+            <p>Test the validation engine with various inputs:</p>
+            <button class="test-button" onclick="testValidationEngine()">Test Validation</button>
+            <div id="validation-result"></div>
+        </div>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="test-modal" class="modal-container hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Test Modal</h3>
+                <button class="close-button" onclick="closeTestModal()">×</button>
+            </div>
+            <div class="modal-content" id="modal-content">
+                <!-- Modal content will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button class="test-button" onclick="closeTestModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { 
+            createReconciliationModal,
+            createReconciliationModalContentFactory,
+            createOpenReconciliationModalFactory,
+            createModalInteractionHandlers,
+            loadExistingMatches
+        } from './src/js/reconciliation/ui/reconciliation-modal.js';
+        
+        import {
+            extractRegexConstraints,
+            validateStringValue,
+            validateRealTime,
+            getSuggestedFixes,
+            createValidationUI
+        } from './src/js/reconciliation/ui/validation-engine.js';
+
+        // Make functions available globally for testing
+        window.testFunctions = {
+            createReconciliationModal,
+            createReconciliationModalContentFactory,
+            createOpenReconciliationModalFactory,
+            createModalInteractionHandlers,
+            loadExistingMatches,
+            extractRegexConstraints,
+            validateStringValue,
+            validateRealTime,
+            getSuggestedFixes,
+            createValidationUI
+        };
+
+        window.testImports = function() {
+            const resultDiv = document.getElementById('import-result');
+            try {
+                const requiredFunctions = [
+                    'createReconciliationModal',
+                    'createReconciliationModalContentFactory', 
+                    'createOpenReconciliationModalFactory',
+                    'createModalInteractionHandlers',
+                    'extractRegexConstraints',
+                    'validateStringValue'
+                ];
+                
+                const missingFunctions = [];
+                requiredFunctions.forEach(func => {
+                    if (!window.testFunctions[func]) {
+                        missingFunctions.push(func);
+                    }
+                });
+                
+                if (missingFunctions.length === 0) {
+                    resultDiv.innerHTML = '<div class="success-message">✅ All imports successful! All required functions are available.</div>';
+                } else {
+                    resultDiv.innerHTML = `<div class="error-message">❌ Missing functions: ${missingFunctions.join(', ')}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Import error: ${error.message}</div>`;
+            }
+        };
+
+        window.testWikidataModal = function() {
+            const resultDiv = document.getElementById('wikidata-result');
+            try {
+                // Test creating a Wikidata item modal
+                const modal = window.testFunctions.createReconciliationModal(
+                    'item-1',
+                    'dcterms:creator', 
+                    0,
+                    'William Shakespeare',
+                    { datatype: 'wikibase-item' }
+                );
+                
+                // Show in test modal
+                document.getElementById('modal-title').textContent = 'Wikidata Item Test';
+                document.getElementById('modal-content').innerHTML = modal.innerHTML;
+                document.getElementById('test-modal').classList.remove('hidden');
+                
+                resultDiv.innerHTML = '<div class="success-message">✅ Wikidata modal created successfully!</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error creating Wikidata modal: ${error.message}</div>`;
+            }
+        };
+
+        window.testStringModal = function() {
+            const resultDiv = document.getElementById('string-result');
+            try {
+                // Test creating a string validation modal with ISBN
+                const modal = window.testFunctions.createReconciliationModal(
+                    'item-2',
+                    'isbn',
+                    0,
+                    '978-0-123456-78',  // Invalid ISBN for testing
+                    { datatype: 'string' }
+                );
+                
+                // Show in test modal
+                document.getElementById('modal-title').textContent = 'String Validation Test';
+                document.getElementById('modal-content').innerHTML = modal.innerHTML;
+                document.getElementById('test-modal').classList.remove('hidden');
+                
+                resultDiv.innerHTML = '<div class="success-message">✅ String validation modal created successfully!</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error creating string modal: ${error.message}</div>`;
+            }
+        };
+
+        window.testValidationEngine = function() {
+            const resultDiv = document.getElementById('validation-result');
+            try {
+                // Test various validation scenarios
+                const testCases = [
+                    { value: '9780123456789', property: 'isbn', expected: 'valid' },
+                    { value: '978-invalid', property: 'isbn', expected: 'invalid' },
+                    { value: '1234-5678', property: 'issn', expected: 'valid' },
+                    { value: '10.1000/123', property: 'doi', expected: 'valid' },
+                    { value: 'invalid-doi', property: 'doi', expected: 'invalid' }
+                ];
+                
+                let results = '';
+                testCases.forEach((test, index) => {
+                    const constraints = window.testFunctions.extractRegexConstraints(test.property);
+                    const validation = window.testFunctions.validateStringValue(test.value, constraints);
+                    const status = validation.isValid ? 'valid' : 'invalid';
+                    const icon = validation.isValid ? '✅' : '❌';
+                    
+                    results += `<div>${icon} Test ${index + 1}: ${test.property} "${test.value}" → ${status}</div>`;
+                });
+                
+                resultDiv.innerHTML = `<div class="success-message">${results}</div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Validation engine error: ${error.message}</div>`;
+            }
+        };
+
+        window.closeTestModal = function() {
+            document.getElementById('test-modal').classList.add('hidden');
+        };
+
+        // Auto-run import test on page load
+        setTimeout(() => {
+            window.testImports();
+        }, 500);
+    </script>
+</body>
+</html>

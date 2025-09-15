@@ -228,7 +228,8 @@ export function setupReconciliationStep(state) {
             performAutomaticReconciliation,
             setupDynamicDatePrecision,
             setupAutoAdvanceToggle: () => setupAutoAdvanceToggle(),
-            createReconciliationModalContent
+            createReconciliationModalContent,
+            state
         });
         
         // Table UI functions
@@ -508,11 +509,7 @@ export function setupReconciliationStep(state) {
         return autoAdvanceSetting;
     }
     
-    
-    /**
-    // All factory functions available via modules object
-    
-    // Set up modal interaction handlers
+    // Set up modal interaction handlers (moved inside function to access modules)
     const currentReconciliationCellRef = { current: null };
     
     // Update references to use the new ref pattern
@@ -542,18 +539,13 @@ export function setupReconciliationStep(state) {
     window.ignoreCurrentValue = modalInteractionHandlers.ignoreCurrentValue;
     window.useCurrentValueAsString = modalInteractionHandlers.useCurrentValueAsString;
     window.createNewWikidataItem = modalInteractionHandlers.createNewWikidataItem;
-    window.selectMatch = modalInteractionHandlers.selectMatch;
-    window.showAllMatches = modalInteractionHandlers.showAllMatches;
-    window.showTopMatches = modalInteractionHandlers.showTopMatches;
-    window.selectManualMatch = modalInteractionHandlers.selectManualMatch;
+    // Note: selectMatch, showAllMatches, showTopMatches are defined in reconciliation-modal.js
+    
+    // Also expose modalUI to global scope for modal closing
+    window.modalUI = modalUI;
+    
     window.applyTypeOverride = modalInteractionHandlers.applyTypeOverride;
     window.confirmReconciliation = modalInteractionHandlers.confirmReconciliation; // Legacy
-    
-    
-    
-    /**
-     * Setup expanded search functionality in progressive disclosure
-     */
     
     /**
      * Setup auto-advance toggle functionality
@@ -584,18 +576,7 @@ export function setupReconciliationStep(state) {
     
     
     
-    window.selectManualMatch = function(matchId) {
-        // Mark as selected and enable confirm
-        document.querySelectorAll('.search-result-item').forEach(item => {
-            item.classList.remove('selected');
-        });
-        document.querySelector(`[data-match-id="${matchId}"]`).classList.add('selected');
-        
-        const confirmBtn = document.querySelector('.reconciliation-actions .btn.primary');
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-        }
-    };
+    // Note: selectManualMatch function has been removed as it's replaced by applyMatchDirectly
     
     
     /**
