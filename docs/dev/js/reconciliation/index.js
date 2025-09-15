@@ -14,3 +14,6 @@ export * from './core/reconciliation-progress.js';
 export * from './ui/reconciliation-table.js';
 export * from './ui/reconciliation-modal.js';
 export * from './ui/reconciliation-display.js';
+
+// Export specific functions with correct names for backward compatibility
+export { setupManualSearchInFallback as setupManualSearch } from './ui/reconciliation-display.js';
