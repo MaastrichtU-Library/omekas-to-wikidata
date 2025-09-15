@@ -1443,6 +1443,7 @@ main {
     align-items: center;
     font-size: 1.1em;
     font-weight: 600;
+    width: 100%; /* Use full width of parent container */
     padding-right: 40px; /* Add padding to avoid overlap with close button */
 }
 
@@ -4497,6 +4498,7 @@ pre.sample-value {
     margin: 0;
     color: var(--primary-color);
     font-size: 1.2rem;
+    flex: 1; /* Take up all available width in modal-header */
 }
 
 .close-button {
