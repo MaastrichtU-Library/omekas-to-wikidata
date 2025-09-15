@@ -1438,10 +1438,8 @@ main {
 
 /* Modal header with mapping relationship */
 .mapping-relationship-header {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    grid-template-areas: "left arrow right";
-    gap: 10px;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
     font-size: 1.1em;
     font-weight: 600;
@@ -1449,11 +1447,9 @@ main {
 }
 
 .mapping-arrow {
-    grid-area: arrow;
     color: #666;
     font-size: 1.2em;
     text-align: center;
-    justify-self: center;
 }
 
 .mapping-source, .mapping-target {
@@ -1464,14 +1460,10 @@ main {
 }
 
 .mapping-source {
-    grid-area: left;
-    justify-self: start;
     text-align: left;
 }
 
 .mapping-target {
-    grid-area: right;
-    justify-self: end;
     text-align: right;
 }
 
@@ -1945,15 +1937,13 @@ pre.sample-value {
     }
     
     .mapping-relationship-header {
-        grid-template-columns: 1fr;
-        grid-template-areas: "left" "arrow" "right";
+        flex-direction: column;
         gap: 5px;
         font-size: 1em;
         padding-right: 20px; /* Reduce padding for mobile */
     }
     
     .mapping-source, .mapping-target {
-        justify-self: center;
         text-align: center;
     }
 }
