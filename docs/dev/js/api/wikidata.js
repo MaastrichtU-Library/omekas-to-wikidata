@@ -51,6 +51,99 @@ export async function getPropertyInfo(propertyId) {
 }
 
 /**
+ * Fetches property information for multiple properties in a single batch call
+ * @param {Array<string>} propertyIds - Array of Wikidata property IDs (e.g., ['P1476', 'P577'])
+ * @returns {Promise<Object>} Object mapping property IDs to property information
+ */
+export async function getBatchPropertyInfo(propertyIds) {
+    if (!Array.isArray(propertyIds) || propertyIds.length === 0) {
+        return {};
+    }
+    
+    // Check cache for all properties first
+    const cachedResults = {};
+    const uncachedIds = [];
+    
+    for (const propertyId of propertyIds) {
+        const cached = getCachedProperty(propertyId, 'info');
+        if (cached) {
+            cachedResults[propertyId] = cached;
+        } else {
+            uncachedIds.push(propertyId);
+        }
+    }
+    
+    // If all properties are cached, return immediately
+    if (uncachedIds.length === 0) {
+        return cachedResults;
+    }
+    
+    try {
+        // Build batch API URL with all uncached property IDs
+        const idsParam = uncachedIds.join('|');
+        const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${idsParam}&props=datatype|labels|descriptions&languages=en&format=json&origin=*`;
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const batchResults = { ...cachedResults };
+        
+        // Process each property in the batch response
+        for (const propertyId of uncachedIds) {
+            const entity = data.entities[propertyId];
+            
+            if (entity && !entity.missing) {
+                const propertyInfo = {
+                    id: propertyId,
+                    datatype: entity.datatype || 'unknown',
+                    datatypeLabel: formatDatatype(entity.datatype),
+                    label: entity.labels?.en?.value || 'No label',
+                    description: entity.descriptions?.en?.value || 'No description available'
+                };
+                
+                // Cache the result
+                setCachedProperty(propertyId, 'info', propertyInfo);
+                batchResults[propertyId] = propertyInfo;
+            } else {
+                console.warn(`Property ${propertyId} not found in batch response`);
+                // Create minimal fallback
+                const fallbackInfo = {
+                    id: propertyId,
+                    datatype: 'unknown',
+                    datatypeLabel: 'Unknown',
+                    label: propertyId,
+                    description: 'Property information not available'
+                };
+                batchResults[propertyId] = fallbackInfo;
+            }
+        }
+        
+        return batchResults;
+    } catch (error) {
+        console.error(`Error fetching batch property info for [${propertyIds.join(', ')}]:`, error);
+        
+        // Return cached results + fallbacks for failed properties
+        const fallbackResults = { ...cachedResults };
+        for (const propertyId of uncachedIds) {
+            if (!fallbackResults[propertyId]) {
+                fallbackResults[propertyId] = {
+                    id: propertyId,
+                    datatype: 'unknown',
+                    datatypeLabel: 'Unknown',
+                    label: propertyId,
+                    description: 'Failed to fetch property information'
+                };
+            }
+        }
+        return fallbackResults;
+    }
+}
+
+/**
  * Fetches property constraints including format regex and value type constraints
  * @param {string} propertyId - Wikidata property ID (e.g., 'P1476')
  * @returns {Promise<Object>} Constraints object with format, valueType, and other arrays
