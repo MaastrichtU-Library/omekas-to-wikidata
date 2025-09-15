@@ -82,12 +82,18 @@ export function extractPropertyValues(item, keyOrKeyObj) {
     
     // Helper function to extract value from a single object
     const extractFromObject = (v) => {
-        // If a specific @ field is selected, try to extract it
-        if (selectedAtField && typeof v === 'object' && v[selectedAtField] !== undefined) {
-            return String(v[selectedAtField]);
+        // If a specific @ field is selected, ONLY return that field's value
+        if (selectedAtField) {
+            if (typeof v === 'object' && v[selectedAtField] !== undefined) {
+                return String(v[selectedAtField]);
+            } else {
+                // Don't fall back to default extraction when a specific @ field is requested
+                // Return null to indicate this object doesn't have the requested field
+                return null;
+            }
         }
         
-        // Default extraction logic
+        // Default extraction logic (only when no specific @ field is selected)
         if (typeof v === 'object' && v['o:label']) {
             return v['o:label'];
         } else if (typeof v === 'object' && v['@value']) {
@@ -101,9 +107,11 @@ export function extractPropertyValues(item, keyOrKeyObj) {
     
     // Handle different data structures
     if (Array.isArray(value)) {
-        return value.map(v => extractFromObject(v));
+        // Filter out null values to only include objects that have the requested @ field
+        return value.map(v => extractFromObject(v)).filter(v => v !== null);
     } else {
-        return [extractFromObject(value)];
+        const extracted = extractFromObject(value);
+        return extracted !== null ? [extracted] : [];
     }
 }
 
