@@ -1495,6 +1495,49 @@ main {
     margin-bottom: 10px;
 }
 
+/* Collapsible transformation section */
+.transformation-toggle {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 8px 0;
+    font-size: 14px;
+    font-weight: 500;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s;
+}
+
+.transformation-toggle:hover {
+    color: var(--primary-color-dark, #2563eb);
+    opacity: 0.8;
+}
+
+.transformation-content {
+    display: none;
+    margin-top: 12px;
+}
+
+.transformation-section.expanded .transformation-content {
+    display: block;
+    animation: expandSection 0.3s ease-out;
+}
+
+@keyframes expandSection {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 1000px;
+    }
+}
+
 .key-info h4 {
     margin-bottom: 0.5rem;
     color: var(--primary-color);

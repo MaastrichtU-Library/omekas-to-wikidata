@@ -141,17 +141,41 @@ export function createMappingModalContent(keyData) {
     `;
     leftColumn.appendChild(keyInfo);
     
-    // Value transformation section (Stage 3)
+    // Value transformation section (Stage 3) - Collapsible
     const transformationSection = createElement('div', {
         className: 'transformation-section',
         style: 'margin-top: 20px;'
     });
     
+    // Toggle button for transformation section
+    const transformationToggle = createElement('button', {
+        className: 'transformation-toggle',
+        onClick: () => {
+            const isExpanded = transformationSection.classList.contains('expanded');
+            if (isExpanded) {
+                transformationSection.classList.remove('expanded');
+                transformationToggle.textContent = '▶ Add Transformation';
+            } else {
+                transformationSection.classList.add('expanded');
+                transformationToggle.textContent = '▼ Hide Transformations';
+            }
+        }
+    }, '▶ Add Transformation');
+    
+    transformationSection.appendChild(transformationToggle);
+    
+    // Collapsible content container
+    const transformationContent = createElement('div', {
+        className: 'transformation-content'
+    });
+    
     const transformationHeader = createElement('h4', {}, 'Value Transformation');
-    transformationSection.appendChild(transformationHeader);
+    transformationContent.appendChild(transformationHeader);
     
     const valueTransformationContainer = renderValueTransformationUI(keyData, window.mappingStepState);
-    transformationSection.appendChild(valueTransformationContainer);
+    transformationContent.appendChild(valueTransformationContainer);
+    
+    transformationSection.appendChild(transformationContent);
     leftColumn.appendChild(transformationSection);
     
     container.appendChild(leftColumn);
