@@ -78,38 +78,49 @@ export function openMappingModal(keyData) {
             }
         ];
         
-        // Open modal
+        // Open modal with mapping relationship header
+        const modalTitle = createMappingRelationshipTitle(keyData.key, null);
         modalUI.openModal(
-            `Map Key: ${keyData.key}`,
+            modalTitle,
             modalContent,
-            buttons
+            buttons,
+            () => {
+                // Remove the wide class when modal closes
+                const modal = document.querySelector('.modal');
+                if (modal) {
+                    modal.classList.remove('mapping-modal-wide');
+                }
+            }
         );
+        
+        // Add class to modal for wider display after opening
+        setTimeout(() => {
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.classList.add('mapping-modal-wide');
+            }
+        }, 0);
     });
 }
 
 /**
- * Creates mapping modal content
+ * Creates mapping modal content with two-column layout
  */
 export function createMappingModalContent(keyData) {
     const container = createElement('div', {
-        className: 'mapping-modal-content'
+        className: 'mapping-modal-content two-column-layout'
     });
     
-    // Stage 1: Key Information and Property Selection (Collapsible)
-    const stage1Section = createElement('details', {
-        className: 'mapping-stage',
-        id: 'stage-1-property-selection',
-        open: true // Open by default
+    // LEFT COLUMN - Omeka S Data
+    const leftColumn = createElement('div', {
+        className: 'mapping-column left-column'
     });
     
-    const stage1Summary = createElement('summary', {
-        className: 'stage-summary'
-    }, 'Stage 1: Property Selection');
-    stage1Section.appendChild(stage1Summary);
-    
-    const stage1Content = createElement('div', {
-        className: 'stage-content'
-    });
+    // Column header
+    const leftHeader = createElement('div', {
+        className: 'column-header'
+    }, 'Omeka S Data');
+    leftColumn.appendChild(leftHeader);
     
     // Key information section
     const keyInfo = createElement('div', {
@@ -128,14 +139,40 @@ export function createMappingModalContent(keyData) {
         <p><strong>Frequency:</strong> ${keyData.frequency || 1} out of ${keyData.totalItems || 1} items</p>
         <div><strong>Sample Value:</strong> ${sampleValueHtml}</div>
     `;
-    stage1Content.appendChild(keyInfo);
+    leftColumn.appendChild(keyInfo);
+    
+    // Value transformation section (Stage 3)
+    const transformationSection = createElement('div', {
+        className: 'transformation-section',
+        style: 'margin-top: 20px;'
+    });
+    
+    const transformationHeader = createElement('h4', {}, 'Value Transformation');
+    transformationSection.appendChild(transformationHeader);
+    
+    const valueTransformationContainer = renderValueTransformationUI(keyData, window.mappingStepState);
+    transformationSection.appendChild(valueTransformationContainer);
+    leftColumn.appendChild(transformationSection);
+    
+    container.appendChild(leftColumn);
+    
+    // RIGHT COLUMN - Wikidata Property
+    const rightColumn = createElement('div', {
+        className: 'mapping-column right-column'
+    });
+    
+    // Column header
+    const rightHeader = createElement('div', {
+        className: 'column-header'
+    }, 'Wikidata Property');
+    rightColumn.appendChild(rightHeader);
     
     // Property search section
     const searchSection = createElement('div', {
         className: 'property-search'
     });
     searchSection.innerHTML = `
-        <h4>Search Wikidata Properties</h4>
+        <h4>Search Properties</h4>
         <input type="text" id="property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
         <div id="property-suggestions" class="property-suggestions"></div>
         <div id="selected-property" class="selected-property" style="display: none;">
@@ -150,66 +187,25 @@ export function createMappingModalContent(keyData) {
             </div>
         </div>
     `;
-    stage1Content.appendChild(searchSection);
-    stage1Section.appendChild(stage1Content);
-    container.appendChild(stage1Section);
+    rightColumn.appendChild(searchSection);
     
-    // Stage 2: Value Type Detection (Initially hidden)
-    const stage2Section = createElement('details', {
-        className: 'mapping-stage',
-        id: 'stage-2-value-type-detection'
-    });
-    
-    const stage2Summary = createElement('summary', {
-        className: 'stage-summary',
-        id: 'stage-2-summary'
-    }, 'Stage 2: Value Type Detection');
-    stage2Section.appendChild(stage2Summary);
-    
-    const stage2Content = createElement('div', {
-        className: 'stage-content'
-    });
-    
-    // Data type information section
+    // Data type information section (Stage 2 content)
     const dataTypeInfo = createElement('div', {
         className: 'datatype-info',
-        id: 'datatype-info-section'
+        id: 'datatype-info-section',
+        style: 'margin-top: 20px; display: none;'
     });
     dataTypeInfo.innerHTML = `
         <div class="datatype-display">
-            <h4>Detected Data Type</h4>
+            <h4>Expected Value Type</h4>
             <div id="detected-datatype" class="detected-datatype">
-                <div class="datatype-loading">Select a property to detect data type...</div>
+                <div class="datatype-loading">Select a property to see expected type...</div>
             </div>
         </div>
-        <div class="datatype-description" id="datatype-description" style="display: none;">
-            <p>Additional configuration options will be available here in future versions.</p>
-        </div>
     `;
-    stage2Content.appendChild(dataTypeInfo);
-    stage2Section.appendChild(stage2Content);
-    container.appendChild(stage2Section);
+    rightColumn.appendChild(dataTypeInfo);
     
-    // Stage 3: Value Transformation (Initially hidden)
-    const stage3Section = createElement('details', {
-        className: 'mapping-stage',
-        id: 'stage-3-value-transformation'
-    });
-    
-    const stage3Summary = createElement('summary', {
-        className: 'stage-summary'
-    }, 'Stage 3: Value Transformation');
-    stage3Section.appendChild(stage3Summary);
-    
-    const stage3Content = createElement('div', {
-        className: 'stage-content'
-    });
-    
-    // Value transformation section
-    const valueTransformationContainer = renderValueTransformationUI(keyData, window.mappingStepState);
-    stage3Content.appendChild(valueTransformationContainer);
-    stage3Section.appendChild(stage3Content);
-    container.appendChild(stage3Section);
+    container.appendChild(rightColumn);
     
     // Setup search functionality and pre-populate if mapped
     setTimeout(() => setupPropertySearch(keyData, window.mappingStepState), 100);
@@ -225,13 +221,27 @@ export function getSelectedPropertyFromModal() {
 }
 
 /**
+ * Create mapping relationship title with arrow
+ */
+function createMappingRelationshipTitle(keyName, property) {
+    const sourceSpan = `<span class="mapping-source">${keyName}</span>`;
+    const arrow = `<span class="mapping-arrow">→</span>`;
+    const targetSpan = property 
+        ? `<span class="mapping-target">${property.label} (${property.id})</span>`
+        : `<span class="mapping-target unmapped">unmapped</span>`;
+    
+    return `<div class="mapping-relationship-header">${sourceSpan} ${arrow} ${targetSpan}</div>`;
+}
+
+/**
  * Update the modal title to show the mapping relationship
  */
 export function updateModalTitle(property) {
     const modalTitle = document.getElementById('modal-title');
     if (modalTitle && window.currentMappingKeyData) {
         const keyName = window.currentMappingKeyData.key || 'Key';
-        modalTitle.textContent = `${keyName} → ${property.label} (${property.id})`;
+        const titleHtml = createMappingRelationshipTitle(keyName, property);
+        modalTitle.innerHTML = titleHtml;
     }
 }
 
@@ -239,8 +249,16 @@ export function updateModalTitle(property) {
  * Update Stage 2 summary to show detected data type
  */
 export function updateStage2Summary(property) {
-    const stage2Summary = document.getElementById('stage-2-summary');
-    if (stage2Summary && property && property.datatypeLabel) {
-        stage2Summary.textContent = `Stage 2: Value type is ${property.datatypeLabel}`;
+    // In two-column layout, update the datatype section visibility and content
+    const datatypeSection = document.getElementById('datatype-info-section');
+    const datatypeDisplay = document.getElementById('detected-datatype');
+    
+    if (datatypeSection && datatypeDisplay && property && property.datatypeLabel) {
+        datatypeSection.style.display = 'block';
+        datatypeDisplay.innerHTML = `
+            <div class="datatype-item">
+                <strong>Type:</strong> ${property.datatypeLabel}
+            </div>
+        `;
     }
 }

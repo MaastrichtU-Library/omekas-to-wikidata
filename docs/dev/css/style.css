@@ -1337,6 +1337,13 @@ main {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Wider modal for mapping */
+.modal.mapping-modal-wide {
+    max-width: 900px !important;
+    width: unset !important;
+
+}
+
 .modal-header {
     padding: 0.75rem;
     border-bottom: 1px solid var(--border-color);
@@ -1391,10 +1398,101 @@ main {
     flex-direction: column;
 }
 
+/* Two-column layout for mapping modal */
+.mapping-modal-content.two-column-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    height: 100%;
+}
+
+.mapping-column {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    border-radius: 8px;
+    background: #fafafa;
+    overflow-y: auto;
+    max-height: 65vh;
+}
+
+.mapping-column.left-column {
+    border-right: 1px solid var(--border-color);
+    background: #f8f9fa;
+}
+
+.mapping-column.right-column {
+    background: #f9fafb;
+}
+
+.column-header {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* Modal header with mapping relationship */
+.mapping-relationship-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.mapping-arrow {
+    color: #666;
+    font-size: 1.2em;
+}
+
+.mapping-source, .mapping-target {
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #fff;
+    border: 1px solid var(--border-color);
+}
+
+.mapping-source.unmapped, .mapping-target.unmapped {
+    color: #999;
+    font-style: italic;
+    background: #f5f5f5;
+}
+
 .key-info {
     background-color: var(--secondary-color);
     padding: 1rem;
     border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+/* Two-column layout specific styles */
+.two-column-layout .property-search {
+    flex: 1;
+}
+
+.two-column-layout .property-search-input {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.two-column-layout .property-suggestions {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.two-column-layout .transformation-section {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.two-column-layout .transformation-section h4 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
 }
 
 .key-info h4 {
@@ -1811,6 +1909,26 @@ pre.sample-value {
     
     .property-suggestions {
         max-height: 200px;
+    }
+    
+    /* Two-column layout responsive */
+    .modal.mapping-modal-wide {
+        max-width: 95%;
+    }
+    
+    .mapping-modal-content.two-column-layout {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .mapping-column.left-column {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .mapping-relationship-header {
+        flex-wrap: wrap;
+        font-size: 1em;
     }
 }
 
