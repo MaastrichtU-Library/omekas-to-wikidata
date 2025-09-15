@@ -7,7 +7,7 @@
 // Import dependencies
 import { eventSystem } from '../../events.js';
 import { showMessage, createElement, createListItem } from '../../ui/components.js';
-import { getCompletePropertyData } from '../../api/wikidata.js';
+import { getCompletePropertyData, getBatchPropertyInfo } from '../../api/wikidata.js';
 import { refreshStage3TransformationUI as refreshStage3UI } from './transformation-engine.js';
 import { updateModalTitle, updateStage2Summary } from '../ui/modals/mapping-modal.js';
 
@@ -261,7 +261,7 @@ export function extractEntitySchemaProperties(state) {
 }
 
 /**
- * Setup entity schema property selection dropdown
+ * Setup entity schema property selection dropdown with optimized batch loading
  * @param {Object} state - Application state
  */
 export async function setupEntitySchemaPropertySelection(state) {
@@ -271,53 +271,65 @@ export async function setupEntitySchemaPropertySelection(state) {
     const schemaProperties = extractEntitySchemaProperties(state);
     if (schemaProperties.length === 0) return;
     
-    // Populate dropdown options
-    for (const schemaProp of schemaProperties) {
-        try {
-            // Fetch full property data from Wikidata API
-            const propertyData = await fetchPropertyData(schemaProp.id);
-            
-            if (propertyData) {
-                const option = createElement('option', {
-                    value: schemaProp.id
-                });
+    // Progressive enhancement: First show property IDs immediately for instant UI
+    const propertyOptions = new Map();
+    
+    // Phase 1: Create basic options with IDs instantly (no API calls)
+    schemaProperties.forEach(schemaProp => {
+        const option = createElement('option', {
+            value: schemaProp.id
+        });
+        
+        const requiredIndicator = schemaProp.required ? ' (required)' : ' (optional)';
+        option.textContent = `${schemaProp.id}${requiredIndicator} - Loading...`;
+        
+        // Store minimal property data for immediate selection capability
+        option.dataset.propertyData = JSON.stringify({
+            id: schemaProp.id,
+            label: schemaProp.id,
+            description: 'Property from entity schema'
+        });
+        
+        dropdown.appendChild(option);
+        propertyOptions.set(schemaProp.id, { option, schemaProp });
+    });
+    
+    // Phase 2: Batch fetch all property data in background and enhance options
+    try {
+        const propertyIds = schemaProperties.map(prop => prop.id);
+        console.log(`🚀 Batch loading ${propertyIds.length} entity schema properties:`, propertyIds.join(', '));
+        
+        // Single batch API call instead of sequential calls!
+        const batchResults = await getBatchPropertyInfo(propertyIds);
+        
+        // Phase 3: Enhance dropdown options with fetched data
+        for (const [propertyId, propertyData] of Object.entries(batchResults)) {
+            const optionData = propertyOptions.get(propertyId);
+            if (optionData) {
+                const { option, schemaProp } = optionData;
                 
-                // Format option text with label and datatype
+                // Update option text with rich information
                 const datatype = propertyData.datatype || 'unknown';
                 const requiredIndicator = schemaProp.required ? ' (required)' : ' (optional)';
-                option.textContent = `${schemaProp.id}: ${propertyData.label || schemaProp.id}${requiredIndicator} - ${datatype}`;
+                option.textContent = `${propertyId}: ${propertyData.label || propertyId}${requiredIndicator} - ${datatype}`;
                 
-                // Store full property data for selection
+                // Update stored property data
                 option.dataset.propertyData = JSON.stringify({
-                    id: schemaProp.id,
+                    id: propertyId,
                     label: propertyData.label,
                     description: propertyData.description || 'Property from entity schema'
                 });
-                
-                dropdown.appendChild(option);
             }
-        } catch (error) {
-            console.error(`Failed to fetch property data for ${schemaProp.id}:`, error);
-            
-            // Add minimal option if API call fails
-            const option = createElement('option', {
-                value: schemaProp.id
-            });
-            const requiredIndicator = schemaProp.required ? ' (required)' : ' (optional)';
-            option.textContent = `${schemaProp.id}${requiredIndicator}`;
-            
-            // Store minimal property data
-            option.dataset.propertyData = JSON.stringify({
-                id: schemaProp.id,
-                label: schemaProp.id,
-                description: 'Property from entity schema'
-            });
-            
-            dropdown.appendChild(option);
         }
+        
+        console.log(`✅ Batch loading complete for ${Object.keys(batchResults).length} properties`);
+        
+    } catch (error) {
+        console.error('Failed to batch load entity schema properties:', error);
+        // Options remain with basic IDs - still functional
     }
     
-    // Handle dropdown selection
+    // Handle dropdown selection (only set up once)
     dropdown.addEventListener('change', (e) => {
         const selectedValue = e.target.value;
         if (selectedValue) {
