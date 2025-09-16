@@ -580,6 +580,15 @@ export function mapKeyToProperty(keyData, property, state) {
     
     // Use moveKeyToCategory to handle the movement properly
     moveKeyToCategory(mappedKey, 'mapped', state);
+    
+    // Publish mapping updated event for reconciliation table updates
+    eventSystem.publish(eventSystem.Events.MAPPING_UPDATED, {
+        type: 'mapped',
+        keyData: mappedKey,
+        previousKeyData: keyData,
+        property: property,
+        mappingId: mappingId
+    });
 }
 
 /**
