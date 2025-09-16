@@ -82,50 +82,28 @@ export function extractPropertyValues(item, keyOrKeyObj) {
     
     // Helper function to extract value from a single object
     const extractFromObject = (v) => {
-        // Debug logging for OCLC identifiers
-        if (typeof v === 'object' && v['@id'] && v['@id'].includes('oclc')) {
-            console.log('🔍 OCLC identifier found:', v, 'selectedAtField:', selectedAtField);
-        }
-        
         // If a specific @ field is selected, ONLY return that field's value
         if (selectedAtField) {
             if (typeof v === 'object' && v[selectedAtField] !== undefined) {
-                const result = String(v[selectedAtField]);
-                if (v['@id'] && v['@id'].includes('oclc')) {
-                    console.log('🔍 OCLC extracted (selectedAtField):', result);
-                }
-                return result;
+                return String(v[selectedAtField]);
             } else {
                 // Don't fall back to default extraction when a specific @ field is requested
                 // Return null to indicate this object doesn't have the requested field
-                if (v['@id'] && v['@id'].includes('oclc')) {
-                    console.log('🔍 OCLC selectedAtField not found, returning null');
-                }
                 return null;
             }
         }
         
         // Default extraction logic (only when no specific @ field is selected)
         if (typeof v === 'object' && v['o:label']) {
-            const result = v['o:label'];
-            if (v['@id'] && v['@id'].includes('oclc')) {
-                console.log('🔍 OCLC extracted (o:label):', result);
-            }
-            return result;
+            return v['o:label'];
         } else if (typeof v === 'object' && v['@value']) {
-            const result = v['@value'];
-            if (v['@id'] && v['@id'].includes('oclc')) {
-                console.log('🔍 OCLC extracted (@value):', result);
-            }
-            return result;
+            return v['@value'];
+        } else if (typeof v === 'object' && v['@id']) {
+            return v['@id'];
         } else if (typeof v === 'string') {
             return v;
         } else {
-            const result = String(v);
-            if (typeof v === 'object' && v['@id'] && v['@id'].includes('oclc')) {
-                console.log('🔍 OCLC extracted (String fallback):', result);
-            }
-            return result;
+            return String(v);
         }
     };
     

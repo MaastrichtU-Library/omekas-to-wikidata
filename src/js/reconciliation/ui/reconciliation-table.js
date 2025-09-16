@@ -213,11 +213,6 @@ export function createPropertyCellFactory(openReconciliationModal) {
  * Create a value element within a property cell
  */
 function createValueElement(itemId, property, valueIndex, value, openReconciliationModal) {
-    // Debug logging for [object Object] issue
-    if (typeof value === 'object') {
-        console.error('🚨 createValueElement received object value:', value, 'for property:', property);
-    }
-    
     const valueDiv = createElement('div', {
         className: 'property-value',
         dataset: { status: 'pending' }
