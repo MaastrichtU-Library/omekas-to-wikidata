@@ -562,15 +562,15 @@ export function renderComposeConfigUI(mappingId, block, state) {
         type: 'text',
         placeholder: 'Search fields to insert...',
         className: 'field-search-input',
-        onInput: (e) => updateFieldSearchResults(e.target.value, mappingId, block, fieldResultsContainer)
+        onInput: (e) => updateFieldSearchResults(e.target.value, mappingId, block, fieldResultsContainer, state)
     });
     fieldSearchSection.appendChild(fieldSearchInput);
     
     const fieldResultsContainer = createElement('div', { className: 'field-results' });
     fieldSearchSection.appendChild(fieldResultsContainer);
     
-    // Initialize with empty search to show all fields
-    setTimeout(() => updateFieldSearchResults('', mappingId, block, fieldResultsContainer), 100);
+    // Initialize field search immediately with proper data retrieval
+    initializeFieldSearch(mappingId, block, fieldResultsContainer, state);
     
     container.appendChild(patternField);
     container.appendChild(fieldSearchSection);
@@ -578,34 +578,69 @@ export function renderComposeConfigUI(mappingId, block, state) {
 }
 
 /**
- * Updates field search results for compose transformation UI
- * @param {string} searchTerm - The search term
+ * Initializes field search with proper data retrieval
  * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {HTMLElement} resultsContainer - Container for search results
+ * @param {Object} state - Application state
  */
-export function updateFieldSearchResults(searchTerm, mappingId, block, resultsContainer) {
-    resultsContainer.innerHTML = '';
+function initializeFieldSearch(mappingId, block, resultsContainer, state) {
+    // Try to get full item data from multiple sources
+    const fullItemData = getFullItemData(state);
     
-    // Get the original item data for this property
-    const keyData = window.currentMappingKeyData;
-    if (!keyData || !keyData.sampleValue) {
+    if (fullItemData) {
+        // Store the data in the block config for future use
+        state.updateTransformationBlock(mappingId, block.id, { 
+            sourceData: fullItemData 
+        });
+        // Initialize with all fields shown
+        updateFieldSearchResults('', mappingId, block, resultsContainer, state);
+    } else {
+        // If data is not available yet, show a loading message and retry
         resultsContainer.appendChild(createElement('div', { 
             className: 'no-fields-message' 
-        }, 'No field data available'));
-        return;
+        }, 'Loading field data...'));
+        
+        // Retry after a short delay
+        setTimeout(() => {
+            const retryData = getFullItemData(state);
+            if (retryData) {
+                state.updateTransformationBlock(mappingId, block.id, { 
+                    sourceData: retryData 
+                });
+                updateFieldSearchResults('', mappingId, block, resultsContainer, state);
+            } else {
+                resultsContainer.innerHTML = '';
+                resultsContainer.appendChild(createElement('div', { 
+                    className: 'no-fields-message' 
+                }, 'No field data available'));
+            }
+        }, 200);
+    }
+}
+
+/**
+ * Gets full item data from various sources
+ * @param {Object} state - Application state
+ * @returns {Object|null} Full item data or null if not available
+ */
+function getFullItemData(state) {
+    // Try to get from stored block config first
+    const keyData = window.currentMappingKeyData;
+    
+    if (!keyData) {
+        return null;
     }
     
-    // Get the full item data from state to extract all fields
-    const state = window.mappingStepState;
-    const currentState = state.getState();
+    // Try multiple sources for the data
+    const currentState = state ? state.getState() : {};
     let fullItemData = null;
     
+    // Source 1: State's fetchedData
     if (currentState.fetchedData) {
         const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         
         // Find the item that contains this property value
-        // We'll match based on the key and sampleValue
         fullItemData = items.find(item => {
             if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
                 return true;
@@ -619,10 +654,44 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
         }
     }
     
+    // Source 2: Try to get from keyData if it contains full item reference
+    if (!fullItemData && keyData.fullItem) {
+        fullItemData = keyData.fullItem;
+    }
+    
+    // Source 3: Try to reconstruct from keyData sample value if it's complete
+    if (!fullItemData && keyData.sampleValue && typeof keyData.sampleValue === 'object') {
+        // Check if sampleValue might be the full item
+        const sampleKeys = Object.keys(keyData.sampleValue);
+        if (sampleKeys.length > 1 || (sampleKeys.length === 1 && !sampleKeys[0].startsWith('@'))) {
+            fullItemData = keyData.sampleValue;
+        }
+    }
+    
+    return fullItemData;
+}
+
+/**
+ * Updates field search results for compose transformation UI
+ * @param {string} searchTerm - The search term
+ * @param {string} mappingId - The mapping ID
+ * @param {Object} block - The transformation block
+ * @param {HTMLElement} resultsContainer - Container for search results
+ * @param {Object} state - Application state (optional, will use window.mappingStepState if not provided)
+ */
+export function updateFieldSearchResults(searchTerm, mappingId, block, resultsContainer, state) {
+    resultsContainer.innerHTML = '';
+    
+    // Use provided state or fall back to global
+    state = state || window.mappingStepState;
+    
+    // Get full item data from block config or other sources
+    let fullItemData = block.config?.sourceData || getFullItemData(state);
+    
     if (!fullItemData) {
         resultsContainer.appendChild(createElement('div', { 
             className: 'no-fields-message' 
-        }, 'No full item data available'));
+        }, 'No field data available'));
         return;
     }
     
@@ -653,12 +722,12 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
                     patternTextarea.value = newPattern;
                     
                     // Update the state and preview
-                    const state = window.mappingStepState;
-                    state.updateTransformationBlock(mappingId, block.id, { 
+                    const updateState = state || window.mappingStepState;
+                    updateState.updateTransformationBlock(mappingId, block.id, { 
                         pattern: newPattern,
                         sourceData: fullItemData 
                     });
-                    updateTransformationPreview(mappingId, state);
+                    updateTransformationPreview(mappingId, updateState);
                     
                     // Focus back to textarea and position cursor
                     patternTextarea.focus();
