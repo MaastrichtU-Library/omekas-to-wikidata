@@ -434,7 +434,7 @@ function humanizeRegexDescription(regex, fallbackDescription) {
  * @param {string} type - Cache type ('info' or 'constraints')
  * @returns {Object|null} Cached data or null if not found/expired
  */
-function getCachedProperty(propertyId, type) {
+export function getCachedProperty(propertyId, type) {
     const cacheKey = `${propertyId}-${type}`;
     const cached = propertyCache.get(cacheKey);
     
