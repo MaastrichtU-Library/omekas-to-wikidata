@@ -5,7 +5,12 @@
  */
 
 /**
- * Format sample value for display
+ * Format sample value for display in modal interfaces
+ * Handles complex objects by converting them to formatted JSON with clickable keys
+ * @param {any} value - The value to format (can be object, array, string, number, etc.)
+ * @param {Map} [contextMap=new Map()] - Context map for generating URIs from prefixed keys
+ * @returns {string} HTML string containing formatted value for display
+ * @throws {Error} When JSON serialization fails for complex objects
  */
 export function formatSampleValue(value, contextMap = new Map()) {
     if (value === null || value === undefined) {
@@ -101,7 +106,11 @@ export function formatSampleValue(value, contextMap = new Map()) {
 }
 
 /**
- * Helper function to make JSON keys clickable
+ * Helper function to make JSON keys clickable by wrapping them in anchor tags
+ * Converts property names in JSON strings to clickable links that open semantic URIs
+ * @param {string} jsonStr - JSON string with property keys to make clickable
+ * @param {Map} contextMap - Context map for resolving prefixed keys to full URIs
+ * @returns {string} Modified JSON string with clickable property keys
  */
 export function makeJsonKeysClickable(jsonStr, contextMap) {
     // Ensure contextMap is a Map
@@ -126,7 +135,11 @@ export function makeJsonKeysClickable(jsonStr, contextMap) {
 }
 
 /**
- * Helper function to generate URI for a key
+ * Helper function to generate URI for a key using context mappings and common vocabularies
+ * Resolves property names to their full semantic URIs for external documentation links
+ * @param {string} key - Property key to resolve (may be prefixed like 'dcterms:title')
+ * @param {Map} contextMap - Context map containing prefix-to-URI mappings
+ * @returns {string|null} Full URI for the property, or null if not resolvable
  */
 export function generateUriForKey(key, contextMap) {
     // Ensure contextMap is a Map

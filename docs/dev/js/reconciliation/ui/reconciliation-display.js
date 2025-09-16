@@ -6,6 +6,12 @@
 
 /**
  * Factory function to create getPropertyDisplayInfo with state dependency
+ * Creates a closure that can access application state for property information lookup
+ * @param {Object} state - Application state management instance
+ * @returns {Function} Function that retrieves property display information
+ * @example
+ * const getPropertyDisplayInfo = createGetPropertyDisplayInfoFactory(state);
+ * const info = await getPropertyDisplayInfo('dcterms:title');
  */
 export function createGetPropertyDisplayInfoFactory(state) {
     return async function getPropertyDisplayInfo(property) {
@@ -54,7 +60,11 @@ export function createGetPropertyDisplayInfoFactory(state) {
 }
 
 /**
- * Fetch real property information from Wikidata
+ * Fetch real property information from Wikidata using search API
+ * Searches for Wikidata properties that match the given keyword
+ * @param {string} propertyKeyword - Keyword to search for in property names
+ * @returns {Promise<Object|null>} Property information object with label, pid, description, etc., or null if not found
+ * @throws {Error} When Wikidata API request fails
  */
 export async function fetchWikidataPropertyInfo(propertyKeyword) {
     try {
@@ -90,7 +100,10 @@ export async function fetchWikidataPropertyInfo(propertyKeyword) {
 }
 
 /**
- * Generate a mock PID for demonstration (in real implementation, this would come from mappings)
+ * Generate a mock PID for demonstration purposes when real Wikidata property ID is unavailable
+ * Creates a deterministic property ID based on the property name hash
+ * @param {string} property - Property name to generate PID for
+ * @returns {string} Mock Wikidata property ID in format P#### (e.g., 'P1234')
  */
 export function generateMockPid(property) {
     // Create a deterministic but realistic-looking PID based on property name
@@ -103,7 +116,10 @@ export function generateMockPid(property) {
 }
 
 /**
- * Get property description based on common property patterns
+ * Get property description based on common property patterns and Dublin Core mappings
+ * Provides fallback descriptions for common metadata properties when Wikidata info unavailable
+ * @param {string} property - Property name to get description for
+ * @returns {string} Human-readable description of the property's purpose
  */
 export function getPropertyDescription(property) {
     const descriptions = {

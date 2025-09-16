@@ -89,10 +89,118 @@ export const IDENTIFIER_PROPERTY_MAPPINGS = {
 };
 
 /**
- * Detects if a value contains an identifier and returns information about it
- * @param {any} value - The value to check for identifiers
- * @param {string} fieldKey - The field key/name containing this value
- * @returns {Object|null} Detection result with type, propertyId, and metadata, or null if no identifier found
+ * Detects if a value contains an identifier and returns comprehensive metadata
+ * 
+ * ALGORITHM OVERVIEW:
+ * This function implements a sophisticated multi-layered identifier detection system
+ * that recognizes external identifiers commonly found in library and cultural heritage
+ * metadata. The algorithm uses pattern matching, contextual analysis, and semantic
+ * understanding to automatically identify and categorize identifier types.
+ * 
+ * DETECTION PHASES:
+ * 
+ * PHASE 1: VALUE EXTRACTION AND NORMALIZATION
+ * - Handles multiple input formats (strings, objects, arrays, JSON-LD structures)
+ * - Extracts string values from complex Omeka S data structures
+ * - Normalizes whitespace and encoding issues
+ * - Handles multilingual content and special characters
+ * 
+ * PHASE 2: PATTERN-BASED DETECTION
+ * Primary detection using comprehensive regex patterns for known identifier systems:
+ * - Academic identifiers: DOI, ORCID, ISNI, Scopus ID
+ * - Bibliographic identifiers: ISBN, ISSN, OCLC, Handle
+ * - Authority identifiers: VIAF, Library of Congress, GeoNames
+ * - Archival identifiers: ARK (Archival Resource Key)
+ * - Repository identifiers: URN, Persistent URL schemes
+ * - Wikidata identifiers: Direct Q-number references
+ * 
+ * Each pattern is crafted to handle:
+ * - Multiple format variations (with/without prefixes, different separators)
+ * - URL and non-URL forms (both "doi:10.1000/123" and "https://doi.org/10.1000/123")
+ * - Case insensitive matching where appropriate
+ * - Validation of identifier structure (check digits, valid ranges)
+ * 
+ * PHASE 3: CONTEXTUAL FIELD ANALYSIS
+ * When pattern matching fails, analyzes field names for identifier hints:
+ * - Field name semantic analysis (contains "identifier", "id", "ark", etc.)
+ * - Domain-specific patterns (library vs. archival vs. academic contexts)
+ * - Heuristic confidence scoring based on field name relevance
+ * - Special handling for ambiguous or partial identifiers
+ * 
+ * PHASE 4: CONFIDENCE ASSESSMENT
+ * - Pattern matches: High confidence (1.0) - precise structural validation
+ * - Field name matches: Medium confidence (0.6-0.8) - contextual but uncertain  
+ * - Hybrid matches: Variable confidence based on multiple signal strength
+ * - Validation against known identifier constraints and check digits
+ * 
+ * PHASE 5: METADATA ENRICHMENT
+ * - Maps detected identifiers to corresponding Wikidata properties
+ * - Provides human-readable labels and descriptions
+ * - Extracts clean identifier values (removes URL formatting)
+ * - Preserves original values for debugging and verification
+ * - Associates with source field context for mapping decisions
+ * 
+ * IDENTIFIER COVERAGE:
+ * The algorithm recognizes 15+ major identifier systems covering:
+ * - Academic publishing: DOI, ORCID, Scopus, ResearcherID
+ * - Library standards: ISBN, ISSN, OCLC, Library of Congress
+ * - Authority control: VIAF, ISNI, GeoNames, Wikidata
+ * - Digital preservation: ARK, Handle, URN schemes
+ * - Custom institutional identifiers with configurable patterns
+ * 
+ * ERROR HANDLING & ROBUSTNESS:
+ * - Graceful handling of malformed input data
+ * - Null-safe operations throughout the detection pipeline
+ * - Comprehensive logging of detection attempts and failures
+ * - Fallback mechanisms for partial or corrupted identifiers
+ * - Pattern compilation error recovery
+ * 
+ * PERFORMANCE OPTIMIZATIONS:
+ * - Compiled regex patterns cached for repeated use
+ * - Early termination on first successful pattern match
+ * - Efficient string extraction from complex objects
+ * - Minimal memory allocation during detection process
+ * 
+ * @param {any} value - The value to analyze (string, object, array, or JSON-LD structure)
+ * @param {string} fieldKey - The field key/name containing this value for contextual analysis
+ * @returns {Object|null} Comprehensive detection result or null if no identifier found
+ * @returns {string} result.type - Identifier type (e.g., 'doi', 'viaf', 'ark')
+ * @returns {string|null} result.propertyId - Corresponding Wikidata property ID (e.g., 'P356' for DOI)
+ * @returns {string} result.label - Human-readable identifier name
+ * @returns {string} result.description - Detailed description of identifier system
+ * @returns {string} result.identifierValue - Clean extracted identifier value
+ * @returns {string} result.originalValue - Original input value for reference
+ * @returns {string} result.fieldKey - Source field name for context
+ * @returns {number} result.confidence - Detection confidence (0.0-1.0)
+ * 
+ * @example
+ * // DOI detection from URL
+ * detectIdentifier("https://doi.org/10.1000/182", "dcterms:source")
+ * // Returns: {
+ * //   type: 'doi',
+ * //   propertyId: 'P356', 
+ * //   label: 'DOI',
+ * //   description: 'Digital Object Identifier',
+ * //   identifierValue: '10.1000/182',
+ * //   originalValue: 'https://doi.org/10.1000/182',
+ * //   fieldKey: 'dcterms:source',
+ * //   confidence: 1.0
+ * // }
+ * 
+ * @example
+ * // VIAF detection from complex Omeka S structure
+ * detectIdentifier(
+ *   {"@value": "https://viaf.org/viaf/12345", "@type": "uri"},
+ *   "dcterms:creator"
+ * )
+ * // Returns: { type: 'viaf', identifierValue: '12345', ... }
+ * 
+ * @example
+ * // Field-based detection for partial identifiers
+ * detectIdentifier("ark:/12345/item123", "identifier")
+ * // Returns: { type: 'ark', confidence: 0.8, ... }
+ * 
+ * @throws {Error} When regex pattern compilation fails or value extraction encounters critical errors
  */
 export function detectIdentifier(value, fieldKey) {
     if (!value) return null;

@@ -8,7 +8,10 @@ import { detectPropertyType, getInputFieldConfig, standardizeDateInput } from '.
 import { isDateValue, tryReconciliationApi, tryDirectWikidataSearch } from './entity-matcher.js';
 
 /**
- * Check if an error is retryable
+ * Check if an error is retryable based on error message patterns
+ * Determines whether a failed reconciliation operation should be retried
+ * @param {Error} error - The error object to analyze
+ * @returns {boolean} True if the error indicates a retryable condition (network, timeout, etc.)
  */
 function isRetryableError(error) {
     const retryableMessages = [
@@ -26,7 +29,11 @@ function isRetryableError(error) {
 }
 
 /**
- * Store reconciliation error with enhanced metadata
+ * Store reconciliation error with enhanced metadata in the reconciliation data structure
+ * Ensures proper data structure initialization and stores detailed error information
+ * @param {Object} job - Reconciliation job object containing itemId, property, valueIndex, value
+ * @param {Object} errorInfo - Error information with message, attempts, and retry status
+ * @param {Object} reconciliationData - Main reconciliation data storage object
  */
 function storeReconciliationError(job, errorInfo, reconciliationData) {
     
@@ -56,7 +63,12 @@ function storeReconciliationError(job, errorInfo, reconciliationData) {
 }
 
 /**
- * Update cell display to show error state
+ * Update cell display to show error state with appropriate visual indicators
+ * Updates the UI to reflect reconciliation errors and retry options
+ * @param {string} itemId - ID of the item containing the errored cell
+ * @param {string} property - Property name that encountered the error
+ * @param {number} valueIndex - Index of the specific value that errored
+ * @param {Object} errorInfo - Error information object with message and retry status
  */
 function updateCellDisplayWithError(itemId, property, valueIndex, errorInfo) {
     const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
@@ -90,7 +102,15 @@ function updateCellDisplayWithError(itemId, property, valueIndex, errorInfo) {
 }
 
 /**
- * Create batch auto-acceptance processor
+ * Create batch auto-acceptance processor for high-confidence reconciliation matches
+ * Factory function that creates a processor capable of automatically accepting matches
+ * that meet specified confidence thresholds, reducing manual review workload
+ * @param {Object} dependencies - Dependency injection object containing required functions
+ * @param {Function} dependencies.extractPropertyValues - Function to extract values from items
+ * @param {Function} dependencies.markCellAsReconciled - Function to mark cells as reconciled
+ * @param {Function} dependencies.storeAllMatches - Function to store reconciliation matches
+ * @param {Function} dependencies.storeEmptyMatches - Function to store empty match results
+ * @returns {Function} Batch processor function for auto-accepting high-confidence matches
  */
 export function createBatchAutoAcceptanceProcessor(dependencies) {
     const {

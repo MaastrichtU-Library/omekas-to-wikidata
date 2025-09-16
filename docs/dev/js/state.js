@@ -4,6 +4,24 @@
  * Uses the event system to notify other modules of state changes.
  * @module state
  * @returns {Object} State management API with methods for state manipulation
+ * @example
+ * // Initialize state management
+ * import { setupState } from './state.js';
+ * const state = setupState();
+ * 
+ * // Get current state
+ * const currentState = state.getState();
+ * console.log(currentState.currentStep);
+ * 
+ * // Update state
+ * state.updateState('currentStep', 2);
+ * state.updateMappings(['unmapped1'], [{ key: 'title', property: {id: 'P1476'} }], []);
+ * 
+ * // Listen for state changes
+ * import { eventSystem } from './events.js';
+ * eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (change) => {
+ *   console.log('State changed:', change.path, change.newValue);
+ * });
  */
 import { eventSystem } from './events.js';
 
@@ -259,6 +277,11 @@ export function setupState() {
     /**
      * Returns a deep copy of the current state
      * @returns {Object} Deep copy of the current state
+     * @example
+     * const state = setupState();
+     * const currentState = state.getState();
+     * console.log(currentState.currentStep); // 1
+     * console.log(currentState.mappings.mappedKeys); // []
      */
     function getState() {
         const stateCopy = JSON.parse(JSON.stringify(state));
@@ -270,6 +293,19 @@ export function setupState() {
      * @param {string} path - Dot-notation path to the state property to update (e.g., 'mappings.nonLinkedKeys')
      * @param {any} value - New value to set
      * @param {boolean} markUnsaved - Whether to mark state as having unsaved changes (default: true)
+     * @example
+     * // Update current step
+     * state.updateState('currentStep', 2);
+     * 
+     * @example
+     * // Update nested mapping data
+     * state.updateState('mappings.mappedKeys', [
+     *   { key: 'dcterms:title', property: { id: 'P1476', label: 'title' } }
+     * ]);
+     * 
+     * @example
+     * // Update without marking as unsaved (for system updates)
+     * state.updateState('reconciliationProgress.completed', 5, false);
      */
     function updateState(path, value, markUnsaved = true) {
         // Split the path by dots

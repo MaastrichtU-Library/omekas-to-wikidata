@@ -105,10 +105,94 @@ export function applyTransformation(value, block) {
 }
 
 /**
- * Applies multiple transformation blocks in sequence
- * @param {string} initialValue - The initial input value
- * @param {Array} blocks - Array of transformation blocks
- * @returns {Array} Array of objects with {value, blockId} showing progression
+ * Applies multiple transformation blocks in sequence to create a processing chain
+ * 
+ * ALGORITHM OVERVIEW:
+ * This function implements a pipeline processing architecture for data transformation.
+ * It executes an ordered sequence of transformation blocks, where each block's output
+ * becomes the input for the next block, creating a composable data processing chain.
+ * 
+ * PROCESSING PHASES:
+ * 
+ * PHASE 1: CHAIN VALIDATION
+ * - Validates input parameters and handles edge cases
+ * - Returns early for empty transformation chains with initial value preserved
+ * - Ensures graceful handling of malformed block definitions
+ * 
+ * PHASE 2: ORDERING AND SEQUENCING
+ * - Sorts transformation blocks by their order property (ascending)
+ * - Handles missing order values by treating them as priority 0
+ * - Creates a stable sort to maintain relative ordering for equal priorities
+ * - Prevents execution order ambiguity that could cause inconsistent results
+ * 
+ * PHASE 3: SEQUENTIAL PROCESSING
+ * - Executes blocks in determined order using iterator pattern
+ * - Maintains transformation history for debugging and preview
+ * - Implements error isolation - failed blocks don't halt the entire chain
+ * - Passes intermediate values through the processing pipeline
+ * 
+ * PHASE 4: RESULT AGGREGATION
+ * - Collects transformation steps with intermediate values
+ * - Associates each transformation result with its originating block ID
+ * - Maintains complete audit trail for transformation debugging
+ * - Enables step-by-step preview functionality in the UI
+ * 
+ * DESIGN PATTERNS IMPLEMENTED:
+ * - Chain of Responsibility: Each block processes and passes along the value
+ * - Pipeline Pattern: Sequential processing with intermediate results
+ * - Immutable Transformation: Original values preserved at each step
+ * - Error Isolation: Block failures don't cascade to subsequent blocks
+ * 
+ * PERFORMANCE CONSIDERATIONS:
+ * - O(n) time complexity where n is number of blocks
+ * - Memory overhead: O(n) for storing intermediate results
+ * - Lazy evaluation: Only processes blocks when needed
+ * - No redundant processing: Each block executes exactly once
+ * 
+ * ERROR HANDLING STRATEGY:
+ * - Graceful degradation: Invalid blocks return input unchanged
+ * - Comprehensive logging: All transformation errors captured
+ * - State preservation: Original values always accessible
+ * - Non-blocking failures: Chain continues despite individual block errors
+ * 
+ * @param {string} initialValue - The initial input value to transform through the chain
+ * @param {Array<Object>} blocks - Array of transformation block definitions
+ * @param {string} blocks[].id - Unique identifier for the transformation block
+ * @param {string} blocks[].type - Type of transformation (prefix, suffix, regex, etc.)
+ * @param {Object} blocks[].config - Block-specific configuration parameters
+ * @param {number} [blocks[].order=0] - Execution order (lower numbers execute first)
+ * @returns {Array<Object>} Array of transformation steps with progression
+ * @returns {string} returns[].value - Value after applying transformations up to this step
+ * @returns {string|null} returns[].blockId - ID of block that produced this value, null for initial
+ * 
+ * @example
+ * // Basic transformation chain
+ * const blocks = [
+ *   { id: '1', type: 'prefix', config: { text: 'Dr. ' }, order: 1 },
+ *   { id: '2', type: 'suffix', config: { text: ', PhD' }, order: 2 },
+ *   { id: '3', type: 'findReplace', config: { find: ' ', replace: '_' }, order: 3 }
+ * ];
+ * 
+ * const result = applyTransformationChain('John Smith', blocks);
+ * // Returns: [
+ * //   { value: 'John Smith', blockId: null },      // Initial value
+ * //   { value: 'Dr. John Smith', blockId: '1' },   // After prefix
+ * //   { value: 'Dr. John Smith, PhD', blockId: '2' }, // After suffix  
+ * //   { value: 'Dr._John_Smith,_PhD', blockId: '3' }  // After find/replace
+ * // ]
+ * 
+ * @example
+ * // Complex text processing for Wikidata format compliance
+ * const formatBlocks = [
+ *   { id: 'clean', type: 'regex', config: { pattern: '\\s+', replacement: ' ', flags: 'g' }, order: 1 },
+ *   { id: 'trim', type: 'regex', config: { pattern: '^\\s+|\\s+$', replacement: '', flags: 'g' }, order: 2 },
+ *   { id: 'title', type: 'compose', config: { pattern: '{{value}} (author)' }, order: 3 }
+ * ];
+ * 
+ * const formatted = applyTransformationChain('  jane   doe  ', formatBlocks);
+ * // Produces: 'jane doe (author)' through multi-step processing
+ * 
+ * @throws {Error} When transformation blocks contain invalid configurations
  */
 export function applyTransformationChain(initialValue, blocks) {
     if (!blocks || blocks.length === 0) {

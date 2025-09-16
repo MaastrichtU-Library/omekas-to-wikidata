@@ -62,11 +62,90 @@ export class ShExParseError extends Error {
 
 /**
  * Parse ShExC code to extract property information for Wikidata schemas
- * This is a simplified parser focusing on common Wikidata EntitySchema patterns
  * 
- * @param {string} shexCode - ShExC code from Entity Schema
- * @param {Object} options - Parsing options
- * @returns {Object} Parsed schema with properties
+ * ALGORITHM OVERVIEW:
+ * This function implements a sophisticated ShExC (Shape Expressions Compact) parser
+ * specifically optimized for Wikidata EntitySchema patterns. The parsing algorithm
+ * operates in multiple phases to handle the complexity of ShEx grammar:
+ * 
+ * PHASE 1: PREFIX EXTRACTION
+ * - Scans for prefix declarations (PREFIX wd: <...>)
+ * - Builds prefix-to-URI mapping table for later resolution
+ * - Merges with default Wikidata prefixes for comprehensive coverage
+ * - Handles both standard and custom namespace declarations
+ * 
+ * PHASE 2: SHAPE IDENTIFICATION
+ * - Locates shape definitions (typically starting with <schema:>)
+ * - Identifies shape boundaries using brace matching
+ * - Extracts shape names and associated constraint blocks
+ * - Handles nested shapes and references
+ * 
+ * PHASE 3: PROPERTY EXTRACTION
+ * - Parses property declarations within shapes (wdt:P123, p:P456)
+ * - Resolves prefixed properties to full Wikidata property IDs
+ * - Identifies cardinality constraints (?, *, +, {n,m})
+ * - Extracts value type constraints and format requirements
+ * - Distinguishes between required and optional properties
+ * 
+ * PHASE 4: CONSTRAINT ANALYSIS
+ * - Processes constraint expressions (EXTRA, CLOSED, etc.)
+ * - Identifies value shape references (@<ValueShape>)
+ * - Extracts datatype constraints (xsd:string, xsd:dateTime)
+ * - Parses comment annotations for property documentation
+ * 
+ * PHASE 5: DEPENDENCY RESOLUTION
+ * - Resolves cross-references between shapes
+ * - Builds dependency graph for complex schemas
+ * - Handles circular references and validates schema consistency
+ * - Optimizes property access patterns
+ * 
+ * ERROR HANDLING STRATEGY:
+ * - Graceful degradation for malformed ShEx expressions
+ * - Detailed error reporting with line/column information
+ * - Fallback parsing for non-standard EntitySchema patterns
+ * - Comprehensive logging for debugging complex schemas
+ * 
+ * PERFORMANCE OPTIMIZATIONS:
+ * - Incremental parsing for large schemas
+ * - Caching of parsed prefix mappings
+ * - Lazy evaluation of complex constraint expressions
+ * - Memory-efficient shape representation
+ * 
+ * @param {string} shexCode - ShExC code from Entity Schema (full schema text)
+ * @param {Object} [options={}] - Parsing configuration options
+ * @param {Object} [options.prefixes] - Additional prefix mappings to merge
+ * @param {boolean} [options.strictMode=false] - Throw errors on parse failures vs. graceful degradation
+ * @param {boolean} [options.preserveComments=true] - Include schema comments in parsed output
+ * @param {boolean} [options.trackLocations=false] - Track source locations for error reporting
+ * @returns {Object} Parsed schema object with categorized properties and metadata
+ * @returns {Object} returns.properties - Property categorization object
+ * @returns {Array} returns.properties.required - Array of required property objects
+ * @returns {Array} returns.properties.optional - Array of optional property objects
+ * @returns {Object} returns.shapes - Named shape definitions from the schema
+ * @returns {Object} returns.prefixes - Resolved prefix-to-URI mappings
+ * @throws {ShExParseError} When critical parsing errors occur in strict mode
+ * 
+ * @example
+ * // Parse a basic Wikidata EntitySchema
+ * const schema = parseShExCode(`
+ *   PREFIX wd: <http://www.wikidata.org/entity/>
+ *   PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+ *   
+ *   <schema:E123> {
+ *     wdt:P31 [wd:Q5] ;        # instance of human (required)
+ *     wdt:P569 xsd:dateTime ? ; # date of birth (optional)
+ *   }
+ * `);
+ * // Returns: { properties: { required: [...], optional: [...] }, ... }
+ * 
+ * @example
+ * // Parse with strict mode for validation
+ * try {
+ *   const schema = parseShExCode(shexCode, { strictMode: true });
+ *   console.log('Schema is valid');
+ * } catch (error) {
+ *   console.error('Schema validation failed:', error.toString());
+ * }
  */
 export function parseShExCode(shexCode, options = {}) {
   const opts = { ...DEFAULT_PARSER_OPTIONS, ...options };

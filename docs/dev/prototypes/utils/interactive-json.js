@@ -1,5 +1,7 @@
 /**
- * Interactive JSON display functionality
+ * Interactive JSON display functionality for rich data visualization
+ * Provides collapsible, clickable JSON viewer with URL detection and navigation
+ * @module prototypes/utils/interactive-json
  */
 import { isUrl, isApiUrl, isArkIdentifier, getArkUrl, getResourceNameFromUrl } from './url-utils.js';
 import { loadUrlInTab } from '../api/fetch.js';
@@ -10,10 +12,19 @@ let clickTimer = null;
 const clickDelay = 250; // milliseconds
 
 /**
- * Creates an interactive JSON display
- * @param {any} data - Data to display
- * @param {number} indent - Indentation level
- * @returns {HTMLElement} - Interactive JSON element
+ * Creates an interactive JSON display with collapsible structure and clickable URLs
+ * Recursively builds a hierarchical view with expand/collapse functionality,
+ * automatic URL detection, and smart click handling for navigation
+ * @param {any} data - Data to display (objects, arrays, strings, numbers, etc.)
+ * @param {number} [indent=0] - Current indentation level for nested display
+ * @returns {HTMLElement} Interactive JSON element with click handlers and styling
+ * @example
+ * const jsonView = createInteractiveJson({
+ *   title: "Example",
+ *   url: "https://example.com",
+ *   items: [1, 2, 3]
+ * });
+ * document.body.appendChild(jsonView);
  */
 export function createInteractiveJson(data, indent = 0) {
     const container = document.createElement('div');
