@@ -17,7 +17,7 @@ import { applyTransformationChain } from '../../transformations.js';
  * - Resource planning and performance estimation
  * - User expectation management for large datasets
  */
-export function calculateTotalReconciliableCells(data, mappedKeys, manualProperties = []) {
+export function calculateTotalReconciliableCells(data, mappedKeys) {
     let total = 0;
     data.forEach(item => {
         // Count mapped property cells
@@ -26,9 +26,6 @@ export function calculateTotalReconciliableCells(data, mappedKeys, manualPropert
             const values = extractPropertyValues(item, keyObj);
             total += values.length;
         });
-        
-        // Count manual property cells (each manual property counts as 1 cell per item)
-        total += manualProperties.length;
     });
     return total;
 }
@@ -161,8 +158,8 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
 /**
  * Combine and sort all properties (mapped and manual) to prioritize label, description, aliases, and instance of
  */
-export function combineAndSortProperties(mappedKeys, manualProperties) {
-    // Create a unified array with both mapped and manual properties
+export function combineAndSortProperties(mappedKeys) {
+    // Create array with mapped properties only
     const allProperties = [];
     
     // Add mapped properties with a type indicator
@@ -174,29 +171,12 @@ export function combineAndSortProperties(mappedKeys, manualProperties) {
         });
     });
     
-    // Add manual properties with a type indicator  
-    manualProperties.forEach((manualProp, index) => {
-        allProperties.push({
-            type: 'manual',
-            data: manualProp,
-            originalIndex: index + mappedKeys.length // Offset by mapped keys length
-        });
-    });
-    
-    // Sort the combined array
+    // Sort the array
     return allProperties.sort((a, b) => {
         const getPriority = (item) => {
-            let label = '';
-            let id = '';
-            
             if (item.type === 'mapped') {
                 const property = typeof item.data === 'string' ? null : item.data.property;
                 if (!property) return 100;
-                label = property.label ? property.label.toLowerCase() : '';
-                id = property.id || '';
-            } else if (item.type === 'manual') {
-                label = item.data.property.label ? item.data.property.label.toLowerCase() : '';
-                id = item.data.property.id || '';
             }
             
             // All properties maintain their original relative order
@@ -370,7 +350,7 @@ export function validateReconciliationRequirements(currentState) {
  * @param {Array} manualProperties - Array of manual properties
  * @param {Object} [state] - Optional state object for applying transformations
  */
-export function initializeReconciliationDataStructure(data, mappedKeys, manualProperties, state = null) {
+export function initializeReconciliationDataStructure(data, mappedKeys, state = null) {
     const reconciliationData = {};
     
     data.forEach((item, index) => {
@@ -400,29 +380,6 @@ export function initializeReconciliationDataStructure(data, mappedKeys, manualPr
             };
         });
         
-        // Initialize each manual property with default values
-        manualProperties.forEach(manualProp => {
-            const propertyId = manualProp.property.id;
-            const defaultValue = manualProp.defaultValue;
-            
-            // Create default values array - manual properties get one value per item
-            const values = defaultValue ? [defaultValue] : [''];
-            
-            reconciliationData[itemId].properties[propertyId] = {
-                originalValues: values,
-                references: [], // References specific to this property
-                isManualProperty: true, // Mark as manual property
-                manualPropertyData: manualProp, // Store complete manual property data
-                reconciled: values.map(() => ({
-                    status: 'pending', // pending, reconciled, skipped, failed
-                    matches: [],
-                    selectedMatch: null,
-                    manualValue: defaultValue || null,
-                    qualifiers: {},
-                    confidence: 0
-                }))
-            };
-        });
     });
     
     return reconciliationData;

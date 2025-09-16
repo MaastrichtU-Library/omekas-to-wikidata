@@ -16,7 +16,6 @@ import { processItemsForValueIdentifiers } from '../../utils/value-processor.js'
 const nonLinkedKeysList = document.getElementById('non-linked-keys');
 const mappedKeysList = document.getElementById('mapped-keys');
 const ignoredKeysList = document.getElementById('ignored-keys');
-const manualPropertiesList = document.getElementById('manual-properties');
 const proceedToReconciliationBtn = document.getElementById('proceed-to-reconciliation');
 
 /**
@@ -159,7 +158,6 @@ export async function populateLists(state) {
     populateKeyList(nonLinkedKeysList, finalState.mappings.nonLinkedKeys, 'non-linked');
     populateKeyList(mappedKeysList, finalState.mappings.mappedKeys, 'mapped');
     populateKeyList(ignoredKeysList, finalState.mappings.ignoredKeys, 'ignored');
-    populateManualPropertiesList(manualPropertiesList, finalState.mappings.manualProperties);
     
     // Update section counts
     updateSectionCounts(finalState.mappings);
@@ -175,14 +173,6 @@ export async function populateLists(state) {
         }
     }
     
-    // Always auto-open Extra Wikidata properties and metadata section
-    const manualPropertiesListElement = document.getElementById('manual-properties');
-    if (manualPropertiesListElement) {
-        const manualPropertiesSection = manualPropertiesListElement.closest('details');
-        if (manualPropertiesSection) {
-            manualPropertiesSection.open = true;
-        }
-    }
     
     // Enable continue button if there are mapped keys
     if (proceedToReconciliationBtn) {
@@ -197,28 +187,21 @@ export async function populateLists(state) {
  */
 export function updateSectionCounts(mappings) {
     const totalKeys = mappings.nonLinkedKeys.length + mappings.mappedKeys.length + mappings.ignoredKeys.length;
-    const manualPropertiesCount = mappings.manualProperties?.length || 0;
     
-    // Update Manual Properties section (now first)
-    const manualPropertiesSection = document.querySelector('.key-sections .section:nth-child(1) summary');
-    if (manualPropertiesSection) {
-        manualPropertiesSection.innerHTML = `<span class="section-title">Extra Wikidata properties and metadata</span><span class="section-count">(${manualPropertiesCount})</span>`;
-    }
-    
-    // Update Non-linked Keys section (now second)
-    const nonLinkedSection = document.querySelector('.key-sections .section:nth-child(2) summary');
+    // Update Non-linked Keys section (now first)
+    const nonLinkedSection = document.querySelector('.key-sections .section:nth-child(1) summary');
     if (nonLinkedSection) {
         nonLinkedSection.innerHTML = `<span class="section-title">Non-linked Keys</span><span class="section-count">(${mappings.nonLinkedKeys.length}/${totalKeys})</span>`;
     }
     
-    // Update Mapped Keys section (now third)
-    const mappedSection = document.querySelector('.key-sections .section:nth-child(3) summary');
+    // Update Mapped Keys section (now second)
+    const mappedSection = document.querySelector('.key-sections .section:nth-child(2) summary');
     if (mappedSection) {
         mappedSection.innerHTML = `<span class="section-title">Mapped Keys</span><span class="section-count">(${mappings.mappedKeys.length}/${totalKeys})</span>`;
     }
     
-    // Update Ignored Keys section (now fourth)
-    const ignoredSection = document.querySelector('.key-sections .section:nth-child(4) summary');
+    // Update Ignored Keys section (now third)
+    const ignoredSection = document.querySelector('.key-sections .section:nth-child(3) summary');
     if (ignoredSection) {
         ignoredSection.innerHTML = `<span class="section-title">Ignored Keys</span><span class="section-count">(${mappings.ignoredKeys.length}/${totalKeys})</span>`;
     }
@@ -314,69 +297,6 @@ export function populateKeyList(listElement, keys, type) {
     });
 }
 
-/**
- * Populates the manual properties list
- */
-export function populateManualPropertiesList(listElement, manualProperties) {
-    if (!listElement) return;
-    
-    listElement.innerHTML = '';
-    
-    if (!manualProperties.length) {
-        const placeholder = createListItem('No additional properties added yet', { isPlaceholder: true });
-        listElement.appendChild(placeholder);
-        return;
-    }
-    
-    manualProperties.forEach(manualProp => {
-        // Create the main display content using the same pattern as other key lists
-        const keyDisplay = createElement('div', {
-            className: 'key-item-compact'
-        });
-        
-        // Property name and ID
-        const propertyDisplayText = manualProp.property.isMetadata 
-            ? `${manualProp.property.label} (metadata)`
-            : `${manualProp.property.label} (${manualProp.property.id})`;
-        const propertyName = createElement('span', {
-            className: 'key-name-compact'
-        }, propertyDisplayText);
-        keyDisplay.appendChild(propertyName);
-        
-        // Property info section showing required status
-        let infoText = '';
-        if (manualProp.isRequired) {
-            infoText = 'Required';
-        }
-        
-        const propertyInfo = createElement('span', {
-            className: 'property-info'
-        }, infoText);
-        keyDisplay.appendChild(propertyInfo);
-        
-        // Remove button styled like frequency badges (only if removable)
-        if (!manualProp.cannotRemove) {
-            const removeBtn = createElement('button', {
-                className: 'key-frequency remove-manual-property-btn',
-                onClick: (e) => {
-                    e.stopPropagation();
-                    window.removeManualPropertyFromUI(manualProp.property.id);
-                },
-                title: 'Remove this additional property'
-            }, '×');
-            keyDisplay.appendChild(removeBtn);
-        }
-        
-        // Create list item with standard styling and behavior
-        const li = createListItem(keyDisplay, {
-            className: 'clickable key-item-clickable-compact',
-            onClick: () => window.openManualPropertyEditModal(manualProp),
-            title: 'Click to edit this additional property'
-        });
-        
-        listElement.appendChild(li);
-    });
-}
 
 /**
  * Moves a key to a specific category

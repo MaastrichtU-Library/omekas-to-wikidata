@@ -334,10 +334,10 @@ export function createReconciliationTableFactory(dependencies) {
     const createPropertyCell = createPropertyCellFactory(openReconciliationModal);
     const createManualPropertyCell = createManualPropertyCellFactory(openReconciliationModal);
     
-    return async function createReconciliationTable(data, mappedKeys, manualProperties = [], isReturningToStep = false) {
+    return async function createReconciliationTable(data, mappedKeys, isReturningToStep = false) {
         
         // Combine and sort all properties for display priority
-        const sortedProperties = combineAndSortProperties(mappedKeys, manualProperties);
+        const sortedProperties = combineAndSortProperties(mappedKeys);
         
         // Clear existing content
         if (propertyHeaders) {
@@ -553,9 +553,9 @@ export function createReconciliationTableFactory(dependencies) {
             
             // Only perform batch auto-acceptance for fresh initialization, not when returning to step
             if (!isReturningToStep) {
-                await performBatchAutoAcceptance(data, mappedKeys, manualProperties);
+                await performBatchAutoAcceptance(data, mappedKeys);
             } else {
-                restoreReconciliationDisplay(data, mappedKeys, manualProperties);
+                restoreReconciliationDisplay(data, mappedKeys);
             }
             
         } else {
@@ -568,7 +568,7 @@ export function createReconciliationTableFactory(dependencies) {
  * Create a factory function for restoring reconciliation display
  */
 export function createRestoreReconciliationDisplayFactory(reconciliationData) {
-    return function restoreReconciliationDisplay(data, mappedKeys, manualProperties = []) {
+    return function restoreReconciliationDisplay(data, mappedKeys) {
         data.forEach((item, index) => {
             const itemId = `item-${index}`;
             
