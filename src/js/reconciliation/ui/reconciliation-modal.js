@@ -542,10 +542,52 @@ window.showTopMatches = function() {
     }
 };
 
+/**
+ * Emergency context reconstruction if context is missing
+ */
+function ensureModalContext() {
+    if (!window.currentModalContext) {
+        console.warn('⚠️ Missing modal context, attempting emergency reconstruction...');
+        
+        // Try to reconstruct context from modal DOM
+        const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
+                             document.querySelector('.wikidata-item-modal') ||
+                             document.querySelector('[data-modal-type]');
+        
+        if (modalContainer && modalContainer.dataset) {
+            console.log('🔄 Reconstructing context from modal DOM...');
+            const dataset = modalContainer.dataset;
+            window.currentModalContext = {
+                itemId: dataset.itemId,
+                property: dataset.property,
+                valueIndex: dataset.valueIndex ? parseInt(dataset.valueIndex) : 0,
+                originalValue: dataset.value,
+                currentValue: dataset.value,
+                propertyData: dataset.propertyData ? JSON.parse(dataset.propertyData) : null,
+                dataType: dataset.dataType || dataset.modalType || 'wikibase-item',
+                modalType: dataset.modalType || dataset.dataType || 'wikibase-item'
+            };
+            console.log('✅ Emergency context reconstructed:', window.currentModalContext);
+            return true;
+        } else {
+            console.error('❌ Cannot reconstruct context - no modal container with dataset found');
+            return false;
+        }
+    }
+    return true; // Context already exists
+}
+
 // New function to directly apply a match without needing confirmation
 window.applyMatchDirectly = function(matchId) {
     console.log('🔄 applyMatchDirectly called with matchId:', matchId);
     console.log('🔍 Current window.currentModalContext:', window.currentModalContext);
+    
+    // EMERGENCY CONTEXT CHECK - ensure context is available
+    if (!ensureModalContext()) {
+        console.error('❌ Failed to ensure modal context, cannot proceed');
+        return;
+    }
+    
     console.log('🔍 Available global functions:', {
         selectMatchAndAdvance: typeof window.selectMatchAndAdvance,
         markCellAsReconciled: typeof window.markCellAsReconciled,
@@ -660,7 +702,25 @@ export function createOpenReconciliationModalFactory(dependencies) {
     let currentReconciliationCell = null;
     
     return async function openReconciliationModal(itemId, property, valueIndex, value, manualProp = null) {
+        console.log('🔄 openReconciliationModal called with:', { itemId, property, valueIndex, value, manualProp });
+        
         currentReconciliationCell = { itemId, property, valueIndex, value, manualProp };
+        
+        // IMMEDIATE CONTEXT SETUP - Set up context right away before any async operations
+        const dataType = getDataTypeFromProperty(property, manualProp?.property);
+        console.log('🔄 Setting up immediate modal context...');
+        window.currentModalContext = {
+            itemId: itemId,
+            property: property,
+            valueIndex: parseInt(valueIndex),
+            originalValue: value,
+            currentValue: value,
+            propertyData: manualProp?.property || null,
+            dataType: dataType,
+            modalType: dataType,
+            existingMatches: null // Will be updated below if available
+        };
+        console.log('✅ Immediate modal context set up:', window.currentModalContext);
         
         // Get existing matches from reconciliation data if available
         let existingMatches = null;
@@ -669,6 +729,9 @@ export function createOpenReconciliationModalFactory(dependencies) {
         if (reconciliationData[itemId] && reconciliationData[itemId].properties[property] && 
             reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
             existingMatches = reconciliationData[itemId].properties[property].reconciled[valueIndex].matches;
+            // Update context with existing matches
+            window.currentModalContext.existingMatches = existingMatches;
+            console.log('✅ Updated context with existing matches:', existingMatches?.length || 0);
         }
         
         // Create modal content using the new function
@@ -678,9 +741,33 @@ export function createOpenReconciliationModalFactory(dependencies) {
         
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
+            console.log('🔄 Modal closing - clearing context');
             currentReconciliationCell = null;
             window.currentModalContext = null;
         });
+        
+        // IMMEDIATE FALLBACK CONTEXT VERIFICATION - Don't wait for setTimeout
+        // Verify context is available immediately after modal opens
+        setTimeout(() => {
+            console.log('🔄 Immediate context verification (10ms delay)...');
+            if (!window.currentModalContext) {
+                console.warn('⚠️ Context lost after modal opening, restoring immediately...');
+                window.currentModalContext = {
+                    itemId: itemId,
+                    property: property,
+                    valueIndex: parseInt(valueIndex),
+                    originalValue: value,
+                    currentValue: value,
+                    propertyData: manualProp?.property || null,
+                    dataType: dataType,
+                    modalType: dataType,
+                    existingMatches: existingMatches
+                };
+                console.log('✅ Emergency context restoration complete:', window.currentModalContext);
+            } else {
+                console.log('✅ Context verification passed - context available');
+            }
+        }, 10); // Very short delay just to ensure modal DOM is ready
         
         // Preserve dataset attributes after modal is inserted into DOM
         setTimeout(() => {
@@ -697,49 +784,83 @@ export function createOpenReconciliationModalFactory(dependencies) {
         
         // Setup modal functionality after DOM is rendered
         setTimeout(() => {
-            const modalContent = document.querySelector('#modal-content');
+            console.log('🔄 Setup timeout running (100ms delay)...');
+            console.log('🔍 Current DOM structure check:');
+            console.log('  - #modal-content:', document.querySelector('#modal-content'));
+            console.log('  - .modal:', document.querySelector('.modal'));
+            console.log('  - .modal-content:', document.querySelector('.modal-content'));
+            console.log('  - .reconciliation-modal-redesign:', document.querySelector('.reconciliation-modal-redesign'));
+            
+            // Try multiple possible selectors for modal content
+            const modalContent = document.querySelector('#modal-content') || 
+                               document.querySelector('.modal-content') ||
+                               document.querySelector('#modal-container .modal-content');
+            
+            console.log('🔍 Found modal content element:', modalContent);
+            
             if (modalContent) {
+                console.log('✅ Modal content found, setting up dynamic features...');
                 setupDynamicDatePrecision(modalContent);
                 setupAutoAdvanceToggle();
+            } else {
+                console.warn('⚠️ Modal content not found, skipping dynamic features');
+            }
+            
+            console.log('🔄 Setting up modal initialization...');
+            
+            // Initialize modal using the factory system
+            const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
+                                 document.querySelector('.wikidata-item-modal') ||
+                                 document.querySelector('[data-modal-type]');
+            
+            console.log('🔍 Found modal container:', modalContainer);
+            
+            if (modalContainer) {
+                console.log('🔍 Modal container dataset:', modalContainer.dataset);
+                console.log('🔍 Modal container classes:', modalContainer.className);
                 
-                console.log('🔄 Setting up modal initialization...');
-                
-                // Initialize modal using the factory system
-                const modalContainer = document.querySelector('.reconciliation-modal-redesign');
-                if (modalContainer) {
-                    console.log('🔍 Found modal container:', modalContainer);
-                    console.log('🔍 Modal container dataset:', modalContainer.dataset);
+                try {
+                    // Use the proper factory initialization instead of deprecated function
+                    console.log('🔄 Attempting factory system initialization...');
+                    initializeReconciliationModal(modalContainer);
+                    console.log('✅ Modal initialized successfully using factory system');
+                } catch (error) {
+                    console.error('❌ Error initializing modal with factory system:', error);
+                    console.error('Error details:', error.stack);
                     
-                    try {
-                        // Use the proper factory initialization instead of deprecated function
-                        console.log('🔄 Attempting factory system initialization...');
-                        initializeReconciliationModal(modalContainer);
-                        console.log('✅ Modal initialized successfully using factory system');
-                    } catch (error) {
-                        console.error('❌ Error initializing modal with factory system:', error);
-                        // Fallback to deprecated system
-                        console.log('🔄 Falling back to deprecated initialization...');
-                        const dataType = modalContainer.dataset.initDataType || modalContainer.dataset.dataType;
-                        const value = modalContainer.dataset.initValue || modalContainer.dataset.value;
-                        const property = modalContainer.dataset.initProperty || modalContainer.dataset.property;
-                        const propertyData = modalContainer.dataset.initPropertyData ? 
-                            JSON.parse(modalContainer.dataset.initPropertyData) : 
-                            (modalContainer.dataset.propertyData ? JSON.parse(modalContainer.dataset.propertyData) : null);
-                        
-                        console.log('🔍 Deprecated initialization data:', { dataType, value, property, propertyData });
-                        
-                        if (dataType && value) {
-                            initializeModalInteractions(dataType, value, property, propertyData);
-                            console.log('✅ Fallback initialization completed');
-                        } else {
-                            console.error('❌ Missing required data for fallback initialization');
-                        }
+                    // Fallback to deprecated system
+                    console.log('🔄 Falling back to deprecated initialization...');
+                    const dataType = modalContainer.dataset.initDataType || 
+                                   modalContainer.dataset.dataType || 
+                                   window.currentModalContext?.dataType;
+                    const value = modalContainer.dataset.initValue || 
+                                modalContainer.dataset.value || 
+                                window.currentModalContext?.originalValue;
+                    const property = modalContainer.dataset.initProperty || 
+                                   modalContainer.dataset.property || 
+                                   window.currentModalContext?.property;
+                    const propertyData = modalContainer.dataset.initPropertyData ? 
+                        JSON.parse(modalContainer.dataset.initPropertyData) : 
+                        (modalContainer.dataset.propertyData ? JSON.parse(modalContainer.dataset.propertyData) : 
+                         window.currentModalContext?.propertyData);
+                    
+                    console.log('🔍 Deprecated initialization data:', { dataType, value, property, propertyData });
+                    
+                    if (dataType && value) {
+                        initializeModalInteractions(dataType, value, property, propertyData);
+                        console.log('✅ Fallback initialization completed');
+                    } else {
+                        console.error('❌ Missing required data for fallback initialization');
+                        console.log('🔍 Available context data:', window.currentModalContext);
                     }
-                } else {
-                    console.error('❌ Modal container not found for initialization');
                 }
             } else {
-                console.error('❌ Modal content not found for setup');
+                console.error('❌ Modal container not found for initialization');
+                console.log('🔍 All modal-related elements:', {
+                    allModals: Array.from(document.querySelectorAll('.modal')),
+                    allModalContainers: Array.from(document.querySelectorAll('[class*="modal"]')),
+                    currentContext: window.currentModalContext
+                });
             }
         }, 100);
         

@@ -262,9 +262,51 @@ window.performWikidataEntitySearch = async function() {
     }
 };
 
+/**
+ * Emergency context reconstruction for Wikidata modal if context is missing
+ */
+function ensureWikidataModalContext() {
+    if (!window.currentModalContext) {
+        console.warn('⚠️ Missing Wikidata modal context, attempting emergency reconstruction...');
+        
+        // Try to reconstruct context from modal DOM
+        const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
+                             document.querySelector('.wikidata-item-modal') ||
+                             document.querySelector('[data-modal-type]');
+        
+        if (modalContainer && modalContainer.dataset) {
+            console.log('🔄 Reconstructing Wikidata context from modal DOM...');
+            const dataset = modalContainer.dataset;
+            window.currentModalContext = {
+                itemId: dataset.itemId,
+                property: dataset.property,
+                valueIndex: dataset.valueIndex ? parseInt(dataset.valueIndex) : 0,
+                originalValue: dataset.value,
+                currentValue: dataset.value,
+                propertyData: dataset.propertyData ? JSON.parse(dataset.propertyData) : null,
+                dataType: 'wikibase-item',
+                modalType: 'wikidata-item'
+            };
+            console.log('✅ Emergency Wikidata context reconstructed:', window.currentModalContext);
+            return true;
+        } else {
+            console.error('❌ Cannot reconstruct Wikidata context - no modal container with dataset found');
+            return false;
+        }
+    }
+    return true; // Context already exists
+}
+
 window.applyWikidataMatchDirectly = function(matchId) {
     console.log('🔄 applyWikidataMatchDirectly called with matchId:', matchId);
     console.log('🔍 Current window.currentModalContext:', window.currentModalContext);
+    
+    // EMERGENCY CONTEXT CHECK - ensure context is available
+    if (!ensureWikidataModalContext()) {
+        console.error('❌ Failed to ensure Wikidata modal context, cannot proceed');
+        return;
+    }
+    
     console.log('🔍 Available global functions:', {
         selectMatchAndAdvance: typeof window.selectMatchAndAdvance,
         markCellAsReconciled: typeof window.markCellAsReconciled,
