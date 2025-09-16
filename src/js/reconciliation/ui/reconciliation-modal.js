@@ -865,7 +865,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
         }, 100);
         
         // Start automatic reconciliation for Wikidata items
-        const dataType = getDataTypeFromProperty(property, manualProp?.property);
+        // Note: dataType already declared above, reusing it
         if (dataType === 'wikibase-item') {
             await performAutomaticReconciliation(value, property, itemId, valueIndex);
         }
