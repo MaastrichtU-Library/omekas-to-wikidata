@@ -2965,6 +2965,7 @@ pre.sample-value {
 .reconciliation-error {
     background-color: #ffebee !important;
     border: 1px solid var(--danger-color) !important;
+    border-left: 3px solid var(--danger-color) !important;
     position: relative;
 }
 
@@ -2975,6 +2976,34 @@ pre.sample-value {
     right: 2px;
     font-size: 12px;
     color: var(--danger-color);
+}
+
+/* Enhanced Error States */
+.property-value[data-status="error"] {
+    background-color: #ffebee;
+    border-left: 3px solid var(--danger-color);
+    cursor: pointer;
+}
+
+.property-value[data-status="error"]:hover {
+    background-color: #ffcdd2;
+}
+
+.value-status.error {
+    color: var(--danger-color);
+    font-weight: 500;
+}
+
+.value-status.error.retryable {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.value-status.error.retryable:hover {
+    background-color: #ffeaa7;
 }
 
 .reconciliation-service-warning {

@@ -10,6 +10,40 @@ import { createElement } from '../../ui/components.js';
 import { combineAndSortProperties, extractPropertyValues } from '../core/reconciliation-data.js';
 
 /**
+ * Update cell display to show error state (duplicated from batch-processor for UI access)
+ */
+function updateCellDisplayWithError(itemId, property, valueIndex, errorInfo) {
+    const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+    const cell = document.querySelector(cellSelector);
+    
+    if (cell) {
+        const allValueElements = cell.querySelectorAll('.property-value');
+        const valueElement = allValueElements.length > 1 ? allValueElements[valueIndex] : allValueElements[0];
+        
+        if (valueElement) {
+            valueElement.dataset.status = 'error';
+            
+            const statusSpan = valueElement.querySelector('.value-status');
+            if (statusSpan) {
+                if (errorInfo.retryable) {
+                    statusSpan.textContent = '⚠️ Error - Click to retry';
+                    statusSpan.className = 'value-status error retryable';
+                    statusSpan.title = `Retryable error: ${errorInfo.message}`;
+                } else {
+                    statusSpan.textContent = '❌ Error - Click to reconcile';
+                    statusSpan.className = 'value-status error';
+                    statusSpan.title = `Error: ${errorInfo.message}`;
+                }
+            }
+            
+            // Add error styling
+            valueElement.classList.remove('checking', 'high-confidence-match', 'partial-match', 'low-confidence-match');
+            valueElement.classList.add('reconciliation-error');
+        }
+    }
+}
+
+/**
  * Update cell loading state
  */
 export function updateCellLoadingState(itemId, property, valueIndex, isLoading) {
@@ -555,6 +589,14 @@ export function createRestoreReconciliationDisplayFactory(reconciliationData) {
                         } else if (reconciledItem.status === 'no-item') {
                             // Restore no-item state
                             updateCellDisplay(itemId, keyName, valueIndex, 'no-item');
+                        } else if (reconciledItem.status === 'error') {
+                            // Restore error state with enhanced error info
+                            const errorInfo = {
+                                message: reconciledItem.error || 'Unknown error',
+                                timestamp: reconciledItem.timestamp,
+                                retryable: reconciledItem.retryable !== false // Default to retryable
+                            };
+                            updateCellDisplayWithError(itemId, keyName, valueIndex, errorInfo);
                         } else if (reconciledItem.matches && reconciledItem.matches.length > 0) {
                             // Restore match percentage display for non-reconciled items with matches
                             const bestMatch = reconciledItem.matches[0];
