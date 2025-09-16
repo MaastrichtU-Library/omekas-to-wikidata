@@ -265,30 +265,12 @@ function getDataTypeDisplayName(dataType) {
 }
 
 /**
- * Get transformed value with proper handling of both strings and Omeka S value objects
+ * Get transformed value (placeholder - in real implementation this would come from transformation stage)
  */
 function getTransformedValue(value, property) {
-    // Handle string values
-    if (typeof value === 'string') {
-        return value.trim();
-    }
-    
-    // Handle Omeka S value objects (like OCLC identifiers)
-    if (value && typeof value === 'object') {
-        // Extract string value from various Omeka S formats
-        if (value['@value']) return String(value['@value']).trim();
-        if (value['o:label']) return String(value['o:label']).trim();
-        if (value['@id']) return String(value['@id']).trim();
-        if (value.value) return String(value.value).trim();
-        
-        // For URI type objects
-        if (value.type === 'uri' && value['@id']) {
-            return String(value['@id']).trim();
-        }
-    }
-    
-    // Fallback: convert to string and trim
-    return String(value).trim();
+    // Placeholder transformation logic
+    // In real implementation, this would get the result from the transformation stage
+    return value.trim();
 }
 
 /**
