@@ -519,7 +519,9 @@ window.applyMatchDirectly = function(matchId) {
         return;
     }
     
-    const matchLabel = matchElement.querySelector('.match-label')?.textContent || 'Unknown';
+    // Try both class names for compatibility between old and new systems
+    const matchLabel = matchElement.querySelector('.match-label')?.textContent || 
+                      matchElement.querySelector('.match-name')?.textContent || 'Unknown';
     const matchDescription = matchElement.querySelector('.match-description')?.textContent || 'No description';
     
     // Check if we have the proper handler functions available
@@ -625,17 +627,25 @@ export function createOpenReconciliationModalFactory(dependencies) {
                 setupDynamicDatePrecision(modalContent);
                 setupAutoAdvanceToggle();
                 
-                // Initialize modal interactions using stored data
+                // Initialize modal using the factory system
                 const modalContainer = document.querySelector('.reconciliation-modal-redesign');
                 if (modalContainer) {
-                    const dataType = modalContainer.dataset.initDataType;
-                    const value = modalContainer.dataset.initValue;
-                    const property = modalContainer.dataset.initProperty;
-                    const propertyData = modalContainer.dataset.initPropertyData ? 
-                        JSON.parse(modalContainer.dataset.initPropertyData) : null;
-                    
-                    if (dataType && value) {
-                        initializeModalInteractions(dataType, value, property, propertyData);
+                    try {
+                        // Use the proper factory initialization instead of deprecated function
+                        initializeReconciliationModal(modalContainer);
+                        console.log('Modal initialized successfully using factory system');
+                    } catch (error) {
+                        console.error('Error initializing modal with factory system:', error);
+                        // Fallback to deprecated system
+                        const dataType = modalContainer.dataset.dataType;
+                        const value = modalContainer.dataset.value;
+                        const property = modalContainer.dataset.property;
+                        const propertyData = modalContainer.dataset.propertyData ? 
+                            JSON.parse(modalContainer.dataset.propertyData) : null;
+                        
+                        if (dataType && value) {
+                            initializeModalInteractions(dataType, value, property, propertyData);
+                        }
                     }
                 }
             }
