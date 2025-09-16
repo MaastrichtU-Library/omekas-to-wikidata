@@ -21,30 +21,53 @@ export function openMappingModal(keyData) {
     // Store keyData globally for modal title updates
     window.currentMappingKeyData = keyData;
     
+    // FIELD EXTRACTION OPTIMIZATION DEBUG
+    console.group(`🔄 Opening Mapping Modal for: ${keyData.key}`);
+    console.log(`📊 KeyData:`, {
+        key: keyData.key,
+        hasSampleValue: !!keyData.sampleValue,
+        sampleValue: keyData.sampleValue,
+        frequency: keyData.frequency,
+        totalItems: keyData.totalItems
+    });
+    
     // Extract fields once for the entire modal session to optimize performance
     if (keyData && keyData.sampleValue && window.mappingStepState) {
+        console.log(`✅ All conditions met for field pre-extraction`);
         const currentState = window.mappingStepState.getState();
+        console.log(`📋 State has fetchedData:`, !!currentState.fetchedData);
+        
         if (currentState.fetchedData) {
             const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+            console.log(`📦 Processing ${items.length} items for field extraction`);
             
             // Use first item that has any meaningful data (not looking for specific key)
             let fullItemData = items.find(item => {
                 return typeof item === 'object' && item !== null && Object.keys(item).length > 0;
             });
             
-            // Extract all fields from the full item data once
             if (fullItemData) {
+                console.log(`🎯 Found suitable item for extraction:`, Object.keys(fullItemData).slice(0, 10));
                 keyData.extractedFields = extractAllFields(fullItemData);
-                console.log(`✅ Pre-extracted ${keyData.extractedFields.length} fields for key: ${keyData.key}`);
+                console.log(`✅ FIELD EXTRACTION SUCCESS: ${keyData.extractedFields.length} fields extracted`);
+                console.log(`📋 Sample fields:`, keyData.extractedFields.slice(0, 5).map(f => ({
+                    path: f.path,
+                    preview: f.preview
+                })));
             } else {
-                console.log(`⚠️ Could not find item data for pre-extraction for key: ${keyData.key}`);
+                console.log(`❌ Could not find suitable item for pre-extraction`);
+                console.log(`📦 Available items:`, items.map(item => typeof item));
             }
         } else {
-            console.log(`⚠️ No fetchedData available for field pre-extraction for key: ${keyData.key}`);
+            console.log(`❌ No fetchedData available in state`);
         }
     } else {
-        console.log(`⚠️ Skipping field pre-extraction - missing keyData.sampleValue for key: ${keyData.key || 'unknown'}`);
+        console.log(`❌ Conditions not met for field pre-extraction:`);
+        console.log(`   - keyData exists: ${!!keyData}`);
+        console.log(`   - keyData.sampleValue exists: ${!!(keyData && keyData.sampleValue)}`);
+        console.log(`   - window.mappingStepState exists: ${!!window.mappingStepState}`);
     }
+    console.groupEnd();
     
     // Import modal functionality
     import('../../../ui/modal-ui.js').then(({ setupModalUI }) => {

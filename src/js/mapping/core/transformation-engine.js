@@ -587,14 +587,26 @@ export function renderComposeConfigUI(mappingId, block, state) {
 export function updateFieldSearchResults(searchTerm, mappingId, block, resultsContainer) {
     resultsContainer.innerHTML = '';
     
+    // COMPOSE BLOCK FIELD SEARCH DEBUG
+    console.group(`🔍 Field Search for Compose Block (search: "${searchTerm}")`);
+    
     // Get the original item data for this property
     const keyData = window.currentMappingKeyData;
     if (!keyData) {
+        console.log(`❌ No keyData available for field search`);
         resultsContainer.appendChild(createElement('div', { 
             className: 'no-fields-message' 
         }, 'No field data available'));
+        console.groupEnd();
         return;
     }
+    
+    console.log(`🔑 KeyData for field search:`, {
+        key: keyData.key,
+        hasExtractedFields: !!keyData.extractedFields,
+        extractedFieldsCount: keyData.extractedFields ? keyData.extractedFields.length : 0,
+        hasSampleValue: !!keyData.sampleValue
+    });
     
     let allFields;
     let fullItemData = null;
@@ -605,6 +617,7 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
     
     if (currentState.fetchedData) {
         const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+        console.log(`📦 Available items for fullItemData: ${items.length}`);
         
         // Find the item that contains this property value
         fullItemData = items.find(item => {
@@ -618,20 +631,28 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
         if (!fullItemData && items.length > 0) {
             fullItemData = items[0];
         }
+        console.log(`🎯 Found fullItemData:`, !!fullItemData);
     }
     
     // Use pre-extracted fields if available (optimization)
     if (keyData.extractedFields) {
         allFields = keyData.extractedFields;
-        console.log(`🚀 Using pre-extracted ${allFields.length} fields for compose block search`);
+        console.log(`🚀 OPTIMIZATION SUCCESS: Using pre-extracted ${allFields.length} fields for compose block search`);
+        console.log(`📋 Pre-extracted field sample:`, allFields.slice(0, 3).map(f => f.path));
     } else {
-        console.log(`⚙️ Falling back to live extraction for compose block search`);
+        console.log(`⚙️ OPTIMIZATION BYPASSED: Falling back to live extraction for compose block search`);
+        console.log(`🔍 Debugging why pre-extraction failed:`);
+        console.log(`   - keyData.extractedFields exists: ${!!keyData.extractedFields}`);
+        console.log(`   - keyData.extractedFields is array: ${Array.isArray(keyData.extractedFields)}`);
+        console.log(`   - keyData.extractedFields length: ${keyData.extractedFields ? keyData.extractedFields.length : 'N/A'}`);
+        
         // Fallback to current behavior for backward compatibility
         if (!keyData.sampleValue) {
             console.log(`❌ No sampleValue in keyData for fallback extraction`);
             resultsContainer.appendChild(createElement('div', { 
                 className: 'no-fields-message' 
             }, 'No field data available'));
+            console.groupEnd();
             return;
         }
         
@@ -640,6 +661,7 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
             resultsContainer.appendChild(createElement('div', { 
                 className: 'no-fields-message' 
             }, 'No full item data available'));
+            console.groupEnd();
             return;
         }
         
@@ -649,13 +671,19 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
     }
     
     const filteredFields = searchFields(allFields, searchTerm);
+    console.log(`🔍 Search results: ${filteredFields.length} fields match "${searchTerm}"`);
     
     if (filteredFields.length === 0) {
+        console.log(`❌ No matching fields found for search term: "${searchTerm}"`);
         resultsContainer.appendChild(createElement('div', { 
             className: 'no-fields-message' 
         }, 'No matching fields found'));
+        console.groupEnd();
         return;
     }
+    
+    console.log(`✅ FIELD SEARCH SUCCESS: Displaying ${filteredFields.length} fields in .field-results`);
+    console.log(`📋 Matching fields:`, filteredFields.slice(0, 5).map(f => f.path));
     
     // Show all results - container will be scrollable
     filteredFields.forEach(field => {
@@ -694,6 +722,8 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
         fieldItem.appendChild(previewElement);
         resultsContainer.appendChild(fieldItem);
     });
+    
+    console.groupEnd();
 }
 
 /**
