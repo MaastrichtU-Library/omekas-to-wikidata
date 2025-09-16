@@ -1789,19 +1789,6 @@ main {
     color: #664d03;
 }
 
-/* Metadata Transformation Specific Styles */
-.metadata-transformation .transformation-toggle {
-    display: none !important;
-}
-
-.metadata-transformation .empty-transformation-input {
-    display: none !important;
-}
-
-.metadata-transformation .transformation-value-state.initial {
-    display: none !important;
-}
-
 .property-suggestions {
     max-height: 300px;
     overflow-y: auto;
