@@ -107,6 +107,8 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
             return v['o:label'];
         } else if (typeof v === 'object' && v['@value']) {
             return v['@value'];
+        } else if (typeof v === 'object' && v['@id']) {
+            return v['@id'];
         } else if (typeof v === 'string') {
             return v;
         } else {
