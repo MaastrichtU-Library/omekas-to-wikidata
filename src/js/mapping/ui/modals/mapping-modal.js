@@ -12,6 +12,7 @@ import { moveKeyToCategory, mapKeyToProperty, moveToNextUnmappedKey } from '../m
 import { formatSampleValue } from './modal-helpers.js';
 import { showMessage } from '../../../ui/components.js';
 import { extractAtFieldsFromAllItems, extractAllFieldsFromItems } from '../../core/data-analyzer.js';
+import { extractAllFields } from '../../../transformations.js';
 
 /**
  * Opens the mapping modal for a key
@@ -19,6 +20,32 @@ import { extractAtFieldsFromAllItems, extractAllFieldsFromItems } from '../../co
 export function openMappingModal(keyData) {
     // Store keyData globally for modal title updates
     window.currentMappingKeyData = keyData;
+    
+    // Extract fields once for the entire modal session to optimize performance
+    if (keyData && window.mappingStepState) {
+        const currentState = window.mappingStepState.getState();
+        if (currentState.fetchedData) {
+            const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+            
+            // Use same item selection logic as updateFieldSearchResults
+            let fullItemData = items.find(item => {
+                if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
+                    return true;
+                }
+                return false;
+            });
+            
+            // If we couldn't find a specific item, use the first item as fallback
+            if (!fullItemData && items.length > 0) {
+                fullItemData = items[0];
+            }
+            
+            // Extract all fields from the full item data once
+            if (fullItemData) {
+                keyData.extractedFields = extractAllFields(fullItemData);
+            }
+        }
+    }
     
     // Import modal functionality
     import('../../../ui/modal-ui.js').then(({ setupModalUI }) => {
