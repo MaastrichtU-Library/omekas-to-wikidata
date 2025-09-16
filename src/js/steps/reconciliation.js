@@ -756,6 +756,9 @@ export function setupReconciliationStep(state) {
     // Also expose modalUI to global scope for modal closing
     window.modalUI = modalUI;
     
+    // Also expose markCellAsReconciled for direct access
+    window.markCellAsReconciled = modules.markCellAsReconciled;
+    
     window.applyTypeOverride = modalInteractionHandlers.applyTypeOverride;
     window.confirmReconciliation = modalInteractionHandlers.confirmReconciliation; // Legacy
     

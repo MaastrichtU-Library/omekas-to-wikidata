@@ -1,223 +1,156 @@
 /**
- * Simplified Reconciliation Modal Interface
+ * Reconciliation Modal Factory Interface
  * @module reconciliation/ui/reconciliation-modal
  * 
- * Clean, focused reconciliation interface that handles:
- * - Wikidata Items: existing matches, reconciliation options, manual search
- * - Strings: transformation output, regex validation, inline editing
+ * Main entry point for reconciliation modals that routes to appropriate
+ * specialized modal implementations based on data type.
+ * 
+ * This module serves as a compatibility layer and main interface while
+ * delegating actual modal creation to the modal factory system.
  */
 
 import { createElement } from '../../ui/components.js';
 import { 
-    extractRegexConstraints, 
-    validateStringValue, 
-    validateRealTime, 
-    getSuggestedFixes,
-    createValidationUI,
-    setupLiveValidation
-} from './validation-engine.js';
+    createReconciliationModalByType,
+    initializeReconciliationModal,
+    isModalTypeSupported,
+    createFallbackModal
+} from './modals/modal-factory.js';
 
 /**
- * Create the simplified reconciliation modal content
+ * Create reconciliation modal using factory system
+ * This is the main entry point that routes to appropriate specialized modals
  */
 export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
     // Determine data type from property
     const dataType = getDataTypeFromProperty(property, propertyData);
     const transformedValue = getTransformedValue(value, property);
     
-    // Check if transformation actually changed the value
-    const wasTransformed = value !== transformedValue;
+    console.log(`Creating reconciliation modal for type: ${dataType}, value: ${transformedValue}`);
     
-    // Set up modal context for validation and interactions
-    window.currentModalContext = {
-        itemId,
-        property,
-        valueIndex,
-        originalValue: value,
-        transformedValue,
-        currentValue: transformedValue,
-        propertyData,
-        dataType,
-        existingMatches
-    };
-    
-    const modalContent = createElement('div', { className: 'reconciliation-modal-redesign' });
-    modalContent.innerHTML = `
-        <!-- Header Section -->
-        <div class="modal-header">
-            <div class="data-type-indicator">
-                <span class="data-type-label">Expected:</span>
-                <span class="data-type-value">${getDataTypeDisplayName(dataType)}</span>
+    try {
+        // Use factory to create type-specific modal
+        if (isModalTypeSupported(dataType)) {
+            const modalElement = createReconciliationModalByType(
+                dataType, 
+                itemId, 
+                property, 
+                valueIndex, 
+                transformedValue, 
+                propertyData, 
+                existingMatches
+            );
+            
+            // Add compatibility wrapper class
+            modalElement.classList.add('reconciliation-modal-redesign');
+            
+            return modalElement;
+        } else {
+            // Use fallback modal for unsupported types
+            console.warn(`Unsupported modal type: ${dataType}. Using fallback modal.`);
+            const fallbackModal = createFallbackModal(dataType, transformedValue);
+            fallbackModal.classList.add('reconciliation-modal-redesign');
+            return fallbackModal;
+        }
+    } catch (error) {
+        console.error('Error creating reconciliation modal:', error);
+        
+        // Create emergency fallback
+        const errorModal = createElement('div', { className: 'reconciliation-modal-redesign error-modal' });
+        errorModal.innerHTML = `
+            <div class="modal-header">
+                <div class="error-indicator">
+                    <span class="error-label">Error:</span>
+                    <span class="error-message">Failed to create modal</span>
+                </div>
             </div>
-        </div>
-
-        <!-- Value Display Section -->
-        <div class="transformation-result">
-            ${wasTransformed ? 
-                `<div class="section-title">Transformation Result</div>
-                 <div class="transformed-value">${escapeHtml(transformedValue)}</div>
-                 <div class="original-context">
-                     <span class="original-label">Original:</span>
-                     <span class="original-value">${escapeHtml(value)}</span>
-                 </div>` 
-                :
-                `<div class="section-title">Omeka S API Value</div>
-                 <div class="transformed-value">${escapeHtml(value)}</div>`
-            }
-        </div>
-
-        <!-- Content Section (Data Type Specific) -->
-        <div class="content-section" id="content-section">
-            ${dataType === 'wikibase-item' ? createWikidataItemSection(transformedValue) : createStringSection(transformedValue, property, propertyData)}
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeReconciliationModal()">Cancel</button>
-            <button class="btn btn-primary" id="confirm-btn" onclick="confirmReconciliation()" disabled>Confirm</button>
-        </div>
-    `;
-
-    // Store initialization data on the element for later use
-    modalContent.dataset.initDataType = dataType;
-    modalContent.dataset.initValue = transformedValue;
-    modalContent.dataset.initProperty = property;
-    if (propertyData) {
-        modalContent.dataset.initPropertyData = JSON.stringify(propertyData);
+            <div class="error-content">
+                <p>Unable to create reconciliation interface for this data type.</p>
+                <p><strong>Error:</strong> ${escapeHtml(error.message)}</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeReconciliationModal()">Close</button>
+            </div>
+        `;
+        return errorModal;
     }
-
-    return modalContent;
 }
 
 /**
- * Initialize modal from stored data attributes
+ * Initialize modal from DOM element
  * Can be called after modal is inserted into DOM
  */
-export function initializeReconciliationModal() {
+export function initializeReconciliationModalFromDOM() {
     const modalContainer = document.querySelector('.reconciliation-modal-redesign');
     if (modalContainer) {
-        const dataType = modalContainer.dataset.initDataType;
-        const value = modalContainer.dataset.initValue;
-        const property = modalContainer.dataset.initProperty;
-        const propertyData = modalContainer.dataset.initPropertyData ? 
-            JSON.parse(modalContainer.dataset.initPropertyData) : null;
-        
-        if (dataType && value) {
-            initializeModalInteractions(dataType, value, property, propertyData);
+        try {
+            // Use factory initialization if available
+            if (modalContainer.dataset.modalFactory === 'reconciliation') {
+                initializeReconciliationModal(modalContainer);
+            } else {
+                // Fallback to legacy initialization
+                console.warn('Using legacy modal initialization');
+                const dataType = modalContainer.dataset.initDataType || modalContainer.dataset.dataType;
+                const value = modalContainer.dataset.initValue || modalContainer.dataset.value;
+                const property = modalContainer.dataset.initProperty || modalContainer.dataset.property;
+                const propertyData = modalContainer.dataset.initPropertyData ? 
+                    JSON.parse(modalContainer.dataset.initPropertyData) : 
+                    (modalContainer.dataset.propertyData ? JSON.parse(modalContainer.dataset.propertyData) : null);
+                
+                if (dataType && value) {
+                    initializeModalInteractions(dataType, value, property, propertyData);
+                }
+            }
+        } catch (error) {
+            console.error('Error initializing reconciliation modal:', error);
         }
     }
 }
 
 /**
- * Initialize modal interactions after DOM insertion
+ * Legacy modal interactions for backward compatibility
+ * @deprecated Use modal factory system instead
  */
 function initializeModalInteractions(dataType, value, property, propertyData) {
+    // Get additional context from modal container if available
+    const modalContainer = document.querySelector('.reconciliation-modal-redesign');
+    let itemId = null;
+    let valueIndex = null;
+    
+    if (modalContainer) {
+        itemId = modalContainer.dataset.itemId;
+        valueIndex = modalContainer.dataset.valueIndex;
+    }
+    
+    // Set up comprehensive modal context for backward compatibility
+    window.currentModalContext = {
+        itemId: itemId,
+        property: property,
+        valueIndex: valueIndex ? parseInt(valueIndex) : 0,
+        originalValue: value,
+        currentValue: value,
+        propertyData: propertyData,
+        dataType: dataType,
+        modalType: dataType // For compatibility
+    };
+    
+    // Basic compatibility layer - most functionality now handled by specific modal types
     if (dataType === 'wikibase-item') {
-        // Load existing matches for Wikidata items
-        const existingMatches = window.currentModalContext?.existingMatches;
-        loadExistingMatches(value, existingMatches);
-    } else if (dataType === 'string') {
-        // Set up live validation for string inputs
-        const stringEditor = document.getElementById('string-editor');
-        const validationContainer = document.getElementById('editor-validation');
-        
-        if (stringEditor && validationContainer) {
-            const constraints = extractRegexConstraints(property, propertyData);
-            if (constraints) {
-                setupLiveValidation(stringEditor, constraints, validationContainer);
-            }
-        }
-        
-        // Initial validation state check
-        const constraints = extractRegexConstraints(property, propertyData);
-        const validation = validateStringValue(value, constraints);
-        const confirmBtn = document.getElementById('confirm-btn');
-        if (confirmBtn) {
-            confirmBtn.disabled = !validation.isValid;
+        // For Wikidata items, also load matches if not already done
+        const existingMatchesContainer = document.getElementById('existing-matches');
+        if (existingMatchesContainer && existingMatchesContainer.innerHTML.includes('Finding matches...')) {
+            loadExistingMatches(value);
         }
     }
 }
 
 /**
- * Create Wikidata Item reconciliation section
+ * Legacy modal section functions have been moved to dedicated modal modules:
+ * - createWikidataItemSection -> wikidata-item-modal.js
+ * - createStringSection -> string-modal.js
+ * 
+ * These functions are now handled by the modal factory system.
  */
-function createWikidataItemSection(value) {
-    return `
-        <div class="wikidata-item-section">
-            <!-- Existing Matches -->
-            <div class="existing-matches" id="existing-matches">
-                <div class="section-title">Existing Matches</div>
-                <div class="loading-indicator">Finding matches...</div>
-            </div>
-
-            <!-- Manual Search -->
-            <div class="manual-search">
-                <div class="section-title">Search Wikidata</div>
-                <div class="search-container">
-                    <input type="text" id="wikidata-search" class="search-input" 
-                           placeholder="Search for a different item..." value="${escapeHtml(value)}">
-                    <button class="btn btn-primary" onclick="performWikidataSearch()">Search</button>
-                </div>
-                <div class="search-results" id="search-results"></div>
-            </div>
-
-            <!-- Alternative Actions -->
-            <div class="alternative-actions">
-                <button class="btn btn-outline" onclick="createNewWikidataItem()">Create New Item</button>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Create String validation section  
- */
-function createStringSection(value, property, propertyData) {
-    const regexConstraints = extractRegexConstraints(property, propertyData);
-    const validationResult = validateStringValue(value, regexConstraints);
-
-    return `
-        <div class="string-section">
-            <!-- String Value Display -->
-            <div class="string-value-display">
-                <div class="section-title">String Value</div>
-                <div class="current-value" id="current-value">${escapeHtml(value)}</div>
-                ${validationResult ? `
-                    <div class="validation-status ${validationResult.isValid ? 'valid' : 'invalid'}">
-                        <span class="status-icon">${validationResult.isValid ? '✓' : '✗'}</span>
-                        <span class="status-text">${validationResult.message}</span>
-                    </div>
-                ` : ''}
-            </div>
-
-            <!-- String Editor (shown if validation fails) -->
-            ${!validationResult?.isValid ? `
-                <div class="string-editor">
-                    <div class="section-title">Edit Value</div>
-                    <textarea id="string-editor" class="string-input" placeholder="Edit the value to make it comply...">${escapeHtml(value)}</textarea>
-                    <div class="editor-validation" id="editor-validation"></div>
-                    <button class="btn btn-primary" onclick="updateStringValue()">Update Value</button>
-                </div>
-            ` : ''}
-
-            <!-- Constraint Information -->
-            ${regexConstraints ? `
-                <div class="constraint-info">
-                    <div class="section-title">Validation Rules</div>
-                    <div class="constraint-details">
-                        <div class="constraint-pattern">
-                            <span class="constraint-label">Pattern:</span>
-                            <code class="constraint-regex">${escapeHtml(regexConstraints.pattern)}</code>
-                        </div>
-                        ${regexConstraints.description ? `
-                            <div class="constraint-description">${escapeHtml(regexConstraints.description)}</div>
-                        ` : ''}
-                    </div>
-                </div>
-            ` : ''}
-        </div>
-    `;
-}
 
 /**
  * Determine data type from property information
@@ -395,8 +328,6 @@ window.closeReconciliationModal = function() {
         // Fallback: remove modal elements directly
         document.querySelector('.modal-overlay')?.remove();
         document.querySelector('#modal-container')?.remove();
-    } else {
-        console.error('Unable to close modal - no modal UI system found');
     }
 };
 
@@ -588,26 +519,62 @@ window.showTopMatches = function() {
     }
 };
 
-// New function to directly apply a match without needing confirmation
+/**
+ * Emergency context reconstruction if context is missing
+ */
+function ensureModalContext() {
+    if (!window.currentModalContext) {
+        // Try to reconstruct context from modal DOM
+        const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
+                             document.querySelector('.wikidata-item-modal') ||
+                             document.querySelector('[data-modal-type]');
+        
+        if (modalContainer && modalContainer.dataset) {
+            const dataset = modalContainer.dataset;
+            window.currentModalContext = {
+                itemId: dataset.itemId,
+                property: dataset.property,
+                valueIndex: dataset.valueIndex ? parseInt(dataset.valueIndex) : 0,
+                originalValue: dataset.value,
+                currentValue: dataset.value,
+                propertyData: dataset.propertyData ? JSON.parse(dataset.propertyData) : null,
+                dataType: dataset.dataType || dataset.modalType || 'wikibase-item',
+                modalType: dataset.modalType || dataset.dataType || 'wikibase-item'
+            };
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return true; // Context already exists
+}
+
+// Apply a match directly without needing confirmation
 window.applyMatchDirectly = function(matchId) {
-    // Get match details first
+    // Ensure context is available
+    if (!ensureModalContext()) {
+        return;
+    }
+    
+    // Get match details from DOM
     const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
     const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
     
     if (!matchElement) {
-        console.error('Match element not found for ID:', matchId);
         return;
     }
     
-    const matchLabel = matchElement.querySelector('.match-label')?.textContent || 'Unknown';
-    const matchDescription = matchElement.querySelector('.match-description')?.textContent || 'No description';
+    // Try both class selectors for compatibility between existing matches and search results
+    const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-name');
+    const matchDescriptionElement = matchElement.querySelector('.match-description');
     
-    // Check if we have the proper handler functions available
+    const matchLabel = matchLabelElement?.textContent || 'Unknown';
+    const matchDescription = matchDescriptionElement?.textContent || 'No description';
+    
+    // Use the proper reconciliation handler
     if (typeof window.selectMatchAndAdvance === 'function') {
-        // Use the proper handler that applies reconciliation and closes modal
         window.selectMatchAndAdvance(matchId);
     } else if (typeof window.markCellAsReconciled === 'function' && window.currentModalContext) {
-        // Direct reconciliation if we have the function and context
         window.markCellAsReconciled(window.currentModalContext, {
             type: 'wikidata',
             id: matchId,
@@ -616,8 +583,7 @@ window.applyMatchDirectly = function(matchId) {
         });
         window.closeReconciliationModal();
     } else {
-        // Last resort: store selection and try to confirm
-        console.warn('No proper reconciliation handlers available, attempting fallback');
+        // Fallback: store selection and confirm
         window.selectedMatch = {
             id: matchId,
             name: matchLabel,
@@ -680,6 +646,20 @@ export function createOpenReconciliationModalFactory(dependencies) {
     return async function openReconciliationModal(itemId, property, valueIndex, value, manualProp = null) {
         currentReconciliationCell = { itemId, property, valueIndex, value, manualProp };
         
+        // Set up context immediately before any async operations
+        const dataType = getDataTypeFromProperty(property, manualProp?.property);
+        window.currentModalContext = {
+            itemId: itemId,
+            property: property,
+            valueIndex: parseInt(valueIndex),
+            originalValue: value,
+            currentValue: value,
+            propertyData: manualProp?.property || null,
+            dataType: dataType,
+            modalType: dataType,
+            existingMatches: null
+        };
+        
         // Get existing matches from reconciliation data if available
         let existingMatches = null;
         const currentState = state.getState();
@@ -687,9 +667,10 @@ export function createOpenReconciliationModalFactory(dependencies) {
         if (reconciliationData[itemId] && reconciliationData[itemId].properties[property] && 
             reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
             existingMatches = reconciliationData[itemId].properties[property].reconciled[valueIndex].matches;
+            window.currentModalContext.existingMatches = existingMatches;
         }
         
-        // Create modal content using the new function
+        // Create modal content
         const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches);
         
         // Open modal using the modal UI system
@@ -698,21 +679,71 @@ export function createOpenReconciliationModalFactory(dependencies) {
             window.currentModalContext = null;
         });
         
+        // Verify context is available immediately after modal opens
+        setTimeout(() => {
+            if (!window.currentModalContext) {
+                // Emergency context restoration
+                window.currentModalContext = {
+                    itemId: itemId,
+                    property: property,
+                    valueIndex: parseInt(valueIndex),
+                    originalValue: value,
+                    currentValue: value,
+                    propertyData: manualProp?.property || null,
+                    dataType: dataType,
+                    modalType: dataType,
+                    existingMatches: existingMatches
+                };
+            }
+        }, 10);
+        
+        // Preserve dataset attributes after modal is inserted into DOM
+        setTimeout(() => {
+            const insertedModalContainer = document.querySelector('.reconciliation-modal-redesign');
+            if (insertedModalContainer && modalElement.dataset) {
+                // Copy all dataset attributes from original element to inserted element
+                Object.keys(modalElement.dataset).forEach(key => {
+                    insertedModalContainer.dataset[key] = modalElement.dataset[key];
+                });
+            }
+        }, 50); // Small delay to ensure modal is in DOM
+        
         // Setup modal functionality after DOM is rendered
         setTimeout(() => {
-            const modalContent = document.querySelector('#modal-content');
+            // Try multiple possible selectors for modal content
+            const modalContent = document.querySelector('#modal-content') || 
+                               document.querySelector('.modal-content') ||
+                               document.querySelector('#modal-container .modal-content');
+            
             if (modalContent) {
                 setupDynamicDatePrecision(modalContent);
                 setupAutoAdvanceToggle();
-                
-                // Initialize modal interactions using stored data
-                const modalContainer = document.querySelector('.reconciliation-modal-redesign');
-                if (modalContainer) {
-                    const dataType = modalContainer.dataset.initDataType;
-                    const value = modalContainer.dataset.initValue;
-                    const property = modalContainer.dataset.initProperty;
+            }
+            
+            // Initialize modal using the factory system
+            const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
+                                 document.querySelector('.wikidata-item-modal') ||
+                                 document.querySelector('[data-modal-type]');
+            
+            if (modalContainer) {
+                try {
+                    // Use the proper factory initialization
+                    initializeReconciliationModal(modalContainer);
+                } catch (error) {
+                    // Fallback to deprecated system
+                    const dataType = modalContainer.dataset.initDataType || 
+                                   modalContainer.dataset.dataType || 
+                                   window.currentModalContext?.dataType;
+                    const value = modalContainer.dataset.initValue || 
+                                modalContainer.dataset.value || 
+                                window.currentModalContext?.originalValue;
+                    const property = modalContainer.dataset.initProperty || 
+                                   modalContainer.dataset.property || 
+                                   window.currentModalContext?.property;
                     const propertyData = modalContainer.dataset.initPropertyData ? 
-                        JSON.parse(modalContainer.dataset.initPropertyData) : null;
+                        JSON.parse(modalContainer.dataset.initPropertyData) : 
+                        (modalContainer.dataset.propertyData ? JSON.parse(modalContainer.dataset.propertyData) : 
+                         window.currentModalContext?.propertyData);
                     
                     if (dataType && value) {
                         initializeModalInteractions(dataType, value, property, propertyData);
@@ -722,7 +753,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
         }, 100);
         
         // Start automatic reconciliation for Wikidata items
-        const dataType = getDataTypeFromProperty(property, manualProp?.property);
+        // Note: dataType already declared above, reusing it
         if (dataType === 'wikibase-item') {
             await performAutomaticReconciliation(value, property, itemId, valueIndex);
         }
@@ -749,11 +780,15 @@ export function createModalInteractionHandlers(dependencies) {
 
     return {
         selectMatchAndAdvance(matchId) {
-            if (!window.currentModalContext) return;
+            if (!window.currentModalContext) {
+                return;
+            }
             
             // Find the match details
             const matchCard = document.querySelector(`[data-match-id="${matchId}"]`);
-            if (!matchCard) return;
+            if (!matchCard) {
+                return;
+            }
             
             const matchName = matchCard.querySelector('.match-label, .result-name')?.textContent || 'Unknown';
             const matchDescription = matchCard.querySelector('.match-description, .result-description')?.textContent || 'No description';
