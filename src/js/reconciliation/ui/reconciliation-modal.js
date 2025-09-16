@@ -113,22 +113,45 @@ export function initializeReconciliationModalFromDOM() {
  */
 function initializeModalInteractions(dataType, value, property, propertyData) {
     console.warn('Using deprecated initializeModalInteractions. Consider updating to factory system.');
+    console.log('🔄 Setting up legacy modal context with data:', { dataType, value, property, propertyData });
+    
+    // Get additional context from modal container if available
+    const modalContainer = document.querySelector('.reconciliation-modal-redesign');
+    let itemId = null;
+    let valueIndex = null;
+    
+    if (modalContainer) {
+        itemId = modalContainer.dataset.itemId;
+        valueIndex = modalContainer.dataset.valueIndex;
+        console.log('🔍 Found modal container data:', { itemId, valueIndex });
+    }
+    
+    // Set up comprehensive modal context for backward compatibility
+    window.currentModalContext = {
+        itemId: itemId,
+        property: property,
+        valueIndex: valueIndex ? parseInt(valueIndex) : 0,
+        originalValue: value,
+        currentValue: value,
+        propertyData: propertyData,
+        dataType: dataType,
+        modalType: dataType // For compatibility
+    };
+    
+    console.log('✅ Legacy modal context set up:', window.currentModalContext);
     
     // Basic compatibility layer - most functionality now handled by specific modal types
     if (dataType === 'wikibase-item') {
-        console.log('Legacy Wikidata item modal initialization');
+        console.log('🔄 Legacy Wikidata item modal initialization');
+        // For Wikidata items, also load matches if not already done
+        const existingMatchesContainer = document.getElementById('existing-matches');
+        if (existingMatchesContainer && existingMatchesContainer.innerHTML.includes('Finding matches...')) {
+            console.log('🔄 Loading matches for legacy Wikidata modal');
+            loadExistingMatches(value);
+        }
     } else if (dataType === 'string') {
-        console.log('Legacy string modal initialization');
+        console.log('🔄 Legacy string modal initialization');
     }
-    
-    // Set up basic modal context for backward compatibility
-    window.currentModalContext = {
-        originalValue: value,
-        currentValue: value,
-        property: property,
-        propertyData: propertyData,
-        dataType: dataType
-    };
 }
 
 /**
@@ -651,11 +674,26 @@ export function createOpenReconciliationModalFactory(dependencies) {
         // Create modal content using the new function
         const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches);
         
+        console.log('🔄 Created modal element with dataset:', modalElement.dataset);
+        
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
             currentReconciliationCell = null;
             window.currentModalContext = null;
         });
+        
+        // Preserve dataset attributes after modal is inserted into DOM
+        setTimeout(() => {
+            const insertedModalContainer = document.querySelector('.reconciliation-modal-redesign');
+            if (insertedModalContainer && modalElement.dataset) {
+                console.log('🔄 Preserving dataset attributes on inserted modal...');
+                // Copy all dataset attributes from original element to inserted element
+                Object.keys(modalElement.dataset).forEach(key => {
+                    insertedModalContainer.dataset[key] = modalElement.dataset[key];
+                });
+                console.log('✅ Dataset attributes preserved:', insertedModalContainer.dataset);
+            }
+        }, 50); // Small delay to ensure modal is in DOM
         
         // Setup modal functionality after DOM is rendered
         setTimeout(() => {
@@ -733,11 +771,24 @@ export function createModalInteractionHandlers(dependencies) {
 
     return {
         selectMatchAndAdvance(matchId) {
-            if (!window.currentModalContext) return;
+            console.log('🔄 selectMatchAndAdvance called with matchId:', matchId);
+            console.log('🔍 window.currentModalContext:', window.currentModalContext);
+            
+            if (!window.currentModalContext) {
+                console.error('❌ selectMatchAndAdvance returning early - window.currentModalContext is undefined');
+                return;
+            }
+            
+            console.log('✅ Modal context available, proceeding with match selection');
             
             // Find the match details
             const matchCard = document.querySelector(`[data-match-id="${matchId}"]`);
-            if (!matchCard) return;
+            console.log('🔍 Found match card:', matchCard);
+            
+            if (!matchCard) {
+                console.error('❌ selectMatchAndAdvance returning early - match card not found');
+                return;
+            }
             
             const matchName = matchCard.querySelector('.match-label, .result-name')?.textContent || 'Unknown';
             const matchDescription = matchCard.querySelector('.match-description, .result-description')?.textContent || 'No description';
