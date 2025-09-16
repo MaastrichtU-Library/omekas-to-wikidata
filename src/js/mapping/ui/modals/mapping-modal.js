@@ -135,6 +135,9 @@ export function openMappingModal(keyData) {
  * Creates mapping modal content with two-column layout
  */
 export function createMappingModalContent(keyData) {
+    // Check if this is a metadata property (labels, descriptions, aliases)
+    const isMetadata = keyData.isMetadata || ['label', 'description', 'aliases'].includes(keyData.key?.toLowerCase());
+    
     const container = createElement('div', {
         className: 'mapping-modal-content two-column-layout'
     });
@@ -319,6 +322,18 @@ export function createMappingModalContent(keyData) {
             } else {
                 transformationSection.classList.add('expanded');
                 transformationToggle.textContent = '▼ Hide Transformations';
+                
+                // For metadata fields, ensure compose transformation is added by default
+                if (isMetadata) {
+                    const composeContainer = document.querySelector('.transformation-blocks');
+                    if (composeContainer && !composeContainer.hasChildNodes()) {
+                        // Add a default compose block for metadata
+                        const addComposeBtn = document.querySelector('.add-compose-btn');
+                        if (addComposeBtn) {
+                            addComposeBtn.click();
+                        }
+                    }
+                }
             }
         }
     }, '▶ Add Transformation');
@@ -346,76 +361,147 @@ export function createMappingModalContent(keyData) {
         className: 'mapping-column right-column'
     });
     
-    // Column header
+    // Column header with link to Wikidata help page
+    const rightHeaderText = isMetadata ? 
+        `<a href="https://www.wikidata.org/wiki/Help:Label" target="_blank" rel="noopener">Wikidata ${keyData.key || 'Property'}</a>` : 
+        'Wikidata Property';
     const rightHeader = createElement('div', {
         className: 'column-header'
-    }, 'Wikidata Property');
+    });
+    rightHeader.innerHTML = rightHeaderText;
     rightColumn.appendChild(rightHeader);
     
-    // Property search section
+    // Property search section or metadata information
     const searchSection = createElement('div', {
         className: 'property-search'
     });
     
-    // Check if entity schema is selected to conditionally add dropdown
-    const schemaState = window.mappingStepState?.getState();
-    const selectedSchema = schemaState?.selectedEntitySchema;
-    const hasEntitySchemaProperties = selectedSchema?.properties && 
-        (selectedSchema.properties.required?.length > 0 || selectedSchema.properties.optional?.length > 0);
-    
-    const entitySchemaDropdownHTML = hasEntitySchemaProperties ? `
-        <div class="entity-schema-properties" id="entity-schema-properties">
-            <label for="entity-schema-property-select">Properties from Entity Schema:</label>
-            <select class="entity-schema-property-select" id="entity-schema-property-select">
-                <option value="">Select a property from schema...</option>
-            </select>
-            <small class="schema-indicator">These properties are recommended by the selected entity schema</small>
-        </div>
-    ` : '';
-    
-    searchSection.innerHTML = `
-        ${entitySchemaDropdownHTML}
-        <h4>Search Properties</h4>
-        <input type="text" id="property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
-        <div id="property-suggestions" class="property-suggestions"></div>
-        <div id="selected-property" class="selected-property" style="display: none;">
-            <h4>Selected Property</h4>
-            <div id="selected-property-details"></div>
-            <div id="property-constraints" class="property-constraints" style="display: none;">
-                <div class="constraint-loading" style="display: none;">Loading constraint information...</div>
-                <div class="constraint-content"></div>
-                <div class="constraint-info-notice">
-                    This information is automatically retrieved from Wikidata and cannot be changed.
+    if (isMetadata) {
+        // For metadata properties, show information instead of search
+        const metadataType = keyData.key?.toLowerCase();
+        let helpUrl, helpText, description;
+        
+        switch(metadataType) {
+            case 'label':
+                helpUrl = 'https://www.wikidata.org/wiki/Help:Label';
+                helpText = 'Labels';
+                description = 'Labels are the main name given to identify an entity. They do not need to be unique. In Wikidata, labels are language-specific.';
+                break;
+            case 'description':
+                helpUrl = 'https://www.wikidata.org/wiki/Help:Description';
+                helpText = 'Descriptions';
+                description = 'Descriptions are short phrases that disambiguate items with similar labels. They are language-specific and should be lowercase except for proper nouns.';
+                break;
+            case 'aliases':
+                helpUrl = 'https://www.wikidata.org/wiki/Help:Aliases';
+                helpText = 'Aliases';
+                description = 'Aliases are alternative names for an entity. They help people find items even if they search for a name that is different from the label.';
+                break;
+            default:
+                helpUrl = 'https://www.wikidata.org/wiki/Help:Label';
+                helpText = 'Metadata';
+                description = 'This is a metadata field for Wikidata entities.';
+        }
+        
+        searchSection.innerHTML = `
+            <div class="metadata-info">
+                <h4>${helpText} Information</h4>
+                <p>${description}</p>
+                <p><a href="${helpUrl}" target="_blank" rel="noopener">Learn more about ${helpText} on Wikidata →</a></p>
+                <div class="metadata-notice">
+                    <strong>Note:</strong> ${helpText} are language-specific monolingual text values. You can map your Omeka S data to provide ${metadataType} values for Wikidata entities.
                 </div>
             </div>
-        </div>
-    `;
+        `;
+    } else {
+        // Check if entity schema is selected to conditionally add dropdown
+        const schemaState = window.mappingStepState?.getState();
+        const selectedSchema = schemaState?.selectedEntitySchema;
+        const hasEntitySchemaProperties = selectedSchema?.properties && 
+            (selectedSchema.properties.required?.length > 0 || selectedSchema.properties.optional?.length > 0);
+        
+        const entitySchemaDropdownHTML = hasEntitySchemaProperties ? `
+            <div class="entity-schema-properties" id="entity-schema-properties">
+                <label for="entity-schema-property-select">Properties from Entity Schema:</label>
+                <select class="entity-schema-property-select" id="entity-schema-property-select">
+                    <option value="">Select a property from schema...</option>
+                </select>
+                <small class="schema-indicator">These properties are recommended by the selected entity schema</small>
+            </div>
+        ` : '';
+        
+        searchSection.innerHTML = `
+            ${entitySchemaDropdownHTML}
+            <h4>Search Properties</h4>
+            <input type="text" id="property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
+            <div id="property-suggestions" class="property-suggestions"></div>
+            <div id="selected-property" class="selected-property" style="display: none;">
+                <h4>Selected Property</h4>
+                <div id="selected-property-details"></div>
+                <div id="property-constraints" class="property-constraints" style="display: none;">
+                    <div class="constraint-loading" style="display: none;">Loading constraint information...</div>
+                    <div class="constraint-content"></div>
+                    <div class="constraint-info-notice">
+                        This information is automatically retrieved from Wikidata and cannot be changed.
+                    </div>
+                </div>
+            </div>
+        `;
+    }
     rightColumn.appendChild(searchSection);
     
     // Data type information section (Stage 2 content)
     const dataTypeInfo = createElement('div', {
         className: 'datatype-info',
         id: 'datatype-info-section',
-        style: 'margin-top: 20px; display: none;'
+        style: isMetadata ? 'margin-top: 20px;' : 'margin-top: 20px; display: none;'
     });
-    dataTypeInfo.innerHTML = `
-        <div class="datatype-display">
-            <h4>Expected Value Type</h4>
-            <div id="detected-datatype" class="detected-datatype">
-                <div class="datatype-loading">Select a property to see expected type...</div>
+    
+    if (isMetadata) {
+        // For metadata, always show monolingual text type
+        dataTypeInfo.innerHTML = `
+            <div class="datatype-display">
+                <h4>Expected Value Type</h4>
+                <div id="detected-datatype" class="detected-datatype">
+                    <span class="datatype-label">Monolingual text</span>
+                </div>
+                <div class="datatype-description">
+                    <p>This field expects language-specific text values. Each value should be associated with a language code (e.g., "en" for English, "fr" for French).</p>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    } else {
+        dataTypeInfo.innerHTML = `
+            <div class="datatype-display">
+                <h4>Expected Value Type</h4>
+                <div id="detected-datatype" class="detected-datatype">
+                    <div class="datatype-loading">Select a property to see expected type...</div>
+                </div>
+            </div>
+        `;
+    }
     rightColumn.appendChild(dataTypeInfo);
     
     container.appendChild(rightColumn);
     
-    // Setup search functionality and pre-populate if mapped
-    setTimeout(() => {
-        setupPropertySearch(keyData, window.mappingStepState);
-        // Setup entity schema property dropdown if it exists
-        setupEntitySchemaPropertySelection(window.mappingStepState);
-    }, 100);
+    // Setup search functionality and pre-populate if mapped (only for non-metadata)
+    if (!isMetadata) {
+        setTimeout(() => {
+            setupPropertySearch(keyData, window.mappingStepState);
+            // Setup entity schema property dropdown if it exists
+            setupEntitySchemaPropertySelection(window.mappingStepState);
+        }, 100);
+    } else {
+        // For metadata properties, store them as selected automatically
+        window.currentMappingSelectedProperty = {
+            id: keyData.key?.toLowerCase(),
+            label: keyData.key,
+            description: `${keyData.key} for Wikidata entities`,
+            datatype: 'monolingualtext',
+            datatypeLabel: 'Monolingual text',
+            isMetadata: true
+        };
+    }
     
     return container;
 }
@@ -478,7 +564,18 @@ function loadSampleValues(container, keyData, state) {
  * Get selected property from modal
  */
 export function getSelectedPropertyFromModal() {
-    return window.currentMappingSelectedProperty;
+    // For metadata properties, ensure the property is properly formatted
+    const property = window.currentMappingSelectedProperty;
+    if (property && property.isMetadata) {
+        // Ensure metadata properties have the correct structure
+        return {
+            ...property,
+            id: property.id || property.label?.toLowerCase(),
+            datatype: 'monolingualtext',
+            datatypeLabel: 'Monolingual text'
+        };
+    }
+    return property;
 }
 
 /**

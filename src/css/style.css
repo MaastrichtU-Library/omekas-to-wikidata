@@ -1745,6 +1745,49 @@ main {
     width: 100%;
 }
 
+/* Metadata Information Section */
+.metadata-info {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.metadata-info h4 {
+    color: #333;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.metadata-info p {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+}
+
+.metadata-info a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.metadata-info a:hover {
+    text-decoration: underline;
+}
+
+.metadata-notice {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #856404;
+}
+
+.metadata-notice strong {
+    color: #664d03;
+}
 
 .property-suggestions {
     max-height: 300px;

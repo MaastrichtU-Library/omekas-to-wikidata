@@ -50,8 +50,23 @@ export function openAddManualPropertyModal() {
         modalUI.openModal(
             'Add Additional Custom Wikidata Property',
             modalContent,
-            buttons
+            buttons,
+            () => {
+                // Remove the wide class when modal closes
+                const modal = document.querySelector('.modal');
+                if (modal) {
+                    modal.classList.remove('mapping-modal-wide');
+                }
+            }
         );
+        
+        // Add class to modal for wider display after opening
+        setTimeout(() => {
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.classList.add('mapping-modal-wide');
+            }
+        }, 0);
     });
 }
 
