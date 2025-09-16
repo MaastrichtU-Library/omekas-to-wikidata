@@ -183,7 +183,7 @@ export function renderValueTransformationUI(keyData, state) {
     blocksContainer.dataset.sampleValue = sampleValue;
 
     // Initial render of transformation blocks
-    renderTransformationBlocks(mappingId, sampleValue, blocksContainer, state, keyData);
+    renderTransformationBlocks(mappingId, sampleValue, blocksContainer, state);
 
     container.appendChild(blocksContainer);
     container.appendChild(addBlockSection);
@@ -262,9 +262,7 @@ export function updateTransformationPreview(mappingId, state) {
 export function refreshTransformationUI(mappingId, state) {
     const container = document.getElementById(`transformation-blocks-${mappingId}`);
     if (container && container.dataset.sampleValue) {
-        // Get keyData from global context for refreshes
-        const keyData = window.currentMappingKeyData;
-        renderTransformationBlocks(mappingId, container.dataset.sampleValue, container, state, keyData);
+        renderTransformationBlocks(mappingId, container.dataset.sampleValue, container, state);
     }
 }
 
@@ -291,9 +289,8 @@ export function refreshStage3TransformationUI(keyData, state) {
  * @param {string} sampleValue - Sample value for preview
  * @param {HTMLElement} container - Container to render into
  * @param {Object} state - Application state
- * @param {Object} keyData - The key data for field extraction
  */
-export function renderTransformationBlocks(mappingId, sampleValue, container, state, keyData = null) {
+export function renderTransformationBlocks(mappingId, sampleValue, container, state) {
     // Clear existing content
     container.innerHTML = '';
 
@@ -332,7 +329,7 @@ export function renderTransformationBlocks(mappingId, sampleValue, container, st
         if (index < preview.steps.length - 1) {
             const block = blocks.find(b => b.id === preview.steps[index + 1].blockId);
             if (block) {
-                const blockUI = renderTransformationBlockUI(mappingId, block, state, keyData);
+                const blockUI = renderTransformationBlockUI(mappingId, block, state);
                 flowContainer.appendChild(blockUI);
             }
         }
@@ -346,10 +343,9 @@ export function renderTransformationBlocks(mappingId, sampleValue, container, st
  * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
- * @param {Object} keyData - The key data for field extraction
  * @returns {HTMLElement} Block UI element
  */
-export function renderTransformationBlockUI(mappingId, block, state, keyData = null) {
+export function renderTransformationBlockUI(mappingId, block, state) {
     const metadata = BLOCK_METADATA[block.type];
     const blockElement = createElement('div', {
         className: `transformation-block transformation-block--${block.type}`,
@@ -389,7 +385,7 @@ export function renderTransformationBlockUI(mappingId, block, state, keyData = n
 
     // Block configuration
     const blockConfig = createElement('div', { className: 'block-config' });
-    blockConfig.appendChild(renderBlockConfigUI(mappingId, block, state, keyData));
+    blockConfig.appendChild(renderBlockConfigUI(mappingId, block, state));
 
     blockElement.appendChild(blockHeader);
     blockElement.appendChild(blockConfig);
@@ -405,10 +401,9 @@ export function renderTransformationBlockUI(mappingId, block, state, keyData = n
  * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
- * @param {Object} keyData - The key data for field extraction
  * @returns {HTMLElement} Configuration UI
  */
-export function renderBlockConfigUI(mappingId, block, state, keyData = null) {
+export function renderBlockConfigUI(mappingId, block, state) {
     const configContainer = createElement('div', { className: 'block-config-content' });
     
     switch (block.type) {
@@ -422,7 +417,7 @@ export function renderBlockConfigUI(mappingId, block, state, keyData = null) {
             return renderFindReplaceConfigUI(mappingId, block, state);
             
         case BLOCK_TYPES.COMPOSE:
-            return renderComposeConfigUI(mappingId, block, state, keyData);
+            return renderComposeConfigUI(mappingId, block, state);
             
         case BLOCK_TYPES.REGEX:
             return renderRegexConfigUI(mappingId, block, state);
@@ -529,10 +524,9 @@ export function renderFindReplaceConfigUI(mappingId, block, state) {
  * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {Object} state - Application state
- * @param {Object} keyData - The key data for field extraction
  * @returns {HTMLElement} Configuration UI
  */
-export function renderComposeConfigUI(mappingId, block, state, keyData = null) {
+export function renderComposeConfigUI(mappingId, block, state) {
     const container = createElement('div', { className: 'config-fields' });
     
     // Pattern field
@@ -568,7 +562,7 @@ export function renderComposeConfigUI(mappingId, block, state, keyData = null) {
         type: 'text',
         placeholder: 'Search fields to insert...',
         className: 'field-search-input',
-        onInput: (e) => updateFieldSearchResults(e.target.value, mappingId, block, fieldResultsContainer, keyData)
+        onInput: (e) => updateFieldSearchResults(e.target.value, mappingId, block, fieldResultsContainer)
     });
     fieldSearchSection.appendChild(fieldSearchInput);
     
@@ -576,13 +570,7 @@ export function renderComposeConfigUI(mappingId, block, state, keyData = null) {
     fieldSearchSection.appendChild(fieldResultsContainer);
     
     // Initialize with empty search to show all fields
-    // Pass keyData directly for immediate field access
-    if (keyData || window.currentMappingKeyData) {
-        updateFieldSearchResults('', mappingId, block, fieldResultsContainer, keyData);
-    } else {
-        // Fallback with delay if no keyData available
-        setTimeout(() => updateFieldSearchResults('', mappingId, block, fieldResultsContainer, keyData), 100);
-    }
+    setTimeout(() => updateFieldSearchResults('', mappingId, block, fieldResultsContainer), 100);
     
     container.appendChild(patternField);
     container.appendChild(fieldSearchSection);
@@ -595,15 +583,13 @@ export function renderComposeConfigUI(mappingId, block, state, keyData = null) {
  * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
  * @param {HTMLElement} resultsContainer - Container for search results
- * @param {Object} keyData - The key data for field extraction (optional)
  */
-export function updateFieldSearchResults(searchTerm, mappingId, block, resultsContainer, keyData = null) {
+export function updateFieldSearchResults(searchTerm, mappingId, block, resultsContainer) {
     resultsContainer.innerHTML = '';
     
     // Get the original item data for this property
-    // Use passed keyData or fallback to global
-    const currentKeyData = keyData || window.currentMappingKeyData;
-    if (!currentKeyData || !currentKeyData.sampleValue) {
+    const keyData = window.currentMappingKeyData;
+    if (!keyData || !keyData.sampleValue) {
         resultsContainer.appendChild(createElement('div', { 
             className: 'no-fields-message' 
         }, 'No field data available'));
@@ -621,7 +607,7 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
         // Find the item that contains this property value
         // We'll match based on the key and sampleValue
         fullItemData = items.find(item => {
-            if (typeof item === 'object' && item !== null && item[currentKeyData.key] !== undefined) {
+            if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
                 return true;
             }
             return false;
