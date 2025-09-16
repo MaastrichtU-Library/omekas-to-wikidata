@@ -623,9 +623,12 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
     // Use pre-extracted fields if available (optimization)
     if (keyData.extractedFields) {
         allFields = keyData.extractedFields;
+        console.log(`🚀 Using pre-extracted ${allFields.length} fields for compose block search`);
     } else {
+        console.log(`⚙️ Falling back to live extraction for compose block search`);
         // Fallback to current behavior for backward compatibility
         if (!keyData.sampleValue) {
+            console.log(`❌ No sampleValue in keyData for fallback extraction`);
             resultsContainer.appendChild(createElement('div', { 
                 className: 'no-fields-message' 
             }, 'No field data available'));
@@ -633,6 +636,7 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
         }
         
         if (!fullItemData) {
+            console.log(`❌ No fullItemData found for fallback extraction`);
             resultsContainer.appendChild(createElement('div', { 
                 className: 'no-fields-message' 
             }, 'No full item data available'));
@@ -641,6 +645,7 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
         
         // Extract all fields from the full item data instead of just the property value
         allFields = extractAllFields(fullItemData);
+        console.log(`⚙️ Live extracted ${allFields.length} fields for compose block search`);
     }
     
     const filteredFields = searchFields(allFields, searchTerm);

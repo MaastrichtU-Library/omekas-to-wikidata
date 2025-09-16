@@ -22,29 +22,28 @@ export function openMappingModal(keyData) {
     window.currentMappingKeyData = keyData;
     
     // Extract fields once for the entire modal session to optimize performance
-    if (keyData && window.mappingStepState) {
+    if (keyData && keyData.sampleValue && window.mappingStepState) {
         const currentState = window.mappingStepState.getState();
         if (currentState.fetchedData) {
             const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
             
-            // Use same item selection logic as updateFieldSearchResults
+            // Use first item that has any meaningful data (not looking for specific key)
             let fullItemData = items.find(item => {
-                if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
-                    return true;
-                }
-                return false;
+                return typeof item === 'object' && item !== null && Object.keys(item).length > 0;
             });
-            
-            // If we couldn't find a specific item, use the first item as fallback
-            if (!fullItemData && items.length > 0) {
-                fullItemData = items[0];
-            }
             
             // Extract all fields from the full item data once
             if (fullItemData) {
                 keyData.extractedFields = extractAllFields(fullItemData);
+                console.log(`✅ Pre-extracted ${keyData.extractedFields.length} fields for key: ${keyData.key}`);
+            } else {
+                console.log(`⚠️ Could not find item data for pre-extraction for key: ${keyData.key}`);
             }
+        } else {
+            console.log(`⚠️ No fetchedData available for field pre-extraction for key: ${keyData.key}`);
         }
+    } else {
+        console.log(`⚠️ Skipping field pre-extraction - missing keyData.sampleValue for key: ${keyData.key || 'unknown'}`);
     }
     
     // Import modal functionality
