@@ -31,6 +31,10 @@ export async function displayPropertyConstraints(propertyId) {
         // Fetch complete property data with constraints
         const propertyData = await getCompletePropertyData(propertyId);
         
+        // Log property constraints data for developer inspection
+        console.log(`🔍 Property ${propertyId} constraints from displayPropertyConstraints:`, propertyData.constraints);
+        console.log('Full property data structure:', propertyData);
+        
         // Update the selected property with complete data
         window.currentMappingSelectedProperty = {
             ...window.currentMappingSelectedProperty,

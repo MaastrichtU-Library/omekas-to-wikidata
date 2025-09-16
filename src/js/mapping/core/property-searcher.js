@@ -206,6 +206,13 @@ export async function selectUnifiedProperty(property) {
             try {
                 const propertyData = await getCompletePropertyData(property.id);
                 
+                // Log property data to console for developer inspection
+                console.log(`🔍 Property ${property.id} metadata from Wikidata API:`, propertyData);
+                console.log('Available fields:', Object.keys(propertyData));
+                if (propertyData.constraints) {
+                    console.log('Constraints structure:', propertyData.constraints);
+                }
+                
                 // Update Stage 2 with actual data type
                 updateUnifiedStage2DataType(propertyData);
                 
@@ -572,11 +579,22 @@ export function createPropertySuggestionItem(property, isPrevious, state) {
     
     item.innerHTML = `
         <div class="property-main">
-            <span class="property-id">${property.id}</span>
+            <span class="property-id clickable" title="View on Wikidata">${property.id}</span>
             <span class="property-label">${property.label}</span>
         </div>
         <div class="property-description">${property.description}</div>
     `;
+    
+    // Make property ID clickable
+    const propertyIdSpan = item.querySelector('.property-id');
+    if (propertyIdSpan) {
+        propertyIdSpan.style.cursor = 'pointer';
+        propertyIdSpan.style.textDecoration = 'underline';
+        propertyIdSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.open(`https://www.wikidata.org/wiki/Property:${property.id}`, '_blank');
+        });
+    }
     
     return item;
 }
@@ -648,11 +666,20 @@ export async function selectProperty(property, state) {
     if (selectedContainer && detailsContainer) {
         detailsContainer.innerHTML = `
             <div class="selected-property-info">
-                <span class="property-id">${property.id}</span>
+                <span class="property-id clickable" title="View on Wikidata" style="cursor: pointer; text-decoration: underline;">${property.id}</span>
                 <span class="property-label">${property.label}</span>
                 <div class="property-description">${property.description}</div>
             </div>
         `;
+        
+        // Make property ID clickable
+        const propertyIdSpan = detailsContainer.querySelector('.property-id');
+        if (propertyIdSpan) {
+            propertyIdSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.open(`https://www.wikidata.org/wiki/Property:${property.id}`, '_blank');
+            });
+        }
         selectedContainer.style.display = 'block';
     }
     
@@ -713,6 +740,19 @@ export async function displayDataTypeConfiguration(property) {
     try {
         // Fetch complete property data
         const propertyData = await getCompletePropertyData(property.id);
+        
+        // Log property data for developer inspection
+        console.log(`🔍 Property ${property.id} complete data from Wikidata API:`, propertyData);
+        console.log('Available fields:', Object.keys(propertyData));
+        console.log('Data type:', propertyData.datatype, '/', propertyData.datatypeLabel);
+        if (propertyData.constraints) {
+            console.log('Constraints:', {
+                format: propertyData.constraints.format,
+                valueType: propertyData.constraints.valueType,
+                other: propertyData.constraints.other
+            });
+        }
+        
         // Update the stored property with complete data
         window.currentMappingSelectedProperty = propertyData;
         
