@@ -71,11 +71,14 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
             <!-- Alternative Actions -->
             <div class="alternative-actions">
                 <button class="btn btn-outline" onclick="createNewWikidataItem()">Create New Item</button>
+                <button class="btn btn-outline" onclick="skipWikidataReconciliation()">Skip This Value</button>
+                <button class="btn btn-outline" onclick="useAsLiteralString()">Use as Text Instead</button>
             </div>
         </div>
 
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeReconciliationModal()">Cancel</button>
+            <button class="btn btn-primary" id="confirm-btn" onclick="confirmWikidataSelection()" disabled>Confirm</button>
         </div>
     `;
 
@@ -143,7 +146,7 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
             const highConfidenceMatch = matches.find(match => match.score >= 90);
             if (highConfidenceMatch) {
                 setTimeout(() => {
-                    applyMatchDirectly(highConfidenceMatch.id);
+                    applyWikidataMatchDirectly(highConfidenceMatch.id);
                 }, 100);
             }
             
@@ -207,7 +210,7 @@ export function createWikidataMatchItem(match) {
     const jsEscapedId = match.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
     
     return `
-        <div class="match-item" data-match-id="${safeMatchId}" onclick="applyMatchDirectly('${jsEscapedId}')">
+        <div class="wikidata-match-item" data-match-id="${safeMatchId}" onclick="applyWikidataMatchDirectly('${jsEscapedId}')">
             <div class="match-content">
                 <div class="match-label">${escapeHtml(match.label || 'Unnamed')}</div>
                 <div class="match-id">
@@ -259,7 +262,38 @@ window.performWikidataEntitySearch = async function() {
     }
 };
 
-// Note: applyMatchDirectly function is provided by reconciliation-modal.js
+window.applyWikidataMatchDirectly = function(matchId) {
+    // Get match details first
+    const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
+    const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
+    
+    if (!matchElement) {
+        console.error('Wikidata match element not found for ID:', matchId);
+        return;
+    }
+    
+    const matchLabel = matchElement.querySelector('.match-label')?.textContent || 'Unknown';
+    const matchDescription = matchElement.querySelector('.match-description')?.textContent || 'No description';
+    
+    // Store selected match globally
+    window.selectedMatch = {
+        id: matchId,
+        label: matchLabel,
+        description: matchDescription
+    };
+    
+    // Enable confirm button
+    const confirmBtn = document.getElementById('confirm-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+    }
+    
+    // Visual feedback - highlight selected match
+    document.querySelectorAll('.wikidata-match-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    matchElement.classList.add('selected');
+};
 
 window.showAllWikidataMatches = async function() {
     const value = window.currentModalContext?.originalValue;
@@ -315,3 +349,16 @@ window.confirmWikidataSelection = function() {
     }
 };
 
+window.skipWikidataReconciliation = function() {
+    console.log('Skip Wikidata reconciliation');
+    if (typeof window.closeReconciliationModal === 'function') {
+        window.closeReconciliationModal();
+    }
+};
+
+window.useAsLiteralString = function() {
+    console.log('Use as literal string instead of Wikidata item');
+    if (typeof window.closeReconciliationModal === 'function') {
+        window.closeReconciliationModal();
+    }
+};
