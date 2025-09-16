@@ -2,6 +2,29 @@
  * Event system for application-wide communication
  * Implements a publish/subscribe pattern to decouple modules
  * @module events
+ * @example
+ * // Subscribe to events
+ * import { eventSystem } from './events.js';
+ * 
+ * // Simple subscription
+ * const unsubscribe = eventSystem.subscribe('data-loaded', (data) => {
+ *   console.log('Data loaded:', data);
+ * });
+ * 
+ * // Multiple subscriptions
+ * const unsubscribeAll = eventSystem.subscribeMultiple({
+ *   'data-loaded': handleDataLoaded,
+ *   'error-occurred': handleError,
+ *   'step-changed': handleStepChange
+ * });
+ * 
+ * // Publish events
+ * eventSystem.publish('data-loaded', { items: [], total: 100 });
+ * eventSystem.publish('step-changed', { from: 1, to: 2 });
+ * 
+ * // Clean up subscriptions
+ * unsubscribe();
+ * unsubscribeAll();
  */
 
 export function createEventSystem() {
@@ -12,6 +35,14 @@ export function createEventSystem() {
      * @param {string} event - Name of the event to subscribe to
      * @param {Function} callback - Function to call when event is published
      * @returns {Function} Unsubscribe function
+     * @example
+     * const unsubscribe = eventSystem.subscribe('mapping-updated', (mappingData) => {
+     *   console.log('Mapping updated:', mappingData.property);
+     *   updateUI(mappingData);
+     * });
+     * 
+     * // Later, unsubscribe
+     * unsubscribe();
      */
     function subscribe(event, callback) {
         if (!subscribers[event]) {
@@ -30,6 +61,19 @@ export function createEventSystem() {
      * Publish an event
      * @param {string} event - Name of the event to publish
      * @param {any} data - Data to pass to subscribers
+     * @example
+     * // Notify subscribers of reconciliation progress
+     * eventSystem.publish('reconciliation-progress', {
+     *   completed: 25,
+     *   total: 100,
+     *   itemId: 'item-123'
+     * });
+     * 
+     * // Notify of validation errors
+     * eventSystem.publish('validation-error', {
+     *   field: 'api-url',
+     *   message: 'Invalid URL format'
+     * });
      */
     function publish(event, data) {
         if (!subscribers[event]) {
