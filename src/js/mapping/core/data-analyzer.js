@@ -117,38 +117,94 @@ export function extractSampleValue(value) {
 /**
  * Extracts and analyzes all property keys from Omeka S data with semantic context resolution
  * 
- * This is the core analysis function that processes raw Omeka S JSON-LD data to identify
- * all available properties for mapping. It performs sophisticated analysis including:
- * - Frequency analysis to identify common vs. rare properties
- * - JSON-LD context resolution to understand semantic meanings  
- * - Sample value extraction to help users understand property content
- * - URI generation for linked data compatibility
+ * ALGORITHM OVERVIEW:
+ * This is the core data analysis engine that transforms raw Omeka S JSON-LD exports
+ * into structured property metadata suitable for mapping to Wikidata properties.
+ * The algorithm implements multiple sophisticated analysis techniques to provide
+ * users with rich information for making mapping decisions.
  * 
- * The frequency analysis is crucial because:
- * - Properties appearing in all items are likely core metadata (title, creator)
- * - Rare properties might be specialized fields needing careful mapping
- * - Missing properties in some items affect data completeness decisions
+ * PHASE 1: DATA NORMALIZATION
+ * Omeka S exports data in various formats depending on configuration:
+ * - Direct item arrays: [item1, item2, ...]
+ * - Wrapper objects: { "items": [item1, item2, ...] }  
+ * - Single items: { "@id": "item1", "dcterms:title": [...] }
+ * - Paginated responses: { "items": [...], "pagination": {...} }
+ * The normalization phase ensures consistent processing regardless of export format.
+ * 
+ * PHASE 2: CONTEXT RESOLUTION
+ * JSON-LD contexts define the semantic meaning of prefixed properties:
+ * - Direct contexts: { "dcterms": "http://purl.org/dc/terms/" }
+ * - Remote contexts: "http://example.org/context.jsonld"
+ * - Nested contexts: { "@context": { "dcterms": {...} } }
+ * The algorithm fetches, caches, and merges context definitions to build a
+ * comprehensive prefix-to-URI mapping table.
+ * 
+ * PHASE 3: FREQUENCY ANALYSIS
+ * Statistical analysis reveals property usage patterns across the dataset:
+ * - Universal properties (100% frequency): Core metadata like titles, identifiers
+ * - Common properties (>50% frequency): Standard descriptive metadata
+ * - Sparse properties (<20% frequency): Specialized or inconsistent data
+ * - Singleton properties (1 occurrence): Possible data entry errors or edge cases
+ * 
+ * This frequency data helps prioritize mapping efforts and identify data quality issues.
+ * 
+ * PHASE 4: SEMANTIC URI RESOLUTION
+ * Converts short prefixed properties to full semantic URIs:
+ * - Context-based resolution: "dcterms:title" → "http://purl.org/dc/terms/title"
+ * - Namespace inference: "bibo:author" → "http://purl.org/ontology/bibo/author"
+ * - Fallback generation: Unknown prefixes get predictable URI patterns
+ * - Special handling: Omeka-specific "o:" properties receive appropriate URIs
+ * 
+ * PHASE 5: REPRESENTATIVE SAMPLING
+ * Extracts meaningful sample values to help users understand property content:
+ * - Complex object sampling: Preserves full JSON-LD structure for inspection
+ * - Type-aware sampling: Different handling for literals vs. entity references
+ * - Null-safe sampling: Graceful handling of missing or malformed values
+ * - Multi-format support: Arrays, objects, strings, numbers, dates
+ * 
+ * PHASE 6: IDENTIFIER DETECTION
+ * Automatically identifies properties containing external identifiers:
+ * - URI patterns: Properties containing URLs or URIs
+ * - Standard identifiers: ISBN, DOI, VIAF, ORCID, etc.
+ * - ARK identifiers: Archival Resource Key patterns
+ * - Custom identifier patterns: Institution-specific identifier schemes
+ * 
+ * This enables automatic mapping suggestions and validation.
  * 
  * @param {Object|Array} data - Raw Omeka S data (single object or array of items)
- * @returns {Promise<Array>} Array of analyzed property objects with metadata
+ * @returns {Promise<Array<Object>>} Array of analyzed property objects with rich metadata
+ * @returns {string} returns[].key - Property key (e.g., "dcterms:title")
+ * @returns {number} returns[].frequency - Number of items containing this property
+ * @returns {any} returns[].sampleValue - Representative value from the dataset
+ * @returns {string} returns[].linkedDataUri - Full semantic URI for the property
+ * @returns {boolean} returns[].hasIdentifiers - True if property contains external identifiers
+ * @returns {Object} returns[].identifierInfo - Details about detected identifiers
  * 
  * @example
- * const analysis = await extractAndAnalyzeKeys(omekaData);
- * // Returns: [{
- * //   key: "dcterms:title",
- * //   frequency: 25,        // appears in 25 out of 25 items
- * //   sampleValue: "Book Title",
- * //   linkedDataUri: "http://purl.org/dc/terms/title"
- * // }]
+ * // Analyze a typical Omeka S export
+ * const analysis = await extractAndAnalyzeKeys({
+ *   "items": [
+ *     {
+ *       "@context": {"dcterms": "http://purl.org/dc/terms/"},
+ *       "dcterms:title": [{"@value": "Book Title", "@language": "en"}],
+ *       "dcterms:creator": [{"@value": "Author Name"}],
+ *       "bibo:isbn": [{"@value": "978-0123456789"}]
+ *     }
+ *   ]
+ * });
  * 
- * @description
- * Processing steps:
- * 1. Normalizes various Omeka S data formats into consistent item arrays
- * 2. Extracts and caches JSON-LD context definitions (with remote fetching)
- * 3. Counts property frequency across all items (ignoring @-prefixed JSON-LD system keys)
- * 4. Resolves prefixed properties to full URIs using context definitions
- * 5. Extracts sample values to help users understand property content
- * 6. Applies fallback URI generation for properties without explicit context
+ * @example
+ * // Analyze with frequency insights for large datasets
+ * const largeDataset = { "items": items }; // 1000+ items
+ * const analysis = await extractAndAnalyzeKeys(largeDataset);
+ * 
+ * // Identify core metadata (high frequency)
+ * const coreProperties = analysis.filter(prop => prop.frequency > items.length * 0.8);
+ * 
+ * // Identify sparse data (low frequency) 
+ * const sparseProperties = analysis.filter(prop => prop.frequency < items.length * 0.1);
+ * 
+ * @throws {Error} When data structure is invalid or context fetching fails
  */
 export async function extractAndAnalyzeKeys(data) {
     const keyFrequency = new Map();

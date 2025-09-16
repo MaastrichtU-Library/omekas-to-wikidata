@@ -252,8 +252,49 @@ function recordApiFailure(apiType) {
 }
 
 /**
- * Try Wikidata Reconciliation API with enhanced error recovery
- * Features: retry logic, timeout handling, circuit breaker, constraint-based filtering
+ * Try Wikidata Reconciliation API with enhanced error recovery and intelligent matching
+ * 
+ * This function implements a sophisticated reconciliation algorithm with multiple
+ * reliability and accuracy features:
+ * 
+ * ALGORITHM OVERVIEW:
+ * 1. Constraint Analysis - Extract entity type constraints from Wikidata property definition
+ * 2. Context Building - Gather related properties for disambiguation 
+ * 3. API Selection - Choose primary vs fallback endpoint based on circuit breaker state
+ * 4. Request Execution - Send reconciliation query with timeout protection
+ * 5. Result Processing - Score and validate matches against constraints
+ * 6. Fallback Strategy - Retry with alternative endpoint if primary fails
+ * 
+ * CIRCUIT BREAKER PATTERN:
+ * - Tracks API failure rates for both primary and fallback endpoints
+ * - Automatically skips unreliable endpoints to prevent cascade failures
+ * - Self-resets after configurable timeout period (default: 1 minute)
+ * - Prevents unnecessary network overhead during service outages
+ * 
+ * CONSTRAINT-BASED MATCHING:
+ * - Uses Wikidata property constraints to filter semantically invalid matches
+ * - Improves accuracy by ensuring matches satisfy property requirements
+ * - Reduces false positives and manual review overhead
+ * - Falls back to heuristic type detection when constraints unavailable
+ * 
+ * CONTEXTUAL DISAMBIGUATION:
+ * - Includes related mapped properties in reconciliation query
+ * - Helps distinguish between entities with similar names
+ * - Leverages existing mapping decisions for consistency
+ * 
+ * @param {string} value - The text value to reconcile against Wikidata entities
+ * @param {Object} propertyObj - Wikidata property object with constraints and metadata
+ * @param {Array} [allMappings=[]] - All property mappings for contextual disambiguation
+ * @returns {Promise<Array>} Array of candidate matches with confidence scores, empty if none found
+ * @throws {Error} When both primary and fallback APIs fail or circuit breaker triggered
+ * 
+ * @example
+ * const matches = await tryReconciliationApi(
+ *   "Leonardo da Vinci",
+ *   { id: "P170", constraints: { valueType: [{ classes: ["Q5"] }] } },
+ *   mappings
+ * );
+ * // Returns: [{ id: "Q762", name: "Leonardo da Vinci", score: 95, ... }]
  */
 export async function tryReconciliationApi(value, propertyObj, allMappings = []) {
     // Primary endpoint - wikidata.reconci.link
