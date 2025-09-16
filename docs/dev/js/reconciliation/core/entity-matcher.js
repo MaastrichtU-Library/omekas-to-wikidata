@@ -194,9 +194,66 @@ export function createAutomaticReconciliation(dependencies) {
     };
 }
 
+// Circuit breaker state for API health monitoring
+const circuitBreaker = {
+    primaryApiFailures: 0,
+    fallbackApiFailures: 0,
+    lastFailureTime: 0,
+    maxFailures: 5,
+    resetTimeMs: 60000 // 1 minute
+};
+
 /**
- * Try Wikidata Reconciliation API with fallback handling
- * Enhanced with constraint-based type filtering and contextual properties
+ * Sleep utility for retry delays
+ */
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Create a fetch request with timeout
+ */
+function fetchWithTimeout(url, options, timeoutMs = 30000) {
+    return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+        )
+    ]);
+}
+
+/**
+ * Check if circuit breaker should block API calls
+ */
+function shouldSkipApi(apiType) {
+    const now = Date.now();
+    const failures = apiType === 'primary' ? circuitBreaker.primaryApiFailures : circuitBreaker.fallbackApiFailures;
+    
+    // Reset circuit breaker if enough time has passed
+    if (now - circuitBreaker.lastFailureTime > circuitBreaker.resetTimeMs) {
+        circuitBreaker.primaryApiFailures = 0;
+        circuitBreaker.fallbackApiFailures = 0;
+        return false;
+    }
+    
+    return failures >= circuitBreaker.maxFailures;
+}
+
+/**
+ * Record API failure for circuit breaker
+ */
+function recordApiFailure(apiType) {
+    if (apiType === 'primary') {
+        circuitBreaker.primaryApiFailures++;
+    } else {
+        circuitBreaker.fallbackApiFailures++;
+    }
+    circuitBreaker.lastFailureTime = Date.now();
+}
+
+/**
+ * Try Wikidata Reconciliation API with enhanced error recovery
+ * Features: retry logic, timeout handling, circuit breaker, constraint-based filtering
  */
 export async function tryReconciliationApi(value, propertyObj, allMappings = []) {
     // Primary endpoint - wikidata.reconci.link
@@ -222,50 +279,97 @@ export async function tryReconciliationApi(value, propertyObj, allMappings = [])
     
     const requestBody = "queries=" + encodeURIComponent(JSON.stringify(query.queries));
     
-    // Try primary endpoint first
-    try {
-        const response = await fetch(primaryApiUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: requestBody,
-            mode: 'cors'
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Primary API error: ${response.status} ${response.statusText}`);
+    // Retry configuration
+    const maxRetries = 3;
+    const baseDelayMs = 1000;
+    
+    /**
+     * Attempt API call with retry logic
+     */
+    async function attemptApiCall(url, apiType, retryCount = 0) {
+        // Check circuit breaker
+        if (shouldSkipApi(apiType)) {
+            throw new Error(`${apiType} API temporarily disabled due to repeated failures`);
         }
         
-        const data = await response.json();
-        return parseReconciliationResults(data, value, propertyObj);
-        
-    } catch (primaryError) {
-        console.warn(`⚠️ Primary reconciliation API failed for "${value}":`, primaryError.message);
-        
-        // Try fallback endpoint
         try {
-            const response = await fetch(fallbackApiUrl, {
+            const response = await fetchWithTimeout(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded"
                 },
                 body: requestBody,
                 mode: 'cors'
-            });
+            }, 30000); // 30 second timeout
             
             if (!response.ok) {
-                throw new Error(`Fallback API error: ${response.status} ${response.statusText}`);
+                // Handle specific HTTP status codes
+                if (response.status === 429) {
+                    throw new Error(`Rate limited (429): ${response.statusText}`);
+                } else if (response.status >= 500) {
+                    throw new Error(`Server error (${response.status}): ${response.statusText}`);
+                } else {
+                    throw new Error(`HTTP error (${response.status}): ${response.statusText}`);
+                }
             }
             
             const data = await response.json();
+            
+            // Reset circuit breaker on success
+            if (apiType === 'primary') {
+                circuitBreaker.primaryApiFailures = 0;
+            } else {
+                circuitBreaker.fallbackApiFailures = 0;
+            }
+            
             return parseReconciliationResults(data, value, propertyObj);
+            
+        } catch (error) {
+            const isRetryableError = (
+                error.message.includes('timeout') ||
+                error.message.includes('Rate limited') ||
+                error.message.includes('Server error') ||
+                error.message.includes('fetch')
+            );
+            
+            // Retry logic with exponential backoff
+            if (isRetryableError && retryCount < maxRetries) {
+                const delay = baseDelayMs * Math.pow(2, retryCount) + Math.random() * 1000; // Add jitter
+                console.warn(`⚠️ ${apiType} API attempt ${retryCount + 1} failed, retrying in ${Math.round(delay)}ms:`, error.message);
+                
+                await sleep(delay);
+                return attemptApiCall(url, apiType, retryCount + 1);
+            }
+            
+            // Record failure for circuit breaker
+            recordApiFailure(apiType);
+            throw error;
+        }
+    }
+    
+    // Try primary endpoint first
+    try {
+        return await attemptApiCall(primaryApiUrl, 'primary');
+        
+    } catch (primaryError) {
+        console.warn(`⚠️ Primary reconciliation API exhausted retries for "${value}":`, primaryError.message);
+        
+        // Try fallback endpoint with its own retry logic
+        try {
+            return await attemptApiCall(fallbackApiUrl, 'fallback');
             
         } catch (fallbackError) {
             console.error(`❌ Both reconciliation APIs failed for "${value}":`, {
                 primary: primaryError.message,
-                fallback: fallbackError.message
+                fallback: fallbackError.message,
+                circuitBreakerState: {
+                    primaryFailures: circuitBreaker.primaryApiFailures,
+                    fallbackFailures: circuitBreaker.fallbackApiFailures,
+                    lastFailureTime: new Date(circuitBreaker.lastFailureTime).toISOString()
+                }
             });
+            
+            // Return empty array but don't throw - let the system continue with other properties
             return [];
         }
     }
@@ -331,38 +435,73 @@ export function parseReconciliationResults(data, value, propertyObj) {
 }
 
 /**
- * Try direct Wikidata search as fallback
+ * Try direct Wikidata search as fallback with enhanced error recovery
  */
 export async function tryDirectWikidataSearch(value) {
+    const maxRetries = 2;
+    const baseDelayMs = 500;
+    
+    async function attemptSearch(retryCount = 0) {
+        try {
+            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(value)}&language=en&format=json&origin=*`;
+            
+            const response = await fetchWithTimeout(searchUrl, {}, 15000); // 15 second timeout
+            
+            if (!response.ok) {
+                if (response.status === 429) {
+                    throw new Error(`Wikidata search rate limited (429): ${response.statusText}`);
+                } else if (response.status >= 500) {
+                    throw new Error(`Wikidata search server error (${response.status}): ${response.statusText}`);
+                } else {
+                    throw new Error(`Wikidata search API error: ${response.status}`);
+                }
+            }
+            
+            const data = await response.json();
+            
+            if (!data.search || data.search.length === 0) {
+                return [];
+            }
+            
+            return data.search.slice(0, 10).map(result => ({
+                id: result.id,
+                name: result.label || result.id,
+                description: result.description || '',
+                score: Math.round(80), // Lower base score for fallback search
+                url: result.concepturi || `https://www.wikidata.org/wiki/${result.id}`,
+                originalScore: 80,
+                constraintScore: 1,
+                types: [],
+                features: [],
+                fallback: true
+            }));
+            
+        } catch (error) {
+            const isRetryableError = (
+                error.message.includes('timeout') ||
+                error.message.includes('rate limited') ||
+                error.message.includes('server error') ||
+                error.message.includes('fetch')
+            );
+            
+            // Retry logic with exponential backoff
+            if (isRetryableError && retryCount < maxRetries) {
+                const delay = baseDelayMs * Math.pow(2, retryCount) + Math.random() * 500; // Add jitter
+                console.warn(`⚠️ Wikidata search attempt ${retryCount + 1} failed, retrying in ${Math.round(delay)}ms:`, error.message);
+                
+                await sleep(delay);
+                return attemptSearch(retryCount + 1);
+            }
+            
+            throw error;
+        }
+    }
+    
     try {
-        const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(value)}&language=en&format=json&origin=*`;
-        
-        const response = await fetch(searchUrl);
-        if (!response.ok) {
-            throw new Error(`Wikidata search API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.search || data.search.length === 0) {
-            return [];
-        }
-        
-        return data.search.slice(0, 10).map(result => ({
-            id: result.id,
-            name: result.label || result.id,
-            description: result.description || '',
-            score: Math.round(80), // Lower base score for fallback search
-            url: result.concepturi || `https://www.wikidata.org/wiki/${result.id}`,
-            originalScore: 80,
-            constraintScore: 1,
-            types: [],
-            features: [],
-            fallback: true
-        }));
-        
+        return await attemptSearch();
     } catch (error) {
-        console.error('Direct Wikidata search failed:', error);
+        console.error('Direct Wikidata search failed after retries:', error);
+        // Return empty array but don't throw - let the system continue
         return [];
     }
 }
