@@ -384,9 +384,6 @@ export function createMappingModalContent(keyData) {
             <div id="property-constraints" class="property-constraints" style="display: none;">
                 <div class="constraint-loading" style="display: none;">Loading constraint information...</div>
                 <div class="constraint-content"></div>
-                <div class="constraint-info-notice">
-                    This information is automatically retrieved from Wikidata and cannot be changed.
-                </div>
             </div>
         </div>
     `;
@@ -488,7 +485,7 @@ function createMappingRelationshipTitle(keyName, property) {
     const sourceSpan = `<span class="mapping-source">${keyName}</span>`;
     const arrow = `<span class="mapping-arrow">→</span>`;
     const targetSpan = property 
-        ? `<span class="mapping-target">${property.label} (${property.id})</span>`
+        ? `<span class="mapping-target clickable" data-property-id="${property.id}" title="View on Wikidata" style="cursor: pointer; text-decoration: underline;">${property.label} (${property.id})</span>`
         : `<span class="mapping-target unmapped">unmapped</span>`;
     
     return `<div class="mapping-relationship-header">${sourceSpan}${arrow}${targetSpan}</div>`;
@@ -503,6 +500,18 @@ export function updateModalTitle(property) {
         const keyName = window.currentMappingKeyData.key || 'Key';
         const titleHtml = createMappingRelationshipTitle(keyName, property);
         modalTitle.innerHTML = titleHtml;
+        
+        // Make the target property clickable
+        const targetSpan = modalTitle.querySelector('.mapping-target.clickable');
+        if (targetSpan) {
+            targetSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const propertyId = targetSpan.dataset.propertyId;
+                if (propertyId) {
+                    window.open(`https://www.wikidata.org/wiki/Property:${propertyId}`, '_blank');
+                }
+            });
+        }
     }
 }
 
