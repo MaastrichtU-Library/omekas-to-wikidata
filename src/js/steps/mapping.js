@@ -75,8 +75,6 @@ import {
 } from '../mapping/ui/mapping-lists.js';
 import { 
     openMappingModal,
-    openManualPropertyEditModal,
-    openAddManualPropertyModal,
     createMappingModalContent,
     createUnifiedPropertyModalContent,
     openRawJsonModal 
@@ -109,7 +107,6 @@ export function setupMappingStep(state) {
     window.mappingStepState = state;
     
     // Initialize DOM elements
-    const addManualPropertyBtn = document.getElementById('add-manual-property');
     const loadMappingBtn = document.getElementById('load-mapping');
     const saveMappingBtn = document.getElementById('save-mapping');
     const loadMappingFileInput = document.getElementById('load-mapping-file');
@@ -199,14 +196,6 @@ export function setupMappingStep(state) {
         });
     }
     
-    // Add manual property functionality
-    if (addManualPropertyBtn) {
-        addManualPropertyBtn.addEventListener('click', () => {
-            openAddManualPropertyModal();
-        });
-    }
-    
     // Export functions globally for use by other modules
     window.openMappingModal = openMappingModal;
-    window.openManualPropertyEditModal = openManualPropertyEditModal;
 }
