@@ -10,48 +10,10 @@ import { showMessage, createElement, createListItem } from '../../ui/components.
 import { getCompletePropertyData, getBatchPropertyInfo, getCachedProperty } from '../../api/wikidata.js';
 import { refreshStage3TransformationUI as refreshStage3UI } from './transformation-engine.js';
 import { updateModalTitle, updateStage2Summary } from '../ui/modals/mapping-modal.js';
-
-// Additional imports needed for the functions
-// TODO: These helper functions will need to be extracted to mapping-helpers.js module:
-// - convertCamelCaseToSpaces
-// - fetchPropertyData  
-// - formatPropertyConstraints
-// - displayPropertyConstraints
-// - createConstraintsSection
-// - openRawJsonModal
-// - refreshStage3TransformationUI
-
-// Temporary placeholders for missing helper functions that need to be extracted
-function convertCamelCaseToSpaces(str) {
-    // TODO: Extract this from mapping.js
-    return str.replace(/([A-Z])/g, ' $1').trim();
-}
-
-async function fetchPropertyData(propertyId) {
-    // TODO: Extract this from mapping.js  
-    // This should call getCompletePropertyData and process the response
-    return await getCompletePropertyData(propertyId);
-}
-
-function formatPropertyConstraints(constraints) {
-    // TODO: Extract this from mapping.js
-    return '<div>Property constraints formatting placeholder</div>';
-}
-
-async function displayPropertyConstraints(propertyId) {
-    // TODO: Extract this from mapping.js
-    console.log('displayPropertyConstraints placeholder for:', propertyId);
-}
-
-function createConstraintsSection(constraints) {
-    // TODO: Extract this from mapping.js
-    return null;
-}
-
-function openRawJsonModal(propertyData) {
-    // TODO: Extract this from mapping.js
-    console.log('Raw JSON modal placeholder:', propertyData);
-}
+import { convertCamelCaseToSpaces } from './data-analyzer.js';
+import { displayPropertyConstraints } from './constraint-validator.js';
+import { createConstraintsSection } from '../ui/constraint-ui.js';
+import { openRawJsonModal } from '../ui/modals/json-modal.js';
 
 function refreshStage3TransformationUI() {
     const keyData = window.currentMappingKeyData || {};
@@ -65,6 +27,68 @@ function refreshStage3TransformationUI() {
     if (keyData && state) {
         refreshStage3UI(keyData, state);
     }
+}
+
+/**
+ * Format property constraints as HTML for display
+ * @param {Object} propertyData - Property data with constraints
+ * @returns {string} HTML string for display
+ */
+function formatPropertyConstraintsHTML(propertyData) {
+    if (!propertyData || !propertyData.constraints) {
+        return '<div class="no-constraints">No constraints available</div>';
+    }
+    
+    let html = '<div class="property-constraints-display">';
+    
+    // Show datatype
+    html += `<div class="constraint-datatype"><strong>Expected type:</strong> ${propertyData.datatypeLabel || propertyData.datatype || 'Unknown'}</div>`;
+    
+    // Show format constraints
+    if (propertyData.constraints.format && propertyData.constraints.format.length > 0) {
+        const formatConstraints = propertyData.constraints.format
+            .filter(c => c.rank !== 'deprecated')
+            .map(c => c.description)
+            .filter(d => d)
+            .join('; ');
+        
+        if (formatConstraints) {
+            html += `<div class="constraint-format"><strong>Format:</strong> ${formatConstraints}</div>`;
+        }
+    }
+    
+    // Show value type constraints
+    if (propertyData.constraints.valueType && propertyData.constraints.valueType.length > 0) {
+        const valueTypes = [];
+        propertyData.constraints.valueType
+            .filter(c => c.rank !== 'deprecated')
+            .forEach(constraint => {
+                constraint.classes.forEach(classId => {
+                    const label = constraint.classLabels?.[classId] || classId;
+                    valueTypes.push(label);
+                });
+            });
+        
+        if (valueTypes.length > 0) {
+            const displayTypes = valueTypes.slice(0, 5);
+            let valueTypeText = displayTypes.join(', ');
+            if (valueTypes.length > 5) {
+                valueTypeText += ` and ${valueTypes.length - 5} more`;
+            }
+            html += `<div class="constraint-value-type"><strong>Must be:</strong> ${valueTypeText}</div>`;
+        }
+    }
+    
+    // Show other constraints count
+    if (propertyData.constraints.other && propertyData.constraints.other.length > 0) {
+        const otherCount = propertyData.constraints.other.filter(c => c.rank !== 'deprecated').length;
+        if (otherCount > 0) {
+            html += `<div class="constraint-other"><em>${otherCount} additional constraint${otherCount > 1 ? 's' : ''}</em></div>`;
+        }
+    }
+    
+    html += '</div>';
+    return html;
 }
 
 /**
@@ -180,13 +204,21 @@ export async function selectUnifiedProperty(property) {
             constraintsDiv.style.display = 'block';
             
             try {
-                const propertyData = await fetchPropertyData(property.id);
+                const propertyData = await getCompletePropertyData(property.id);
+                
+                // Log property data to console for developer inspection
+                console.log(`🔍 Property ${property.id} metadata from Wikidata API:`, propertyData);
+                console.log('Available fields:', Object.keys(propertyData));
+                if (propertyData.constraints) {
+                    console.log('Constraints structure:', propertyData.constraints);
+                }
                 
                 // Update Stage 2 with actual data type
                 updateUnifiedStage2DataType(propertyData);
                 
-                // Show constraints
-                contentDiv.innerHTML = formatPropertyConstraints(propertyData);
+                // Show constraints with proper formatting
+                const constraintsHTML = formatPropertyConstraintsHTML(propertyData);
+                contentDiv.innerHTML = constraintsHTML;
                 loadingDiv.style.display = 'none';
             } catch (error) {
                 console.error('Error loading property data:', error);
@@ -572,11 +604,22 @@ export function createPropertySuggestionItem(property, isPrevious, state) {
     
     item.innerHTML = `
         <div class="property-main">
-            <span class="property-id">${property.id}</span>
+            <span class="property-id clickable" title="View on Wikidata">${property.id}</span>
             <span class="property-label">${property.label}</span>
         </div>
         <div class="property-description">${property.description}</div>
     `;
+    
+    // Make property ID clickable
+    const propertyIdSpan = item.querySelector('.property-id');
+    if (propertyIdSpan) {
+        propertyIdSpan.style.cursor = 'pointer';
+        propertyIdSpan.style.textDecoration = 'underline';
+        propertyIdSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.open(`https://www.wikidata.org/wiki/Property:${property.id}`, '_blank');
+        });
+    }
     
     return item;
 }
@@ -648,11 +691,20 @@ export async function selectProperty(property, state) {
     if (selectedContainer && detailsContainer) {
         detailsContainer.innerHTML = `
             <div class="selected-property-info">
-                <span class="property-id">${property.id}</span>
+                <span class="property-id clickable" title="View on Wikidata" style="cursor: pointer; text-decoration: underline;">${property.id}</span>
                 <span class="property-label">${property.label}</span>
                 <div class="property-description">${property.description}</div>
             </div>
         `;
+        
+        // Make property ID clickable
+        const propertyIdSpan = detailsContainer.querySelector('.property-id');
+        if (propertyIdSpan) {
+            propertyIdSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.open(`https://www.wikidata.org/wiki/Property:${property.id}`, '_blank');
+            });
+        }
         selectedContainer.style.display = 'block';
     }
     
@@ -711,13 +763,23 @@ export async function displayDataTypeConfiguration(property) {
     datatypeContainer.innerHTML = '<div class="datatype-loading">Loading data type information...</div>';
     
     try {
-        // Fetch complete property data if not already available
-        let propertyData = property;
-        if (!property.constraints || !property.constraintsFetched) {
-            propertyData = await getCompletePropertyData(property.id);
-            // Update the stored property with complete data
-            window.currentMappingSelectedProperty = propertyData;
+        // Fetch complete property data
+        const propertyData = await getCompletePropertyData(property.id);
+        
+        // Log property data for developer inspection
+        console.log(`🔍 Property ${property.id} complete data from Wikidata API:`, propertyData);
+        console.log('Available fields:', Object.keys(propertyData));
+        console.log('Data type:', propertyData.datatype, '/', propertyData.datatypeLabel);
+        if (propertyData.constraints) {
+            console.log('Constraints:', {
+                format: propertyData.constraints.format,
+                valueType: propertyData.constraints.valueType,
+                other: propertyData.constraints.other
+            });
         }
+        
+        // Update the stored property with complete data
+        window.currentMappingSelectedProperty = propertyData;
         
         // Create the main data type display
         const datatypeDisplay = createElement('div', {

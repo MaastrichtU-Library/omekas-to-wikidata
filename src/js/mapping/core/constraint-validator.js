@@ -31,6 +31,10 @@ export async function displayPropertyConstraints(propertyId) {
         // Fetch complete property data with constraints
         const propertyData = await getCompletePropertyData(propertyId);
         
+        // Log property constraints data for developer inspection
+        console.log(`🔍 Property ${propertyId} constraints from displayPropertyConstraints:`, propertyData.constraints);
+        console.log('Full property data structure:', propertyData);
+        
         // Update the selected property with complete data
         window.currentMappingSelectedProperty = {
             ...window.currentMappingSelectedProperty,
@@ -40,8 +44,10 @@ export async function displayPropertyConstraints(propertyId) {
         // Hide loading
         loadingDiv.style.display = 'none';
         
-        // Build constraint display
-        let constraintHtml = '';
+        // Build constraint display with collapsible details
+        let constraintHtml = '<details class="constraint-details">';
+        constraintHtml += '<summary class="constraint-summary">Show technical details</summary>';
+        constraintHtml += '<div class="constraint-details-content">';
         
         // Always show datatype
         constraintHtml += `<div class="constraint-datatype"><strong>Wikidata expects:</strong> ${propertyData.datatypeLabel}</div>`;
@@ -75,6 +81,12 @@ export async function displayPropertyConstraints(propertyId) {
                 constraintHtml += `<div class="constraint-value-types"><strong>Must be:</strong> ${valueTypeDescriptions}</div>`;
             }
         }
+        
+        // Add the info notice inside the collapsible section
+        constraintHtml += '<div class="constraint-info-notice">This information is automatically retrieved from Wikidata and cannot be changed.</div>';
+        
+        constraintHtml += '</div>'; // Close constraint-details-content
+        constraintHtml += '</details>'; // Close details
         
         contentDiv.innerHTML = constraintHtml;
         

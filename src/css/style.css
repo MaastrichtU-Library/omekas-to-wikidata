@@ -5508,6 +5508,60 @@ pre.sample-value {
     font-style: italic;
 }
 
+/* Collapsible Constraint Details */
+.constraint-details {
+    margin: 0;
+    padding: 0;
+}
+
+.constraint-details summary {
+    cursor: pointer;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    color: #495057;
+    font-size: 0.9em;
+    font-weight: 500;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.constraint-details summary:hover {
+    background: #e9ecef;
+}
+
+.constraint-details summary::-webkit-details-marker {
+    margin-right: 8px;
+}
+
+.constraint-details[open] summary {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: none;
+}
+
+.constraint-details-content {
+    background: #fafafa;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    padding: 12px;
+}
+
+.constraint-details-content .constraint-datatype,
+.constraint-details-content .constraint-format,
+.constraint-details-content .constraint-value-types {
+    margin: 8px 0;
+    font-size: 0.9em;
+}
+
+.constraint-details-content .constraint-info-notice {
+    margin: 12px 0 0 0;
+    font-size: 0.85em;
+}
+
 /* Manual Properties Styling */
 .manual-properties-description {
     padding: 12px;
