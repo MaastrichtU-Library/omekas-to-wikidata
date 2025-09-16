@@ -14,20 +14,13 @@ import { extractAllFields } from '../../../transformations.js';
  * Opens the add manual property modal
  */
 export function openAddManualPropertyModal() {
-    // ADD MANUAL PROPERTY MODAL FIELD EXTRACTION DEBUG
-    console.group(`🔄 Opening Add Manual Property Modal`);
-    console.log(`📊 Adding new manual property to dataset`);
-    
     // Extract fields once for the entire modal session to optimize performance
     // Manual properties can still use fields from the dataset in transformations
     if (window.mappingStepState) {
-        console.log(`✅ State available for field pre-extraction`);
         const currentState = window.mappingStepState.getState();
-        console.log(`📋 State has fetchedData:`, !!currentState.fetchedData);
         
         if (currentState.fetchedData) {
             const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-            console.log(`📦 Processing ${items.length} items for field extraction`);
             
             // Use first item that has any meaningful data
             let fullItemData = items.find(item => {
@@ -35,13 +28,7 @@ export function openAddManualPropertyModal() {
             });
             
             if (fullItemData) {
-                console.log(`🎯 Found suitable item for extraction:`, Object.keys(fullItemData).slice(0, 10));
                 const extractedFields = extractAllFields(fullItemData);
-                console.log(`✅ ADD MANUAL MODAL FIELD EXTRACTION SUCCESS: ${extractedFields.length} fields extracted`);
-                console.log(`📋 Sample fields:`, extractedFields.slice(0, 5).map(f => ({
-                    path: f.path,
-                    preview: f.preview
-                })));
                 
                 // Store extracted fields globally for the transformation UI to use
                 // Create a synthetic keyData object for new manual property
@@ -53,17 +40,9 @@ export function openAddManualPropertyModal() {
                     isManualProperty: true,
                     isNewProperty: true
                 };
-            } else {
-                console.log(`❌ Could not find suitable item for add manual property extraction`);
-                console.log(`📦 Available items:`, items.map(item => typeof item));
             }
-        } else {
-            console.log(`❌ No fetchedData available for add manual property field extraction`);
         }
-    } else {
-        console.log(`❌ No mappingStepState available for add manual property field extraction`);
     }
-    console.groupEnd();
     
     // Import modal functionality
     import('../../../ui/modal-ui.js').then(({ setupModalUI }) => {

@@ -17,25 +17,13 @@ import { extractAllFields } from '../../../transformations.js';
  * Opens the manual property edit modal
  */
 export function openManualPropertyEditModal(manualProp) {
-    // MANUAL PROPERTY MODAL FIELD EXTRACTION DEBUG
-    console.group(`🔄 Opening Manual Property Edit Modal for: ${manualProp?.property?.label || 'Unknown'}`);
-    console.log(`📊 Manual Property:`, {
-        id: manualProp?.property?.id,
-        label: manualProp?.property?.label,
-        isMetadata: manualProp?.property?.isMetadata,
-        defaultValue: manualProp?.defaultValue
-    });
-    
     // Extract fields once for the entire modal session to optimize performance
     // Manual properties can still use fields from the dataset in transformations
     if (window.mappingStepState) {
-        console.log(`✅ State available for field pre-extraction`);
         const currentState = window.mappingStepState.getState();
-        console.log(`📋 State has fetchedData:`, !!currentState.fetchedData);
         
         if (currentState.fetchedData) {
             const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-            console.log(`📦 Processing ${items.length} items for field extraction`);
             
             // Use first item that has any meaningful data
             let fullItemData = items.find(item => {
@@ -43,13 +31,7 @@ export function openManualPropertyEditModal(manualProp) {
             });
             
             if (fullItemData) {
-                console.log(`🎯 Found suitable item for extraction:`, Object.keys(fullItemData).slice(0, 10));
                 const extractedFields = extractAllFields(fullItemData);
-                console.log(`✅ MANUAL MODAL FIELD EXTRACTION SUCCESS: ${extractedFields.length} fields extracted`);
-                console.log(`📋 Sample fields:`, extractedFields.slice(0, 5).map(f => ({
-                    path: f.path,
-                    preview: f.preview
-                })));
                 
                 // Store extracted fields globally for the transformation UI to use
                 // Create a synthetic keyData object similar to regular mapping modal
@@ -60,17 +42,9 @@ export function openManualPropertyEditModal(manualProp) {
                     extractedFields: extractedFields,
                     isManualProperty: true
                 };
-            } else {
-                console.log(`❌ Could not find suitable item for manual property extraction`);
-                console.log(`📦 Available items:`, items.map(item => typeof item));
             }
-        } else {
-            console.log(`❌ No fetchedData available for manual property field extraction`);
         }
-    } else {
-        console.log(`❌ No mappingStepState available for manual property field extraction`);
     }
-    console.groupEnd();
     
     // Import modal functionality
     import('../../../ui/modal-ui.js').then(({ setupModalUI }) => {
