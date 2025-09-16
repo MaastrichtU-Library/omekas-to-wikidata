@@ -126,9 +126,6 @@ import {
  * 6. Prepare final reconciliation data for export step
  */
 export function setupReconciliationStep(state) {
-    // Store state globally for access in modal functions
-    // This ensures modals opened from reconciliation have access to state
-    window.mappingStepState = window.mappingStepState || state;
     
     // Initialize modal UI
     const modalUI = setupModalUI();

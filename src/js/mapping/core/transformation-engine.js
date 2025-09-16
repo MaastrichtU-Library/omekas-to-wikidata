@@ -598,46 +598,24 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
     
     // Get the full item data from state to extract all fields
     const state = window.mappingStepState;
+    const currentState = state.getState();
     let fullItemData = null;
     
-    // Try to get from state if available
-    if (state) {
-        const currentState = state.getState();
+    if (currentState.fetchedData) {
+        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         
-        if (currentState.fetchedData) {
-            const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-            
-            // Find the item that contains this property value
-            // We'll match based on the key and sampleValue
-            fullItemData = items.find(item => {
-                if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
-                    return true;
-                }
-                return false;
-            });
-            
-            // If we couldn't find a specific item, use the first item as fallback
-            if (!fullItemData && items.length > 0) {
-                fullItemData = items[0];
+        // Find the item that contains this property value
+        // We'll match based on the key and sampleValue
+        fullItemData = items.find(item => {
+            if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
+                return true;
             }
-        }
-    }
-    
-    // If we still don't have data, try alternative sources
-    if (!fullItemData) {
-        // Try the fullItemSample that might have been stored with the keyData
-        if (keyData.fullItemSample) {
-            fullItemData = keyData.fullItemSample;
-        }
-        // Or try to reconstruct from the keyData's sample value
-        else if (keyData.sampleValue && typeof keyData.sampleValue === 'object') {
-            // Check if the sampleValue itself looks like a complete item
-            // (has multiple properties, not just @ fields)
-            const sampleKeys = Object.keys(keyData.sampleValue);
-            if (sampleKeys.length > 2 || sampleKeys.some(k => !k.startsWith('@'))) {
-                // This looks like it might be a full item, use it
-                fullItemData = keyData.sampleValue;
-            }
+            return false;
+        });
+        
+        // If we couldn't find a specific item, use the first item as fallback
+        if (!fullItemData && items.length > 0) {
+            fullItemData = items[0];
         }
     }
     

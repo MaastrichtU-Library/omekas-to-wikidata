@@ -277,15 +277,6 @@ export async function extractAndAnalyzeKeys(data) {
             // Check if this field contains an identifier
             const identifierDetection = detectIdentifier(sampleValue, key);
             
-            // Try to get a full item sample for better field extraction
-            let fullItemSample = null;
-            for (const item of items) {
-                if (item && typeof item === 'object' && item[key] !== undefined) {
-                    fullItemSample = item;
-                    break;
-                }
-            }
-            
             return {
                 key,
                 frequency,
@@ -295,8 +286,7 @@ export async function extractAndAnalyzeKeys(data) {
                 type: Array.isArray(sampleValue) ? 'array' : typeof sampleValue,
                 contextMap: contextMap,
                 hasIdentifier: identifierDetection !== null,
-                identifierInfo: identifierDetection,
-                fullItemSample: fullItemSample  // Include full item for field extraction
+                identifierInfo: identifierDetection
             };
         })
         .sort((a, b) => b.frequency - a.frequency); // Sort by frequency descending
