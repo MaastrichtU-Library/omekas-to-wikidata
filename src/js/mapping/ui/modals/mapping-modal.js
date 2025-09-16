@@ -16,16 +16,22 @@ import { extractAtFieldsFromAllItems, extractAllFieldsFromItems } from '../../co
 /**
  * Opens the mapping modal for a key
  */
-export function openMappingModal(keyData) {
+export function openMappingModal(keyData, state = null) {
     // Store keyData globally for modal title updates
     window.currentMappingKeyData = keyData;
+    
+    // Ensure mappingStepState is available globally
+    // This is needed when modal is opened from contexts other than mapping step
+    if (!window.mappingStepState && state) {
+        window.mappingStepState = state;
+    }
     
     // Import modal functionality
     import('../../../ui/modal-ui.js').then(({ setupModalUI }) => {
         const modalUI = setupModalUI();
         
-        // Create modal content
-        const modalContent = createMappingModalContent(keyData);
+        // Create modal content - pass state to ensure it's available
+        const modalContent = createMappingModalContent(keyData, window.mappingStepState);
         
         // Create buttons
         const buttons = [
@@ -134,7 +140,9 @@ export function openMappingModal(keyData) {
 /**
  * Creates mapping modal content with two-column layout
  */
-export function createMappingModalContent(keyData) {
+export function createMappingModalContent(keyData, state = null) {
+    // Ensure state is available, fallback to global if not passed
+    state = state || window.mappingStepState;
     // Check if this is a metadata property (labels, descriptions, aliases)
     const isMetadata = keyData.isMetadata || ['label', 'description', 'aliases'].includes(keyData.key?.toLowerCase());
     
@@ -191,7 +199,7 @@ export function createMappingModalContent(keyData) {
     });
     
     // Check if this key has fields across all items
-    const currentState = window.mappingStepState.getState();
+    const currentState = state ? state.getState() : {};
     if (currentState.fetchedData) {
         const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         const fieldGroups = extractAllFieldsFromItems(keyData.key, items);
@@ -348,7 +356,7 @@ export function createMappingModalContent(keyData) {
     const transformationHeader = createElement('h4', {}, 'Value Transformation');
     transformationContent.appendChild(transformationHeader);
     
-    const valueTransformationContainer = renderValueTransformationUI(keyData, window.mappingStepState);
+    const valueTransformationContainer = renderValueTransformationUI(keyData, state);
     transformationContent.appendChild(valueTransformationContainer);
     
     transformationSection.appendChild(transformationContent);
