@@ -7,11 +7,12 @@
 // Import dependencies
 import { createElement } from '../../../ui/components.js';
 import { setupPropertySearch, extractEntitySchemaProperties, setupEntitySchemaPropertySelection } from '../../core/property-searcher.js';
-import { renderValueTransformationUI } from '../../core/transformation-engine.js';
+import { renderValueTransformationUI, addTransformationBlock } from '../../core/transformation-engine.js';
 import { moveKeyToCategory, mapKeyToProperty, moveToNextUnmappedKey } from '../mapping-lists.js';
 import { formatSampleValue } from './modal-helpers.js';
 import { showMessage } from '../../../ui/components.js';
 import { extractAtFieldsFromAllItems, extractAllFieldsFromItems } from '../../core/data-analyzer.js';
+import { BLOCK_TYPES } from '../../../transformations.js';
 
 /**
  * Opens the mapping modal for a key
@@ -323,16 +324,9 @@ export function createMappingModalContent(keyData) {
                 transformationSection.classList.add('expanded');
                 transformationToggle.textContent = '▼ Hide Transformations';
                 
-                // For metadata fields, ensure compose transformation is added by default
+                // For metadata fields, setup special handling
                 if (isMetadata) {
-                    const composeContainer = document.querySelector('.transformation-blocks');
-                    if (composeContainer && !composeContainer.hasChildNodes()) {
-                        // Add a default compose block for metadata
-                        const addComposeBtn = document.querySelector('.add-compose-btn');
-                        if (addComposeBtn) {
-                            addComposeBtn.click();
-                        }
-                    }
+                    setupMetadataTransformationHandling(keyData, window.mappingStepState);
                 }
             }
         }
@@ -353,6 +347,21 @@ export function createMappingModalContent(keyData) {
     
     transformationSection.appendChild(transformationContent);
     leftColumn.appendChild(transformationSection);
+    
+    // For metadata properties, automatically expand and setup transformation
+    if (isMetadata) {
+        setTimeout(() => {
+            // Expand the transformation section
+            transformationSection.classList.add('expanded');
+            transformationSection.classList.add('metadata-transformation');
+            
+            // Hide the toggle button for metadata
+            transformationToggle.style.setProperty('display', 'none', 'important');
+            
+            // Setup metadata transformation with compose block
+            setupMetadataTransformationHandling(keyData, window.mappingStepState);
+        }, 100);
+    }
     
     container.appendChild(leftColumn);
     
@@ -601,6 +610,44 @@ export function updateModalTitle(property) {
         const titleHtml = createMappingRelationshipTitle(keyName, property);
         modalTitle.innerHTML = titleHtml;
     }
+}
+
+/**
+ * Setup metadata transformation handling
+ */
+function setupMetadataTransformationHandling(keyData, state) {
+    if (!state) return;
+    
+    // Generate mapping ID for this metadata property  
+    const property = window.currentMappingSelectedProperty;
+    if (!property || !property.isMetadata) return;
+    
+    const mappingId = state.generateMappingId(
+        keyData.key,
+        property.id,
+        keyData.selectedAtField
+    );
+    
+    // Check if transformation blocks already exist
+    const existingBlocks = state.getTransformationBlocks(mappingId);
+    
+    if (existingBlocks.length === 0) {
+        // Add a compose block automatically
+        addTransformationBlock(mappingId, BLOCK_TYPES.COMPOSE, state);
+    }
+    
+    // Hide the original value display and empty input after blocks are rendered
+    setTimeout(() => {
+        const originalValueDisplay = document.querySelector('.transformation-value-state.initial');
+        if (originalValueDisplay) {
+            originalValueDisplay.style.setProperty('display', 'none', 'important');
+        }
+        
+        const emptyInput = document.querySelector('.empty-transformation-input');
+        if (emptyInput) {
+            emptyInput.style.setProperty('display', 'none', 'important');
+        }
+    }, 200);
 }
 
 /**

@@ -8,9 +8,10 @@
 import { createElement, showMessage } from '../../../ui/components.js';
 import { getCompletePropertyData } from '../../../api/wikidata.js';
 import { setupUnifiedPropertySearch } from '../../core/property-searcher.js';
-import { renderValueTransformationUI } from '../../core/transformation-engine.js';
+import { renderValueTransformationUI, addTransformationBlock } from '../../core/transformation-engine.js';
 import { populateLists } from '../mapping-lists.js';
 import { addManualPropertyToState } from './add-property-modal.js';
+import { BLOCK_TYPES } from '../../../transformations.js';
 
 /**
  * Opens the manual property edit modal
@@ -187,16 +188,25 @@ export function createUnifiedPropertyModalContent(manualProp, keyData = null) {
     transformationSection.appendChild(transformationContent);
     leftColumn.appendChild(transformationSection);
     
-    // Expand transformation section by default for metadata
+    // Expand transformation section by default for metadata and setup special handling
     if (isMetadata) {
         setTimeout(() => {
+            // Expand the transformation section
             transformationSection.classList.add('expanded');
-            transformationToggle.textContent = '▼ Hide Transformations';
-            // Add default compose block
-            const addComposeBtn = document.querySelector('.add-compose-btn');
-            if (addComposeBtn) {
-                addComposeBtn.click();
+            
+            // Add metadata-specific class for targeting
+            transformationSection.classList.add('metadata-transformation');
+            
+            // Hide the elements we don't need for metadata
+            transformationToggle.style.setProperty('display', 'none', 'important');
+            
+            const emptyInput = transformationSection.querySelector('.empty-transformation-input');
+            if (emptyInput) {
+                emptyInput.style.setProperty('display', 'none', 'important');
             }
+            
+            // Setup metadata transformation with compose block
+            setupMetadataTransformation(property, transformationKeyData, window.mappingStepState);
         }, 100);
     }
     
@@ -580,6 +590,36 @@ export function updateDefaultValueInputForDatatype(propertyData) {
     }
     
     inputContainer.innerHTML = inputHtml;
+}
+
+/**
+ * Setup metadata transformation with automatic compose block
+ */
+function setupMetadataTransformation(property, keyData, state) {
+    if (!property || !property.isMetadata || !state) return;
+    
+    // Generate mapping ID for this metadata property
+    const mappingId = state.generateMappingId(
+        property.label || property.id,
+        property.id,
+        undefined
+    );
+    
+    // Check if transformation blocks already exist
+    const existingBlocks = state.getTransformationBlocks(mappingId);
+    
+    if (existingBlocks.length === 0) {
+        // Add a compose block automatically
+        addTransformationBlock(mappingId, BLOCK_TYPES.COMPOSE, state);
+    }
+    
+    // Hide the original value display after blocks are rendered
+    setTimeout(() => {
+        const originalValueDisplay = document.querySelector('.transformation-value-state.initial');
+        if (originalValueDisplay) {
+            originalValueDisplay.style.setProperty('display', 'none', 'important');
+        }
+    }, 200);
 }
 
 /**
