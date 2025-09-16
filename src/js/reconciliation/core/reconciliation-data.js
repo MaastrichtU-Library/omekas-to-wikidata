@@ -5,6 +5,7 @@
  */
 
 import { getMockItemsData, getMockMappingData } from '../../data/mock-data.js';
+import { applyTransformationChain } from '../../transformations.js';
 
 /**
  * Calculates total reconciliable cells for accurate progress tracking
@@ -49,7 +50,8 @@ export function calculateTotalReconciliableCells(data, mappedKeys, manualPropert
  * 
  * @param {Object} item - Single Omeka S item object
  * @param {string|Object} keyOrKeyObj - Property key or key object with selectedAtField
- * @returns {Array<string>} Array of normalized string values for reconciliation
+ * @param {Object} [state] - Optional state object to apply transformations
+ * @returns {Array<string>} Array of normalized string values for reconciliation (transformed if transformations exist)
  * 
  * @example
  * // Omeka S multi-value property:
@@ -62,12 +64,19 @@ export function calculateTotalReconciliableCells(data, mappedKeys, manualPropert
  * // Input: [{"@id": "http://example.org/loc1", "@value": "Location 1"}]
  * // Output: ["http://example.org/loc1"]
  * 
+ * // With transformations (state provided):
+ * extractPropertyValues(item, keyObj, state);
+ * // Output: Values after applying configured transformations
+ * 
  * @description
  * The normalization process is essential because Wikidata reconciliation
  * requires consistent string representations of values. The function prioritizes
  * human-readable labels (o:label) over technical values (@value) when both exist.
+ * 
+ * When a state object is provided, the function will also check for and apply
+ * any configured transformations before returning the values.
  */
-export function extractPropertyValues(item, keyOrKeyObj) {
+export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     // Handle both string keys and key objects
     let key, selectedAtField;
     if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
@@ -106,13 +115,45 @@ export function extractPropertyValues(item, keyOrKeyObj) {
     };
     
     // Handle different data structures
+    let extractedValues;
     if (Array.isArray(value)) {
         // Filter out null values to only include objects that have the requested @ field
-        return value.map(v => extractFromObject(v)).filter(v => v !== null);
+        extractedValues = value.map(v => extractFromObject(v)).filter(v => v !== null);
     } else {
         const extracted = extractFromObject(value);
-        return extracted !== null ? [extracted] : [];
+        extractedValues = extracted !== null ? [extracted] : [];
     }
+    
+    // Apply transformations if state is provided
+    if (state && extractedValues.length > 0) {
+        try {
+            // Get property information for generating mapping ID
+            let propertyId;
+            if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.property && keyOrKeyObj.property.id) {
+                propertyId = keyOrKeyObj.property.id;
+            }
+            
+            // Generate mapping ID to look up transformations
+            if (propertyId) {
+                const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
+                const transformationBlocks = state.getTransformationBlocks(mappingId);
+                
+                if (transformationBlocks && transformationBlocks.length > 0) {
+                    // Apply transformations to each extracted value
+                    extractedValues = extractedValues.map(originalValue => {
+                        const transformationResult = applyTransformationChain(originalValue, transformationBlocks);
+                        // Get the final transformed value
+                        return transformationResult[transformationResult.length - 1]?.value || originalValue;
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn('Error applying transformations to extracted values:', error);
+            // Return original values if transformation fails
+        }
+    }
+    
+    return extractedValues;
 }
 
 /**
@@ -327,8 +368,12 @@ export function validateReconciliationRequirements(currentState) {
 /**
  * Initialize reconciliation data structure
  * Creates the complex reconciliation data structure for all items and properties
+ * @param {Array} data - Array of Omeka S items
+ * @param {Array} mappedKeys - Array of mapped key objects
+ * @param {Array} manualProperties - Array of manual properties
+ * @param {Object} [state] - Optional state object for applying transformations
  */
-export function initializeReconciliationDataStructure(data, mappedKeys, manualProperties) {
+export function initializeReconciliationDataStructure(data, mappedKeys, manualProperties, state = null) {
     const reconciliationData = {};
     
     data.forEach((item, index) => {
@@ -341,7 +386,8 @@ export function initializeReconciliationDataStructure(data, mappedKeys, manualPr
         // Initialize each mapped property
         mappedKeys.forEach(keyObj => {
             const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-            const values = extractPropertyValues(item, keyName);
+            // Pass the full keyObj and state to apply transformations
+            const values = extractPropertyValues(item, keyObj, state);
             reconciliationData[itemId].properties[keyName] = {
                 originalValues: values,
                 references: [], // References specific to this property

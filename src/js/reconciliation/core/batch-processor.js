@@ -33,8 +33,8 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
             const itemId = `item-${index}`;
             mappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                // Pass the full keyObj to extractPropertyValues to handle @ field selection
-                const values = extractPropertyValues(item, keyObj);
+                // Pass the full keyObj and state to extractPropertyValues to apply transformations and handle @ field selection
+                const values = extractPropertyValues(item, keyObj, state);
                 
                 values.forEach((value, valueIndex) => {
                     batchJobs.push({
