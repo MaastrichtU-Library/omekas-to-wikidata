@@ -199,13 +199,8 @@ export function combineAndSortProperties(mappedKeys, manualProperties) {
                 id = item.data.property.id || '';
             }
             
-            // Priority order: label, description, aliases, instance of (P31), then everything else
-            if (label === 'label') return 1;
-            if (label === 'description') return 2;
-            if (label === 'aliases' || label === 'alias') return 3;
-            if (id === 'P31' || label === 'instance of') return 4;
-            
-            return 50; // All other properties maintain relative order
+            // All properties maintain their original relative order
+            return 1;
         };
         
         const aPriority = getPriority(a);

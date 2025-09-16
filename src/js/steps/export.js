@@ -442,11 +442,6 @@ export function setupExportStep(state) {
                     }
                 });
                 
-                // Add entity type from schema if available and valid
-                // Only add P31 (instance of) if entitySchema is a valid Q-identifier
-                if (entitySchema && entitySchema.match(/^Q\d+$/)) {
-                    quickStatementsText += `LAST\tP31\t${entitySchema}\n`;
-                }
                 
                 var itemPrefix = 'LAST';
                 
