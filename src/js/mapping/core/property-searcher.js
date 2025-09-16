@@ -7,7 +7,7 @@
 // Import dependencies
 import { eventSystem } from '../../events.js';
 import { showMessage, createElement, createListItem } from '../../ui/components.js';
-import { getCompletePropertyData, getBatchPropertyInfo } from '../../api/wikidata.js';
+import { getCompletePropertyData, getBatchPropertyInfo, getCachedProperty } from '../../api/wikidata.js';
 import { refreshStage3TransformationUI as refreshStage3UI } from './transformation-engine.js';
 import { updateModalTitle, updateStage2Summary } from '../ui/modals/mapping-modal.js';
 
@@ -297,7 +297,29 @@ export async function setupEntitySchemaPropertySelection(state) {
     // Phase 2: Batch fetch all property data in background and enhance options
     try {
         const propertyIds = schemaProperties.map(prop => prop.id);
-        console.log(`🚀 Batch loading ${propertyIds.length} entity schema properties:`, propertyIds.join(', '));
+        
+        // Check cache status to provide accurate logging
+        const cachedIds = [];
+        const uncachedIds = [];
+        
+        for (const propertyId of propertyIds) {
+            const cached = getCachedProperty(propertyId, 'info');
+            if (cached) {
+                cachedIds.push(propertyId);
+            } else {
+                uncachedIds.push(propertyId);
+            }
+        }
+        
+        // Only log batch loading when actual API calls will be made
+        if (uncachedIds.length > 0) {
+            console.log(`🚀 Batch loading ${uncachedIds.length} entity schema properties:`, uncachedIds.join(', '));
+        }
+        
+        // Show cache hit info for debugging if any properties are cached
+        if (cachedIds.length > 0) {
+            console.log(`✨ Using cached data for ${cachedIds.length} entity schema properties`);
+        }
         
         // Single batch API call instead of sequential calls!
         const batchResults = await getBatchPropertyInfo(propertyIds);
@@ -322,7 +344,10 @@ export async function setupEntitySchemaPropertySelection(state) {
             }
         }
         
-        console.log(`✅ Batch loading complete for ${Object.keys(batchResults).length} properties`);
+        // Show completion message based on what actually happened
+        if (uncachedIds.length > 0) {
+            console.log(`✅ Batch loading complete for ${uncachedIds.length} properties. ${cachedIds.length > 0 ? `${cachedIds.length} loaded from cache.` : ''}`);
+        }
         
     } catch (error) {
         console.error('Failed to batch load entity schema properties:', error);
