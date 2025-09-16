@@ -293,7 +293,8 @@ export function createReconciliationTableFactory(dependencies) {
         getWikidataUrlForProperty,
         performBatchAutoAcceptance,
         restoreReconciliationDisplay,
-        openReconciliationModal
+        openReconciliationModal,
+        state
     } = dependencies;
 
     const createPropertyCell = createPropertyCellFactory(openReconciliationModal);
@@ -471,8 +472,8 @@ export function createReconciliationTableFactory(dependencies) {
                         // Handle mapped property cell
                         const keyObj = propItem.data;
                         const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                        // Pass the full keyObj to preserve @ field information for duplicate mappings
-                        const values = extractPropertyValues(item, keyObj);
+                        // Pass the full keyObj and state to apply transformations and preserve @ field information
+                        const values = extractPropertyValues(item, keyObj, state);
                         
                         if (values.length === 0) {
                             // Empty cell

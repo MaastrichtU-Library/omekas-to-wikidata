@@ -240,7 +240,8 @@ export function setupReconciliationStep(state) {
             getWikidataUrlForProperty,
             performBatchAutoAcceptance,
             restoreReconciliationDisplay,
-            openReconciliationModal
+            openReconciliationModal,
+            state
         });
         
         const createPropertyCell = createPropertyCellFactory(openReconciliationModal);
@@ -412,7 +413,7 @@ export function setupReconciliationStep(state) {
             state.setReconciliationProgress(0, totalCells);
             
             // Initialize reconciliation data structure using extracted function
-            const newData = modules.initializeReconciliationDataStructure(data, mappedKeys, manualProperties);
+            const newData = modules.initializeReconciliationDataStructure(data, mappedKeys, manualProperties, state);
             // Clear existing data and copy new data (mutate, don't reassign)
             Object.keys(reconciliationData).forEach(key => delete reconciliationData[key]);
             Object.assign(reconciliationData, newData);
