@@ -267,15 +267,12 @@ window.performWikidataEntitySearch = async function() {
  */
 function ensureWikidataModalContext() {
     if (!window.currentModalContext) {
-        console.warn('⚠️ Missing Wikidata modal context, attempting emergency reconstruction...');
-        
         // Try to reconstruct context from modal DOM
         const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
                              document.querySelector('.wikidata-item-modal') ||
                              document.querySelector('[data-modal-type]');
         
         if (modalContainer && modalContainer.dataset) {
-            console.log('🔄 Reconstructing Wikidata context from modal DOM...');
             const dataset = modalContainer.dataset;
             window.currentModalContext = {
                 itemId: dataset.itemId,
@@ -287,10 +284,8 @@ function ensureWikidataModalContext() {
                 dataType: 'wikibase-item',
                 modalType: 'wikidata-item'
             };
-            console.log('✅ Emergency Wikidata context reconstructed:', window.currentModalContext);
             return true;
         } else {
-            console.error('❌ Cannot reconstruct Wikidata context - no modal container with dataset found');
             return false;
         }
     }
@@ -298,33 +293,16 @@ function ensureWikidataModalContext() {
 }
 
 window.applyWikidataMatchDirectly = function(matchId) {
-    console.log('🔄 applyWikidataMatchDirectly called with matchId:', matchId);
-    console.log('🔍 Current window.currentModalContext:', window.currentModalContext);
-    
-    // EMERGENCY CONTEXT CHECK - ensure context is available
+    // Ensure context is available
     if (!ensureWikidataModalContext()) {
-        console.error('❌ Failed to ensure Wikidata modal context, cannot proceed');
         return;
     }
     
-    console.log('🔍 Available global functions:', {
-        selectMatchAndAdvance: typeof window.selectMatchAndAdvance,
-        markCellAsReconciled: typeof window.markCellAsReconciled,
-        closeReconciliationModal: typeof window.closeReconciliationModal,
-        confirmReconciliation: typeof window.confirmReconciliation
-    });
-    
-    // Get match details first
+    // Get match details from DOM
     const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
-    console.log('🔍 Searching for Wikidata element with data-match-id:', escapedId);
-    
     const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
-    console.log('🔍 Found Wikidata match element:', matchElement);
     
     if (!matchElement) {
-        console.error('❌ Wikidata match element not found for ID:', matchId);
-        console.log('🔍 Available Wikidata elements with data-match-id:', 
-            Array.from(document.querySelectorAll('[data-match-id]')).map(el => el.dataset.matchId));
         return;
     }
     
@@ -332,31 +310,22 @@ window.applyWikidataMatchDirectly = function(matchId) {
     const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-name');
     const matchDescriptionElement = matchElement.querySelector('.match-description');
     
-    console.log('🔍 Found Wikidata label element:', matchLabelElement);
-    console.log('🔍 Found Wikidata description element:', matchDescriptionElement);
-    
     const matchLabel = matchLabelElement?.textContent || 'Unknown';
     const matchDescription = matchDescriptionElement?.textContent || 'No description';
     
-    console.log('📝 Extracted Wikidata match data:', { id: matchId, label: matchLabel, description: matchDescription });
-    
-    // CHANGED: Instead of just storing and enabling confirm button, directly apply the match
+    // Directly apply the match instead of just storing and enabling confirm button
     if (typeof window.selectMatchAndAdvance === 'function') {
-        console.log('✅ Using selectMatchAndAdvance function for Wikidata match');
         window.selectMatchAndAdvance(matchId);
     } else if (typeof window.markCellAsReconciled === 'function' && window.currentModalContext) {
-        console.log('✅ Using markCellAsReconciled function for Wikidata match');
         window.markCellAsReconciled(window.currentModalContext, {
             type: 'wikidata',
             id: matchId,
             label: matchLabel,
             description: matchDescription
         });
-        console.log('🔄 Calling closeReconciliationModal for Wikidata match');
         window.closeReconciliationModal();
     } else {
-        console.warn('⚠️ No proper reconciliation handlers available for Wikidata match, falling back to old behavior');
-        // Store selected match globally (legacy behavior)
+        // Fallback to legacy behavior
         window.selectedMatch = {
             id: matchId,
             label: matchLabel,
@@ -374,8 +343,6 @@ window.applyWikidataMatchDirectly = function(matchId) {
             item.classList.remove('selected');
         });
         matchElement.classList.add('selected');
-        
-        console.log('🔄 Stored selectedMatch and enabled confirm button (legacy)');
     }
 };
 
