@@ -384,9 +384,6 @@ export function createMappingModalContent(keyData) {
             <div id="property-constraints" class="property-constraints" style="display: none;">
                 <div class="constraint-loading" style="display: none;">Loading constraint information...</div>
                 <div class="constraint-content"></div>
-                <div class="constraint-info-notice">
-                    This information is automatically retrieved from Wikidata and cannot be changed.
-                </div>
             </div>
         </div>
     `;
