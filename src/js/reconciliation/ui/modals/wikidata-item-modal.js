@@ -263,36 +263,78 @@ window.performWikidataEntitySearch = async function() {
 };
 
 window.applyWikidataMatchDirectly = function(matchId) {
+    console.log('🔄 applyWikidataMatchDirectly called with matchId:', matchId);
+    console.log('🔍 Current window.currentModalContext:', window.currentModalContext);
+    console.log('🔍 Available global functions:', {
+        selectMatchAndAdvance: typeof window.selectMatchAndAdvance,
+        markCellAsReconciled: typeof window.markCellAsReconciled,
+        closeReconciliationModal: typeof window.closeReconciliationModal,
+        confirmReconciliation: typeof window.confirmReconciliation
+    });
+    
     // Get match details first
     const escapedId = CSS.escape ? CSS.escape(matchId) : matchId.replace(/(["\\\n\r\t])/g, '\\$1');
+    console.log('🔍 Searching for Wikidata element with data-match-id:', escapedId);
+    
     const matchElement = document.querySelector(`[data-match-id="${escapedId}"]`);
+    console.log('🔍 Found Wikidata match element:', matchElement);
     
     if (!matchElement) {
-        console.error('Wikidata match element not found for ID:', matchId);
+        console.error('❌ Wikidata match element not found for ID:', matchId);
+        console.log('🔍 Available Wikidata elements with data-match-id:', 
+            Array.from(document.querySelectorAll('[data-match-id]')).map(el => el.dataset.matchId));
         return;
     }
     
-    const matchLabel = matchElement.querySelector('.match-label')?.textContent || 'Unknown';
-    const matchDescription = matchElement.querySelector('.match-description')?.textContent || 'No description';
+    // Try both class selectors for compatibility
+    const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-name');
+    const matchDescriptionElement = matchElement.querySelector('.match-description');
     
-    // Store selected match globally
-    window.selectedMatch = {
-        id: matchId,
-        label: matchLabel,
-        description: matchDescription
-    };
+    console.log('🔍 Found Wikidata label element:', matchLabelElement);
+    console.log('🔍 Found Wikidata description element:', matchDescriptionElement);
     
-    // Enable confirm button
-    const confirmBtn = document.getElementById('confirm-btn');
-    if (confirmBtn) {
-        confirmBtn.disabled = false;
+    const matchLabel = matchLabelElement?.textContent || 'Unknown';
+    const matchDescription = matchDescriptionElement?.textContent || 'No description';
+    
+    console.log('📝 Extracted Wikidata match data:', { id: matchId, label: matchLabel, description: matchDescription });
+    
+    // CHANGED: Instead of just storing and enabling confirm button, directly apply the match
+    if (typeof window.selectMatchAndAdvance === 'function') {
+        console.log('✅ Using selectMatchAndAdvance function for Wikidata match');
+        window.selectMatchAndAdvance(matchId);
+    } else if (typeof window.markCellAsReconciled === 'function' && window.currentModalContext) {
+        console.log('✅ Using markCellAsReconciled function for Wikidata match');
+        window.markCellAsReconciled(window.currentModalContext, {
+            type: 'wikidata',
+            id: matchId,
+            label: matchLabel,
+            description: matchDescription
+        });
+        console.log('🔄 Calling closeReconciliationModal for Wikidata match');
+        window.closeReconciliationModal();
+    } else {
+        console.warn('⚠️ No proper reconciliation handlers available for Wikidata match, falling back to old behavior');
+        // Store selected match globally (legacy behavior)
+        window.selectedMatch = {
+            id: matchId,
+            label: matchLabel,
+            description: matchDescription
+        };
+        
+        // Enable confirm button
+        const confirmBtn = document.getElementById('confirm-btn');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+        }
+        
+        // Visual feedback - highlight selected match
+        document.querySelectorAll('.wikidata-match-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        matchElement.classList.add('selected');
+        
+        console.log('🔄 Stored selectedMatch and enabled confirm button (legacy)');
     }
-    
-    // Visual feedback - highlight selected match
-    document.querySelectorAll('.wikidata-match-item').forEach(item => {
-        item.classList.remove('selected');
-    });
-    matchElement.classList.add('selected');
 };
 
 window.showAllWikidataMatches = async function() {

@@ -532,6 +532,9 @@ export function setupReconciliationStep(state) {
     });
     
     // Expose modal interaction handlers to global scope for HTML onclick handlers
+    console.log('🔄 Setting up global reconciliation functions...');
+    console.log('🔍 modalInteractionHandlers available:', modalInteractionHandlers);
+    
     window.toggleMoreOptions = modalInteractionHandlers.toggleMoreOptions;
     window.selectMatchAndAdvance = modalInteractionHandlers.selectMatchAndAdvance;
     window.confirmCustomValue = modalInteractionHandlers.confirmCustomValue;
@@ -544,6 +547,15 @@ export function setupReconciliationStep(state) {
     
     // Also expose modalUI to global scope for modal closing
     window.modalUI = modalUI;
+    
+    console.log('✅ Global reconciliation functions set up:', {
+        selectMatchAndAdvance: typeof window.selectMatchAndAdvance,
+        modalUI: typeof window.modalUI,
+        markCellAsReconciled: typeof modules.markCellAsReconciled
+    });
+    
+    // Also expose markCellAsReconciled for direct access
+    window.markCellAsReconciled = modules.markCellAsReconciled;
     
     window.applyTypeOverride = modalInteractionHandlers.applyTypeOverride;
     window.confirmReconciliation = modalInteractionHandlers.confirmReconciliation; // Legacy
