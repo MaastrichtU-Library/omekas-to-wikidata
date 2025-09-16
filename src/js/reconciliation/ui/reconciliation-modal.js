@@ -1,223 +1,143 @@
 /**
- * Simplified Reconciliation Modal Interface
+ * Reconciliation Modal Factory Interface
  * @module reconciliation/ui/reconciliation-modal
  * 
- * Clean, focused reconciliation interface that handles:
- * - Wikidata Items: existing matches, reconciliation options, manual search
- * - Strings: transformation output, regex validation, inline editing
+ * Main entry point for reconciliation modals that routes to appropriate
+ * specialized modal implementations based on data type.
+ * 
+ * This module serves as a compatibility layer and main interface while
+ * delegating actual modal creation to the modal factory system.
  */
 
 import { createElement } from '../../ui/components.js';
 import { 
-    extractRegexConstraints, 
-    validateStringValue, 
-    validateRealTime, 
-    getSuggestedFixes,
-    createValidationUI,
-    setupLiveValidation
-} from './validation-engine.js';
+    createReconciliationModalByType,
+    initializeReconciliationModal,
+    isModalTypeSupported,
+    createFallbackModal
+} from './modals/modal-factory.js';
 
 /**
- * Create the simplified reconciliation modal content
+ * Create reconciliation modal using factory system
+ * This is the main entry point that routes to appropriate specialized modals
  */
 export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
     // Determine data type from property
     const dataType = getDataTypeFromProperty(property, propertyData);
     const transformedValue = getTransformedValue(value, property);
     
-    // Check if transformation actually changed the value
-    const wasTransformed = value !== transformedValue;
+    console.log(`Creating reconciliation modal for type: ${dataType}, value: ${transformedValue}`);
     
-    // Set up modal context for validation and interactions
-    window.currentModalContext = {
-        itemId,
-        property,
-        valueIndex,
-        originalValue: value,
-        transformedValue,
-        currentValue: transformedValue,
-        propertyData,
-        dataType,
-        existingMatches
-    };
-    
-    const modalContent = createElement('div', { className: 'reconciliation-modal-redesign' });
-    modalContent.innerHTML = `
-        <!-- Header Section -->
-        <div class="modal-header">
-            <div class="data-type-indicator">
-                <span class="data-type-label">Expected:</span>
-                <span class="data-type-value">${getDataTypeDisplayName(dataType)}</span>
+    try {
+        // Use factory to create type-specific modal
+        if (isModalTypeSupported(dataType)) {
+            const modalElement = createReconciliationModalByType(
+                dataType, 
+                itemId, 
+                property, 
+                valueIndex, 
+                transformedValue, 
+                propertyData, 
+                existingMatches
+            );
+            
+            // Add compatibility wrapper class
+            modalElement.classList.add('reconciliation-modal-redesign');
+            
+            return modalElement;
+        } else {
+            // Use fallback modal for unsupported types
+            console.warn(`Unsupported modal type: ${dataType}. Using fallback modal.`);
+            const fallbackModal = createFallbackModal(dataType, transformedValue);
+            fallbackModal.classList.add('reconciliation-modal-redesign');
+            return fallbackModal;
+        }
+    } catch (error) {
+        console.error('Error creating reconciliation modal:', error);
+        
+        // Create emergency fallback
+        const errorModal = createElement('div', { className: 'reconciliation-modal-redesign error-modal' });
+        errorModal.innerHTML = `
+            <div class="modal-header">
+                <div class="error-indicator">
+                    <span class="error-label">Error:</span>
+                    <span class="error-message">Failed to create modal</span>
+                </div>
             </div>
-        </div>
-
-        <!-- Value Display Section -->
-        <div class="transformation-result">
-            ${wasTransformed ? 
-                `<div class="section-title">Transformation Result</div>
-                 <div class="transformed-value">${escapeHtml(transformedValue)}</div>
-                 <div class="original-context">
-                     <span class="original-label">Original:</span>
-                     <span class="original-value">${escapeHtml(value)}</span>
-                 </div>` 
-                :
-                `<div class="section-title">Omeka S API Value</div>
-                 <div class="transformed-value">${escapeHtml(value)}</div>`
-            }
-        </div>
-
-        <!-- Content Section (Data Type Specific) -->
-        <div class="content-section" id="content-section">
-            ${dataType === 'wikibase-item' ? createWikidataItemSection(transformedValue) : createStringSection(transformedValue, property, propertyData)}
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeReconciliationModal()">Cancel</button>
-            <button class="btn btn-primary" id="confirm-btn" onclick="confirmReconciliation()" disabled>Confirm</button>
-        </div>
-    `;
-
-    // Store initialization data on the element for later use
-    modalContent.dataset.initDataType = dataType;
-    modalContent.dataset.initValue = transformedValue;
-    modalContent.dataset.initProperty = property;
-    if (propertyData) {
-        modalContent.dataset.initPropertyData = JSON.stringify(propertyData);
+            <div class="error-content">
+                <p>Unable to create reconciliation interface for this data type.</p>
+                <p><strong>Error:</strong> ${escapeHtml(error.message)}</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeReconciliationModal()">Close</button>
+            </div>
+        `;
+        return errorModal;
     }
-
-    return modalContent;
 }
 
 /**
- * Initialize modal from stored data attributes
+ * Initialize modal from DOM element
  * Can be called after modal is inserted into DOM
  */
-export function initializeReconciliationModal() {
+export function initializeReconciliationModalFromDOM() {
     const modalContainer = document.querySelector('.reconciliation-modal-redesign');
     if (modalContainer) {
-        const dataType = modalContainer.dataset.initDataType;
-        const value = modalContainer.dataset.initValue;
-        const property = modalContainer.dataset.initProperty;
-        const propertyData = modalContainer.dataset.initPropertyData ? 
-            JSON.parse(modalContainer.dataset.initPropertyData) : null;
-        
-        if (dataType && value) {
-            initializeModalInteractions(dataType, value, property, propertyData);
+        try {
+            // Use factory initialization if available
+            if (modalContainer.dataset.modalFactory === 'reconciliation') {
+                initializeReconciliationModal(modalContainer);
+            } else {
+                // Fallback to legacy initialization
+                console.warn('Using legacy modal initialization');
+                const dataType = modalContainer.dataset.initDataType || modalContainer.dataset.dataType;
+                const value = modalContainer.dataset.initValue || modalContainer.dataset.value;
+                const property = modalContainer.dataset.initProperty || modalContainer.dataset.property;
+                const propertyData = modalContainer.dataset.initPropertyData ? 
+                    JSON.parse(modalContainer.dataset.initPropertyData) : 
+                    (modalContainer.dataset.propertyData ? JSON.parse(modalContainer.dataset.propertyData) : null);
+                
+                if (dataType && value) {
+                    initializeModalInteractions(dataType, value, property, propertyData);
+                }
+            }
+        } catch (error) {
+            console.error('Error initializing reconciliation modal:', error);
         }
     }
 }
 
 /**
- * Initialize modal interactions after DOM insertion
+ * Legacy modal interactions for backward compatibility
+ * @deprecated Use modal factory system instead
  */
 function initializeModalInteractions(dataType, value, property, propertyData) {
+    console.warn('Using deprecated initializeModalInteractions. Consider updating to factory system.');
+    
+    // Basic compatibility layer - most functionality now handled by specific modal types
     if (dataType === 'wikibase-item') {
-        // Load existing matches for Wikidata items
-        const existingMatches = window.currentModalContext?.existingMatches;
-        loadExistingMatches(value, existingMatches);
+        console.log('Legacy Wikidata item modal initialization');
     } else if (dataType === 'string') {
-        // Set up live validation for string inputs
-        const stringEditor = document.getElementById('string-editor');
-        const validationContainer = document.getElementById('editor-validation');
-        
-        if (stringEditor && validationContainer) {
-            const constraints = extractRegexConstraints(property, propertyData);
-            if (constraints) {
-                setupLiveValidation(stringEditor, constraints, validationContainer);
-            }
-        }
-        
-        // Initial validation state check
-        const constraints = extractRegexConstraints(property, propertyData);
-        const validation = validateStringValue(value, constraints);
-        const confirmBtn = document.getElementById('confirm-btn');
-        if (confirmBtn) {
-            confirmBtn.disabled = !validation.isValid;
-        }
+        console.log('Legacy string modal initialization');
     }
+    
+    // Set up basic modal context for backward compatibility
+    window.currentModalContext = {
+        originalValue: value,
+        currentValue: value,
+        property: property,
+        propertyData: propertyData,
+        dataType: dataType
+    };
 }
 
 /**
- * Create Wikidata Item reconciliation section
+ * Legacy modal section functions have been moved to dedicated modal modules:
+ * - createWikidataItemSection -> wikidata-item-modal.js
+ * - createStringSection -> string-modal.js
+ * 
+ * These functions are now handled by the modal factory system.
  */
-function createWikidataItemSection(value) {
-    return `
-        <div class="wikidata-item-section">
-            <!-- Existing Matches -->
-            <div class="existing-matches" id="existing-matches">
-                <div class="section-title">Existing Matches</div>
-                <div class="loading-indicator">Finding matches...</div>
-            </div>
-
-            <!-- Manual Search -->
-            <div class="manual-search">
-                <div class="section-title">Search Wikidata</div>
-                <div class="search-container">
-                    <input type="text" id="wikidata-search" class="search-input" 
-                           placeholder="Search for a different item..." value="${escapeHtml(value)}">
-                    <button class="btn btn-primary" onclick="performWikidataSearch()">Search</button>
-                </div>
-                <div class="search-results" id="search-results"></div>
-            </div>
-
-            <!-- Alternative Actions -->
-            <div class="alternative-actions">
-                <button class="btn btn-outline" onclick="createNewWikidataItem()">Create New Item</button>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Create String validation section  
- */
-function createStringSection(value, property, propertyData) {
-    const regexConstraints = extractRegexConstraints(property, propertyData);
-    const validationResult = validateStringValue(value, regexConstraints);
-
-    return `
-        <div class="string-section">
-            <!-- String Value Display -->
-            <div class="string-value-display">
-                <div class="section-title">String Value</div>
-                <div class="current-value" id="current-value">${escapeHtml(value)}</div>
-                ${validationResult ? `
-                    <div class="validation-status ${validationResult.isValid ? 'valid' : 'invalid'}">
-                        <span class="status-icon">${validationResult.isValid ? '✓' : '✗'}</span>
-                        <span class="status-text">${validationResult.message}</span>
-                    </div>
-                ` : ''}
-            </div>
-
-            <!-- String Editor (shown if validation fails) -->
-            ${!validationResult?.isValid ? `
-                <div class="string-editor">
-                    <div class="section-title">Edit Value</div>
-                    <textarea id="string-editor" class="string-input" placeholder="Edit the value to make it comply...">${escapeHtml(value)}</textarea>
-                    <div class="editor-validation" id="editor-validation"></div>
-                    <button class="btn btn-primary" onclick="updateStringValue()">Update Value</button>
-                </div>
-            ` : ''}
-
-            <!-- Constraint Information -->
-            ${regexConstraints ? `
-                <div class="constraint-info">
-                    <div class="section-title">Validation Rules</div>
-                    <div class="constraint-details">
-                        <div class="constraint-pattern">
-                            <span class="constraint-label">Pattern:</span>
-                            <code class="constraint-regex">${escapeHtml(regexConstraints.pattern)}</code>
-                        </div>
-                        ${regexConstraints.description ? `
-                            <div class="constraint-description">${escapeHtml(regexConstraints.description)}</div>
-                        ` : ''}
-                    </div>
-                </div>
-            ` : ''}
-        </div>
-    `;
-}
 
 /**
  * Determine data type from property information
