@@ -8,11 +8,42 @@
 import { showMessage } from '../../../ui/components.js';
 import { populateLists } from '../mapping-lists.js';
 import { createUnifiedPropertyModalContent, getUnifiedSelectedPropertyFromModal } from './manual-property-modal.js';
+import { extractAllFields } from '../../../transformations.js';
 
 /**
  * Opens the add manual property modal
  */
 export function openAddManualPropertyModal() {
+    // Extract fields once for the entire modal session to optimize performance
+    // Manual properties can still use fields from the dataset in transformations
+    if (window.mappingStepState) {
+        const currentState = window.mappingStepState.getState();
+        
+        if (currentState.fetchedData) {
+            const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+            
+            // Use first item that has any meaningful data
+            let fullItemData = items.find(item => {
+                return typeof item === 'object' && item !== null && Object.keys(item).length > 0;
+            });
+            
+            if (fullItemData) {
+                const extractedFields = extractAllFields(fullItemData);
+                
+                // Store extracted fields globally for the transformation UI to use
+                // Create a synthetic keyData object for new manual property
+                window.currentMappingKeyData = {
+                    key: 'new-manual-property',
+                    sampleValue: 'New manual property transformation',
+                    property: null, // No property selected yet
+                    extractedFields: extractedFields,
+                    isManualProperty: true,
+                    isNewProperty: true
+                };
+            }
+        }
+    }
+    
     // Import modal functionality
     import('../../../ui/modal-ui.js').then(({ setupModalUI }) => {
         const modalUI = setupModalUI();
@@ -50,8 +81,23 @@ export function openAddManualPropertyModal() {
         modalUI.openModal(
             'Add Additional Custom Wikidata Property',
             modalContent,
-            buttons
+            buttons,
+            () => {
+                // Remove the wide class when modal closes
+                const modal = document.querySelector('.modal');
+                if (modal) {
+                    modal.classList.remove('mapping-modal-wide');
+                }
+            }
         );
+        
+        // Add class to modal for wider display after opening
+        setTimeout(() => {
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.classList.add('mapping-modal-wide');
+            }
+        }, 0);
     });
 }
 

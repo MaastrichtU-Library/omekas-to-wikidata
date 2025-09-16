@@ -11,11 +11,41 @@ import { setupUnifiedPropertySearch } from '../../core/property-searcher.js';
 import { renderValueTransformationUI } from '../../core/transformation-engine.js';
 import { populateLists } from '../mapping-lists.js';
 import { addManualPropertyToState } from './add-property-modal.js';
+import { extractAllFields } from '../../../transformations.js';
 
 /**
  * Opens the manual property edit modal
  */
 export function openManualPropertyEditModal(manualProp) {
+    // Extract fields once for the entire modal session to optimize performance
+    // Manual properties can still use fields from the dataset in transformations
+    if (window.mappingStepState) {
+        const currentState = window.mappingStepState.getState();
+        
+        if (currentState.fetchedData) {
+            const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+            
+            // Use first item that has any meaningful data
+            let fullItemData = items.find(item => {
+                return typeof item === 'object' && item !== null && Object.keys(item).length > 0;
+            });
+            
+            if (fullItemData) {
+                const extractedFields = extractAllFields(fullItemData);
+                
+                // Store extracted fields globally for the transformation UI to use
+                // Create a synthetic keyData object similar to regular mapping modal
+                window.currentMappingKeyData = {
+                    key: manualProp?.property?.label || 'manual-property',
+                    sampleValue: 'Manual property transformation',
+                    property: manualProp?.property,
+                    extractedFields: extractedFields,
+                    isManualProperty: true
+                };
+            }
+        }
+    }
+    
     // Import modal functionality
     import('../../../ui/modal-ui.js').then(({ setupModalUI }) => {
         const modalUI = setupModalUI();
@@ -79,60 +109,222 @@ export function openManualPropertyEditModal(manualProp) {
         modalUI.openModal(
             modalTitle,
             modalContent,
-            buttons
+            buttons,
+            () => {
+                // Remove the wide class when modal closes
+                const modal = document.querySelector('.modal');
+                if (modal) {
+                    modal.classList.remove('mapping-modal-wide');
+                }
+            }
         );
+        
+        // Add class to modal for wider display after opening
+        setTimeout(() => {
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.classList.add('mapping-modal-wide');
+            }
+        }, 0);
     });
 }
 
 /**
- * Creates unified property modal content
+ * Creates unified property modal content with two-column layout
  */
 export function createUnifiedPropertyModalContent(manualProp, keyData = null) {
-    const container = createElement('div', {
-        className: 'unified-property-modal-content'
-    });
-    
-    // Determine if this is a pre-selected property (metadata or existing custom property)
-    const isPreSelected = Boolean(manualProp);
+    // Determine if this is a metadata property
     const property = manualProp?.property || keyData?.property;
+    const isMetadata = property?.isMetadata;
     
-    // Stage 1: Property Selection/Information (Collapsible, closed by default for pre-selected)
-    const stage1Section = createElement('details', {
-        className: 'mapping-stage',
-        id: 'unified-stage-1-property-selection',
-        ...(isPreSelected ? {} : { open: true }) // Open by default only for new properties
+    const container = createElement('div', {
+        className: 'mapping-modal-content two-column-layout'
     });
     
-    const stage1Summary = createElement('summary', {
-        className: 'stage-summary'
-    }, 'Stage 1: Property Selection');
-    stage1Section.appendChild(stage1Summary);
-    
-    const stage1Content = createElement('div', {
-        className: 'stage-content'
+    // LEFT COLUMN - Omeka S Data (or Default Value for metadata)
+    const leftColumn = createElement('div', {
+        className: 'mapping-column left-column'
     });
     
-    if (isPreSelected && property) {
-        // Show property as read-only for pre-selected properties
+    // Column header
+    const leftHeader = createElement('div', {
+        className: 'column-header'
+    }, isMetadata ? 'Value Configuration' : 'Omeka S Data');
+    leftColumn.appendChild(leftHeader);
+    
+    // Value transformation section (with default compose block for metadata)
+    const transformationSection = createElement('div', {
+        className: 'transformation-section',
+        style: 'margin-top: 20px;'
+    });
+    
+    // Toggle button for transformation section
+    const transformationToggle = createElement('button', {
+        className: 'transformation-toggle',
+        onClick: () => {
+            const isExpanded = transformationSection.classList.contains('expanded');
+            if (isExpanded) {
+                transformationSection.classList.remove('expanded');
+                transformationToggle.textContent = '▶ Add Transformation';
+            } else {
+                transformationSection.classList.add('expanded');
+                transformationToggle.textContent = '▼ Hide Transformations';
+                
+                // For metadata fields, ensure compose transformation is added by default
+                if (isMetadata) {
+                    const composeContainer = document.querySelector('.transformation-blocks');
+                    if (composeContainer && !composeContainer.hasChildNodes()) {
+                        // Add a default compose block for metadata
+                        const addComposeBtn = document.querySelector('.add-compose-btn');
+                        if (addComposeBtn) {
+                            setTimeout(() => addComposeBtn.click(), 100);
+                        }
+                    }
+                }
+            }
+        }
+    }, isMetadata ? '▶ Value Transformation' : '▶ Add Transformation');
+    
+    transformationSection.appendChild(transformationToggle);
+    
+    // Collapsible content container
+    const transformationContent = createElement('div', {
+        className: 'transformation-content'
+    });
+    
+    const transformationHeader = createElement('h4', {}, 'Value Transformation');
+    transformationContent.appendChild(transformationHeader);
+    
+    // For metadata properties, show empty input field first
+    if (isMetadata) {
+        const emptyInput = createElement('input', {
+            type: 'text',
+            className: 'empty-transformation-input',
+            placeholder: 'Leave empty to use original value',
+            style: 'width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 4px;'
+        });
+        transformationContent.appendChild(emptyInput);
+    }
+    
+    const transformationKeyData = keyData || {
+        key: property?.label || 'property',
+        sampleValue: 'Sample value for transformation',
+        property: property
+    };
+    const valueTransformationContainer = renderValueTransformationUI(transformationKeyData, window.mappingStepState);
+    transformationContent.appendChild(valueTransformationContainer);
+    
+    transformationSection.appendChild(transformationContent);
+    leftColumn.appendChild(transformationSection);
+    
+    // Expand transformation section by default for metadata
+    if (isMetadata) {
+        setTimeout(() => {
+            transformationSection.classList.add('expanded');
+            transformationToggle.textContent = '▼ Hide Transformations';
+            // Add default compose block
+            const addComposeBtn = document.querySelector('.add-compose-btn');
+            if (addComposeBtn) {
+                addComposeBtn.click();
+            }
+        }, 100);
+    }
+    
+    container.appendChild(leftColumn);
+    
+    // RIGHT COLUMN - Wikidata Property
+    const rightColumn = createElement('div', {
+        className: 'mapping-column right-column'
+    });
+    
+    // Column header with link for metadata
+    const rightHeaderContent = isMetadata ? 
+        (() => {
+            let helpUrl, helpText;
+            switch(property?.id) {
+                case 'label':
+                    helpUrl = 'https://www.wikidata.org/wiki/Help:Label';
+                    helpText = 'Wikidata Labels';
+                    break;
+                case 'description':
+                    helpUrl = 'https://www.wikidata.org/wiki/Help:Description';
+                    helpText = 'Wikidata Descriptions';
+                    break;
+                case 'aliases':
+                    helpUrl = 'https://www.wikidata.org/wiki/Help:Aliases';
+                    helpText = 'Wikidata Aliases';
+                    break;
+                default:
+                    helpUrl = 'https://www.wikidata.org/wiki/Help:Label';
+                    helpText = 'Wikidata Metadata';
+            }
+            return `<a href="${helpUrl}" target="_blank" rel="noopener">${helpText}</a>`;
+        })() : 
+        'Wikidata Property';
+    
+    const rightHeader = createElement('div', {
+        className: 'column-header'
+    });
+    rightHeader.innerHTML = rightHeaderContent;
+    rightColumn.appendChild(rightHeader);
+    
+    // Property information or search section
+    const searchSection = createElement('div', {
+        className: 'property-search'
+    });
+    
+    if (isMetadata) {
+        // For metadata properties, show information instead of search
+        let helpUrl, helpText, description;
+        
+        switch(property?.id) {
+            case 'label':
+                helpUrl = 'https://www.wikidata.org/wiki/Help:Label';
+                helpText = 'Labels';
+                description = 'Labels are the main name given to identify an entity. They do not need to be unique. In Wikidata, labels are language-specific.';
+                break;
+            case 'description':
+                helpUrl = 'https://www.wikidata.org/wiki/Help:Description';
+                helpText = 'Descriptions';
+                description = 'Descriptions are short phrases that disambiguate items with similar labels. They are language-specific and should be lowercase except for proper nouns.';
+                break;
+            case 'aliases':
+                helpUrl = 'https://www.wikidata.org/wiki/Help:Aliases';
+                helpText = 'Aliases';
+                description = 'Aliases are alternative names for an entity. They help people find items even if they search for a name that is different from the label.';
+                break;
+            default:
+                helpUrl = 'https://www.wikidata.org/wiki/Help:Label';
+                helpText = 'Metadata';
+                description = 'This is a metadata field for Wikidata entities.';
+        }
+        
+        searchSection.innerHTML = `
+            <div class="metadata-info">
+                <h4>${helpText} Information</h4>
+                <p>${description}</p>
+                <p><a href="${helpUrl}" target="_blank" rel="noopener">Learn more about ${helpText} on Wikidata →</a></p>
+                <div class="metadata-notice">
+                    <strong>Note:</strong> ${helpText} are language-specific monolingual text values. You can map your Omeka S data to provide ${property?.label || 'metadata'} values for Wikidata entities.
+                </div>
+            </div>
+        `;
+    } else if (property) {
+        // For existing custom properties, show property info
         const propertyInfo = createElement('div', {
             className: 'property-info'
         });
-        const propertyDisplayText = property.isMetadata 
-            ? `${property.label} (metadata)`
-            : `${property.label} (${property.id})`;
+        const propertyDisplayText = `${property.label} (${property.id})`;
         
         propertyInfo.innerHTML = `
             <h4>Selected Property</h4>
             <p><strong>Property:</strong> ${propertyDisplayText}</p>
             <p><strong>Description:</strong> ${property.description}</p>
-            ${property.id ? `<p><strong>ID:</strong> ${property.id}</p>` : ''}
+            <p><strong>ID:</strong> ${property.id}</p>
         `;
-        stage1Content.appendChild(propertyInfo);
+        searchSection.appendChild(propertyInfo);
     } else {
-        // Property search section for new custom properties
-        const searchSection = createElement('div', {
-            className: 'property-search'
-        });
+        // Property search for new custom properties
         searchSection.innerHTML = `
             <h4>Search Wikidata Properties</h4>
             <input type="text" id="unified-property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
@@ -146,115 +338,64 @@ export function createUnifiedPropertyModalContent(manualProp, keyData = null) {
                 </div>
             </div>
         `;
-        stage1Content.appendChild(searchSection);
     }
-    
-    stage1Section.appendChild(stage1Content);
-    container.appendChild(stage1Section);
-    
-    // Stage 2: Value Type Detection (Collapsible, open by default)
-    const stage2Section = createElement('details', {
-        className: 'mapping-stage',
-        id: 'unified-stage-2-value-type-detection',
-        open: true
-    });
-    
-    // Determine data type and display text
-    let detectedDataType, dataTypeLabel, dataTypeDescription;
-    
-    if (property) {
-        if (property.id === 'P31') {
-            detectedDataType = 'wikibase-item';
-            dataTypeLabel = 'Item';
-            dataTypeDescription = 'Values will link to Wikidata items representing the type or class of each item.';
-        } else if (property.isMetadata) {
-            if (property.id === 'description') {
-                detectedDataType = 'monolingualtext';
-                dataTypeLabel = 'Monolingual text';
-                dataTypeDescription = 'Expecting a language-specific string value. Descriptions are always specific to each language and cannot have a default value for all languages.';
-            } else {
-                detectedDataType = 'monolingualtext';
-                dataTypeLabel = 'Monolingual text';
-                dataTypeDescription = 'Expecting a string value. Labels and aliases can have a default value for all languages, with optional language-specific overrides. <a href="https://www.wikidata.org/wiki/Help:Default_values_for_labels_and_aliases" target="_blank" rel="noopener">Learn more about default values</a>.';
-            }
-        } else {
-            // Use actual Wikidata data type for custom properties
-            detectedDataType = property.datatype || 'unknown';
-            dataTypeLabel = property.datatypeLabel || 'Unknown';
-            dataTypeDescription = `This property expects values of type "${dataTypeLabel}".`;
-        }
-    } else {
-        detectedDataType = 'unknown';
-        dataTypeLabel = 'Select a property first';
-        dataTypeDescription = 'Data type will be detected once you select a property.';
-    }
-    
-    const stage2Summary = createElement('summary', {
-        className: 'stage-summary',
-        id: 'unified-stage-2-summary'
-    }, `Stage 2: Value type is ${dataTypeLabel}`);
-    stage2Section.appendChild(stage2Summary);
-    
-    const stage2Content = createElement('div', {
-        className: 'stage-content'
-    });
+    rightColumn.appendChild(searchSection);
     
     // Data type information section
     const dataTypeInfo = createElement('div', {
         className: 'datatype-info',
-        id: 'unified-datatype-info-section'
+        id: 'datatype-info-section',
+        style: isMetadata ? 'margin-top: 20px;' : 'margin-top: 20px; display: none;'
     });
-    dataTypeInfo.innerHTML = `
-        <div class="datatype-display">
-            <h4>Detected Data Type</h4>
-            <div id="unified-detected-datatype" class="detected-datatype">
-                <span class="datatype-label">${dataTypeLabel}</span>
+    
+    if (isMetadata) {
+        // For metadata, always show monolingual text type
+        dataTypeInfo.innerHTML = `
+            <div class="datatype-display">
+                <h4>Expected Value Type</h4>
+                <div id="detected-datatype" class="detected-datatype">
+                    <span class="datatype-label">Monolingual text</span>
+                </div>
+                <div class="datatype-description">
+                    <p>This field expects language-specific text values. Each value should be associated with a language code (e.g., "en" for English, "fr" for French).</p>
+                </div>
             </div>
-        </div>
-        <div class="datatype-description" id="unified-datatype-description">
-            <p>${dataTypeDescription}</p>
-        </div>
-    `;
-    stage2Content.appendChild(dataTypeInfo);
-    stage2Section.appendChild(stage2Content);
-    container.appendChild(stage2Section);
-    
-    // Stage 3: Value Transformation (Initially hidden)
-    const stage3Section = createElement('details', {
-        className: 'mapping-stage',
-        id: 'unified-stage-3-value-transformation'
-    });
-    
-    const stage3Summary = createElement('summary', {
-        className: 'stage-summary'
-    }, 'Stage 3: Value Transformation');
-    stage3Section.appendChild(stage3Summary);
-    
-    const stage3Content = createElement('div', {
-        className: 'stage-content'
-    });
-    
-    // Value transformation section
-    if (property || keyData) {
-        const transformationKeyData = keyData || {
-            key: property?.label || 'property',
-            sampleValue: 'Sample value for transformation',
-            property: property
-        };
-        const valueTransformationContainer = renderValueTransformationUI(transformationKeyData, window.mappingStepState);
-        stage3Content.appendChild(valueTransformationContainer);
+        `;
+    } else if (property) {
+        // Show property datatype
+        dataTypeInfo.innerHTML = `
+            <div class="datatype-display">
+                <h4>Expected Value Type</h4>
+                <div id="detected-datatype" class="detected-datatype">
+                    <span class="datatype-label">${property.datatypeLabel || property.datatype || 'Unknown'}</span>
+                </div>
+            </div>
+        `;
+        dataTypeInfo.style.display = 'block';
     } else {
-        stage3Content.appendChild(createElement('div', {
-            className: 'transformation-message'
-        }, 'Select a property first to configure value transformations'));
+        dataTypeInfo.innerHTML = `
+            <div class="datatype-display">
+                <h4>Expected Value Type</h4>
+                <div id="detected-datatype" class="detected-datatype">
+                    <div class="datatype-loading">Select a property to see expected type...</div>
+                </div>
+            </div>
+        `;
     }
+    rightColumn.appendChild(dataTypeInfo);
     
-    stage3Section.appendChild(stage3Content);
-    container.appendChild(stage3Section);
+    container.appendChild(rightColumn);
     
-    // Setup search functionality for new properties
-    if (!isPreSelected) {
+    // Setup search functionality for new properties (only for non-metadata)
+    if (!isMetadata && !property) {
         setTimeout(() => setupUnifiedPropertySearch(), 100);
+    } else if (isMetadata) {
+        // Store metadata property as selected automatically
+        window.currentUnifiedPropertySelected = {
+            ...property,
+            datatype: 'monolingualtext',
+            datatypeLabel: 'Monolingual text'
+        };
     }
     
     return container;

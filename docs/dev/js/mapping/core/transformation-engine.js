@@ -589,23 +589,24 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
     
     // Get the original item data for this property
     const keyData = window.currentMappingKeyData;
-    if (!keyData || !keyData.sampleValue) {
+    if (!keyData) {
         resultsContainer.appendChild(createElement('div', { 
             className: 'no-fields-message' 
         }, 'No field data available'));
         return;
     }
     
-    // Get the full item data from state to extract all fields
+    let allFields;
+    let fullItemData = null;
+    
+    // Get the full item data for the onClick handler (needed in both cases)
     const state = window.mappingStepState;
     const currentState = state.getState();
-    let fullItemData = null;
     
     if (currentState.fetchedData) {
         const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         
         // Find the item that contains this property value
-        // We'll match based on the key and sampleValue
         fullItemData = items.find(item => {
             if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
                 return true;
@@ -619,15 +620,29 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
         }
     }
     
-    if (!fullItemData) {
-        resultsContainer.appendChild(createElement('div', { 
-            className: 'no-fields-message' 
-        }, 'No full item data available'));
-        return;
+    // Use pre-extracted fields if available (optimization)
+    if (keyData.extractedFields) {
+        allFields = keyData.extractedFields;
+    } else {
+        // Fallback to current behavior for backward compatibility
+        if (!keyData.sampleValue) {
+            resultsContainer.appendChild(createElement('div', { 
+                className: 'no-fields-message' 
+            }, 'No field data available'));
+            return;
+        }
+        
+        if (!fullItemData) {
+            resultsContainer.appendChild(createElement('div', { 
+                className: 'no-fields-message' 
+            }, 'No full item data available'));
+            return;
+        }
+        
+        // Extract all fields from the full item data instead of just the property value
+        allFields = extractAllFields(fullItemData);
     }
     
-    // Extract all fields from the full item data instead of just the property value
-    const allFields = extractAllFields(fullItemData);
     const filteredFields = searchFields(allFields, searchTerm);
     
     if (filteredFields.length === 0) {
