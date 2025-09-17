@@ -376,7 +376,15 @@ export function createMappingModalContent(keyData) {
                 const existingComposeBlock = existingBlocks.find(block => block.type === 'compose');
                 
                 if (existingComposeBlock && existingComposeBlock.config.pattern) {
-                    composeBlock = existingComposeBlock;
+                    // Use the existing block but ensure sourceData is updated
+                    composeBlock = {
+                        ...existingComposeBlock,
+                        config: {
+                            ...existingComposeBlock.config,
+                            // Preserve pattern but update sourceData with latest data
+                            sourceData: existingComposeBlock.config.sourceData || {}
+                        }
+                    };
                     existingPattern = existingComposeBlock.config.pattern;
                     break;
                 }
