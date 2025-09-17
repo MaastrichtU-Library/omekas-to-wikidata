@@ -1,16 +1,18 @@
 /**
- * String Reconciliation Modal
+ * Enhanced String Reconciliation Modal
  * @module reconciliation/ui/modals/string-modal
  * 
- * Specialized modal interface for string value validation and editing.
- * Handles constraint validation, real-time feedback, and suggested corrections.
+ * Comprehensive modal interface for both regular strings and monolingual text values.
+ * Supports advanced validation, language selection, and user-friendly editing.
  * 
  * Features:
- * - Constraint-based validation using Wikidata property patterns
- * - Real-time validation feedback as user types
- * - Suggested fixes for common format issues
- * - Interactive editing with constraint examples
- * - Format pattern display and explanation
+ * - Dual support for 'string' and 'monolingualtext' data types
+ * - Original value tracking with clickable reset functionality
+ * - Wikidata language search and selection for monolingual text
+ * - Visual validation feedback with green/red borders
+ * - Regex pattern display with Wikidata property links
+ * - Persistent language preference storage
+ * - User override capability for validation failures
  */
 
 import { 
@@ -19,11 +21,15 @@ import {
     validateRealTime, 
     getSuggestedFixes,
     createValidationUI,
-    setupLiveValidation
+    setupLiveValidation,
+    searchWikidataLanguages,
+    getStoredLanguage,
+    setStoredLanguage,
+    generatePropertyLink
 } from '../validation-engine.js';
 
 /**
- * Create String reconciliation modal content
+ * Create enhanced String/Monolingual reconciliation modal content
  * @param {string} itemId - Item ID being reconciled
  * @param {string} property - Property name being reconciled
  * @param {number} valueIndex - Index of value within property
@@ -33,18 +39,23 @@ import {
  * @returns {HTMLElement} Modal content element
  */
 export function createStringModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+    const dataType = propertyData?.datatype || 'string';
+    const isMonolingual = dataType === 'monolingualtext';
     const regexConstraints = extractRegexConstraints(property, propertyData);
     const validationResult = validateStringValue(value, regexConstraints);
+    const propertyLink = generatePropertyLink(property, propertyData);
     
     const modalContent = document.createElement('div');
-    modalContent.className = 'string-modal';
+    modalContent.className = isMonolingual ? 'monolingual-modal' : 'string-modal';
     
     // Store context for modal interactions
-    modalContent.dataset.modalType = 'string';
+    modalContent.dataset.modalType = dataType;
     modalContent.dataset.itemId = itemId;
     modalContent.dataset.property = property;
     modalContent.dataset.valueIndex = valueIndex;
-    modalContent.dataset.value = value;
+    modalContent.dataset.originalValue = value;
+    modalContent.dataset.currentValue = value;
+    modalContent.dataset.isMonolingual = isMonolingual.toString();
     if (propertyData) {
         modalContent.dataset.propertyData = JSON.stringify(propertyData);
     }
@@ -53,7 +64,7 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
         <div class="modal-header">
             <div class="data-type-indicator">
                 <span class="data-type-label">Expected:</span>
-                <span class="data-type-value">Text String</span>
+                <span class="data-type-value">${isMonolingual ? 'Monolingual Text' : 'Text String'}</span>
             </div>
         </div>
 
@@ -63,46 +74,52 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
         </div>
 
         <div class="string-section">
-            <!-- String Value Display -->
-            <div class="string-value-display">
-                <div class="section-title">String Value</div>
-                <div class="current-value" id="current-value">${escapeHtml(value)}</div>
-                ${validationResult ? `
-                    <div class="validation-status ${validationResult.isValid ? 'valid' : 'invalid'}">
-                        <span class="status-icon">${validationResult.isValid ? '✓' : '✗'}</span>
-                        <span class="status-text">${validationResult.message}</span>
-                    </div>
-                ` : ''}
-            </div>
-
-            <!-- String Editor (always available) -->
+            <!-- String Editor -->
             <div class="string-editor">
                 <div class="section-title">Edit Value</div>
-                <textarea id="string-editor" class="string-input" placeholder="Edit the string value...">${escapeHtml(value)}</textarea>
-                <div class="editor-validation" id="editor-validation"></div>
-                <button class="btn btn-primary" onclick="updateStringValue()">Update Value</button>
+                <div class="input-container">
+                    <textarea id="string-editor" 
+                             class="string-input ${validationResult?.isValid === false ? 'validation-error' : (validationResult?.isValid === true ? 'validation-success' : '')}" 
+                             placeholder="${isMonolingual ? 'Enter text in selected language...' : 'Edit the string value...'}">${escapeHtml(value)}</textarea>
+                    
+                    <!-- Original Value Display (hidden initially) -->
+                    <div class="original-value-hint hidden" id="original-value-hint">
+                        <span class="original-label">Original:</span>
+                        <span class="original-text clickable" onclick="resetToOriginalValue()">${escapeHtml(value)}</span>
+                    </div>
+                    
+                    <!-- Validation Pattern Display -->
+                    ${regexConstraints ? `
+                        <div class="validation-pattern">
+                            <span class="pattern-text">Must match pattern: </span>
+                            <code class="pattern-code">${escapeHtml(regexConstraints.pattern)}</code>
+                            ${propertyLink ? `<a href="${propertyLink}" target="_blank" class="property-link">ⓘ</a>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
             </div>
 
-            <!-- Constraint Information -->
-            ${regexConstraints ? `
-                <div class="constraint-info">
-                    <div class="section-title">Validation Rules</div>
-                    <div class="constraint-details">
-                        <div class="constraint-pattern">
-                            <span class="constraint-label">Pattern:</span>
-                            <code class="constraint-regex">${escapeHtml(regexConstraints.pattern)}</code>
-                        </div>
-                        ${regexConstraints.description ? `
-                            <div class="constraint-description">${escapeHtml(regexConstraints.description)}</div>
-                        ` : ''}
+            <!-- Language Selection (monolingual only) -->
+            ${isMonolingual ? `
+                <div class="language-selection">
+                    <div class="section-title">Language <span class="required">*</span></div>
+                    <div class="language-container">
+                        <input type="text" 
+                               id="language-search" 
+                               class="language-input" 
+                               placeholder="Search for language..." 
+                               autocomplete="off">
+                        <div class="language-dropdown hidden" id="language-dropdown"></div>
+                        <input type="hidden" id="selected-language-code" value="">
                     </div>
                 </div>
             ` : ''}
         </div>
 
         <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeReconciliationModal()">Cancel</button>
-            <button class="btn btn-primary" id="confirm-btn" onclick="confirmStringValue()" ${validationResult && !validationResult.isValid ? 'disabled' : ''}>Confirm</button>
+            <button class="btn btn-secondary" onclick="cancelStringModal()">Cancel</button>
+            <button class="btn btn-outline" onclick="resetStringModal()">Reset</button>
+            <button class="btn btn-primary" id="confirm-btn" onclick="confirmStringValue()">Confirm</button>
         </div>
     `;
 
@@ -110,12 +127,14 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
 }
 
 /**
- * Initialize String modal after DOM insertion
+ * Initialize enhanced String/Monolingual modal after DOM insertion
  * @param {HTMLElement} modalElement - The modal element
  */
 export function initializeStringModal(modalElement) {
-    const value = modalElement.dataset.value;
+    const originalValue = modalElement.dataset.originalValue;
+    const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
+    const isMonolingual = modalElement.dataset.isMonolingual === 'true';
     const propertyData = modalElement.dataset.propertyData ? 
         JSON.parse(modalElement.dataset.propertyData) : null;
     
@@ -124,31 +143,29 @@ export function initializeStringModal(modalElement) {
         itemId: modalElement.dataset.itemId,
         property: property,
         valueIndex: parseInt(modalElement.dataset.valueIndex),
-        originalValue: value,
-        currentValue: value,
+        originalValue: originalValue,
+        currentValue: currentValue,
         propertyData: propertyData,
-        dataType: 'string',
-        modalType: 'string'
+        dataType: modalElement.dataset.modalType,
+        modalType: modalElement.dataset.modalType,
+        isMonolingual: isMonolingual,
+        hasBeenEdited: false,
+        selectedLanguage: null
     };
     
-    // Set up live validation for string inputs
+    // Set up string editor with enhanced functionality
     const stringEditor = document.getElementById('string-editor');
-    const validationContainer = document.getElementById('editor-validation');
-    
-    if (stringEditor && validationContainer) {
-        const constraints = extractRegexConstraints(property, propertyData);
-        if (constraints) {
-            setupLiveValidation(stringEditor, constraints, validationContainer);
-        }
+    if (stringEditor) {
+        setupStringEditor(stringEditor, property, propertyData);
     }
     
-    // Initial validation state check
-    const constraints = extractRegexConstraints(property, propertyData);
-    const validation = validateStringValue(value, constraints);
-    const confirmBtn = document.getElementById('confirm-btn');
-    if (confirmBtn) {
-        confirmBtn.disabled = !validation.isValid;
+    // Set up language selection for monolingual text
+    if (isMonolingual) {
+        setupLanguageSelection();
     }
+    
+    // Initial validation and UI state
+    updateValidationState();
 }
 
 /**
@@ -157,59 +174,234 @@ export function initializeStringModal(modalElement) {
  * @returns {string} Escaped text
  */
 function escapeHtml(text) {
+    if (typeof text !== 'string') return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// Global interaction handlers for String modal
-window.updateStringValue = function() {
+/**
+ * Set up string editor with enhanced functionality
+ * @param {HTMLElement} editor - The text editor element
+ * @param {string} property - Property name
+ * @param {Object} propertyData - Property metadata
+ */
+function setupStringEditor(editor, property, propertyData) {
+    let isFirstEdit = true;
+    
+    // Set up input event for original value display and validation
+    editor.addEventListener('input', function() {
+        const currentValue = editor.value;
+        
+        // Show original value hint on first edit
+        if (isFirstEdit && currentValue !== window.currentModalContext.originalValue) {
+            showOriginalValueHint();
+            window.currentModalContext.hasBeenEdited = true;
+            isFirstEdit = false;
+        }
+        
+        // Update current value in context
+        window.currentModalContext.currentValue = currentValue;
+        
+        // Update validation
+        updateValidationState();
+    });
+    
+    // Set up blur event for final validation
+    editor.addEventListener('blur', function() {
+        updateValidationState();
+    });
+}
+
+/**
+ * Set up language selection functionality for monolingual text
+ */
+function setupLanguageSelection() {
+    const languageSearch = document.getElementById('language-search');
+    const languageDropdown = document.getElementById('language-dropdown');
+    const selectedLanguageCode = document.getElementById('selected-language-code');
+    
+    if (!languageSearch || !languageDropdown) return;
+    
+    // Set default language from storage
+    const storedLanguage = getStoredLanguage();
+    if (storedLanguage) {
+        languageSearch.value = storedLanguage.label;
+        selectedLanguageCode.value = storedLanguage.code;
+        window.currentModalContext.selectedLanguage = storedLanguage;
+    }
+    
+    let searchTimeout;
+    
+    // Search languages as user types
+    languageSearch.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            languageDropdown.classList.add('hidden');
+            return;
+        }
+        
+        searchTimeout = setTimeout(async () => {
+            try {
+                const languages = await searchWikidataLanguages(query);
+                displayLanguageResults(languages);
+            } catch (error) {
+                console.error('Language search failed:', error);
+            }
+        }, 300);
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.language-container')) {
+            languageDropdown.classList.add('hidden');
+        }
+    });
+}
+
+/**
+ * Display language search results
+ * @param {Array} languages - Array of language objects
+ */
+function displayLanguageResults(languages) {
+    const languageDropdown = document.getElementById('language-dropdown');
+    
+    if (languages.length === 0) {
+        languageDropdown.innerHTML = '<div class="no-results">No languages found</div>';
+    } else {
+        languageDropdown.innerHTML = languages.map(lang => `
+            <div class="language-option" onclick="selectLanguage('${escapeHtml(lang.code)}', '${escapeHtml(lang.label)}')">
+                <span class="language-label">${escapeHtml(lang.label)}</span>
+                <span class="language-code">${escapeHtml(lang.code)}</span>
+            </div>
+        `).join('');
+    }
+    
+    languageDropdown.classList.remove('hidden');
+}
+
+/**
+ * Select a language from the dropdown
+ * @param {string} code - Language code
+ * @param {string} label - Language label
+ */
+window.selectLanguage = function(code, label) {
+    const languageSearch = document.getElementById('language-search');
+    const selectedLanguageCode = document.getElementById('selected-language-code');
+    const languageDropdown = document.getElementById('language-dropdown');
+    
+    if (languageSearch && selectedLanguageCode) {
+        languageSearch.value = label;
+        selectedLanguageCode.value = code;
+        
+        const selectedLanguage = { code, label };
+        window.currentModalContext.selectedLanguage = selectedLanguage;
+        setStoredLanguage(selectedLanguage);
+        
+        languageDropdown.classList.add('hidden');
+        
+        // Update confirmation button state
+        updateConfirmButtonState();
+    }
+};
+
+/**
+ * Show the original value hint below the input
+ */
+function showOriginalValueHint() {
+    const originalValueHint = document.getElementById('original-value-hint');
+    if (originalValueHint) {
+        originalValueHint.classList.remove('hidden');
+    }
+}
+
+/**
+ * Update validation state and visual feedback
+ */
+function updateValidationState() {
     const editor = document.getElementById('string-editor');
-    const currentValueDisplay = document.getElementById('current-value');
-    const validationContainer = document.getElementById('editor-validation');
-    
-    if (!editor || !currentValueDisplay) return;
-    
-    const newValue = editor.value.trim();
-    if (!newValue) return;
-    
-    // Update display
-    currentValueDisplay.textContent = newValue;
-    
-    // Get constraints from current modal context
-    const property = window.currentModalContext?.property || 'unknown';
+    const currentValue = window.currentModalContext?.currentValue || '';
+    const property = window.currentModalContext?.property;
     const propertyData = window.currentModalContext?.propertyData;
+    
+    if (!editor || !property) return;
+    
+    // Get validation result
     const constraints = extractRegexConstraints(property, propertyData);
-    const validationResult = validateStringValue(newValue, constraints);
+    const validationResult = validateStringValue(currentValue, constraints);
     
-    // Show enhanced validation result with suggestions
-    if (validationContainer) {
-        createValidationUI(validationContainer, newValue, constraints, (suggestedValue) => {
-            editor.value = suggestedValue;
-            window.updateStringValue(); // Re-validate with new value
-        });
+    // Update input styling
+    editor.className = editor.className.replace(/validation-(success|error)/g, '');
+    if (validationResult) {
+        if (validationResult.isValid) {
+            editor.classList.add('validation-success');
+        } else {
+            editor.classList.add('validation-error');
+        }
     }
     
-    // Enable/disable confirm button based on validation
+    // Update confirm button state
+    updateConfirmButtonState();
+}
+
+/**
+ * Update confirm button enabled/disabled state
+ */
+function updateConfirmButtonState() {
     const confirmBtn = document.getElementById('confirm-btn');
-    if (confirmBtn) {
-        confirmBtn.disabled = !validationResult.isValid;
+    const currentValue = window.currentModalContext?.currentValue || '';
+    const isMonolingual = window.currentModalContext?.isMonolingual;
+    const selectedLanguage = window.currentModalContext?.selectedLanguage;
+    
+    if (!confirmBtn) return;
+    
+    let canConfirm = true;
+    
+    // Check if value is not empty
+    if (!currentValue.trim()) {
+        canConfirm = false;
     }
     
-    // Update validation status display
-    const validationStatus = document.querySelector('.validation-status');
-    if (validationStatus) {
-        validationStatus.className = `validation-status ${validationResult.isValid ? 'valid' : 'invalid'}`;
-        validationStatus.innerHTML = `
-            <span class="status-icon">${validationResult.isValid ? '✓' : '✗'}</span>
-            <span class="status-text">${validationResult.message}</span>
-        `;
+    // For monolingual text, require language selection
+    if (isMonolingual && !selectedLanguage) {
+        canConfirm = false;
     }
     
-    // Store updated value in modal context
-    if (window.currentModalContext) {
-        window.currentModalContext.currentValue = newValue;
+    // Note: Allow confirmation even with regex validation failures (user override)
+    confirmBtn.disabled = !canConfirm;
+}
+
+// Global interaction handlers for enhanced String modal
+window.resetToOriginalValue = function() {
+    const editor = document.getElementById('string-editor');
+    const originalValueHint = document.getElementById('original-value-hint');
+    
+    if (!editor || !window.currentModalContext) return;
+    
+    // Reset to original value
+    editor.value = window.currentModalContext.originalValue;
+    window.currentModalContext.currentValue = window.currentModalContext.originalValue;
+    window.currentModalContext.hasBeenEdited = false;
+    
+    // Hide original value hint
+    if (originalValueHint) {
+        originalValueHint.classList.add('hidden');
     }
+    
+    // Update validation
+    updateValidationState();
+};
+
+window.cancelStringModal = function() {
+    if (typeof window.closeReconciliationModal === 'function') {
+        window.closeReconciliationModal();
+    }
+};
+
+window.resetStringModal = function() {
+    window.resetToOriginalValue();
 };
 
 window.confirmStringValue = function() {
@@ -219,19 +411,26 @@ window.confirmStringValue = function() {
     }
     
     const currentValue = window.currentModalContext.currentValue || window.currentModalContext.originalValue;
+    const isMonolingual = window.currentModalContext.isMonolingual;
+    const selectedLanguage = window.currentModalContext.selectedLanguage;
     
-    // Validate before confirming
-    const property = window.currentModalContext.property;
-    const propertyData = window.currentModalContext.propertyData;
-    const constraints = extractRegexConstraints(property, propertyData);
-    const validation = validateStringValue(currentValue, constraints);
+    // Prepare confirmation data
+    let confirmationData = {
+        type: 'custom',
+        value: currentValue.trim(),
+        datatype: window.currentModalContext.dataType
+    };
     
-    if (!validation.isValid) {
-        console.warn('Attempting to confirm invalid string value:', currentValue);
-        return;
+    // Add language for monolingual text
+    if (isMonolingual && selectedLanguage) {
+        confirmationData.language = selectedLanguage.code;
+        confirmationData.languageLabel = selectedLanguage.label;
     }
     
-    console.log('Confirm string value:', currentValue);
+    console.log('Confirm string/monolingual value:', confirmationData);
+    
+    // Store confirmation data in context for handlers
+    window.currentModalContext.confirmationData = confirmationData;
     
     // Call appropriate confirmation handler
     if (typeof window.confirmCustomValue === 'function') {

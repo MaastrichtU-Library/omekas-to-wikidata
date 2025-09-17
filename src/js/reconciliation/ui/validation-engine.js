@@ -1,9 +1,16 @@
 /**
- * Validation Engine for String Properties
+ * Enhanced Validation Engine for String Properties
  * @module reconciliation/ui/validation-engine
  * 
- * Handles regex constraints extraction from Wikidata properties and provides
- * real-time validation for string values with detailed feedback.
+ * Comprehensive validation system supporting both regular strings and monolingual text.
+ * Handles regex constraints, language selection, visual feedback, and Wikidata integration.
+ * 
+ * Features:
+ * - Language search and selection via Wikidata API
+ * - Persistent language preference storage
+ * - Property link generation for Wikidata properties
+ * - Enhanced visual validation feedback
+ * - Support for monolingual text validation
  */
 
 /**
@@ -11,7 +18,7 @@
  * In production, this would come from Wikidata property constraints API
  */
 const CONSTRAINT_DATABASE = {
-    // Common identifiers
+    // Common identifiers and formats
     'isbn': {
         pattern: '^(?:97[89])?\\d{9}(?:\\d|X)$',
         description: 'ISBN-10 (10 digits, last may be X) or ISBN-13 (13 digits starting with 978 or 979)',
@@ -59,6 +66,18 @@ const CONSTRAINT_DATABASE = {
         description: 'ISO 8601 date format (YYYY-MM-DD)',
         examples: ['2023-12-25', '1995-07-15', '2000-01-01'],
         errorMessage: 'Must be in format YYYY-MM-DD'
+    },
+    'wikidata_id': {
+        pattern: '^Q\\d+$',
+        description: 'Wikidata entity ID (Q followed by numbers)',
+        examples: ['Q42', 'Q1234567', 'Q999999999'],
+        errorMessage: 'Must be a valid Wikidata Q-ID (Q followed by numbers)'
+    },
+    'wikidata_property': {
+        pattern: '^P\\d+$',
+        description: 'Wikidata property ID (P followed by numbers)',
+        examples: ['P31', 'P1234', 'P999999'],
+        errorMessage: 'Must be a valid Wikidata P-ID (P followed by numbers)'
     }
 };
 
@@ -301,6 +320,7 @@ export function createValidationUI(container, value, constraints, onUpdate) {
         }
     };
 }
+}
 
 /**
  * Get status icon for validation result
@@ -368,4 +388,261 @@ export function validateBatch(values) {
         value,
         validation: validateStringValue(value, constraints)
     }));
+}
+
+/**
+ * Search Wikidata languages via API
+ * @param {string} query - Language search query
+ * @returns {Promise<Array>} Array of language objects with code and label
+ */
+export async function searchWikidataLanguages(query) {
+    try {
+        const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=lexeme&limit=15`;
+        
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error(`Wikidata API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.search || data.search.length === 0) {
+            // Fallback to manual language list for common languages
+            return searchFallbackLanguages(query);
+        }
+        
+        // Extract languages from lexeme search results
+        const languages = [];
+        const seenCodes = new Set();
+        
+        for (const result of data.search) {
+            if (result.match && result.match.language) {
+                const langCode = result.match.language;
+                if (!seenCodes.has(langCode)) {
+                    languages.push({
+                        code: langCode,
+                        label: getLanguageLabel(langCode) || result.match.text || langCode
+                    });
+                    seenCodes.add(langCode);
+                }
+            }
+        }
+        
+        // Add common languages if few results
+        if (languages.length < 5) {
+            const commonLanguages = getCommonLanguages();
+            const queryLower = query.toLowerCase();
+            
+            for (const lang of commonLanguages) {
+                if (lang.label.toLowerCase().includes(queryLower) && !seenCodes.has(lang.code)) {
+                    languages.push(lang);
+                    seenCodes.add(lang.code);
+                }
+            }
+        }
+        
+        return languages.slice(0, 10);
+        
+    } catch (error) {
+        console.error('Wikidata language search failed:', error);
+        // Fallback to manual search
+        return searchFallbackLanguages(query);
+    }
+}
+
+/**
+ * Fallback language search when API fails
+ * @param {string} query - Search query
+ * @returns {Array} Array of matching languages
+ */
+function searchFallbackLanguages(query) {
+    const queryLower = query.toLowerCase();
+    return getCommonLanguages().filter(lang => 
+        lang.label.toLowerCase().includes(queryLower) ||
+        lang.code.toLowerCase().includes(queryLower)
+    ).slice(0, 10);
+}
+
+/**
+ * Get common language list
+ * @returns {Array} Array of common language objects
+ */
+function getCommonLanguages() {
+    return [
+        { code: 'en', label: 'English' },
+        { code: 'es', label: 'Spanish' },
+        { code: 'fr', label: 'French' },
+        { code: 'de', label: 'German' },
+        { code: 'it', label: 'Italian' },
+        { code: 'pt', label: 'Portuguese' },
+        { code: 'ru', label: 'Russian' },
+        { code: 'ja', label: 'Japanese' },
+        { code: 'ko', label: 'Korean' },
+        { code: 'zh', label: 'Chinese' },
+        { code: 'ar', label: 'Arabic' },
+        { code: 'hi', label: 'Hindi' },
+        { code: 'nl', label: 'Dutch' },
+        { code: 'pl', label: 'Polish' },
+        { code: 'tr', label: 'Turkish' },
+        { code: 'sv', label: 'Swedish' },
+        { code: 'da', label: 'Danish' },
+        { code: 'no', label: 'Norwegian' },
+        { code: 'fi', label: 'Finnish' },
+        { code: 'hu', label: 'Hungarian' },
+        { code: 'cs', label: 'Czech' },
+        { code: 'el', label: 'Greek' },
+        { code: 'he', label: 'Hebrew' },
+        { code: 'th', label: 'Thai' },
+        { code: 'vi', label: 'Vietnamese' },
+        { code: 'id', label: 'Indonesian' },
+        { code: 'ms', label: 'Malay' },
+        { code: 'tl', label: 'Filipino' },
+        { code: 'uk', label: 'Ukrainian' },
+        { code: 'bg', label: 'Bulgarian' },
+        { code: 'hr', label: 'Croatian' },
+        { code: 'sr', label: 'Serbian' },
+        { code: 'sk', label: 'Slovak' },
+        { code: 'sl', label: 'Slovenian' },
+        { code: 'et', label: 'Estonian' },
+        { code: 'lv', label: 'Latvian' },
+        { code: 'lt', label: 'Lithuanian' },
+        { code: 'ro', label: 'Romanian' },
+        { code: 'ca', label: 'Catalan' },
+        { code: 'eu', label: 'Basque' },
+        { code: 'gl', label: 'Galician' },
+        { code: 'is', label: 'Icelandic' },
+        { code: 'ga', label: 'Irish' },
+        { code: 'cy', label: 'Welsh' },
+        { code: 'mt', label: 'Maltese' },
+        { code: 'mk', label: 'Macedonian' },
+        { code: 'sq', label: 'Albanian' },
+        { code: 'bs', label: 'Bosnian' },
+        { code: 'me', label: 'Montenegrin' }
+    ];
+}
+
+/**
+ * Get language label for a language code
+ * @param {string} code - Language code
+ * @returns {string|null} Language label or null if not found
+ */
+function getLanguageLabel(code) {
+    const lang = getCommonLanguages().find(l => l.code === code);
+    return lang ? lang.label : null;
+}
+
+/**
+ * Get stored language preference from localStorage
+ * @returns {Object|null} Stored language object or null
+ */
+export function getStoredLanguage() {
+    try {
+        const stored = localStorage.getItem('reconciliation_last_language');
+        return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+        console.error('Error reading stored language:', error);
+        return null;
+    }
+}
+
+/**
+ * Store language preference in localStorage
+ * @param {Object} language - Language object with code and label
+ */
+export function setStoredLanguage(language) {
+    try {
+        localStorage.setItem('reconciliation_last_language', JSON.stringify(language));
+    } catch (error) {
+        console.error('Error storing language preference:', error);
+    }
+}
+
+/**
+ * Generate Wikidata property link
+ * @param {string} property - Property name or ID
+ * @param {Object} propertyData - Property metadata
+ * @returns {string|null} Wikidata property URL or null
+ */
+export function generatePropertyLink(property, propertyData) {
+    // If we have explicit property ID from propertyData
+    if (propertyData && propertyData.id) {
+        return `https://www.wikidata.org/wiki/Property:${propertyData.id}`;
+    }
+    
+    // If property looks like a Wikidata property ID (P followed by numbers)
+    if (/^P\d+$/.test(property)) {
+        return `https://www.wikidata.org/wiki/Property:${property}`;
+    }
+    
+    // If we have a property URI that includes a Wikidata property ID
+    if (propertyData && propertyData.uri) {
+        const match = propertyData.uri.match(/P\d+/);
+        if (match) {
+            return `https://www.wikidata.org/wiki/Property:${match[0]}`;
+        }
+    }
+    
+    // For common property patterns, try to guess the Wikidata property
+    const commonProperties = {
+        'isbn': 'P212',
+        'issn': 'P236', 
+        'doi': 'P356',
+        'orcid': 'P496',
+        'title': 'P1476',
+        'author': 'P50',
+        'publisher': 'P123',
+        'publication_date': 'P577',
+        'language': 'P407'
+    };
+    
+    const lowerProperty = property.toLowerCase();
+    for (const [key, pid] of Object.entries(commonProperties)) {
+        if (lowerProperty.includes(key)) {
+            return `https://www.wikidata.org/wiki/Property:${pid}`;
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Enhanced validation for monolingual text
+ * @param {string} value - Text value
+ * @param {string} languageCode - Language code
+ * @param {Object} constraints - Validation constraints
+ * @returns {Object} Validation result
+ */
+export function validateMonolingualText(value, languageCode, constraints) {
+    // First validate the text value itself
+    const textValidation = validateStringValue(value, constraints);
+    
+    // Then validate language requirement
+    if (!languageCode) {
+        return {
+            isValid: false,
+            message: 'Language selection is required for monolingual text',
+            level: 'error'
+        };
+    }
+    
+    // Check if language code is valid
+    if (!/^[a-z]{2,3}(-[A-Z]{2})?$/.test(languageCode)) {
+        return {
+            isValid: false,
+            message: 'Invalid language code format',
+            level: 'error'
+        };
+    }
+    
+    // Return combined result
+    if (!textValidation.isValid) {
+        return textValidation;
+    }
+    
+    return {
+        isValid: true,
+        message: `Valid monolingual text in ${getLanguageLabel(languageCode) || languageCode}`,
+        level: 'success',
+        languageCode: languageCode
+    };
 }
