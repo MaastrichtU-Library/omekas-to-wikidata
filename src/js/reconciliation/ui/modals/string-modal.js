@@ -29,6 +29,104 @@ import {
 } from '../validation-engine.js';
 
 /**
+ * Get confirmed value from application state
+ * @param {string} itemId - Item ID
+ * @param {string} property - Property name
+ * @param {number} valueIndex - Value index
+ * @returns {Object|null} Confirmed value data or null
+ */
+function getConfirmedValue(itemId, property, valueIndex) {
+    try {
+        if (!window.currentState) {
+            console.warn('No state system available');
+            return null;
+        }
+        
+        const state = window.currentState.getState();
+        const reconciliationData = state.reconciliationData || {};
+        
+        const itemData = reconciliationData[itemId];
+        if (!itemData || !itemData.properties || !itemData.properties[property]) {
+            return null;
+        }
+        
+        const propertyData = itemData.properties[property];
+        if (!propertyData.reconciled || !propertyData.reconciled[valueIndex]) {
+            return null;
+        }
+        
+        const reconciledData = propertyData.reconciled[valueIndex];
+        
+        // Only return data if it's a confirmed custom value
+        if (reconciledData.status === 'reconciled' && 
+            reconciledData.selectedMatch && 
+            reconciledData.selectedMatch.type === 'custom') {
+            return reconciledData.selectedMatch;
+        }
+        
+        return null;
+    } catch (error) {
+        console.warn('Failed to retrieve confirmed value from state:', error);
+        return null;
+    }
+}
+
+/**
+ * Save confirmed value to application state
+ * @param {string} itemId - Item ID
+ * @param {string} property - Property name
+ * @param {number} valueIndex - Value index
+ * @param {Object} confirmationData - Data to save
+ */
+function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
+    try {
+        if (!window.currentState) {
+            console.warn('No state system available');
+            return false;
+        }
+        
+        const state = window.currentState.getState();
+        const reconciliationData = { ...state.reconciliationData } || {};
+        
+        // Ensure the structure exists
+        if (!reconciliationData[itemId]) {
+            reconciliationData[itemId] = { properties: {} };
+        }
+        if (!reconciliationData[itemId].properties[property]) {
+            reconciliationData[itemId].properties[property] = { reconciled: [] };
+        }
+        if (!reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
+            reconciliationData[itemId].properties[property].reconciled[valueIndex] = {};
+        }
+        
+        // Save the confirmed value with proper structure
+        reconciliationData[itemId].properties[property].reconciled[valueIndex] = {
+            status: 'reconciled',
+            selectedMatch: {
+                type: 'custom',
+                value: confirmationData.value,
+                label: confirmationData.value,
+                language: confirmationData.language || null,
+                languageLabel: confirmationData.languageLabel || null,
+                datatype: confirmationData.datatype || 'string',
+                description: 'Custom user value'
+            },
+            matches: [],
+            confidence: 100
+        };
+        
+        // Update the state
+        window.currentState.updateState('reconciliationData', reconciliationData);
+        
+        console.log('Value saved to state:', itemId, property, valueIndex, confirmationData);
+        return true;
+    } catch (error) {
+        console.warn('Failed to save confirmed value to state:', error);
+        return false;
+    }
+}
+
+/**
  * Find the source table cell that corresponds to this modal's data
  * @param {string} itemId - Item ID
  * @param {string} property - Property name  
@@ -61,23 +159,6 @@ function findSourceTableCell(itemId, property, valueIndex) {
     }
 }
 
-/**
- * Get saved value for a specific item/property/valueIndex combination
- * @param {string} itemId - Item ID
- * @param {string} property - Property name
- * @param {number} valueIndex - Value index
- * @returns {Object|null} Saved confirmation data or null
- */
-function getSavedValue(itemId, property, valueIndex) {
-    try {
-        const key = `reconciliation_${itemId}_${property}_${valueIndex}`;
-        const saved = localStorage.getItem(key);
-        return saved ? JSON.parse(saved) : null;
-    } catch (error) {
-        console.warn('Failed to retrieve saved value:', error);
-        return null;
-    }
-}
 
 /**
  * Update the source table cell to reflect the confirmed value
@@ -134,25 +215,6 @@ function updateSourceTableCell(sourceCell, confirmationData) {
     }
 }
 
-/**
- * Save value for a specific item/property/valueIndex combination
- * @param {string} itemId - Item ID
- * @param {string} property - Property name
- * @param {number} valueIndex - Value index
- * @param {Object} confirmationData - Data to save
- */
-function saveValue(itemId, property, valueIndex, confirmationData) {
-    try {
-        const key = `reconciliation_${itemId}_${property}_${valueIndex}`;
-        localStorage.setItem(key, JSON.stringify({
-            ...confirmationData,
-            savedAt: new Date().toISOString()
-        }));
-        console.log('Value saved to localStorage:', key, confirmationData);
-    } catch (error) {
-        console.warn('Failed to save value:', error);
-    }
-}
 
 /**
  * Create enhanced String/Monolingual reconciliation modal content
@@ -168,10 +230,10 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
     const dataType = propertyData?.datatype || 'string';
     const isMonolingual = dataType === 'monolingualtext';
     
-    // Check for previously saved value
-    const savedData = getSavedValue(itemId, property, valueIndex);
-    const displayValue = savedData ? savedData.value : value;
-    const hasSavedValue = savedData !== null;
+    // Check for previously confirmed value
+    const confirmedData = getConfirmedValue(itemId, property, valueIndex);
+    const displayValue = confirmedData ? confirmedData.value : value;
+    const hasConfirmedValue = confirmedData !== null;
     
     const regexConstraints = extractRegexConstraints(property, propertyData);
     const validationResult = validateStringValue(displayValue, regexConstraints);
@@ -188,12 +250,12 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
     modalContent.dataset.originalValue = value; // Always keep the original Omeka value
     modalContent.dataset.currentValue = displayValue; // Use saved value if available
     modalContent.dataset.isMonolingual = isMonolingual.toString();
-    modalContent.dataset.hasSavedValue = hasSavedValue.toString();
+    modalContent.dataset.hasConfirmedValue = hasConfirmedValue.toString();
     if (propertyData) {
         modalContent.dataset.propertyData = JSON.stringify(propertyData);
     }
-    if (savedData) {
-        modalContent.dataset.savedData = JSON.stringify(savedData);
+    if (confirmedData) {
+        modalContent.dataset.confirmedData = JSON.stringify(confirmedData);
     }
     
     modalContent.innerHTML = `
@@ -207,8 +269,8 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
         <div class="value-display">
             <div class="section-title">Omeka S Value</div>
             <div class="original-value" id="omeka-original-value">${escapeHtml(value)}</div>
-            <div class="saved-value-indicator ${hasSavedValue ? '' : 'hidden'}" id="saved-value-indicator">
-                <div class="section-title">Previously Saved Value</div>
+            <div class="saved-value-indicator ${hasConfirmedValue ? '' : 'hidden'}" id="saved-value-indicator">
+                <div class="section-title">Previously Confirmed Value</div>
                 <div class="saved-value" id="saved-value-display">${escapeHtml(displayValue)}</div>
             </div>
         </div>
@@ -224,7 +286,7 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
                     
                     <!-- Original Value Display (hidden initially) -->
                     <div class="original-value-hint hidden" id="original-value-hint">
-                        <span class="original-label">${hasSavedValue ? 'Reset to saved:' : 'Original:'}</span>
+                        <span class="original-label">${hasConfirmedValue ? 'Reset to confirmed:' : 'Original:'}</span>
                         <span class="original-text clickable" onclick="resetToOriginalValue()">${escapeHtml(displayValue)}</span>
                     </div>
                     
@@ -275,11 +337,11 @@ export function initializeStringModal(modalElement) {
     const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
     const isMonolingual = modalElement.dataset.isMonolingual === 'true';
-    const hasSavedValue = modalElement.dataset.hasSavedValue === 'true';
+    const hasConfirmedValue = modalElement.dataset.hasConfirmedValue === 'true';
     const propertyData = modalElement.dataset.propertyData ? 
         JSON.parse(modalElement.dataset.propertyData) : null;
-    const savedData = modalElement.dataset.savedData ? 
-        JSON.parse(modalElement.dataset.savedData) : null;
+    const confirmedData = modalElement.dataset.confirmedData ? 
+        JSON.parse(modalElement.dataset.confirmedData) : null;
     
     // Find the source table cell that opened this modal
     const sourceCell = findSourceTableCell(modalElement.dataset.itemId, property, parseInt(modalElement.dataset.valueIndex));
@@ -295,9 +357,9 @@ export function initializeStringModal(modalElement) {
         dataType: modalElement.dataset.modalType,
         modalType: modalElement.dataset.modalType,
         isMonolingual: isMonolingual,
-        hasBeenEdited: hasSavedValue, // If we have a saved value, consider it edited
-        hasSavedValue: hasSavedValue,
-        savedData: savedData,
+        hasBeenEdited: hasConfirmedValue, // If we have a confirmed value, consider it edited
+        hasConfirmedValue: hasConfirmedValue,
+        confirmedData: confirmedData,
         selectedLanguage: null,
         sourceCell: sourceCell // Reference to the original table cell
     };
@@ -312,11 +374,11 @@ export function initializeStringModal(modalElement) {
     if (isMonolingual) {
         setupLanguageSelection();
         
-        // Restore saved language if available
-        if (savedData && savedData.language) {
+        // Restore confirmed language if available
+        if (confirmedData && confirmedData.language) {
             window.currentModalContext.selectedLanguage = {
-                code: savedData.language,
-                label: savedData.languageLabel || savedData.language
+                code: confirmedData.language,
+                label: confirmedData.languageLabel || confirmedData.language
             };
         }
     }
@@ -380,10 +442,10 @@ function setupLanguageSelection() {
     
     if (!languageSearch || !languageDropdown) return;
     
-    // Set default language from storage or saved data
+    // Set default language from storage or confirmed data
     const storedLanguage = getStoredLanguage();
-    const savedLanguage = window.currentModalContext.selectedLanguage;
-    const defaultLanguage = savedLanguage || storedLanguage;
+    const confirmedLanguage = window.currentModalContext.selectedLanguage;
+    const defaultLanguage = confirmedLanguage || storedLanguage;
     
     if (defaultLanguage) {
         languageSearch.value = defaultLanguage.label;
@@ -527,10 +589,10 @@ function updateValueDisplays(confirmationData) {
         
         savedValueDisplay.textContent = displayText;
         
-        // Update the modal context to reflect the new saved state
+        // Update the modal context to reflect the new confirmed state
         if (window.currentModalContext) {
-            window.currentModalContext.hasSavedValue = true;
-            window.currentModalContext.savedData = confirmationData;
+            window.currentModalContext.hasConfirmedValue = true;
+            window.currentModalContext.confirmedData = confirmationData;
             window.currentModalContext.hasBeenEdited = true;
         }
         
@@ -660,8 +722,8 @@ window.confirmStringValue = function() {
     // Store confirmation data in context for handlers
     window.currentModalContext.confirmationData = confirmationData;
     
-    // Save the value to persistence layer (localStorage for now)
-    saveValue(
+    // Save to application state system first
+    const savedToState = saveConfirmedValue(
         window.currentModalContext.itemId,
         window.currentModalContext.property,
         window.currentModalContext.valueIndex,
@@ -669,7 +731,7 @@ window.confirmStringValue = function() {
     );
     
     // Try multiple approaches to save the value
-    let saved = false;
+    let saved = savedToState; // Start with state save result
     
     // First, try the proper modal interaction handler
     if (typeof window.confirmCustomValue === 'function') {
@@ -731,65 +793,3 @@ window.confirmStringValue = function() {
     }
 };
 
-/**
- * Sync table cells with saved values from localStorage
- * Call this on page load to restore saved states
- */
-export function syncTableWithSavedValues() {
-    try {
-        // Find all property cells in the reconciliation table
-        const propertyCells = document.querySelectorAll('.property-cell');
-        
-        propertyCells.forEach(cell => {
-            const itemId = cell.dataset.itemId;
-            const property = cell.dataset.property;
-            const valueIndex = parseInt(cell.dataset.valueIndex) || 0;
-            
-            if (!itemId || !property) {
-                return; // Skip cells without proper identifiers
-            }
-            
-            // Check for saved value
-            const savedData = getSavedValue(itemId, property, valueIndex);
-            if (savedData) {
-                // Update this cell with the saved value
-                updateSourceTableCell(cell, savedData);
-                console.log(`Restored saved value for ${itemId}/${property}/${valueIndex}:`, savedData.value);
-            }
-        });
-        
-        console.log('Table sync with saved values completed');
-        
-    } catch (error) {
-        console.error('Failed to sync table with saved values:', error);
-    }
-}
-
-/**
- * Initialize table persistence sync
- * Call this when the reconciliation table is loaded
- */
-export function initializeTablePersistence() {
-    // Sync immediately if table exists
-    if (document.querySelector('.reconciliation-table')) {
-        syncTableWithSavedValues();
-    } else {
-        // Wait for table to be loaded and try again
-        const observer = new MutationObserver((mutations, obs) => {
-            if (document.querySelector('.reconciliation-table')) {
-                syncTableWithSavedValues();
-                obs.disconnect();
-            }
-        });
-        
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-        
-        // Stop observing after 10 seconds to prevent memory leaks
-        setTimeout(() => {
-            observer.disconnect();
-        }, 10000);
-    }
-}

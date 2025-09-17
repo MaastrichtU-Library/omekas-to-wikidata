@@ -214,10 +214,26 @@
             validateMonolingualText
         } from './src/js/reconciliation/ui/validation-engine.js';
         
-        import {
-            syncTableWithSavedValues,
-            initializeTablePersistence
-        } from './src/js/reconciliation/ui/modals/string-modal.js';
+        // Mock state system for testing
+        window.currentState = {
+            state: {
+                reconciliationData: {}
+            },
+            getState() {
+                return this.state;
+            },
+            updateState(path, value) {
+                console.log('Mock state update:', path, value);
+                if (path === 'reconciliationData') {
+                    this.state.reconciliationData = value;
+                }
+                // Simulate state change event
+                const event = new CustomEvent('stateChanged', {
+                    detail: { path, value }
+                });
+                document.dispatchEvent(event);
+            }
+        };
 
         // Make functions available globally for testing
         window.testFunctions = {
@@ -236,9 +252,7 @@
             getStoredLanguage,
             setStoredLanguage,
             generatePropertyLink,
-            validateMonolingualText,
-            syncTableWithSavedValues,
-            initializeTablePersistence
+            validateMonolingualText
         };
 
         window.testImports = function() {
@@ -649,8 +663,7 @@
                     </div>
                 `;
                 
-                // Initialize table persistence to sync any existing saved values
-                window.testFunctions.initializeTablePersistence();
+                // Note: Table persistence is now handled through the application state system
                 
             } catch (error) {
                 resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
@@ -665,21 +678,20 @@
                 // Show the sample table
                 tableContainer.style.display = 'block';
                 
-                // Force sync the table with localStorage
-                window.testFunctions.syncTableWithSavedValues();
+                // Note: Table values are now synced through the application state system
                 
                 resultDiv.innerHTML = `
                     <div class="success-message">
-                        <h4>Table Sync Test Complete</h4>
-                        <p>🔄 Table has been synced with saved values from localStorage</p>
-                        <p>If you previously saved values for any cells, they should now be restored!</p>
-                        <p>This demonstrates persistence across page reloads</p>
-                        <p><strong>To test full persistence:</strong></p>
+                        <h4>Table State Test Complete</h4>
+                        <p>🔄 Table now uses the application state system for persistence</p>
+                        <p>Values are saved to reconciliationData instead of localStorage</p>
+                        <p>This provides proper integration with the main application</p>
+                        <p><strong>How it works:</strong></p>
                         <ol>
-                            <li>Edit some cell values in the table above</li>
-                            <li>Refresh the page</li>
-                            <li>Click "Test Table Sync with Storage" again</li>
-                            <li>Your values should be restored!</li>
+                            <li>Edit cell values in the table above</li>
+                            <li>Values are immediately saved to application state</li>
+                            <li>State updates automatically sync with table display</li>
+                            <li>In the real app, state persists across sessions</li>
                         </ol>
                     </div>
                 `;
