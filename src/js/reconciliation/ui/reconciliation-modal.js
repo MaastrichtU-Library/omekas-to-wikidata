@@ -162,13 +162,56 @@ function initializeModalInteractions(dataType, value, property, propertyData) {
 function getDataTypeFromProperty(property, propertyData) {
     console.log('🔍 getDataTypeFromProperty called with:', { property, propertyData });
     
-    // Check if we have explicit property data
+    // Check if we have explicit property data with datatype
     if (propertyData && propertyData.datatype) {
         console.log('✅ Found explicit datatype in propertyData:', propertyData.datatype);
         return propertyData.datatype;
     }
     
-    console.log('⚠️ No explicit propertyData.datatype found, using pattern matching');
+    // Check if we have property data with propertyType (for manual properties)
+    if (propertyData && propertyData.propertyType) {
+        console.log('✅ Found propertyType in propertyData:', propertyData.propertyType);
+        return propertyData.propertyType;
+    }
+    
+    // Check if we have property data with id field to determine type by specific property IDs
+    if (propertyData && propertyData.id) {
+        const propertyId = propertyData.id;
+        console.log('🔍 Found property ID:', propertyId);
+        
+        // Known wikibase-item properties
+        const itemPropertyIds = [
+            'P31', 'P279', 'P361', 'P17', 'P27', 'P106', 'P39', 'P108', 'P155', 'P156',
+            'P123', 'P50', 'P57', 'P58', 'P162', 'P170', 'P175', 'P195', 'P276', 'P291',
+            'P495', 'P800', 'P921', 'P1001', 'P2283'
+        ];
+        
+        if (itemPropertyIds.includes(propertyId)) {
+            console.log('✅ Property ID matched known wikibase-item properties, returning wikibase-item');
+            return 'wikibase-item';
+        }
+    }
+    
+    // Extract property ID from property name (handles custom_P31 format)
+    const propertyIdMatch = property.match(/P\d+/);
+    if (propertyIdMatch) {
+        const extractedPropertyId = propertyIdMatch[0];
+        console.log('🔍 Extracted property ID from property name:', extractedPropertyId);
+        
+        // Known wikibase-item properties
+        const itemPropertyIds = [
+            'P31', 'P279', 'P361', 'P17', 'P27', 'P106', 'P39', 'P108', 'P155', 'P156',
+            'P123', 'P50', 'P57', 'P58', 'P162', 'P170', 'P175', 'P195', 'P276', 'P291',
+            'P495', 'P800', 'P921', 'P1001', 'P2283'
+        ];
+        
+        if (itemPropertyIds.includes(extractedPropertyId)) {
+            console.log('✅ Extracted property ID matched known wikibase-item properties, returning wikibase-item');
+            return 'wikibase-item';
+        }
+    }
+    
+    console.log('⚠️ No explicit property type found, using pattern matching');
     
     // Common property patterns for auto-detection
     const itemPatterns = ['creator', 'author', 'publisher', 'place', 'person', 'organization'];
@@ -190,6 +233,7 @@ function getDataTypeFromProperty(property, propertyData) {
     // Default to string for unknown properties
     console.log('⚠️ Property did not match any patterns, defaulting to string');
     console.log('💡 Property patterns checked:', { itemPatterns, stringPatterns });
+    console.log('💡 Known item property IDs:', ['P31', 'P279', 'P361', 'P17', 'P27', 'P106', 'P39', 'P108', 'P155', 'P156', 'P123', 'P50', 'P57', 'P58', 'P162', 'P170', 'P175', 'P195', 'P276', 'P291', 'P495', 'P800', 'P921', 'P1001', 'P2283']);
     return 'string';
 }
 
