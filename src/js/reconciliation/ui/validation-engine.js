@@ -390,63 +390,208 @@ export function validateBatch(values) {
 }
 
 /**
- * Search Wikidata languages via API
+ * Search languages using proper two-step Wikidata approach + fallback
  * @param {string} query - Language search query
- * @returns {Promise<Array>} Array of language objects with code and label
+ * @returns {Promise<Array>} Array of language objects with enhanced data
  */
 export async function searchWikidataLanguages(query) {
+    console.log('🔍 searchWikidataLanguages called with query:', query);
+    
+    const queryTrimmed = query.trim();
+    
+    // Fast fallback results for immediate response
+    console.log('🔍 Getting fallback results for:', queryTrimmed);
+    const fallbackResults = searchFallbackLanguages(queryTrimmed);
+    console.log('🔍 Fallback results:', fallbackResults);
+    
+    // For very short queries, just return fallback
+    if (queryTrimmed.length < 2) {
+        console.log('🔍 Query too short, returning fallback only');
+        return fallbackResults;
+    }
+    
     try {
-        const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=lexeme&limit=15`;
+        // Step 1: Search for candidate entities using wbsearchentities
+        const candidates = await searchWikidataEntities(queryTrimmed);
         
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`Wikidata API error: ${response.status}`);
+        if (candidates.length === 0) {
+            return fallbackResults;
         }
         
-        const data = await response.json();
+        // Step 2: Validate candidates and extract language data
+        const validatedLanguages = await validateAndEnhanceLanguages(candidates);
         
-        if (!data.search || data.search.length === 0) {
-            // Fallback to manual language list for common languages
-            return searchFallbackLanguages(query);
-        }
+        // Combine results: validated Wikidata languages + fallback (avoiding duplicates)
+        const combinedResults = combineLanguageResults(validatedLanguages, fallbackResults);
         
-        // Extract languages from lexeme search results
-        const languages = [];
-        const seenCodes = new Set();
-        
-        for (const result of data.search) {
-            if (result.match && result.match.language) {
-                const langCode = result.match.language;
-                if (!seenCodes.has(langCode)) {
-                    languages.push({
-                        code: langCode,
-                        label: getLanguageLabel(langCode) || result.match.text || langCode
-                    });
-                    seenCodes.add(langCode);
-                }
-            }
-        }
-        
-        // Add common languages if few results
-        if (languages.length < 5) {
-            const commonLanguages = getCommonLanguages();
-            const queryLower = query.toLowerCase();
-            
-            for (const lang of commonLanguages) {
-                if (lang.label.toLowerCase().includes(queryLower) && !seenCodes.has(lang.code)) {
-                    languages.push(lang);
-                    seenCodes.add(lang.code);
-                }
-            }
-        }
-        
-        return languages.slice(0, 10);
+        return combinedResults.slice(0, 12); // Limit total results
         
     } catch (error) {
-        console.error('Wikidata language search failed:', error);
-        // Fallback to manual search
-        return searchFallbackLanguages(query);
+        console.warn('Wikidata language search failed:', error);
+        return fallbackResults;
     }
+}
+
+/**
+ * Step 1: Search for candidate entities using wbsearchentities
+ * @param {string} query - Search query
+ * @returns {Promise<Array>} Array of candidate entity objects
+ */
+async function searchWikidataEntities(query) {
+    const apiUrl = new URL('https://www.wikidata.org/w/api.php');
+    apiUrl.searchParams.set('action', 'wbsearchentities');
+    apiUrl.searchParams.set('search', query);
+    apiUrl.searchParams.set('language', 'en');
+    apiUrl.searchParams.set('uselang', 'en');
+    apiUrl.searchParams.set('type', 'item');
+    apiUrl.searchParams.set('limit', '15');
+    apiUrl.searchParams.set('format', 'json');
+    apiUrl.searchParams.set('origin', '*');
+    
+    const response = await fetch(apiUrl.toString(), {
+        headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'OmekaS-to-Wikidata/1.0 (language-search)'
+        }
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Wikidata search API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.search || [];
+}
+
+/**
+ * Step 2: Validate candidates as languages and extract ISO codes
+ * @param {Array} candidates - Candidate entities from search
+ * @returns {Promise<Array>} Array of validated language objects
+ */
+async function validateAndEnhanceLanguages(candidates) {
+    if (candidates.length === 0) return [];
+    
+    const qids = candidates.map(c => c.id);
+    const entities = await getWikidataEntities(qids);
+    
+    const validatedLanguages = [];
+    
+    for (const candidate of candidates) {
+        const entity = entities[candidate.id];
+        if (!entity) continue;
+        
+        const languageData = entityToLanguageData(entity, candidate);
+        if (languageData) {
+            validatedLanguages.push(languageData);
+        }
+    }
+    
+    return validatedLanguages;
+}
+
+/**
+ * Fetch full entity data from Wikidata
+ * @param {Array} qids - Array of Wikidata QIDs
+ * @returns {Promise<Object>} Entity data indexed by QID
+ */
+async function getWikidataEntities(qids) {
+    const apiUrl = new URL('https://www.wikidata.org/w/api.php');
+    apiUrl.searchParams.set('action', 'wbgetentities');
+    apiUrl.searchParams.set('ids', qids.join('|'));
+    apiUrl.searchParams.set('props', 'labels|descriptions|claims');
+    apiUrl.searchParams.set('languages', 'en|fr|es|de|it'); // Include major languages
+    apiUrl.searchParams.set('format', 'json');
+    apiUrl.searchParams.set('origin', '*');
+    
+    const response = await fetch(apiUrl.toString(), {
+        headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'OmekaS-to-Wikidata/1.0 (language-validation)'
+        }
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Wikidata entities API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.entities || {};
+}
+
+/**
+ * Convert Wikidata entity to language data if valid
+ * @param {Object} entity - Wikidata entity object
+ * @param {Object} searchResult - Original search result
+ * @returns {Object|null} Language data object or null if not a language
+ */
+function entityToLanguageData(entity, searchResult) {
+    // Validate that this is actually a language (P31 = Q34770)
+    const instanceOfClaims = entity.claims?.P31 || [];
+    const isLanguage = instanceOfClaims.some(claim => {
+        const value = claim.mainsnak?.datavalue?.value;
+        return value?.id === 'Q34770'; // language (Q34770)
+    });
+    
+    if (!isLanguage) {
+        return null;
+    }
+    
+    // Extract ISO codes and other properties
+    const getStringClaims = (pid) => {
+        return (entity.claims?.[pid] || [])
+            .map(claim => claim.mainsnak?.datavalue?.value)
+            .filter(v => typeof v === 'string');
+    };
+    
+    const iso639_1 = getStringClaims('P218')[0]; // ISO 639-1
+    const iso639_2 = getStringClaims('P219'); // ISO 639-2 (can be multiple)
+    const iso639_3 = getStringClaims('P220')[0]; // ISO 639-3
+    const wikimediaCode = getStringClaims('P424')[0]; // Wikimedia language code
+    
+    // Get the best available language code for our system
+    const code = iso639_1 || iso639_3 || wikimediaCode || entity.id;
+    
+    // Get labels and descriptions
+    const label = entity.labels?.en?.value || searchResult.label || entity.id;
+    const description = entity.descriptions?.en?.value || searchResult.description;
+    
+    return {
+        id: entity.id, // QID
+        code: code,
+        label: label,
+        description: description,
+        iso639_1: iso639_1,
+        iso639_2: iso639_2.length > 0 ? iso639_2 : undefined,
+        iso639_3: iso639_3,
+        wikimediaCode: wikimediaCode,
+        source: 'wikidata'
+    };
+}
+
+/**
+ * Combine Wikidata results with fallback results, avoiding duplicates
+ * @param {Array} wikidataResults - Validated Wikidata language results
+ * @param {Array} fallbackResults - Fallback language results
+ * @returns {Array} Combined unique language results
+ */
+function combineLanguageResults(wikidataResults, fallbackResults) {
+    const combined = [...wikidataResults];
+    const seenCodes = new Set(wikidataResults.map(r => r.code));
+    const seenLabels = new Set(wikidataResults.map(r => r.label.toLowerCase()));
+    
+    // Add fallback results that don't duplicate Wikidata results
+    for (const fallback of fallbackResults) {
+        if (!seenCodes.has(fallback.code) && !seenLabels.has(fallback.label.toLowerCase())) {
+            combined.push({
+                ...fallback,
+                source: 'fallback'
+            });
+            seenCodes.add(fallback.code);
+            seenLabels.add(fallback.label.toLowerCase());
+        }
+    }
+    
+    return combined;
 }
 
 /**
@@ -455,11 +600,71 @@ export async function searchWikidataLanguages(query) {
  * @returns {Array} Array of matching languages
  */
 function searchFallbackLanguages(query) {
-    const queryLower = query.toLowerCase();
-    return getCommonLanguages().filter(lang => 
+    console.log('🔍 searchFallbackLanguages called with:', query);
+    
+    const queryLower = query.toLowerCase().trim();
+    
+    if (!queryLower) {
+        console.log('🔍 Empty query, returning empty array');
+        return [];
+    }
+    
+    const commonLanguages = getCommonLanguages();
+    console.log('🔍 Common languages available:', commonLanguages.length);
+    
+    const results = commonLanguages.filter(lang => 
         lang.label.toLowerCase().includes(queryLower) ||
-        lang.code.toLowerCase().includes(queryLower)
-    ).slice(0, 10);
+        lang.code.toLowerCase().includes(queryLower) ||
+        lang.code.toLowerCase().startsWith(queryLower)
+    ).slice(0, 12);
+    
+    console.log('🔍 Fallback search results for "' + query + '":', results);
+    return results;
+}
+
+/**
+ * Extract language code from a language name
+ * @param {string} languageName - Language name to extract code from
+ * @returns {string|null} Language code or null if not found
+ */
+function extractLanguageCode(languageName) {
+    const lowerName = languageName.toLowerCase();
+    
+    // Direct lookup in common languages
+    const directMatch = getCommonLanguages().find(lang => 
+        lang.label.toLowerCase() === lowerName
+    );
+    
+    if (directMatch) {
+        return directMatch.code;
+    }
+    
+    // Pattern matching for common language name variations
+    const patterns = {
+        'english': 'en',
+        'spanish': 'es', 
+        'french': 'fr',
+        'german': 'de',
+        'italian': 'it',
+        'portuguese': 'pt',
+        'russian': 'ru',
+        'japanese': 'ja',
+        'chinese': 'zh',
+        'arabic': 'ar',
+        'dutch': 'nl',
+        'polish': 'pl',
+        'turkish': 'tr',
+        'korean': 'ko',
+        'hindi': 'hi'
+    };
+    
+    for (const [pattern, code] of Object.entries(patterns)) {
+        if (lowerName.includes(pattern)) {
+            return code;
+        }
+    }
+    
+    return null;
 }
 
 /**

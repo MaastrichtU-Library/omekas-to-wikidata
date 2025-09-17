@@ -7560,11 +7560,139 @@ pre.sample-value {
     font-family: monospace;
 }
 
+.language-help-text {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.language-search-status {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    z-index: 999;
+    border-radius: 0 0 6px 6px;
+}
+
+.language-search-status.loading {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.language-search-status.error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.language-search-status.info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.language-search-status.hidden {
+    display: none;
+}
+
+.language-option-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.language-option .language-code {
+    margin-left: 0.5rem;
+    font-family: 'Courier New', monospace;
+}
+
 .no-results {
     padding: 1rem;
     text-align: center;
     color: #666;
+}
+
+.no-results-message {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #495057;
+}
+
+.no-results-hint {
+    font-size: 0.85rem;
+    color: #868e96;
     font-style: italic;
+}
+
+.search-hint {
+    padding: 0.75rem;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+/* Enhanced Language Option Styles */
+.language-option.enhanced {
+    padding: 0.5rem 0.75rem;
+}
+
+.language-main-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.language-codes {
+    font-size: 11px;
+    color: #666;
+    background: #f0f0f0;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-weight: normal;
+}
+
+.language-source-indicator {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-left: auto;
+}
+
+.language-description {
+    font-size: 0.8rem;
+    color: #666;
+    font-style: italic;
+    line-height: 1.2;
+    margin-top: 0.25rem;
+    padding-left: 0.25rem;
+    border-left: 2px solid #e9ecef;
+}
+
+.language-option.enhanced:hover .language-description {
+    color: #555;
+}
+
+.language-option.enhanced:hover .language-codes {
+    background: #e8e8e8;
+}
+
+.language-option.enhanced:hover .language-source-indicator {
+    opacity: 1;
 }
 
 /* Required Field Indicator */
