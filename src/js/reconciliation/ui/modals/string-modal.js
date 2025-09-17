@@ -29,6 +29,39 @@ import {
 } from '../validation-engine.js';
 
 /**
+ * Find the source table cell that corresponds to this modal's data
+ * @param {string} itemId - Item ID
+ * @param {string} property - Property name  
+ * @param {number} valueIndex - Value index
+ * @returns {HTMLElement|null} The source table cell element or null
+ */
+function findSourceTableCell(itemId, property, valueIndex) {
+    try {
+        // Look for manual property cells (no value index)
+        const manualSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"][data-is-manual="true"]`;
+        const manualCell = document.querySelector(manualSelector);
+        if (manualCell) {
+            return manualCell;
+        }
+        
+        // Look for regular property cells with value index
+        const regularSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"][data-value-index="${valueIndex}"]`;
+        const regularCell = document.querySelector(regularSelector);
+        if (regularCell) {
+            return regularCell;
+        }
+        
+        // Fallback: look for any cell with matching item and property
+        const fallbackSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"]`;
+        const fallbackCell = document.querySelector(fallbackSelector);
+        return fallbackCell;
+    } catch (error) {
+        console.warn('Failed to find source table cell:', error, { itemId, property, valueIndex });
+        return null;
+    }
+}
+
+/**
  * Get saved value for a specific item/property/valueIndex combination
  * @param {string} itemId - Item ID
  * @param {string} property - Property name
@@ -43,6 +76,61 @@ function getSavedValue(itemId, property, valueIndex) {
     } catch (error) {
         console.warn('Failed to retrieve saved value:', error);
         return null;
+    }
+}
+
+/**
+ * Update the source table cell to reflect the confirmed value
+ * @param {HTMLElement} sourceCell - The source table cell element
+ * @param {Object} confirmationData - The confirmed value data
+ */
+function updateSourceTableCell(sourceCell, confirmationData) {
+    if (!sourceCell) {
+        console.warn('No source cell found to update');
+        return;
+    }
+    
+    try {
+        // Find the elements within the cell that need updating
+        const valueTextSpan = sourceCell.querySelector('.value-text');
+        const valueStatusSpan = sourceCell.querySelector('.value-status');
+        const propertyValueDiv = sourceCell.querySelector('.property-value');
+        
+        if (!valueTextSpan) {
+            console.warn('Could not find .value-text span in source cell');
+            return;
+        }
+        
+        // Prepare the display text
+        let displayText = confirmationData.value;
+        if (confirmationData.language) {
+            displayText += ` (${confirmationData.languageLabel || confirmationData.language})`;
+        }
+        
+        // Update the value text
+        valueTextSpan.textContent = displayText;
+        
+        // Update the status text and styling
+        if (valueStatusSpan) {
+            valueStatusSpan.textContent = '✓ Custom value';
+            valueStatusSpan.classList.add('reconciled');
+        }
+        
+        // Update the property value container
+        if (propertyValueDiv) {
+            propertyValueDiv.setAttribute('data-status', 'reconciled');
+            propertyValueDiv.classList.add('reconciled');
+            propertyValueDiv.classList.remove('pending');
+        }
+        
+        // Remove any pending or error styling from the cell
+        sourceCell.classList.remove('pending', 'error');
+        sourceCell.classList.add('reconciled');
+        
+        console.log('Updated source table cell:', displayText);
+        
+    } catch (error) {
+        console.error('Failed to update source table cell:', error);
     }
 }
 
@@ -193,6 +281,9 @@ export function initializeStringModal(modalElement) {
     const savedData = modalElement.dataset.savedData ? 
         JSON.parse(modalElement.dataset.savedData) : null;
     
+    // Find the source table cell that opened this modal
+    const sourceCell = findSourceTableCell(modalElement.dataset.itemId, property, parseInt(modalElement.dataset.valueIndex));
+    
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
         itemId: modalElement.dataset.itemId,
@@ -207,7 +298,8 @@ export function initializeStringModal(modalElement) {
         hasBeenEdited: hasSavedValue, // If we have a saved value, consider it edited
         hasSavedValue: hasSavedValue,
         savedData: savedData,
-        selectedLanguage: null
+        selectedLanguage: null,
+        sourceCell: sourceCell // Reference to the original table cell
     };
     
     // Set up string editor with enhanced functionality
@@ -618,6 +710,11 @@ window.confirmStringValue = function() {
         // Update the displayed values immediately
         updateValueDisplays(confirmationData);
         
+        // Update the source table cell if available
+        if (window.currentModalContext && window.currentModalContext.sourceCell) {
+            updateSourceTableCell(window.currentModalContext.sourceCell, confirmationData);
+        }
+        
         // Show success feedback
         const confirmBtn = document.getElementById('confirm-btn');
         if (confirmBtn) {
@@ -633,3 +730,66 @@ window.confirmStringValue = function() {
         console.warn('No save handler found - value may not be persisted');
     }
 };
+
+/**
+ * Sync table cells with saved values from localStorage
+ * Call this on page load to restore saved states
+ */
+export function syncTableWithSavedValues() {
+    try {
+        // Find all property cells in the reconciliation table
+        const propertyCells = document.querySelectorAll('.property-cell');
+        
+        propertyCells.forEach(cell => {
+            const itemId = cell.dataset.itemId;
+            const property = cell.dataset.property;
+            const valueIndex = parseInt(cell.dataset.valueIndex) || 0;
+            
+            if (!itemId || !property) {
+                return; // Skip cells without proper identifiers
+            }
+            
+            // Check for saved value
+            const savedData = getSavedValue(itemId, property, valueIndex);
+            if (savedData) {
+                // Update this cell with the saved value
+                updateSourceTableCell(cell, savedData);
+                console.log(`Restored saved value for ${itemId}/${property}/${valueIndex}:`, savedData.value);
+            }
+        });
+        
+        console.log('Table sync with saved values completed');
+        
+    } catch (error) {
+        console.error('Failed to sync table with saved values:', error);
+    }
+}
+
+/**
+ * Initialize table persistence sync
+ * Call this when the reconciliation table is loaded
+ */
+export function initializeTablePersistence() {
+    // Sync immediately if table exists
+    if (document.querySelector('.reconciliation-table')) {
+        syncTableWithSavedValues();
+    } else {
+        // Wait for table to be loaded and try again
+        const observer = new MutationObserver((mutations, obs) => {
+            if (document.querySelector('.reconciliation-table')) {
+                syncTableWithSavedValues();
+                obs.disconnect();
+            }
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Stop observing after 10 seconds to prevent memory leaks
+        setTimeout(() => {
+            observer.disconnect();
+        }, 10000);
+    }
+}

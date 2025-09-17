@@ -127,6 +127,52 @@
             <button class="test-button" onclick="testLanguageStorage()">Test Language Storage</button>
             <div id="enhanced-result"></div>
         </div>
+        
+        <div class="test-section">
+            <h2>Table Cell Update Test</h2>
+            <p>Test table cell updating after modal confirmation:</p>
+            <button class="test-button" onclick="testTableCellUpdates()">Test Table Cell Updates</button>
+            <button class="test-button" onclick="testTableSyncWithStorage()">Test Table Sync with Storage</button>
+            <div id="table-test-result"></div>
+            
+            <!-- Sample reconciliation table for testing -->
+            <div id="sample-table-container" style="margin-top: 20px; display: none;">
+                <h3>Sample Table (for testing)</h3>
+                <table class="reconciliation-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Item</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Label</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Description</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">License</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px;">Test Item 1</td>
+                            <td class="property-cell" data-item-id="test-item-1" data-property="label" data-is-manual="true" style="border: 1px solid #ddd; padding: 8px; cursor: pointer;" onclick="openTestModal('test-item-1', 'label', 0, 'Click to set value', 'string')">
+                                <div class="property-value" data-status="pending">
+                                    <span class="value-text">Click to set value</span>
+                                    <span class="value-status">Click to reconcile</span>
+                                </div>
+                            </td>
+                            <td class="property-cell" data-item-id="test-item-1" data-property="description" data-is-manual="true" style="border: 1px solid #ddd; padding: 8px; cursor: pointer;" onclick="openTestModal('test-item-1', 'description', 0, 'Click to set value', 'monolingualtext')">
+                                <div class="property-value" data-status="pending">
+                                    <span class="value-text">Click to set value</span>
+                                    <span class="value-status">Click to reconcile</span>
+                                </div>
+                            </td>
+                            <td class="property-cell" data-item-id="test-item-1" data-property="schema:license" data-value-index="0" style="border: 1px solid #ddd; padding: 8px; cursor: pointer;" onclick="openTestModal('test-item-1', 'schema:license', 0, 'CC-BY 4.0', 'string')">
+                                <div class="property-value" data-status="pending">
+                                    <span class="value-text">CC-BY 4.0</span>
+                                    <span class="value-status">Click to reconcile</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Container -->
@@ -167,6 +213,11 @@
             generatePropertyLink,
             validateMonolingualText
         } from './src/js/reconciliation/ui/validation-engine.js';
+        
+        import {
+            syncTableWithSavedValues,
+            initializeTablePersistence
+        } from './src/js/reconciliation/ui/modals/string-modal.js';
 
         // Make functions available globally for testing
         window.testFunctions = {
@@ -185,7 +236,9 @@
             getStoredLanguage,
             setStoredLanguage,
             generatePropertyLink,
-            validateMonolingualText
+            validateMonolingualText,
+            syncTableWithSavedValues,
+            initializeTablePersistence
         };
 
         window.testImports = function() {
@@ -570,6 +623,100 @@
                 successMsg.remove();
             }, 3000);
         });
+        
+        window.testTableCellUpdates = function() {
+            const resultDiv = document.getElementById('table-test-result');
+            const tableContainer = document.getElementById('sample-table-container');
+            
+            try {
+                // Show the sample table
+                tableContainer.style.display = 'block';
+                
+                resultDiv.innerHTML = `
+                    <div class="success-message">
+                        <h4>Table Cell Update Test</h4>
+                        <p>📋 A sample table is now visible below with clickable cells</p>
+                        <p>1. Click any cell in the table below to open a modal</p>
+                        <p>2. Edit the value and click "Confirm"</p>
+                        <p>3. Watch the original table cell update immediately!</p>
+                        <p>4. Cell background turns green and status shows "✓ Custom value"</p>
+                        <p><strong>Available cells:</strong></p>
+                        <ul>
+                            <li>Label (string) - Click to edit text value</li>
+                            <li>Description (monolingual) - Click to edit with language</li>
+                            <li>License (string) - Edit the CC-BY 4.0 value</li>
+                        </ul>
+                    </div>
+                `;
+                
+                // Initialize table persistence to sync any existing saved values
+                window.testFunctions.initializeTablePersistence();
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
+            }
+        };
+        
+        window.testTableSyncWithStorage = function() {
+            const resultDiv = document.getElementById('table-test-result');
+            const tableContainer = document.getElementById('sample-table-container');
+            
+            try {
+                // Show the sample table
+                tableContainer.style.display = 'block';
+                
+                // Force sync the table with localStorage
+                window.testFunctions.syncTableWithSavedValues();
+                
+                resultDiv.innerHTML = `
+                    <div class="success-message">
+                        <h4>Table Sync Test Complete</h4>
+                        <p>🔄 Table has been synced with saved values from localStorage</p>
+                        <p>If you previously saved values for any cells, they should now be restored!</p>
+                        <p>This demonstrates persistence across page reloads</p>
+                        <p><strong>To test full persistence:</strong></p>
+                        <ol>
+                            <li>Edit some cell values in the table above</li>
+                            <li>Refresh the page</li>
+                            <li>Click "Test Table Sync with Storage" again</li>
+                            <li>Your values should be restored!</li>
+                        </ol>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
+            }
+        };
+        
+        // Function to open modals from table cells
+        window.openTestModal = function(itemId, property, valueIndex, value, datatype) {
+            try {
+                const modal = window.testFunctions.createReconciliationModal(
+                    itemId,
+                    property,
+                    valueIndex,
+                    value,
+                    { datatype: datatype }
+                );
+                
+                document.getElementById('modal-title').textContent = `Edit ${property}`;
+                document.getElementById('modal-content').innerHTML = modal.innerHTML;
+                document.getElementById('test-modal').classList.remove('hidden');
+                
+                // Initialize the modal
+                setTimeout(() => {
+                    const modalElement = document.querySelector('.string-modal, .monolingual-modal');
+                    if (modalElement && window.testFunctions.initializeReconciliationModalFromDOM) {
+                        window.testFunctions.initializeReconciliationModalFromDOM();
+                    }
+                }, 100);
+                
+            } catch (error) {
+                console.error('Error opening test modal:', error);
+                alert('Error opening modal: ' + error.message);
+            }
+        };
     </script>
 </body>
 </html>
