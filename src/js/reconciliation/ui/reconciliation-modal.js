@@ -1005,13 +1005,39 @@ export function createOpenReconciliationModalFactory(dependencies) {
             if (modalContent) {
                 setupDynamicDatePrecision(modalContent);
                 setupAutoAdvanceToggle();
+                
+                // Ensure modal content has proper data attributes for factory system
+                console.log('🔧 [RECONCILIATION MODAL] Adding data attributes to modal content...');
+                if (!modalContent.dataset.dataType && dataType) {
+                    modalContent.dataset.dataType = dataType;
+                    modalContent.dataset.modalFactory = 'reconciliation';
+                    console.log('✅ [RECONCILIATION MODAL] Added data-type and modal-factory attributes:', {
+                        dataType: modalContent.dataset.dataType,
+                        modalFactory: modalContent.dataset.modalFactory
+                    });
+                }
+                
+                // Copy all data attributes from the original modal element if available
+                if (modalElement && modalElement.dataset) {
+                    console.log('🔧 [RECONCILIATION MODAL] Copying data attributes from original modal element...');
+                    let copiedAttrs = [];
+                    Object.keys(modalElement.dataset).forEach(key => {
+                        if (!modalContent.dataset[key]) { // Don't overwrite existing attributes
+                            modalContent.dataset[key] = modalElement.dataset[key];
+                            copiedAttrs.push(key);
+                        }
+                    });
+                    console.log('✅ [RECONCILIATION MODAL] Copied data attributes:', copiedAttrs);
+                }
             }
             
             // Initialize modal using the factory system
             console.log('🔍 [RECONCILIATION MODAL] Looking for modal container to initialize...');
             const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
                                  document.querySelector('.wikidata-item-modal') ||
-                                 document.querySelector('[data-modal-type]');
+                                 document.querySelector('[data-modal-type]') ||
+                                 document.querySelector('#modal-content') ||
+                                 document.querySelector('.modal-content');
             
             console.log('🔍 [RECONCILIATION MODAL] Modal container search result:', {
                 found: !!modalContainer,
@@ -1019,7 +1045,9 @@ export function createOpenReconciliationModalFactory(dependencies) {
                 id: modalContainer?.id,
                 querySelector1: !!document.querySelector('.reconciliation-modal-redesign'),
                 querySelector2: !!document.querySelector('.wikidata-item-modal'),
-                querySelector3: !!document.querySelector('[data-modal-type]')
+                querySelector3: !!document.querySelector('[data-modal-type]'),
+                querySelector4: !!document.querySelector('#modal-content'),
+                querySelector5: !!document.querySelector('.modal-content')
             });
             
             if (modalContainer) {
