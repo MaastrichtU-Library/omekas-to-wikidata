@@ -63,12 +63,17 @@ const modalRegistry = {
  * @throws {Error} If data type is not supported
  */
 export function createReconciliationModalByType(dataType, itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+    console.log('🏭 createReconciliationModalByType called with dataType:', dataType);
+    console.log('🏭 Available modal types:', Object.keys(modalRegistry));
+    
     const modalHandler = modalRegistry[dataType];
     
     if (!modalHandler) {
+        console.error('❌ Unsupported modal type:', dataType);
         throw new Error(`Unsupported reconciliation modal type: ${dataType}. Supported types: ${Object.keys(modalRegistry).join(', ')}`);
     }
     
+    console.log('✅ Found modal handler for type:', dataType, 'Handler name:', modalHandler.name);
     
     try {
         const modalElement = modalHandler.create(itemId, property, valueIndex, value, propertyData, existingMatches);
