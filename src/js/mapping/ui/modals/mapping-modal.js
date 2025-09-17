@@ -180,7 +180,7 @@ export function openMappingModal(keyData) {
                         
                         if (currentMappingId && currentMappingId !== finalMappingId) {
                             const currentState = window.mappingStepState.getState();
-                            const currentBlocks = currentState.transformationBlocks?.[currentMappingId] || [];
+                            const currentBlocks = currentState.mappings?.transformationBlocks?.[currentMappingId] || [];
                             
                             console.log('[SAVE] Transferring blocks:', {
                                 from: currentMappingId,
@@ -195,9 +195,9 @@ export function openMappingModal(keyData) {
                             });
                             
                             // Clean up current mappingId if it was temporary
-                            if (currentMappingId.startsWith('temp_') && currentState.transformationBlocks) {
+                            if (currentMappingId.startsWith('temp_') && currentState.mappings?.transformationBlocks) {
                                 console.log('[SAVE] Deleting temporary mappingId:', currentMappingId);
-                                delete currentState.transformationBlocks[currentMappingId];
+                                delete currentState.mappings.transformationBlocks[currentMappingId];
                             }
                         }
                         
@@ -212,7 +212,7 @@ export function openMappingModal(keyData) {
                         const finalState = window.mappingStepState.getState();
                         console.log('[SAVE] Final state after save:', {
                             mappedKeys: finalState.mappings.mappedKeys,
-                            transformationBlocks: finalState.transformationBlocks?.[finalMappingId]
+                            transformationBlocks: finalState.mappings?.transformationBlocks?.[finalMappingId]
                         });
                         
                         modalUI.closeModal();
@@ -392,7 +392,7 @@ export function createMappingModalContent(keyData) {
             
             console.log('[MODAL] Looking for existing compose blocks for custom property:', {
                 keyData,
-                currentStateTransformationBlocks: currentState.transformationBlocks
+                currentStateTransformationBlocks: currentState.mappings?.transformationBlocks
             });
             
             // Build list of possible mappingIds to check for existing patterns
@@ -415,7 +415,7 @@ export function createMappingModalContent(keyData) {
             
             // Look for existing compose blocks in any of these locations
             for (const mappingId of possibleMappingIds) {
-                const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
+                const existingBlocks = currentState.mappings?.transformationBlocks?.[mappingId] || [];
                 const existingComposeBlock = existingBlocks.find(block => block.type === 'compose');
                 
                 console.log('[MODAL] Checking mappingId:', mappingId, 'found blocks:', existingBlocks);
@@ -500,7 +500,7 @@ export function createMappingModalContent(keyData) {
             
             // Verify it was added
             const afterAddState = window.mappingStepState.getState();
-            const afterAddBlocks = afterAddState.transformationBlocks?.[mappingId];
+            const afterAddBlocks = afterAddState.mappings?.transformationBlocks?.[mappingId];
             console.log('[MODAL] After adding block, state blocks:', afterAddBlocks);
         } else {
             console.log('[MODAL] Compose block already exists in state, not adding');
