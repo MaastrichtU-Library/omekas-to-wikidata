@@ -123,11 +123,19 @@ export async function loadMappingFromData(mappingData, state) {
     
     // Convert contextMap objects back to Maps and check if keys exist in current dataset
     const processKeys = (keys) => {
-        return keys.map(key => ({
-            ...key,
-            contextMap: key.contextMap ? new Map(Object.entries(key.contextMap)) : new Map(),
-            notInCurrentDataset: !currentDataKeys.has(key.key) // Mark keys not in current dataset
-        }));
+        return keys.map(key => {
+            // Check if this is a custom mapping
+            const isCustomMapping = key.key?.startsWith('custom_') || 
+                                   key.isCustomProperty === true || 
+                                   key.type === 'custom';
+            
+            return {
+                ...key,
+                contextMap: key.contextMap ? new Map(Object.entries(key.contextMap)) : new Map(),
+                // Skip dataset validation for custom mappings
+                notInCurrentDataset: isCustomMapping ? false : !currentDataKeys.has(key.key)
+            };
+        });
     };
     
     // Load mappings
@@ -148,5 +156,5 @@ export async function loadMappingFromData(mappingData, state) {
     
     // Update UI
     const { populateLists } = await import('../../mapping/ui/mapping-lists.js');
-    populateLists();
+    populateLists(state);
 }
