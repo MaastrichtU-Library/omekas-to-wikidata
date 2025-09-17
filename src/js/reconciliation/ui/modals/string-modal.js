@@ -325,7 +325,7 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="cancelStringModal()">Cancel</button>
             <button class="btn btn-outline" onclick="resetStringModal()">Reset</button>
-            <button class="btn btn-outline" onclick="skipStringValue()">Skip</button>
+            <button class="btn btn-outline" onclick="skipReconciliation()">Skip</button>
             <button class="btn btn-primary" id="confirm-btn" onclick="confirmStringValue()">Confirm</button>
         </div>
     `;
@@ -661,58 +661,6 @@ window.cancelStringModal = function() {
 
 window.resetStringModal = function() {
     window.resetToOriginalValue();
-};
-
-window.skipStringValue = function() {
-    if (!window.currentModalContext) {
-        console.error('No modal context available for string skip');
-        return;
-    }
-    
-    console.log('Skipping string value:', window.currentModalContext);
-    
-    // Try multiple approaches to mark the cell as skipped
-    let skipped = false;
-    
-    // First, try the proper modal interaction handler for skipping
-    if (typeof window.markCellAsSkipped === 'function') {
-        window.markCellAsSkipped(window.currentModalContext);
-        skipped = true;
-        if (typeof window.closeReconciliationModal === 'function') {
-            window.closeReconciliationModal();
-        }
-    }
-    // Try the factory-based interaction handlers
-    else if (window.modalInteractionHandlers && typeof window.modalInteractionHandlers.markCellAsSkipped === 'function') {
-        window.modalInteractionHandlers.markCellAsSkipped(window.currentModalContext);
-        skipped = true;
-        if (typeof window.closeReconciliationModal === 'function') {
-            window.closeReconciliationModal();
-        }
-    }
-    // Fallback: dispatch a custom event that other parts of the system can listen to
-    else {
-        const event = new CustomEvent('stringValueSkipped', {
-            detail: {
-                context: window.currentModalContext
-            }
-        });
-        document.dispatchEvent(event);
-        skipped = true;
-        
-        // Close modal if possible
-        if (typeof window.closeReconciliationModal === 'function') {
-            window.closeReconciliationModal();
-        }
-    }
-    
-    if (!skipped) {
-        console.warn('No skip handler found - value may not be marked as skipped');
-        // Still close the modal even if skipping failed
-        if (typeof window.closeReconciliationModal === 'function') {
-            window.closeReconciliationModal();
-        }
-    }
 };
 
 window.confirmStringValue = function() {
