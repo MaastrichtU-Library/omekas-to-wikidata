@@ -96,40 +96,57 @@ export async function populateLists(state) {
     const ignoredKeys = newKeys.filter(k => shouldIgnoreKey(k.key));
     const regularKeys = newKeys.filter(k => !shouldIgnoreKey(k.key));
     
-    // Process keys with detected identifiers - auto-map them
+    // Process keys with detected identifiers - auto-map them (async)
     const autoMappedKeys = [];
     const keysToAddAsNonLinked = [];
     
-    regularKeys.forEach(keyObj => {
-        if (keyObj.hasIdentifier && keyObj.identifierInfo) {
-            // Create an auto-mapping for this identifier field
-            const mappingObj = createIdentifierMapping(
-                keyObj.key, 
-                keyObj.identifierInfo, 
-                keyObj.sampleValue
-            );
+    // Collect all identifier fields that need auto-mapping
+    const identifierFields = regularKeys.filter(keyObj => keyObj.hasIdentifier && keyObj.identifierInfo);
+    const nonIdentifierFields = regularKeys.filter(keyObj => !keyObj.hasIdentifier || !keyObj.identifierInfo);
+    
+    // Process identifier fields concurrently for better performance
+    if (identifierFields.length > 0) {
+        try {
+            const mappingPromises = identifierFields.map(async (keyObj) => {
+                // Create an auto-mapping for this identifier field with API constraint fetching
+                const mappingObj = await createIdentifierMapping(
+                    keyObj.key, 
+                    keyObj.identifierInfo, 
+                    keyObj.sampleValue
+                );
+                
+                // Add the full key data with enhanced property mapping
+                return {
+                    ...keyObj,
+                    property: mappingObj.property,
+                    mappingId: state.generateMappingId(keyObj.key, mappingObj.property.id, mappingObj.selectedAtField),
+                    mappedAt: mappingObj.mappedAt,
+                    autoMapped: true,
+                    identifierType: mappingObj.identifierType,
+                    displayName: mappingObj.displayName,
+                    sampleValue: mappingObj.sampleValue,
+                    selectedAtField: mappingObj.selectedAtField,
+                    availableFields: mappingObj.availableFields
+                };
+            });
             
-            // Add the full key data with property mapping
-            const mappedKey = {
-                ...keyObj,
-                property: mappingObj.property,
-                mappingId: state.generateMappingId(keyObj.key, mappingObj.property.id),
-                mappedAt: mappingObj.mappedAt,
-                autoMapped: true,
-                identifierType: mappingObj.identifierType,
-                displayName: mappingObj.displayName
-            };
-            
-            autoMappedKeys.push(mappedKey);
-        } else {
-            keysToAddAsNonLinked.push(keyObj);
+            // Wait for all auto-mappings to complete
+            const completedMappings = await Promise.all(mappingPromises);
+            autoMappedKeys.push(...completedMappings);
+        } catch (error) {
+            console.error('Error during auto-mapping process:', error);
+            // Fall back to adding identifier fields as non-linked if auto-mapping fails
+            keysToAddAsNonLinked.push(...identifierFields);
         }
-    });
+    }
+    
+    // Add non-identifier fields to non-linked keys
+    keysToAddAsNonLinked.push(...nonIdentifierFields);
     
     // Add ignored keys to ignored list
     const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...ignoredKeys];
     
-    // Add regular keys (without identifiers) to non-linked keys
+    // Add regular keys (without identifiers) and failed auto-mappings to non-linked keys
     const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.filter(k => 
         !keyAnalysis.find(ka => ka.key === (k.key || k))
     );
@@ -141,13 +158,15 @@ export async function populateLists(state) {
     // Update all mappings atomically
     state.updateMappings(allNonLinkedKeys, allMappedKeys, currentIgnoredKeys);
     
-    // If we auto-mapped any keys, show a message
+    // If we auto-mapped any keys, show a enhanced message
     if (autoMappedKeys.length > 0) {
         const identifierTypes = [...new Set(autoMappedKeys.map(k => k.identifierType))].join(', ');
+        const constraintsFetched = autoMappedKeys.filter(k => k.property.constraintsFetched).length;
+        
         showMessage(
-            `Auto-mapped ${autoMappedKeys.length} identifier field(s): ${identifierTypes}`,
+            `Auto-mapped ${autoMappedKeys.length} identifier field(s): ${identifierTypes} (${constraintsFetched}/${autoMappedKeys.length} with constraints)`,
             'success',
-            5000
+            6000
         );
     }
     
