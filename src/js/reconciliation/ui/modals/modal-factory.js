@@ -113,6 +113,7 @@ export function createReconciliationModalByType(dataType, itemId, property, valu
  */
 export function initializeReconciliationModal(modalElement) {
     console.log('🏭 [MODAL FACTORY] === initializeReconciliationModal CALLED ===');
+    console.log('🏭 [MODAL FACTORY] Current window.currentModalContext:', window.currentModalContext);
     console.log('🏭 [MODAL FACTORY] Modal element details:', {
         element: modalElement,
         className: modalElement?.className,
@@ -159,8 +160,10 @@ export function initializeReconciliationModal(modalElement) {
     
     try {
         console.log('🔄 [MODAL FACTORY] About to call modalHandler.initialize...');
+        console.log('🔄 [MODAL FACTORY] Context before handler init:', window.currentModalContext);
         modalHandler.initialize(modalElement);
         console.log('✅ [MODAL FACTORY] Modal initialization completed successfully');
+        console.log('✅ [MODAL FACTORY] Context after handler init:', window.currentModalContext);
     } catch (error) {
         console.error(`❌ [MODAL FACTORY] Error initializing ${modalHandler.name}:`, {
             error: error.message,

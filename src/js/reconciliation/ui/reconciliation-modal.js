@@ -931,7 +931,13 @@ export function createOpenReconciliationModalFactory(dependencies) {
     let currentReconciliationCell = null;
     
     return async function openReconciliationModal(itemId, property, valueIndex, value, manualProp = null) {
+        console.log('🔵 [OPEN MODAL] Opening reconciliation modal for:', { itemId, property, valueIndex, value });
         currentReconciliationCell = { itemId, property, valueIndex, value, manualProp };
+        
+        // Clear any existing context first
+        if (window.currentModalContext) {
+            console.log('⚠️ [OPEN MODAL] Clearing existing context:', window.currentModalContext);
+        }
         
         // Set up context immediately before any async operations
         const dataType = getDataTypeFromProperty(property, manualProp?.property, state);
@@ -946,6 +952,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
             modalType: dataType,
             existingMatches: null
         };
+        console.log('🟢 [OPEN MODAL] Initial context set:', window.currentModalContext);
         
         // Get existing matches from reconciliation data if available
         let existingMatches = null;
@@ -962,41 +969,64 @@ export function createOpenReconciliationModalFactory(dependencies) {
         
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
+            console.log('🔴 [OPEN MODAL] Modal closed callback, clearing context');
             currentReconciliationCell = null;
             window.currentModalContext = null;
         });
         
+        // Create a backup context that persists
+        const backupContext = {
+            itemId: itemId,
+            property: property,
+            valueIndex: parseInt(valueIndex),
+            originalValue: value,
+            currentValue: value,
+            propertyData: manualProp?.property || null,
+            dataType: dataType,
+            modalType: dataType,
+            existingMatches: existingMatches
+        };
+        
         // Verify context is available immediately after modal opens
         setTimeout(() => {
             if (!window.currentModalContext) {
-                // Emergency context restoration
-                window.currentModalContext = {
-                    itemId: itemId,
-                    property: property,
-                    valueIndex: parseInt(valueIndex),
-                    originalValue: value,
-                    currentValue: value,
-                    propertyData: manualProp?.property || null,
-                    dataType: dataType,
-                    modalType: dataType,
-                    existingMatches: existingMatches
-                };
+                console.warn('⚠️ [OPEN MODAL] Context lost, restoring from backup');
+                // Emergency context restoration from backup
+                window.currentModalContext = backupContext;
             }
         }, 10);
         
-        // Preserve dataset attributes after modal is inserted into DOM
+        // Additional safety check before initialization
         setTimeout(() => {
-            const insertedModalContainer = document.querySelector('.reconciliation-modal-redesign');
+            if (!window.currentModalContext) {
+                console.warn('⚠️ [OPEN MODAL] Context still missing at 50ms, restoring from backup');
+                window.currentModalContext = backupContext;
+            }
+        }, 50);
+        
+        // Preserve dataset attributes after modal is inserted into DOM
+        // CRITICAL: This must happen BEFORE initialization
+        setTimeout(() => {
+            console.log('🔶 [OPEN MODAL] Preserving dataset attributes...');
+            const insertedModalContainer = document.querySelector('.reconciliation-modal-redesign') ||
+                                           document.querySelector('#modal-content') ||
+                                           document.querySelector('.modal-content');
             if (insertedModalContainer && modalElement.dataset) {
+                console.log('🔶 [OPEN MODAL] Original dataset:', modalElement.dataset);
                 // Copy all dataset attributes from original element to inserted element
                 Object.keys(modalElement.dataset).forEach(key => {
                     insertedModalContainer.dataset[key] = modalElement.dataset[key];
                 });
+                console.log('🔶 [OPEN MODAL] Inserted container dataset after copy:', insertedModalContainer.dataset);
+            } else {
+                console.error('❌ [OPEN MODAL] Could not preserve dataset attributes - container not found');
             }
-        }, 50); // Small delay to ensure modal is in DOM
+        }, 25); // Reduced delay to happen before initialization
         
-        // Setup modal functionality after DOM is rendered
+        // Setup modal functionality after DOM is rendered - split into two phases
+        // Phase 1: Set data attributes (needs to happen first)
         setTimeout(() => {
+            console.log('🎯 [PHASE 1] Setting up data attributes...');
             // Try multiple possible selectors for modal content
             const modalContent = document.querySelector('#modal-content') || 
                                document.querySelector('.modal-content') ||
@@ -1030,6 +1060,11 @@ export function createOpenReconciliationModalFactory(dependencies) {
                     console.log('✅ [RECONCILIATION MODAL] Copied data attributes:', copiedAttrs);
                 }
             }
+        }, 30); // Run first to set attributes
+        
+        // Phase 2: Initialize the modal (needs data attributes to be set)
+        setTimeout(() => {
+            console.log('🎯 [PHASE 2] Initializing modal...');
             
             // Initialize modal using the factory system
             console.log('🔍 [RECONCILIATION MODAL] Looking for modal container to initialize...');
@@ -1055,8 +1090,10 @@ export function createOpenReconciliationModalFactory(dependencies) {
                 try {
                     // Use the proper factory initialization
                     console.log('🔄 [RECONCILIATION MODAL] About to call initializeReconciliationModal...');
+                    console.log('🔄 [RECONCILIATION MODAL] Current context before init:', window.currentModalContext);
                     initializeReconciliationModal(modalContainer);
                     console.log('✅ [RECONCILIATION MODAL] initializeReconciliationModal completed successfully');
+                    console.log('✅ [RECONCILIATION MODAL] Context after init:', window.currentModalContext);
                 } catch (error) {
                     console.warn('⚠️ [RECONCILIATION MODAL] Factory initialization failed, falling back to deprecated system:', {
                         error: error.message,
@@ -1091,7 +1128,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
             } else {
                 console.warn('⚠️ [RECONCILIATION MODAL] No modal container found for initialization');
             }
-        }, 100);
+        }, 60); // Run after attributes are set
         
         // Start automatic reconciliation for Wikidata items
         // Note: dataType already declared above, reusing it
@@ -1118,6 +1155,12 @@ export function createModalInteractionHandlers(dependencies) {
         reconcileNextUnprocessedCell,
         setupExpandedSearch
     } = dependencies;
+    
+    console.log('🌐 [HANDLERS] Creating modal interaction handlers with dependencies:', {
+        hasMarkCellAsReconciled: typeof markCellAsReconciled === 'function',
+        hasMarkCellAsSkipped: typeof markCellAsSkipped === 'function',
+        hasModalUI: !!modalUI
+    });
 
     return {
         selectMatchAndAdvance(matchId) {
@@ -1153,9 +1196,15 @@ export function createModalInteractionHandlers(dependencies) {
         },
 
         confirmCustomValue() {
-            if (!window.currentModalContext) return;
+            console.log('🚀 [CONFIRM] confirmCustomValue called');
+            console.log('🚀 [CONFIRM] Current context:', window.currentModalContext);
+            if (!window.currentModalContext) {
+                console.error('❌ [CONFIRM] No currentModalContext available!');
+                return;
+            }
             
             const currentValue = window.currentModalContext.currentValue || window.currentModalContext.transformedValue;
+            console.log('🚀 [CONFIRM] Calling markCellAsReconciled with value:', currentValue);
             
             markCellAsReconciled(window.currentModalContext, {
                 type: 'custom',
@@ -1174,7 +1223,10 @@ export function createModalInteractionHandlers(dependencies) {
         },
 
         skipReconciliation() {
+            console.log('🚀 [SKIP] skipReconciliation called');
+            console.log('🚀 [SKIP] Current context:', window.currentModalContext);
             if (window.currentModalContext) {
+                console.log('🚀 [SKIP] Calling markCellAsSkipped with context:', window.currentModalContext);
                 markCellAsSkipped(window.currentModalContext);
                 modalUI.closeModal();
                 
@@ -1183,6 +1235,8 @@ export function createModalInteractionHandlers(dependencies) {
                         reconcileNextUnprocessedCell();
                     }, 300);
                 }
+            } else {
+                console.error('❌ [SKIP] No currentModalContext available!');
             }
         },
 
