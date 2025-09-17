@@ -60,6 +60,7 @@ import {
     
     // Batch processing
     createBatchAutoAcceptanceProcessor,
+    createColumnReconciliationProcessor,
     createNextUnprocessedCellReconciler,
     createAutoAdvanceSettingGetter,
     createAutoAdvanceToggleSetup,
@@ -218,6 +219,19 @@ export function setupReconciliationStep(state) {
             state
         });
         
+        const reconcileColumn = createColumnReconciliationProcessor({
+            extractPropertyValues,
+            markCellAsReconciled: cellMarkers.markCellAsReconciled,
+            storeAllMatches,
+            storeEmptyMatches,
+            updateCellLoadingState,
+            updateCellDisplayAsNoMatches,
+            updateCellDisplayWithMatch,
+            updateProceedButton,
+            reconciliationData,
+            state
+        });
+        
         const reconcileNextUnprocessedCell = createNextUnprocessedCellReconciler({
             calculateCurrentProgress,
             state,
@@ -252,6 +266,7 @@ export function setupReconciliationStep(state) {
             performBatchAutoAcceptance,
             restoreReconciliationDisplay,
             openReconciliationModal,
+            reconcileColumn,
             state
         });
         
