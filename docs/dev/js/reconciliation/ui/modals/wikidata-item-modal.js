@@ -78,6 +78,7 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
 
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeReconciliationModal()">Cancel</button>
+            <button class="btn btn-outline" onclick="skipReconciliation()">Skip</button>
             <button class="btn btn-primary" id="confirm-btn" onclick="confirmWikidataSelection()" disabled>Confirm</button>
         </div>
     `;
@@ -401,9 +402,14 @@ window.confirmWikidataSelection = function() {
 };
 
 window.skipWikidataReconciliation = function() {
-    console.log('Skip Wikidata reconciliation');
-    if (typeof window.closeReconciliationModal === 'function') {
-        window.closeReconciliationModal();
+    // Use the existing skipReconciliation function for proper state management and UI updates
+    if (typeof window.skipReconciliation === 'function') {
+        window.skipReconciliation();
+    } else {
+        console.warn('skipReconciliation function not available');
+        if (typeof window.closeReconciliationModal === 'function') {
+            window.closeReconciliationModal();
+        }
     }
 };
 

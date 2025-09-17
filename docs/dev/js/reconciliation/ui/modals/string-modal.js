@@ -325,6 +325,7 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="cancelStringModal()">Cancel</button>
             <button class="btn btn-outline" onclick="resetStringModal()">Reset</button>
+            <button class="btn btn-outline" onclick="skipReconciliation()">Skip</button>
             <button class="btn btn-primary" id="confirm-btn" onclick="confirmStringValue()">Confirm</button>
         </div>
     `;
