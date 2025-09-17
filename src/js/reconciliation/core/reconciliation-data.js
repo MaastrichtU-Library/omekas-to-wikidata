@@ -91,6 +91,12 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     
     // Special handling for custom properties - they generate values through transformations
     if (isCustomProperty) {
+        console.log('[EXTRACT] Custom property detected:', {
+            key,
+            keyOrKeyObj,
+            isCustomProperty
+        });
+        
         // Custom properties don't extract from data, they generate through compose patterns
         // Return a placeholder value that will be transformed
         let extractedValues = [''];  // Empty string as base value for transformation
@@ -103,40 +109,66 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                     propertyId = keyOrKeyObj.property.id;
                 }
                 
+                console.log('[EXTRACT] Looking for transformations, propertyId:', propertyId);
+                
                 // Generate mapping ID to look up transformations
                 if (propertyId) {
                     const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
                     const transformationBlocks = state.getTransformationBlocks(mappingId);
                     
+                    console.log('[EXTRACT] Transformation blocks for custom property:', {
+                        mappingId,
+                        transformationBlocks,
+                        blocksCount: transformationBlocks?.length || 0
+                    });
+                    
                     if (transformationBlocks && transformationBlocks.length > 0) {
                         // For custom properties, ensure sourceData is available in compose blocks
                         const enhancedBlocks = transformationBlocks.map(block => {
-                            if (block.type === 'compose' && !block.config.sourceData) {
-                                // Add the current item as sourceData for compose transformations
-                                return {
-                                    ...block,
-                                    config: {
-                                        ...block.config,
-                                        sourceData: item
-                                    }
-                                };
+                            if (block.type === 'compose') {
+                                console.log('[EXTRACT] Compose block config before enhancement:', block.config);
+                                if (!block.config.sourceData) {
+                                    // Add the current item as sourceData for compose transformations
+                                    return {
+                                        ...block,
+                                        config: {
+                                            ...block.config,
+                                            sourceData: item
+                                        }
+                                    };
+                                }
                             }
                             return block;
                         });
+                        
+                        console.log('[EXTRACT] Enhanced blocks for transformation:', enhancedBlocks);
                         
                         // Apply transformations
                         extractedValues = extractedValues.map(originalValue => {
                             const transformationResult = applyTransformationChain(originalValue, enhancedBlocks);
                             // Get the final transformed value
-                            return transformationResult[transformationResult.length - 1]?.value || originalValue;
+                            const finalValue = transformationResult[transformationResult.length - 1]?.value || originalValue;
+                            console.log('[EXTRACT] Transformation result:', {
+                                originalValue,
+                                transformationResult,
+                                finalValue
+                            });
+                            return finalValue;
                         });
+                    } else {
+                        console.log('[EXTRACT] No transformation blocks found for custom property');
                     }
+                } else {
+                    console.log('[EXTRACT] No propertyId found for custom property');
                 }
             } catch (error) {
-                console.warn('Error applying transformations to custom property:', error);
+                console.warn('[EXTRACT] Error applying transformations to custom property:', error);
             }
+        } else {
+            console.log('[EXTRACT] No state provided for custom property transformation');
         }
         
+        console.log('[EXTRACT] Final extracted values for custom property:', extractedValues);
         return extractedValues;
     }
     

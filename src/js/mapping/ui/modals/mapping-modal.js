@@ -150,8 +150,11 @@ export function openMappingModal(keyData) {
                 type: 'primary',
                 keyboardShortcut: 'Enter',
                 callback: () => {
+                    console.log('[SAVE] Add/Update Property clicked');
                     const selectedProperty = getSelectedPropertyFromModal();
                     if (selectedProperty) {
+                        console.log('[SAVE] Selected property:', selectedProperty);
+                        
                         // For custom properties, create or update the key data
                         const customKeyData = {
                             ...keyData,
@@ -162,27 +165,56 @@ export function openMappingModal(keyData) {
                             isCustomProperty: true
                         };
                         
+                        console.log('[SAVE] Custom key data:', customKeyData);
+                        
                         // Transfer compose transformation data from current mappingId to final mappingId if needed
                         const finalMappingId = window.mappingStepState.generateMappingId(customKeyData.key, selectedProperty.id);
                         const composeSection = document.querySelector('.compose-section');
                         const currentMappingId = composeSection?.dataset?.mappingId;
                         
+                        console.log('[SAVE] MappingId transfer:', {
+                            currentMappingId,
+                            finalMappingId,
+                            needsTransfer: currentMappingId && currentMappingId !== finalMappingId
+                        });
+                        
                         if (currentMappingId && currentMappingId !== finalMappingId) {
                             const currentState = window.mappingStepState.getState();
                             const currentBlocks = currentState.transformationBlocks?.[currentMappingId] || [];
                             
+                            console.log('[SAVE] Transferring blocks:', {
+                                from: currentMappingId,
+                                to: finalMappingId,
+                                blocks: currentBlocks
+                            });
+                            
                             // Transfer transformation blocks from current to final mappingId
                             currentBlocks.forEach(block => {
+                                console.log('[SAVE] Transferring block:', block);
                                 window.mappingStepState.addTransformationBlock(finalMappingId, block);
                             });
                             
                             // Clean up current mappingId if it was temporary
                             if (currentMappingId.startsWith('temp_') && currentState.transformationBlocks) {
+                                console.log('[SAVE] Deleting temporary mappingId:', currentMappingId);
                                 delete currentState.transformationBlocks[currentMappingId];
                             }
                         }
                         
+                        console.log('[SAVE] Calling mapKeyToProperty with:', {
+                            customKeyData,
+                            selectedProperty
+                        });
+                        
                         mapKeyToProperty(customKeyData, selectedProperty, window.mappingStepState);
+                        
+                        // Check final state
+                        const finalState = window.mappingStepState.getState();
+                        console.log('[SAVE] Final state after save:', {
+                            mappedKeys: finalState.mappings.mappedKeys,
+                            transformationBlocks: finalState.transformationBlocks?.[finalMappingId]
+                        });
+                        
                         modalUI.closeModal();
                         showMessage(keyData.key ? 'Custom property updated successfully' : 'Custom property added successfully', 'success', 3000);
                     } else {
@@ -358,24 +390,42 @@ export function createMappingModalContent(keyData) {
             const currentState = window.mappingStepState.getState();
             const possibleMappingIds = [];
             
+            console.log('[MODAL] Looking for existing compose blocks for custom property:', {
+                keyData,
+                currentStateTransformationBlocks: currentState.transformationBlocks
+            });
+            
             // Build list of possible mappingIds to check for existing patterns
             if (keyData.key && keyData.property) {
                 // Final mappingId for saved custom properties
-                possibleMappingIds.push(window.mappingStepState.generateMappingId(keyData.key, keyData.property.id));
+                const finalMappingId = window.mappingStepState.generateMappingId(keyData.key, keyData.property.id);
+                possibleMappingIds.push(finalMappingId);
+                console.log('[MODAL] Adding final mappingId:', finalMappingId);
             }
             if (keyData.key) {
                 // Temporary mappingId for custom properties being edited
-                possibleMappingIds.push(`temp_${keyData.key}`);
+                const tempMappingId = `temp_${keyData.key}`;
+                possibleMappingIds.push(tempMappingId);
+                console.log('[MODAL] Adding temp mappingId:', tempMappingId);
             }
             // Always check the general temporary ID
             possibleMappingIds.push('temp_custom_property');
+            
+            console.log('[MODAL] Checking possible mappingIds:', possibleMappingIds);
             
             // Look for existing compose blocks in any of these locations
             for (const mappingId of possibleMappingIds) {
                 const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
                 const existingComposeBlock = existingBlocks.find(block => block.type === 'compose');
                 
+                console.log('[MODAL] Checking mappingId:', mappingId, 'found blocks:', existingBlocks);
+                
                 if (existingComposeBlock && existingComposeBlock.config.pattern) {
+                    console.log('[MODAL] Found existing compose block with pattern:', {
+                        mappingId,
+                        pattern: existingComposeBlock.config.pattern,
+                        fullBlock: existingComposeBlock
+                    });
                     // Use the existing block but ensure sourceData is updated
                     composeBlock = {
                         ...existingComposeBlock,
@@ -388,6 +438,10 @@ export function createMappingModalContent(keyData) {
                     existingPattern = existingComposeBlock.config.pattern;
                     break;
                 }
+            }
+            
+            if (!composeBlock) {
+                console.log('[MODAL] No existing compose block found, will create new one');
             }
         }
         
@@ -426,13 +480,30 @@ export function createMappingModalContent(keyData) {
             mappingId = 'temp_custom_property';
         }
         
+        console.log('[MODAL] Using mappingId for compose section:', mappingId);
+        
         // Add the compose block to the transformation state if it's not already there
         const currentState = window.mappingStepState.getState();
         const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
         const hasExistingComposeBlock = existingBlocks.find(block => block.id === composeBlock.id);
         
+        console.log('[MODAL] Before adding block:', {
+            mappingId,
+            hasExistingComposeBlock,
+            existingBlocks,
+            composeBlock
+        });
+        
         if (!hasExistingComposeBlock) {
+            console.log('[MODAL] Adding compose block to state with mappingId:', mappingId);
             window.mappingStepState.addTransformationBlock(mappingId, composeBlock);
+            
+            // Verify it was added
+            const afterAddState = window.mappingStepState.getState();
+            const afterAddBlocks = afterAddState.transformationBlocks?.[mappingId];
+            console.log('[MODAL] After adding block, state blocks:', afterAddBlocks);
+        } else {
+            console.log('[MODAL] Compose block already exists in state, not adding');
         }
         
         // Import the compose config UI
