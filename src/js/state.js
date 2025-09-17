@@ -839,7 +839,14 @@ export function setupState() {
             order: state.mappings.transformationBlocks[mappingId].length
         };
         
-        state.mappings.transformationBlocks[mappingId].push(blockWithId);
+        // Check if a block with this ID already exists
+        const existingBlockIndex = state.mappings.transformationBlocks[mappingId].findIndex(b => b.id === blockWithId.id);
+        if (existingBlockIndex !== -1) {
+            // Update existing block instead of adding duplicate
+            state.mappings.transformationBlocks[mappingId][existingBlockIndex] = blockWithId;
+        } else {
+            state.mappings.transformationBlocks[mappingId].push(blockWithId);
+        }
         state.hasUnsavedChanges = true;
         
         eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
