@@ -15,6 +15,90 @@ import { extractAtFieldsFromAllItems, extractAllFieldsFromItems } from '../../co
 import { extractAllFields } from '../../../transformations.js';
 
 /**
+ * Search Wikidata items using the wbsearchentities API
+ */
+async function searchWikidataItems(query, resultsContainer) {
+    if (!query || query.length < 2) {
+        resultsContainer.innerHTML = '';
+        return;
+    }
+    
+    resultsContainer.innerHTML = '<div class="search-loading">Searching...</div>';
+    
+    try {
+        const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=item&limit=10`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.search || data.search.length === 0) {
+            resultsContainer.innerHTML = '<div class="no-results">No items found</div>';
+            return;
+        }
+        
+        // Clear loading message
+        resultsContainer.innerHTML = '';
+        
+        // Display results
+        data.search.forEach(item => {
+            const resultItem = createElement('div', {
+                className: 'wikidata-search-result-item',
+                onClick: () => insertWikidataItemReference(item)
+            });
+            
+            const itemLabel = createElement('div', {
+                className: 'item-label'
+            }, `${item.label} (${item.id})`);
+            
+            const itemDescription = createElement('div', {
+                className: 'item-description'
+            }, item.description || 'No description available');
+            
+            resultItem.appendChild(itemLabel);
+            resultItem.appendChild(itemDescription);
+            resultsContainer.appendChild(resultItem);
+        });
+        
+    } catch (error) {
+        console.error('Error searching Wikidata items:', error);
+        resultsContainer.innerHTML = `<div class="search-error">Search failed: ${error.message}</div>`;
+    }
+}
+
+/**
+ * Insert a Wikidata item reference into the compose pattern
+ */
+function insertWikidataItemReference(item) {
+    // Find the compose pattern textarea and insert the Q-ID
+    const patternInput = document.querySelector('.pattern-input');
+    if (patternInput) {
+        const currentPattern = patternInput.value;
+        const qidReference = `{{wikidata:${item.id}}}`;
+        
+        // Insert at cursor position if possible, otherwise append
+        if (patternInput.selectionStart !== undefined) {
+            const start = patternInput.selectionStart;
+            const end = patternInput.selectionEnd;
+            patternInput.value = currentPattern.substring(0, start) + qidReference + currentPattern.substring(end);
+            patternInput.selectionStart = patternInput.selectionEnd = start + qidReference.length;
+        } else {
+            patternInput.value = currentPattern + qidReference;
+        }
+        
+        // Trigger input event to update the pattern
+        patternInput.dispatchEvent(new Event('input', { bubbles: true }));
+        patternInput.focus();
+    }
+    
+    // Show a success message
+    showMessage(`Added ${item.label} (${item.id}) to pattern`, 'success', 2000);
+}
+
+/**
  * Opens the mapping modal for a key
  */
 export function openMappingModal(keyData) {
@@ -219,16 +303,76 @@ export function createMappingModalContent(keyData) {
     });
     
     if (isEmptyKey) {
-        // For empty keys, just show column header with placeholder
+        // For empty keys, rebrand as "Custom Value" section
         const leftHeader = createElement('div', {
             className: 'column-header'
-        }, 'Value Composition');
+        }, 'Custom Value');
         leftColumn.appendChild(leftHeader);
         
-        const placeholderMessage = createElement('div', {
-            className: 'empty-key-message'
-        }, 'Use the compose transformation on the right to create custom property values.');
-        leftColumn.appendChild(placeholderMessage);
+        // Compose transformation section
+        const composeSection = createElement('div', {
+            className: 'compose-section'
+        });
+        
+        const composeHeader = createElement('h4', {}, 'Value Composition');
+        composeSection.appendChild(composeHeader);
+        
+        const composeDescription = createElement('p', {
+            className: 'compose-description'
+        }, 'Create complex values by combining text and variables from your data fields.');
+        composeSection.appendChild(composeDescription);
+        
+        // Create a synthetic transformation block for compose functionality
+        const composeBlock = {
+            id: 'custom-compose',
+            type: 'compose',
+            config: {
+                pattern: 'Enter your custom pattern here...'
+            }
+        };
+        
+        // Import the compose config UI
+        import('../../core/transformation-engine.js').then(({ renderComposeConfigUI }) => {
+            const composeUI = renderComposeConfigUI('custom', composeBlock, window.mappingStepState);
+            composeSection.appendChild(composeUI);
+        });
+        
+        leftColumn.appendChild(composeSection);
+        
+        // Wikidata Item Search section
+        const itemSearchSection = createElement('div', {
+            className: 'wikidata-item-search-section',
+            style: 'margin-top: 20px;'
+        });
+        
+        const itemSearchHeader = createElement('h4', {}, 'Wikidata Item Search');
+        itemSearchSection.appendChild(itemSearchHeader);
+        
+        const itemSearchDescription = createElement('p', {
+            className: 'search-description'
+        }, 'Search for Wikidata items to use as values or references.');
+        itemSearchSection.appendChild(itemSearchDescription);
+        
+        const itemSearchInput = createElement('input', {
+            type: 'text',
+            placeholder: 'Search Wikidata items (e.g., "Albert Einstein")...',
+            className: 'wikidata-item-search-input',
+            onInput: (e) => {
+                if (e.target.value.trim().length > 2) {
+                    searchWikidataItems(e.target.value.trim(), itemSearchResults);
+                } else {
+                    itemSearchResults.innerHTML = '';
+                }
+            }
+        });
+        itemSearchSection.appendChild(itemSearchInput);
+        
+        const itemSearchResults = createElement('div', {
+            className: 'wikidata-item-search-results'
+        });
+        itemSearchSection.appendChild(itemSearchResults);
+        
+        leftColumn.appendChild(itemSearchSection);
     } else {
         // Column header
         const leftHeader = createElement('div', {
