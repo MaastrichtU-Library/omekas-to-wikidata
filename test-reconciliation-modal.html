@@ -518,9 +518,58 @@
         
         // Mock global functions that might be called by the modal
         window.confirmCustomValue = function() { 
-            console.log('Confirmed custom value:', window.currentModalContext?.currentValue);
+            const confirmationData = window.currentModalContext?.confirmationData;
+            console.log('Confirmed custom value:', confirmationData);
+            
+            // Show success message
+            if (confirmationData) {
+                const successMsg = document.createElement('div');
+                successMsg.className = 'success-message';
+                successMsg.style.position = 'fixed';
+                successMsg.style.top = '20px';
+                successMsg.style.right = '20px';
+                successMsg.style.zIndex = '9999';
+                successMsg.innerHTML = `
+                    <h4>✅ Value Saved!</h4>
+                    <p><strong>Value:</strong> ${confirmationData.value}</p>
+                    ${confirmationData.language ? `<p><strong>Language:</strong> ${confirmationData.languageLabel} (${confirmationData.language})</p>` : ''}
+                    <p><strong>Type:</strong> ${confirmationData.datatype}</p>
+                `;
+                document.body.appendChild(successMsg);
+                
+                setTimeout(() => {
+                    successMsg.remove();
+                }, 3000);
+            }
+            
             window.closeTestModal();
         };
+        
+        // Listen for custom string confirmation events
+        document.addEventListener('stringValueConfirmed', function(event) {
+            console.log('String value confirmed via custom event:', event.detail);
+            
+            const confirmationData = event.detail.confirmationData;
+            
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.className = 'success-message';
+            successMsg.style.position = 'fixed';
+            successMsg.style.top = '20px';
+            successMsg.style.right = '20px';
+            successMsg.style.zIndex = '9999';
+            successMsg.innerHTML = `
+                <h4>✅ Value Saved via Event!</h4>
+                <p><strong>Value:</strong> ${confirmationData.value}</p>
+                ${confirmationData.language ? `<p><strong>Language:</strong> ${confirmationData.languageLabel} (${confirmationData.language})</p>` : ''}
+                <p><strong>Type:</strong> ${confirmationData.datatype}</p>
+            `;
+            document.body.appendChild(successMsg);
+            
+            setTimeout(() => {
+                successMsg.remove();
+            }, 3000);
+        });
     </script>
 </body>
 </html>

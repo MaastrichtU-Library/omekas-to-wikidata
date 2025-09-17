@@ -414,6 +414,17 @@ window.confirmStringValue = function() {
     const isMonolingual = window.currentModalContext.isMonolingual;
     const selectedLanguage = window.currentModalContext.selectedLanguage;
     
+    // Validate required fields
+    if (!currentValue.trim()) {
+        alert('Please enter a value before confirming.');
+        return;
+    }
+    
+    if (isMonolingual && !selectedLanguage) {
+        alert('Please select a language for monolingual text.');
+        return;
+    }
+    
     // Prepare confirmation data
     let confirmationData = {
         type: 'custom',
@@ -432,10 +443,57 @@ window.confirmStringValue = function() {
     // Store confirmation data in context for handlers
     window.currentModalContext.confirmationData = confirmationData;
     
-    // Call appropriate confirmation handler
+    // Try multiple approaches to save the value
+    let saved = false;
+    
+    // First, try the proper modal interaction handler
     if (typeof window.confirmCustomValue === 'function') {
         window.confirmCustomValue();
-    } else if (typeof window.closeReconciliationModal === 'function') {
-        window.closeReconciliationModal();
+        saved = true;
+    } 
+    // Try the factory-based interaction handlers
+    else if (window.modalInteractionHandlers && typeof window.modalInteractionHandlers.confirmCustomValue === 'function') {
+        window.modalInteractionHandlers.confirmCustomValue();
+        saved = true;
+    }
+    // Try direct reconciliation marking
+    else if (typeof window.markCellAsReconciled === 'function') {
+        window.markCellAsReconciled(window.currentModalContext, confirmationData);
+        saved = true;
+        if (typeof window.closeReconciliationModal === 'function') {
+            window.closeReconciliationModal();
+        }
+    }
+    // Fallback: dispatch a custom event that other parts of the system can listen to
+    else {
+        const event = new CustomEvent('stringValueConfirmed', {
+            detail: {
+                context: window.currentModalContext,
+                confirmationData: confirmationData
+            }
+        });
+        document.dispatchEvent(event);
+        saved = true;
+        
+        // Close modal if possible
+        if (typeof window.closeReconciliationModal === 'function') {
+            window.closeReconciliationModal();
+        }
+    }
+    
+    if (saved) {
+        // Show success feedback
+        const confirmBtn = document.getElementById('confirm-btn');
+        if (confirmBtn) {
+            const originalText = confirmBtn.textContent;
+            confirmBtn.textContent = 'Saved!';
+            confirmBtn.style.background = '#28a745';
+            setTimeout(() => {
+                confirmBtn.textContent = originalText;
+                confirmBtn.style.background = '';
+            }, 1000);
+        }
+    } else {
+        console.warn('No save handler found - value may not be persisted');
     }
 };
