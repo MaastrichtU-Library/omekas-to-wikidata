@@ -247,8 +247,8 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
 /**
  * Combine and sort all properties (mapped and manual) to prioritize label, description, aliases, and instance of
  */
-export function combineAndSortProperties(mappedKeys) {
-    // Create array with mapped properties only
+export function combineAndSortProperties(mappedKeys, manualProperties = []) {
+    // Create array with mapped and manual properties
     const allProperties = [];
     
     // Add mapped properties with a type indicator
@@ -256,6 +256,15 @@ export function combineAndSortProperties(mappedKeys) {
         allProperties.push({
             type: 'mapped',
             data: keyObj,
+            originalIndex: index
+        });
+    });
+    
+    // Add manual properties with a type indicator
+    manualProperties.forEach((manualProp, index) => {
+        allProperties.push({
+            type: 'manual',
+            data: manualProp,
             originalIndex: index
         });
     });
