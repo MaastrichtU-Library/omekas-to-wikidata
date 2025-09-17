@@ -175,8 +175,18 @@ function getPropertyTypeFromMappings(property, state) {
     
     const currentState = typeof state.getState === 'function' ? state.getState() : state;
     
+    // Add detailed logging of mappings structure
+    console.log('📋 Current mappings structure:', {
+        hasManualProperties: !!currentState.mappings?.manualProperties,
+        manualPropertiesCount: currentState.mappings?.manualProperties?.length || 0,
+        hasMappedKeys: !!currentState.mappings?.mappedKeys,
+        mappedKeysCount: currentState.mappings?.mappedKeys?.length || 0,
+        mappedKeysKeys: currentState.mappings?.mappedKeys?.map(k => k.key) || []
+    });
+    
     // Check manual properties first
     if (currentState.mappings?.manualProperties) {
+        console.log('🔍 Checking manual properties for:', property);
         const manualProp = currentState.mappings.manualProperties.find(mp => 
             mp.property?.id === property || 
             `custom_${mp.property?.id}` === property ||
@@ -190,22 +200,38 @@ function getPropertyTypeFromMappings(property, state) {
         }
     }
     
-    // Check mapped keys
+    // Check mapped keys - FIX: Remove the incorrect condition
     if (currentState.mappings?.mappedKeys) {
+        console.log('🔍 Checking mapped keys for:', property);
+        console.log('📋 Available mapped keys:', currentState.mappings.mappedKeys.map(k => ({
+            key: k.key,
+            propertyId: k.property?.id,
+            datatype: k.property?.datatype,
+            propertyType: k.propertyType
+        })));
+        
         const mappedKey = currentState.mappings.mappedKeys.find(key => 
             key.key === property || 
-            key.property?.id === property ||
-            key.property?.datatype
+            key.property?.id === property
         );
         
-        if (mappedKey?.property?.datatype) {
-            console.log('✅ Found datatype in mapped keys:', mappedKey.property.datatype);
-            return mappedKey.property.datatype;
-        }
-        
-        if (mappedKey?.propertyType) {
-            console.log('✅ Found propertyType in mapped keys:', mappedKey.propertyType);
-            return mappedKey.propertyType;
+        if (mappedKey) {
+            console.log('🎯 Found matching mapped key:', {
+                key: mappedKey.key,
+                propertyId: mappedKey.property?.id,
+                datatype: mappedKey.property?.datatype,
+                propertyType: mappedKey.propertyType
+            });
+            
+            if (mappedKey.property?.datatype) {
+                console.log('✅ Found datatype in mapped keys:', mappedKey.property.datatype);
+                return mappedKey.property.datatype;
+            }
+            
+            if (mappedKey.propertyType) {
+                console.log('✅ Found propertyType in mapped keys:', mappedKey.propertyType);
+                return mappedKey.propertyType;
+            }
         }
     }
     
