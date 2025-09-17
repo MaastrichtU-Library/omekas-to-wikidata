@@ -1063,7 +1063,6 @@ export function createOpenReconciliationModalFactory(dependencies) {
             } else {
                 console.warn('⚠️ [RECONCILIATION MODAL] No modal container found for initialization');
             }
-            }
         }, 100);
         
         // Start automatic reconciliation for Wikidata items
