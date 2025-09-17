@@ -130,10 +130,13 @@ export function openMappingModal(keyData) {
         // Create modal content
         const modalContent = createMappingModalContent(keyData);
         
-        // Create buttons based on whether this is an empty key or not
-        const isEmptyKey = !keyData.key || keyData.key.trim() === '';
-        const buttons = isEmptyKey ? [
-            // For empty keys, show simpler button set
+        // Create buttons based on whether this is a custom property or not
+        const isCustomProperty = !keyData.key || 
+                                keyData.key.trim() === '' || 
+                                keyData.key.startsWith('custom_') || 
+                                keyData.isCustomProperty === true;
+        const buttons = isCustomProperty ? [
+            // For custom properties, show simpler button set
             {
                 text: 'Cancel',
                 type: 'secondary',
@@ -143,24 +146,49 @@ export function openMappingModal(keyData) {
                 }
             },
             {
-                text: 'Add Property',
+                text: keyData.key && keyData.key.startsWith('custom_') ? 'Update Property' : 'Add Property',
                 type: 'primary',
                 keyboardShortcut: 'Enter',
                 callback: () => {
                     const selectedProperty = getSelectedPropertyFromModal();
                     if (selectedProperty) {
-                        // For empty keys, create a synthetic key data using compose transformation
-                        const syntheticKeyData = {
+                        // For custom properties, create or update the key data
+                        const customKeyData = {
                             ...keyData,
-                            key: `custom_${selectedProperty.id}`,
+                            key: keyData.key || `custom_${selectedProperty.id}`,
                             type: 'custom',
-                            frequency: 1,
-                            totalItems: 1,
+                            frequency: keyData.frequency || 1,
+                            totalItems: keyData.totalItems || 1,
                             isCustomProperty: true
                         };
-                        mapKeyToProperty(syntheticKeyData, selectedProperty, window.mappingStepState);
+                        
+                        // Save the compose transformation data before mapping
+                        const patternInput = document.querySelector('.pattern-input');
+                        if (patternInput && patternInput.value.trim()) {
+                            const mappingId = window.mappingStepState.generateMappingId(customKeyData.key, selectedProperty.id);
+                            const existingBlocks = window.mappingStepState.getState().transformationBlocks?.[mappingId] || [];
+                            
+                            // Update or create compose block
+                            const composeBlockIndex = existingBlocks.findIndex(block => block.type === 'compose');
+                            if (composeBlockIndex >= 0) {
+                                window.mappingStepState.updateTransformationBlock(mappingId, existingBlocks[composeBlockIndex].id, {
+                                    pattern: patternInput.value.trim()
+                                });
+                            } else {
+                                const newComposeBlock = {
+                                    id: `compose-${Date.now()}`,
+                                    type: 'compose',
+                                    config: {
+                                        pattern: patternInput.value.trim()
+                                    }
+                                };
+                                window.mappingStepState.addTransformationBlock(mappingId, newComposeBlock);
+                            }
+                        }
+                        
+                        mapKeyToProperty(customKeyData, selectedProperty, window.mappingStepState);
                         modalUI.closeModal();
-                        showMessage('Custom property added successfully', 'success', 3000);
+                        showMessage(keyData.key ? 'Custom property updated successfully' : 'Custom property added successfully', 'success', 3000);
                     } else {
                         showMessage('Please select a Wikidata property first.', 'warning', 3000);
                     }
@@ -245,7 +273,7 @@ export function openMappingModal(keyData) {
         ];
         
         // Open modal with mapping relationship header
-        const modalTitle = isEmptyKey ? 'Select Value' : createMappingRelationshipTitle(keyData.key, null);
+        const modalTitle = isCustomProperty ? 'Select Value' : createMappingRelationshipTitle(keyData.key, null);
         modalUI.openModal(
             modalTitle,
             modalContent,
@@ -276,8 +304,11 @@ export function createMappingModalContent(keyData) {
     // Check if this is a metadata property (labels, descriptions, aliases)
     const isMetadata = keyData.isMetadata || ['label', 'description', 'aliases'].includes(keyData.key?.toLowerCase());
     
-    // Check if this is an empty key (Add Wikidata Property button)
-    const isEmptyKey = !keyData.key || keyData.key.trim() === '';
+    // Check if this is a custom property (empty key OR custom key from previous saves)
+    const isCustomProperty = !keyData.key || 
+                            keyData.key.trim() === '' || 
+                            keyData.key.startsWith('custom_') || 
+                            keyData.isCustomProperty === true;
     
     const container = createElement('div', {
         className: 'mapping-modal-content two-column-layout'
@@ -302,8 +333,8 @@ export function createMappingModalContent(keyData) {
         className: 'mapping-column left-column'
     });
     
-    if (isEmptyKey) {
-        // For empty keys, rebrand as "Custom Value" section
+    if (isCustomProperty) {
+        // For custom properties, rebrand as "Custom Value" section
         const leftHeader = createElement('div', {
             className: 'column-header'
         }, 'Custom Value');
@@ -322,14 +353,31 @@ export function createMappingModalContent(keyData) {
         }, 'Create complex values by combining text and variables from your data fields.');
         composeSection.appendChild(composeDescription);
         
-        // Create a synthetic transformation block for compose functionality
-        const composeBlock = {
-            id: 'custom-compose',
-            type: 'compose',
-            config: {
-                pattern: 'Enter your custom pattern here...'
+        // Create or load existing transformation block for compose functionality
+        let composeBlock;
+        
+        // Check if this custom property already has transformation data
+        if (keyData.key && keyData.property && window.mappingStepState) {
+            const currentState = window.mappingStepState.getState();
+            const mappingId = window.mappingStepState.generateMappingId(keyData.key, keyData.property.id);
+            const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
+            const existingComposeBlock = existingBlocks.find(block => block.type === 'compose');
+            
+            if (existingComposeBlock) {
+                composeBlock = existingComposeBlock;
             }
-        };
+        }
+        
+        // If no existing block found, create a new one
+        if (!composeBlock) {
+            composeBlock = {
+                id: 'custom-compose',
+                type: 'compose',
+                config: {
+                    pattern: 'Enter your custom pattern here...'
+                }
+            };
+        }
         
         // Import the compose config UI
         import('../../core/transformation-engine.js').then(({ renderComposeConfigUI }) => {
