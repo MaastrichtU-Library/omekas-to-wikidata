@@ -8,11 +8,11 @@
  * 
  * Supported modal types:
  * - wikibase-item: Wikidata entity reconciliation
- * - string: Text string validation and editing (future)
- * - time: Date/time reconciliation (future)
+ * - string: Text string validation and editing
+ * - time: Date/time reconciliation
+ * - monolingualtext: Text with language specification
  * - quantity: Number/quantity reconciliation (future)
  * - url: URL validation (future)
- * - monolingualtext: Text with language specification (future)
  */
 
 import { 
@@ -23,6 +23,10 @@ import {
     createStringModal, 
     initializeStringModal 
 } from './string-modal.js';
+import { 
+    createTimeModal, 
+    initializeTimeModal 
+} from './time-modal.js';
 
 /**
  * Registry of modal handlers by data type
@@ -38,13 +42,17 @@ const modalRegistry = {
         initialize: initializeStringModal,
         name: 'String Validation'
     },
+    'time': {
+        create: createTimeModal,
+        initialize: initializeTimeModal,
+        name: 'Date/Time Selection'
+    },
     'monolingualtext': {
         create: createStringModal, // Reuse string modal with monolingual support
         initialize: initializeStringModal,
         name: 'Monolingual Text Entry'
     }
     // Future modal types will be registered here:
-    // 'time': { create: createTimeModal, initialize: initializeTimeModal, name: 'Date/Time Selection' },
     // 'quantity': { create: createQuantityModal, initialize: initializeQuantityModal, name: 'Number/Quantity Input' },
     // 'url': { create: createUrlModal, initialize: initializeUrlModal, name: 'URL Validation' },
     // 'external-id': { create: createExternalIdModal, initialize: initializeExternalIdModal, name: 'External Identifier' }
