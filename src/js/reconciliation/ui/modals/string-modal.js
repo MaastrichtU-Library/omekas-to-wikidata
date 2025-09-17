@@ -263,11 +263,9 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
     }
     
     modalContent.innerHTML = `
-        <div class="modal-header">
-            <div class="data-type-indicator">
-                <span class="data-type-label">Expecting</span>
-                <span class="data-type-value">${isMonolingual ? 'Monolingual Text' : 'Text String'}</span>
-            </div>
+        <div class="data-type-indicator">
+            <span class="data-type-label">Expecting:</span>
+            <span class="data-type-value">${isMonolingual ? 'Monolingual Text' : 'Text String'}</span>
         </div>
 
         <div class="value-display">

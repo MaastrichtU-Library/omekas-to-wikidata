@@ -38,11 +38,9 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
     }
     
     modalContent.innerHTML = `
-        <div class="modal-header">
-            <div class="data-type-indicator">
-                <span class="data-type-label">Expecting</span>
-                <span class="data-type-value">Wikidata Item</span>
-            </div>
+        <div class="data-type-indicator">
+            <span class="data-type-label">Expecting:</span>
+            <span class="data-type-value">Wikidata Item</span>
         </div>
 
         <div class="value-display">
@@ -70,9 +68,7 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
 
             <!-- Alternative Actions -->
             <div class="alternative-actions">
-                <button class="btn btn-outline" onclick="createNewWikidataItem()">Create New Item</button>
-                <button class="btn btn-outline" onclick="skipWikidataReconciliation()">Skip This Value</button>
-                <button class="btn btn-outline" onclick="useAsLiteralString()">Use as Text Instead</button>
+                <p class="create-item-help">If the Wikidata item does not exist, you can <a href="#" onclick="createNewWikidataItem()" target="_blank">create it</a>.</p>
             </div>
         </div>
 

@@ -6905,6 +6905,22 @@ pre.sample-value {
     margin-top: 1rem;
 }
 
+.create-item-help {
+    font-size: 0.875rem;
+    color: #666;
+    margin: 0;
+    text-align: center;
+}
+
+.create-item-help a {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.create-item-help a:hover {
+    text-decoration: underline;
+}
+
 /* String Section */
 .string-section {
     display: flex;
