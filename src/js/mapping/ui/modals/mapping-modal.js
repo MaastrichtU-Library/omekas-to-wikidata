@@ -162,27 +162,23 @@ export function openMappingModal(keyData) {
                             isCustomProperty: true
                         };
                         
-                        // Save the compose transformation data before mapping
-                        const patternInput = document.querySelector('.pattern-input');
-                        if (patternInput && patternInput.value.trim()) {
-                            const mappingId = window.mappingStepState.generateMappingId(customKeyData.key, selectedProperty.id);
-                            const existingBlocks = window.mappingStepState.getState().transformationBlocks?.[mappingId] || [];
+                        // Transfer compose transformation data from current mappingId to final mappingId if needed
+                        const finalMappingId = window.mappingStepState.generateMappingId(customKeyData.key, selectedProperty.id);
+                        const composeSection = document.querySelector('.compose-section');
+                        const currentMappingId = composeSection?.dataset?.mappingId;
+                        
+                        if (currentMappingId && currentMappingId !== finalMappingId) {
+                            const currentState = window.mappingStepState.getState();
+                            const currentBlocks = currentState.transformationBlocks?.[currentMappingId] || [];
                             
-                            // Update or create compose block
-                            const composeBlockIndex = existingBlocks.findIndex(block => block.type === 'compose');
-                            if (composeBlockIndex >= 0) {
-                                window.mappingStepState.updateTransformationBlock(mappingId, existingBlocks[composeBlockIndex].id, {
-                                    pattern: patternInput.value.trim()
-                                });
-                            } else {
-                                const newComposeBlock = {
-                                    id: `compose-${Date.now()}`,
-                                    type: 'compose',
-                                    config: {
-                                        pattern: patternInput.value.trim()
-                                    }
-                                };
-                                window.mappingStepState.addTransformationBlock(mappingId, newComposeBlock);
+                            // Transfer transformation blocks from current to final mappingId
+                            currentBlocks.forEach(block => {
+                                window.mappingStepState.addTransformationBlock(finalMappingId, block);
+                            });
+                            
+                            // Clean up current mappingId if it was temporary
+                            if (currentMappingId.startsWith('temp_')) {
+                                delete currentState.transformationBlocks[currentMappingId];
                             }
                         }
                         
@@ -379,10 +375,26 @@ export function createMappingModalContent(keyData) {
             };
         }
         
+        // Create mappingId for custom properties
+        let mappingId;
+        if (keyData.key && keyData.property) {
+            // For existing custom properties with a selected property, use the real mappingId
+            mappingId = window.mappingStepState.generateMappingId(keyData.key, keyData.property.id);
+        } else if (keyData.key) {
+            // For existing custom properties without a property selected yet, use temp mappingId
+            mappingId = `temp_${keyData.key}`;
+        } else {
+            // For completely new custom properties
+            mappingId = 'temp_custom_property';
+        }
+        
         // Import the compose config UI
         import('../../core/transformation-engine.js').then(({ renderComposeConfigUI }) => {
-            const composeUI = renderComposeConfigUI('custom', composeBlock, window.mappingStepState);
+            const composeUI = renderComposeConfigUI(mappingId, composeBlock, window.mappingStepState);
             composeSection.appendChild(composeUI);
+            
+            // Store the mappingId for later use
+            composeSection.dataset.mappingId = mappingId;
         });
         
         leftColumn.appendChild(composeSection);

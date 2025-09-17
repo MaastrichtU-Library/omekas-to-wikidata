@@ -589,58 +589,57 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
     
     // Get the original item data for this property
     const keyData = window.currentMappingKeyData;
-    if (!keyData) {
+    const state = window.mappingStepState;
+    const currentState = state.getState();
+    
+    let allFields;
+    let fullItemData = null;
+    
+    if (currentState.fetchedData) {
+        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+        
+        // Check if this is a custom property (no real key or starts with 'custom_')
+        const isCustomProperty = !keyData || !keyData.key || keyData.key.startsWith('custom_') || keyData.isCustomProperty;
+        
+        if (isCustomProperty) {
+            // For custom properties, use any available item to extract all possible fields
+            fullItemData = items.find(item => typeof item === 'object' && item !== null && Object.keys(item).length > 0) || items[0];
+        } else {
+            // For regular properties, find the item that contains this specific property
+            fullItemData = items.find(item => {
+                if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
+                    return true;
+                }
+                return false;
+            });
+            
+            // If we couldn't find a specific item, use the first item as fallback
+            if (!fullItemData && items.length > 0) {
+                fullItemData = items[0];
+            }
+        }
+    }
+    
+    if (!fullItemData) {
         resultsContainer.appendChild(createElement('div', { 
             className: 'no-fields-message' 
         }, 'No field data available'));
         return;
     }
     
-    let allFields;
-    let fullItemData = null;
-    
-    // Get the full item data for the onClick handler (needed in both cases)
-    const state = window.mappingStepState;
-    const currentState = state.getState();
-    
-    if (currentState.fetchedData) {
-        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-        
-        // Find the item that contains this property value
-        fullItemData = items.find(item => {
-            if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
-                return true;
-            }
-            return false;
-        });
-        
-        // If we couldn't find a specific item, use the first item as fallback
-        if (!fullItemData && items.length > 0) {
-            fullItemData = items[0];
-        }
-    }
-    
     // Use pre-extracted fields if available (optimization)
-    if (keyData.extractedFields) {
+    if (keyData && keyData.extractedFields) {
         allFields = keyData.extractedFields;
     } else {
-        // Fallback to current behavior for backward compatibility
-        if (!keyData.sampleValue) {
-            resultsContainer.appendChild(createElement('div', { 
-                className: 'no-fields-message' 
-            }, 'No field data available'));
-            return;
-        }
-        
-        if (!fullItemData) {
+        // For custom properties or when no pre-extracted fields, extract from full item
+        if (fullItemData) {
+            allFields = extractAllFields(fullItemData);
+        } else {
             resultsContainer.appendChild(createElement('div', { 
                 className: 'no-fields-message' 
             }, 'No full item data available'));
             return;
         }
-        
-        // Extract all fields from the full item data instead of just the property value
-        allFields = extractAllFields(fullItemData);
     }
     
     const filteredFields = searchFields(allFields, searchTerm);
