@@ -38,8 +38,6 @@ async function processValueObject(valueObj, fieldKey) {
             // Add the matched Wikidata item to the value object
             valueObj.identifier_matched_to_wikidata_item = wikidataItem;
             
-            // Log the match to console
-            console.log(`✅ ${fieldKey}: ${detection.originalValue} → https://www.wikidata.org/wiki/${wikidataItem}`);
         }
     } catch (error) {
         console.error(`Failed to resolve identifier for ${fieldKey}:`, error);
@@ -84,7 +82,6 @@ export async function processItemsForValueIdentifiers(items) {
         return items;
     }
     
-    console.log('🔍 Processing value-level identifiers...');
     
     const processedItems = await Promise.all(
         items.map(async (item) => {
@@ -109,7 +106,6 @@ export async function processItemsForValueIdentifiers(items) {
         })
     );
     
-    console.log('✅ Value-level identifier processing complete');
     
     return processedItems;
 }

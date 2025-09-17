@@ -431,7 +431,6 @@ export function setupReconciliationStep(state) {
         let finalReconciliationData;
         
         if (currentState.reconciliationData && Object.keys(currentState.reconciliationData).length > 0) {
-            console.log('🔄 Existing reconciliation data found, checking if merge is needed');
             
             // Use intelligent merging to preserve existing reconciliation work while adding new properties
             finalReconciliationData = mergeReconciliationData(
@@ -442,7 +441,6 @@ export function setupReconciliationStep(state) {
             );
             isReturningToStep = true;
         } else {
-            console.log('🆕 No existing reconciliation data, initializing from scratch');
             
             // Initialize reconciliation data structure using extracted function
             finalReconciliationData = initializeReconciliationDataStructure(data, mappedKeys, state);
@@ -530,7 +528,6 @@ export function setupReconciliationStep(state) {
             state.updateState('reconciliationData', updatedState.reconciliationData);
         }
         
-        console.log(`🔄 Updated reconciliation table column for property: ${keyName} → ${property.label} (${property.id})`);
     }
     
     /**

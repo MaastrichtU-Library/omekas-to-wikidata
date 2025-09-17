@@ -271,12 +271,6 @@ function applyFindReplaceTransformation(value, config) {
 function applyComposeTransformation(value, config) {
     const { pattern = '{{value}}', sourceData = {} } = config;
     
-    console.log('[COMPOSE_TRANSFORM] Applying compose transformation:', {
-        inputValue: value,
-        pattern: pattern,
-        hasSourceData: !!sourceData && Object.keys(sourceData).length > 0,
-        sourceDataKeys: Object.keys(sourceData || {}).slice(0, 5)  // Show first 5 keys
-    });
     
     if (!pattern) return value;
     
@@ -284,28 +278,19 @@ function applyComposeTransformation(value, config) {
     
     // Replace {{value}} with the current value
     result = result.replace(/\{\{value\}\}/g, value || '');
-    console.log('[COMPOSE_TRANSFORM] After {{value}} replacement:', result);
     
     // Replace {{field:path}} with values from source data
     result = result.replace(/\{\{field:([^}]+)\}\}/g, (match, fieldPath) => {
         const fieldValue = getValueByPath(sourceData, fieldPath);
-        console.log('[COMPOSE_TRANSFORM] Replacing field:', {
-            fieldPath,
-            fieldValue,
-            found: !!fieldValue
-        });
         return fieldValue || '';
     });
-    console.log('[COMPOSE_TRANSFORM] After {{field:path}} replacement:', result);
     
     // Replace {{wikidata:QID}} references (these remain as-is for user reference)
     // The QIDs themselves are the values we want to keep
     result = result.replace(/\{\{wikidata:(Q\d+)\}\}/g, (match, qid) => {
-        console.log('[COMPOSE_TRANSFORM] Found Wikidata QID:', qid);
         return qid;  // Return just the QID without the wrapper
     });
     
-    console.log('[COMPOSE_TRANSFORM] Final result:', result);
     return result;
 }
 

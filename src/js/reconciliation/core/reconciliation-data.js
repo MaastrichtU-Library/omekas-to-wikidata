@@ -91,11 +91,6 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     
     // Special handling for custom properties - they generate values through transformations
     if (isCustomProperty) {
-        console.log('[EXTRACT] Custom property detected:', {
-            key,
-            keyOrKeyObj,
-            isCustomProperty
-        });
         
         // Custom properties don't extract from data, they generate through compose patterns
         // Return a placeholder value that will be transformed
@@ -109,29 +104,18 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                     propertyId = keyOrKeyObj.property.id;
                 }
                 
-                console.log('[EXTRACT] Looking for transformations, propertyId:', propertyId);
                 
                 // Generate mapping ID to look up transformations
                 if (propertyId) {
                     const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
                     const transformationBlocks = state.getTransformationBlocks(mappingId);
                     
-                    console.log('[EXTRACT] Transformation blocks for custom property:', {
-                        mappingId,
-                        transformationBlocks,
-                        blocksCount: transformationBlocks?.length || 0
-                    });
                     
                     if (transformationBlocks && transformationBlocks.length > 0) {
                         // For custom properties, create per-item blocks with current item as sourceData
                         // This ensures each item uses its own data for field replacements
                         const enhancedBlocks = transformationBlocks.map(block => {
                             if (block.type === 'compose') {
-                                console.log('[EXTRACT] Compose block config before enhancement:', {
-                                    blockId: block.id,
-                                    currentItemId: item['o:id'] || 'unknown',
-                                    hasExistingSourceData: !!block.config.sourceData
-                                });
                                 // Always use current item as sourceData for compose transformations
                                 // This ensures each item gets its own field values
                                 return {
@@ -156,33 +140,18 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                             const transformationResult = applyTransformationChain(originalValue, enhancedBlocks);
                             // Get the final transformed value
                             const finalValue = transformationResult[transformationResult.length - 1]?.value || originalValue;
-                            console.log('[EXTRACT] Transformation result for item:', {
-                                itemId: item['o:id'] || 'unknown',
-                                originalValue,
-                                finalValue,
-                                transformationSteps: transformationResult.length
-                            });
                             return finalValue;
                         });
                     } else {
-                        console.log('[EXTRACT] No transformation blocks found for custom property');
                     }
                 } else {
-                    console.log('[EXTRACT] No propertyId found for custom property');
                 }
             } catch (error) {
                 console.warn('[EXTRACT] Error applying transformations to custom property:', error);
             }
         } else {
-            console.log('[EXTRACT] No state provided for custom property transformation');
         }
         
-        console.log('[EXTRACT] Final extracted values for custom property:', {
-            itemId: item['o:id'] || 'unknown',
-            key: key,
-            valuesCount: extractedValues.length,
-            values: extractedValues
-        });
         return extractedValues;
     }
     
@@ -508,7 +477,6 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
  * @returns {Object} Merged reconciliation data with preserved existing work and new properties
  */
 export function mergeReconciliationData(existingReconciliationData, data, currentMappedKeys, state = null) {
-    console.log('🔄 Starting intelligent reconciliation data merge');
     
     // Start with a copy of existing data
     const mergedData = JSON.parse(JSON.stringify(existingReconciliationData));
@@ -527,13 +495,11 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
         const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
         if (!existingProperties.has(keyName)) {
             newProperties.push(keyObj);
-            console.log(`🆕 Found new property to add: ${keyName}`);
         }
     });
     
     // If no new properties, return existing data
     if (newProperties.length === 0) {
-        console.log('✅ No new properties detected, returning existing reconciliation data');
         return mergedData;
     }
     
@@ -571,10 +537,8 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
                 }))
             };
             
-            console.log(`✅ Added new property ${keyName} to item ${itemId} with ${values.length} values`);
         });
     });
     
-    console.log(`🎉 Successfully merged reconciliation data: preserved existing data + added ${newProperties.length} new properties`);
     return mergedData;
 }

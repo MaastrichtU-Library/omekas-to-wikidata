@@ -240,7 +240,6 @@ export function displayReconciliationError(error) {
  * Now redirects to the new modal system
  */
 export function displayReconciliationResults(matches, propertyType, value) {
-    console.log('displayReconciliationResults called with:', { matches, propertyType, value });
     
     // Update the existing matches display if modal is open
     const existingMatchesContainer = document.getElementById('existing-matches');
@@ -268,7 +267,6 @@ export function displayReconciliationResults(matches, propertyType, value) {
  * Display high confidence matches (compatibility function)
  */
 export function displayHighConfidenceMatches(matches) {
-    console.log('displayHighConfidenceMatches called with:', matches);
     
     // Filter high confidence matches (score > 80)
     const highConfidenceMatches = matches.filter(match => (match.score || 0) > 80);
@@ -282,7 +280,6 @@ export function displayHighConfidenceMatches(matches) {
  * Display fallback options (compatibility function)
  */
 export function displayFallbackOptions(options = []) {
-    console.log('displayFallbackOptions called with:', options);
     
     // This is now handled by the alternative actions in the new modal
     const alternativeActions = document.querySelector('.alternative-actions');
@@ -295,7 +292,6 @@ export function displayFallbackOptions(options = []) {
  * Show custom input interface (compatibility function)
  */
 export function showCustomInputInterface(propertyType, value) {
-    console.log('showCustomInputInterface called with:', { propertyType, value });
     
     // This is now handled by the string editor in the new modal
     const stringEditor = document.querySelector('.string-editor');
@@ -308,7 +304,6 @@ export function showCustomInputInterface(propertyType, value) {
  * Setup manual search in fallback (compatibility function)
  */
 export function setupManualSearchInFallback() {
-    console.log('setupManualSearchInFallback called');
     
     // This is now handled by the manual search section in the new modal
     const manualSearch = document.querySelector('.manual-search');
@@ -321,7 +316,6 @@ export function setupManualSearchInFallback() {
  * Display fallback search results (compatibility function)
  */
 export function displayFallbackSearchResults(results) {
-    console.log('displayFallbackSearchResults called with:', results);
     
     // Update search results if modal is open
     const searchResults = document.getElementById('search-results');
@@ -340,7 +334,6 @@ export function displayFallbackSearchResults(results) {
  * Setup expanded search (compatibility function)
  */
 export function setupExpandedSearch() {
-    console.log('setupExpandedSearch called');
     
     // This functionality is now built into the manual search section
     const searchContainer = document.querySelector('.search-container');
