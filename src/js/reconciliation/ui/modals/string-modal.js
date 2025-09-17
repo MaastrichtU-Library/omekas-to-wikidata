@@ -118,13 +118,11 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
 
         <div class="value-display">
             <div class="section-title">Omeka S Value</div>
-            <div class="original-value">${escapeHtml(value)}</div>
-            ${hasSavedValue ? `
-                <div class="saved-value-indicator">
-                    <div class="section-title">Previously Saved Value</div>
-                    <div class="saved-value">${escapeHtml(displayValue)}</div>
-                </div>
-            ` : ''}
+            <div class="original-value" id="omeka-original-value">${escapeHtml(value)}</div>
+            <div class="saved-value-indicator ${hasSavedValue ? '' : 'hidden'}" id="saved-value-indicator">
+                <div class="section-title">Previously Saved Value</div>
+                <div class="saved-value" id="saved-value-display">${escapeHtml(displayValue)}</div>
+            </div>
         </div>
 
         <div class="string-section">
@@ -417,6 +415,38 @@ function updateValidationState() {
 }
 
 /**
+ * Update the value displays to show the newly confirmed value
+ * @param {Object} confirmationData - The confirmed value data
+ */
+function updateValueDisplays(confirmationData) {
+    // Update the saved value indicator
+    const savedValueIndicator = document.getElementById('saved-value-indicator');
+    const savedValueDisplay = document.getElementById('saved-value-display');
+    
+    if (savedValueIndicator && savedValueDisplay) {
+        // Show the saved value indicator if it was hidden
+        savedValueIndicator.classList.remove('hidden');
+        
+        // Update the saved value text
+        let displayText = confirmationData.value;
+        if (confirmationData.language) {
+            displayText += ` (${confirmationData.languageLabel || confirmationData.language})`;
+        }
+        
+        savedValueDisplay.textContent = displayText;
+        
+        // Update the modal context to reflect the new saved state
+        if (window.currentModalContext) {
+            window.currentModalContext.hasSavedValue = true;
+            window.currentModalContext.savedData = confirmationData;
+            window.currentModalContext.hasBeenEdited = true;
+        }
+        
+        console.log('Updated value displays with:', displayText);
+    }
+}
+
+/**
  * Update confirm button enabled/disabled state
  */
 function updateConfirmButtonState() {
@@ -585,6 +615,9 @@ window.confirmStringValue = function() {
     }
     
     if (saved) {
+        // Update the displayed values immediately
+        updateValueDisplays(confirmationData);
+        
         // Show success feedback
         const confirmBtn = document.getElementById('confirm-btn');
         if (confirmBtn) {
