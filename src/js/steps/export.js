@@ -368,6 +368,34 @@ export function setupExportStep(state) {
         return null;
     }
     
+    /**
+     * Check if an item has any valid reconciled properties that should be exported
+     * 
+     * An item is considered exportable if it has at least one property with a selectedMatch.
+     * Items where all properties were skipped during reconciliation should not be exported.
+     * 
+     * @param {Object} itemData - The item's reconciliation data
+     * @returns {boolean} True if the item has at least one valid reconciled property
+     */
+    function hasValidReconciledProperties(itemData) {
+        if (!itemData || !itemData.properties) {
+            return false;
+        }
+        
+        return Object.keys(itemData.properties).some(propertyKey => {
+            const propertyData = itemData.properties[propertyKey];
+            
+            if (!propertyData || !propertyData.reconciled) {
+                return false;
+            }
+            
+            // Check if any reconciled value has a selectedMatch
+            return propertyData.reconciled.some(reconciledValue => {
+                return reconciledValue && reconciledValue.selectedMatch;
+            });
+        });
+    }
+    
     // Generate QuickStatements
     function generateQuickStatements() {
         if (!quickStatementsTextarea) return;
@@ -400,7 +428,13 @@ export function setupExportStep(state) {
             const itemData = reconciliationData[itemId];
             
             try {
-                // Always create new items
+                // Only export items that have at least one reconciled property with selectedMatch
+                // Skip items where all properties were skipped during reconciliation
+                if (!hasValidReconciledProperties(itemData)) {
+                    return; // Skip this item entirely
+                }
+                
+                // Create new item since it has valid reconciled properties
                 quickStatementsText += 'CREATE\n';
                 
                 // Add labels for all configured languages
