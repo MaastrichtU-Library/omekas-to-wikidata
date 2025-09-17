@@ -338,6 +338,8 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
  * @param {HTMLElement} modalElement - The modal element
  */
 export function initializeStringModal(modalElement) {
+    console.log('🔧 initializeStringModal called with:', modalElement);
+    
     const originalValue = modalElement.dataset.originalValue;
     const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
@@ -347,6 +349,11 @@ export function initializeStringModal(modalElement) {
         JSON.parse(modalElement.dataset.propertyData) : null;
     const confirmedData = modalElement.dataset.confirmedData ? 
         JSON.parse(modalElement.dataset.confirmedData) : null;
+    
+    console.log('🔧 Modal initialization data:', {
+        originalValue, currentValue, property, isMonolingual, 
+        hasConfirmedValue, propertyData, confirmedData
+    });
     
     // Find the source table cell that opened this modal
     const sourceCell = findSourceTableCell(modalElement.dataset.itemId, property, parseInt(modalElement.dataset.valueIndex));
@@ -371,16 +378,20 @@ export function initializeStringModal(modalElement) {
     
     // Set up string editor with enhanced functionality
     const stringEditor = document.getElementById('string-editor');
+    console.log('🔧 String editor found:', stringEditor);
     if (stringEditor) {
         setupStringEditor(stringEditor, property, propertyData);
     }
     
     // Set up language selection for monolingual text
+    console.log('🔧 Checking if monolingual:', isMonolingual);
     if (isMonolingual) {
+        console.log('🌐 Setting up language selection for monolingual text');
         setupLanguageSelection();
         
         // Restore confirmed language if available
         if (confirmedData && confirmedData.language) {
+            console.log('🌐 Restoring confirmed language:', confirmedData.language);
             window.currentModalContext.selectedLanguage = {
                 code: confirmedData.language,
                 label: confirmedData.languageLabel || confirmedData.language
@@ -389,6 +400,7 @@ export function initializeStringModal(modalElement) {
     }
     
     // Initial validation and UI state
+    console.log('🔧 Updating validation state');
     updateValidationState();
 }
 
@@ -441,12 +453,24 @@ function setupStringEditor(editor, property, propertyData) {
  * Set up language selection functionality for monolingual text
  */
 function setupLanguageSelection() {
+    console.log('🌐 setupLanguageSelection called');
+    
     const languageSearch = document.getElementById('language-search');
     const languageDropdown = document.getElementById('language-dropdown');
     const languageStatus = document.getElementById('language-search-status');
     const selectedLanguageCode = document.getElementById('selected-language-code');
     
-    if (!languageSearch || !languageDropdown) return;
+    console.log('🌐 Language DOM elements found:', {
+        languageSearch: !!languageSearch,
+        languageDropdown: !!languageDropdown,
+        languageStatus: !!languageStatus,
+        selectedLanguageCode: !!selectedLanguageCode
+    });
+    
+    if (!languageSearch || !languageDropdown) {
+        console.error('🌐 Missing required language DOM elements!');
+        return;
+    }
     
     // Set default language from storage or confirmed data
     const storedLanguage = getStoredLanguage();
@@ -463,11 +487,17 @@ function setupLanguageSelection() {
     let searchTimeout;
     let currentSearchQuery = '';
     
+    console.log('🌐 Attaching input event listener to language search');
+    
     // Search languages as user types
-    languageSearch.addEventListener('input', function() {
+    languageSearch.addEventListener('input', function(event) {
+        console.log('🌐 Language input event fired! Value:', this.value, 'Event:', event);
+        
         clearTimeout(searchTimeout);
         const query = this.value.trim();
         currentSearchQuery = query;
+        
+        console.log('🌐 Processing language search query:', query);
         
         // Clear selection if user is typing something different
         if (window.currentModalContext.selectedLanguage && 
@@ -478,28 +508,37 @@ function setupLanguageSelection() {
         }
         
         if (query.length < 1) {
+            console.log('🌐 Query too short, hiding dropdown');
             hideLanguageDropdown();
             return;
         }
         
         // Show loading state for queries longer than 1 character
         if (query.length >= 2) {
+            console.log('🌐 Showing loading status for query:', query);
             showLanguageSearchStatus('Searching languages...', 'loading');
         }
         
         searchTimeout = setTimeout(async () => {
+            console.log('🌐 Executing language search for:', query);
+            
             // Only search if this is still the current query
-            if (currentSearchQuery !== query) return;
+            if (currentSearchQuery !== query) {
+                console.log('🌐 Query changed, skipping search');
+                return;
+            }
             
             try {
+                console.log('🌐 Calling searchWikidataLanguages with:', query);
                 const languages = await searchWikidataLanguages(query);
+                console.log('🌐 Language search returned:', languages);
                 
                 // Verify this is still the current search
                 if (currentSearchQuery === query) {
                     displayLanguageResults(languages, query);
                 }
             } catch (error) {
-                console.error('Language search failed:', error);
+                console.error('🌐 Language search failed:', error);
                 if (currentSearchQuery === query) {
                     showLanguageSearchStatus('Search failed. Try typing a different language name.', 'error');
                     displayLanguageResults([], query);

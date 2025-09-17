@@ -395,13 +395,18 @@ export function validateBatch(values) {
  * @returns {Promise<Array>} Array of language objects with enhanced data
  */
 export async function searchWikidataLanguages(query) {
+    console.log('🔍 searchWikidataLanguages called with query:', query);
+    
     const queryTrimmed = query.trim();
     
     // Fast fallback results for immediate response
+    console.log('🔍 Getting fallback results for:', queryTrimmed);
     const fallbackResults = searchFallbackLanguages(queryTrimmed);
+    console.log('🔍 Fallback results:', fallbackResults);
     
     // For very short queries, just return fallback
     if (queryTrimmed.length < 2) {
+        console.log('🔍 Query too short, returning fallback only');
         return fallbackResults;
     }
     
@@ -595,17 +600,26 @@ function combineLanguageResults(wikidataResults, fallbackResults) {
  * @returns {Array} Array of matching languages
  */
 function searchFallbackLanguages(query) {
+    console.log('🔍 searchFallbackLanguages called with:', query);
+    
     const queryLower = query.toLowerCase().trim();
     
     if (!queryLower) {
+        console.log('🔍 Empty query, returning empty array');
         return [];
     }
     
-    return getCommonLanguages().filter(lang => 
+    const commonLanguages = getCommonLanguages();
+    console.log('🔍 Common languages available:', commonLanguages.length);
+    
+    const results = commonLanguages.filter(lang => 
         lang.label.toLowerCase().includes(queryLower) ||
         lang.code.toLowerCase().includes(queryLower) ||
         lang.code.toLowerCase().startsWith(queryLower)
     ).slice(0, 12);
+    
+    console.log('🔍 Fallback search results for "' + query + '":', results);
+    return results;
 }
 
 /**
