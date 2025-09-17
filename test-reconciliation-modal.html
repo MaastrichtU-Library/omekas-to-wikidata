@@ -58,6 +58,21 @@
             border-radius: 4px;
             margin-top: 10px;
         }
+        
+        .success-message h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .success-message p {
+            margin: 5px 0;
+        }
+        
+        #test-modal .modal {
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -81,16 +96,82 @@
         
         <div class="test-section">
             <h2>String Validation Modal</h2>
-            <p>Test the modal with string validation (ISBN example):</p>
-            <button class="test-button" onclick="testStringModal()">Open String Validation Modal</button>
+            <p>Test the modal for string validation with different formats:</p>
+            <button class="test-button" onclick="testStringModal()">Test String (ISBN)</button>
+            <button class="test-button" onclick="testStringModalDOI()">Test String (DOI)</button>
+            <button class="test-button" onclick="testStringModalNoValidation()">Test String (No Regex)</button>
             <div id="string-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Monolingual Text Modal</h2>
+            <p>Test the modal for monolingual text with language selection:</p>
+            <button class="test-button" onclick="testMonolingualModal()">Test Monolingual Text</button>
+            <button class="test-button" onclick="testMonolingualModalWithValidation()">Test Monolingual + Validation</button>
+            <div id="monolingual-result"></div>
         </div>
         
         <div class="test-section">
             <h2>Validation Engine Test</h2>
             <p>Test the validation engine with various inputs:</p>
             <button class="test-button" onclick="testValidationEngine()">Test Validation</button>
+            <button class="test-button" onclick="testLanguageSearch()">Test Language Search</button>
             <div id="validation-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Enhanced Features Test</h2>
+            <p>Test the enhanced string modal features:</p>
+            <button class="test-button" onclick="testOriginalValueReset()">Test Original Value Reset</button>
+            <button class="test-button" onclick="testValidationBorders()">Test Validation Borders</button>
+            <button class="test-button" onclick="testLanguageStorage()">Test Language Storage</button>
+            <div id="enhanced-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Table Cell Update Test</h2>
+            <p>Test table cell updating after modal confirmation:</p>
+            <button class="test-button" onclick="testTableCellUpdates()">Test Table Cell Updates</button>
+            <button class="test-button" onclick="testTableSyncWithStorage()">Test Table Sync with Storage</button>
+            <div id="table-test-result"></div>
+            
+            <!-- Sample reconciliation table for testing -->
+            <div id="sample-table-container" style="margin-top: 20px; display: none;">
+                <h3>Sample Table (for testing)</h3>
+                <table class="reconciliation-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Item</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Label</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Description</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">License</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px;">Test Item 1</td>
+                            <td class="property-cell" data-item-id="test-item-1" data-property="label" data-is-manual="true" style="border: 1px solid #ddd; padding: 8px; cursor: pointer;" onclick="openTestModal('test-item-1', 'label', 0, 'Click to set value', 'string')">
+                                <div class="property-value" data-status="pending">
+                                    <span class="value-text">Click to set value</span>
+                                    <span class="value-status">Click to reconcile</span>
+                                </div>
+                            </td>
+                            <td class="property-cell" data-item-id="test-item-1" data-property="description" data-is-manual="true" style="border: 1px solid #ddd; padding: 8px; cursor: pointer;" onclick="openTestModal('test-item-1', 'description', 0, 'Click to set value', 'monolingualtext')">
+                                <div class="property-value" data-status="pending">
+                                    <span class="value-text">Click to set value</span>
+                                    <span class="value-status">Click to reconcile</span>
+                                </div>
+                            </td>
+                            <td class="property-cell" data-item-id="test-item-1" data-property="schema:license" data-value-index="0" style="border: 1px solid #ddd; padding: 8px; cursor: pointer;" onclick="openTestModal('test-item-1', 'schema:license', 0, 'CC-BY 4.0', 'string')">
+                                <div class="property-value" data-status="pending">
+                                    <span class="value-text">CC-BY 4.0</span>
+                                    <span class="value-status">Click to reconcile</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -116,7 +197,8 @@
             createReconciliationModalContentFactory,
             createOpenReconciliationModalFactory,
             createModalInteractionHandlers,
-            loadExistingMatches
+            loadExistingMatches,
+            initializeReconciliationModalFromDOM
         } from './src/js/reconciliation/ui/reconciliation-modal.js';
         
         import {
@@ -124,8 +206,34 @@
             validateStringValue,
             validateRealTime,
             getSuggestedFixes,
-            createValidationUI
+            createValidationUI,
+            searchWikidataLanguages,
+            getStoredLanguage,
+            setStoredLanguage,
+            generatePropertyLink,
+            validateMonolingualText
         } from './src/js/reconciliation/ui/validation-engine.js';
+        
+        // Mock state system for testing
+        window.currentState = {
+            state: {
+                reconciliationData: {}
+            },
+            getState() {
+                return this.state;
+            },
+            updateState(path, value) {
+                console.log('Mock state update:', path, value);
+                if (path === 'reconciliationData') {
+                    this.state.reconciliationData = value;
+                }
+                // Simulate state change event
+                const event = new CustomEvent('stateChanged', {
+                    detail: { path, value }
+                });
+                document.dispatchEvent(event);
+            }
+        };
 
         // Make functions available globally for testing
         window.testFunctions = {
@@ -134,11 +242,17 @@
             createOpenReconciliationModalFactory,
             createModalInteractionHandlers,
             loadExistingMatches,
+            initializeReconciliationModalFromDOM,
             extractRegexConstraints,
             validateStringValue,
             validateRealTime,
             getSuggestedFixes,
-            createValidationUI
+            createValidationUI,
+            searchWikidataLanguages,
+            getStoredLanguage,
+            setStoredLanguage,
+            generatePropertyLink,
+            validateMonolingualText
         };
 
         window.testImports = function() {
@@ -149,8 +263,14 @@
                     'createReconciliationModalContentFactory', 
                     'createOpenReconciliationModalFactory',
                     'createModalInteractionHandlers',
+                    'initializeReconciliationModalFromDOM',
                     'extractRegexConstraints',
-                    'validateStringValue'
+                    'validateStringValue',
+                    'searchWikidataLanguages',
+                    'getStoredLanguage',
+                    'setStoredLanguage',
+                    'generatePropertyLink',
+                    'validateMonolingualText'
                 ];
                 
                 const missingFunctions = [];
@@ -206,13 +326,133 @@
                 );
                 
                 // Show in test modal
-                document.getElementById('modal-title').textContent = 'String Validation Test';
+                document.getElementById('modal-title').textContent = 'String Validation Test (ISBN)';
                 document.getElementById('modal-content').innerHTML = modal.innerHTML;
                 document.getElementById('test-modal').classList.remove('hidden');
                 
-                resultDiv.innerHTML = '<div class="success-message">✅ String validation modal created successfully!</div>';
+                // Initialize the modal
+                setTimeout(() => {
+                    const modalElement = document.querySelector('.string-modal');
+                    if (modalElement && window.testFunctions.initializeReconciliationModalFromDOM) {
+                        window.testFunctions.initializeReconciliationModalFromDOM();
+                    }
+                }, 100);
+                
+                resultDiv.innerHTML = '<div class="success-message">✅ String validation modal (ISBN) created successfully!</div>';
             } catch (error) {
                 resultDiv.innerHTML = `<div class="error-message">❌ Error creating string modal: ${error.message}</div>`;
+            }
+        };
+        
+        window.testStringModalDOI = function() {
+            const resultDiv = document.getElementById('string-result');
+            try {
+                const modal = window.testFunctions.createReconciliationModal(
+                    'item-3',
+                    'doi',
+                    0,
+                    'invalid-doi-format',
+                    { datatype: 'string' }
+                );
+                
+                document.getElementById('modal-title').textContent = 'String Validation Test (DOI)';
+                document.getElementById('modal-content').innerHTML = modal.innerHTML;
+                document.getElementById('test-modal').classList.remove('hidden');
+                
+                setTimeout(() => {
+                    const modalElement = document.querySelector('.string-modal');
+                    if (modalElement && window.testFunctions.initializeReconciliationModalFromDOM) {
+                        window.testFunctions.initializeReconciliationModalFromDOM();
+                    }
+                }, 100);
+                
+                resultDiv.innerHTML = '<div class="success-message">✅ String validation modal (DOI) created successfully!</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error creating DOI modal: ${error.message}</div>`;
+            }
+        };
+        
+        window.testStringModalNoValidation = function() {
+            const resultDiv = document.getElementById('string-result');
+            try {
+                const modal = window.testFunctions.createReconciliationModal(
+                    'item-4',
+                    'title',
+                    0,
+                    'Some title text',
+                    { datatype: 'string' }
+                );
+                
+                document.getElementById('modal-title').textContent = 'String Modal (No Validation)';
+                document.getElementById('modal-content').innerHTML = modal.innerHTML;
+                document.getElementById('test-modal').classList.remove('hidden');
+                
+                setTimeout(() => {
+                    const modalElement = document.querySelector('.string-modal');
+                    if (modalElement && window.testFunctions.initializeReconciliationModalFromDOM) {
+                        window.testFunctions.initializeReconciliationModalFromDOM();
+                    }
+                }, 100);
+                
+                resultDiv.innerHTML = '<div class="success-message">✅ String modal (no validation) created successfully!</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error creating no-validation modal: ${error.message}</div>`;
+            }
+        };
+        
+        window.testMonolingualModal = function() {
+            const resultDiv = document.getElementById('monolingual-result');
+            try {
+                const modal = window.testFunctions.createReconciliationModal(
+                    'item-5',
+                    'label',
+                    0,
+                    'Example text',
+                    { datatype: 'monolingualtext' }
+                );
+                
+                document.getElementById('modal-title').textContent = 'Monolingual Text Test';
+                document.getElementById('modal-content').innerHTML = modal.innerHTML;
+                document.getElementById('test-modal').classList.remove('hidden');
+                
+                setTimeout(() => {
+                    const modalElement = document.querySelector('.monolingual-modal');
+                    if (modalElement && window.testFunctions.initializeReconciliationModalFromDOM) {
+                        window.testFunctions.initializeReconciliationModalFromDOM();
+                    }
+                }, 100);
+                
+                resultDiv.innerHTML = '<div class="success-message">✅ Monolingual text modal created successfully!</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error creating monolingual modal: ${error.message}</div>`;
+            }
+        };
+        
+        window.testMonolingualModalWithValidation = function() {
+            const resultDiv = document.getElementById('monolingual-result');
+            try {
+                const modal = window.testFunctions.createReconciliationModal(
+                    'item-6',
+                    'isbn',  // Using ISBN validation with monolingual
+                    0,
+                    '978-invalid',
+                    { datatype: 'monolingualtext' }
+                );
+                
+                document.getElementById('modal-title').textContent = 'Monolingual Text + Validation';
+                document.getElementById('modal-content').innerHTML = modal.innerHTML;
+                document.getElementById('test-modal').classList.remove('hidden');
+                
+                setTimeout(() => {
+                    const modalElement = document.querySelector('.monolingual-modal');
+                    if (modalElement && window.testFunctions.initializeReconciliationModalFromDOM) {
+                        window.testFunctions.initializeReconciliationModalFromDOM();
+                    }
+                }, 100);
+                
+                resultDiv.innerHTML = '<div class="success-message">✅ Monolingual text modal with validation created successfully!</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error creating monolingual + validation modal: ${error.message}</div>`;
             }
         };
 
@@ -225,7 +465,9 @@
                     { value: '978-invalid', property: 'isbn', expected: 'invalid' },
                     { value: '1234-5678', property: 'issn', expected: 'valid' },
                     { value: '10.1000/123', property: 'doi', expected: 'valid' },
-                    { value: 'invalid-doi', property: 'doi', expected: 'invalid' }
+                    { value: 'invalid-doi', property: 'doi', expected: 'invalid' },
+                    { value: 'Q12345', property: 'wikidata_id', expected: 'valid' },
+                    { value: 'P123', property: 'wikidata_property', expected: 'valid' }
                 ];
                 
                 let results = '';
@@ -243,6 +485,86 @@
                 resultDiv.innerHTML = `<div class="error-message">❌ Validation engine error: ${error.message}</div>`;
             }
         };
+        
+        window.testLanguageSearch = async function() {
+            const resultDiv = document.getElementById('validation-result');
+            try {
+                resultDiv.innerHTML = '<div class="success-message">🔍 Testing language search...</div>';
+                
+                // Test language search
+                const languages = await window.testFunctions.searchWikidataLanguages('eng');
+                
+                let results = '<h4>Language Search Results:</h4>';
+                languages.forEach(lang => {
+                    results += `<div>• ${lang.label} (${lang.code})</div>`;
+                });
+                
+                resultDiv.innerHTML = `<div class="success-message">${results}</div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Language search error: ${error.message}</div>`;
+            }
+        };
+        
+        window.testOriginalValueReset = function() {
+            const resultDiv = document.getElementById('enhanced-result');
+            try {
+                // This test shows how original value reset works
+                const testValue = 'Original Test Value';
+                resultDiv.innerHTML = `
+                    <div class="success-message">
+                        <h4>Original Value Reset Test</h4>
+                        <p>1. Open a string modal</p>
+                        <p>2. Start editing the text</p>
+                        <p>3. Notice "Original: ${testValue}" appears below</p>
+                        <p>4. Click on the grey original text to reset</p>
+                        <button onclick="testStringModal()" class="test-button">Try It</button>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
+            }
+        };
+        
+        window.testValidationBorders = function() {
+            const resultDiv = document.getElementById('enhanced-result');
+            try {
+                resultDiv.innerHTML = `
+                    <div class="success-message">
+                        <h4>Validation Border Test</h4>
+                        <p>✅ Green border = Valid input</p>
+                        <p>❌ Red border = Invalid input</p>
+                        <p>Open a string modal with validation (ISBN/DOI) to see borders change as you type</p>
+                        <button onclick="testStringModalDOI()" class="test-button">Try It</button>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
+            }
+        };
+        
+        window.testLanguageStorage = function() {
+            const resultDiv = document.getElementById('enhanced-result');
+            try {
+                // Test language storage functions
+                const testLanguage = { code: 'en', label: 'English' };
+                window.testFunctions.setStoredLanguage(testLanguage);
+                const stored = window.testFunctions.getStoredLanguage();
+                
+                const matches = stored && stored.code === testLanguage.code;
+                const icon = matches ? '✅' : '❌';
+                
+                resultDiv.innerHTML = `
+                    <div class="${matches ? 'success' : 'error'}-message">
+                        <h4>Language Storage Test</h4>
+                        <p>${icon} Stored: ${JSON.stringify(testLanguage)}</p>
+                        <p>${icon} Retrieved: ${JSON.stringify(stored)}</p>
+                        <p>Language preferences persist across sessions</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
+            }
+        };
 
         window.closeTestModal = function() {
             document.getElementById('test-modal').classList.add('hidden');
@@ -252,6 +574,161 @@
         setTimeout(() => {
             window.testImports();
         }, 500);
+        
+        // Initialize window functions for modal interactions
+        window.confirmStringValue = function() { console.log('String value confirmed!'); };
+        window.cancelStringModal = function() { window.closeTestModal(); };
+        window.resetStringModal = function() { console.log('String modal reset!'); };
+        window.closeReconciliationModal = function() { window.closeTestModal(); };
+        window.resetToOriginalValue = function() { console.log('Reset to original value!'); };
+        window.selectLanguage = function(code, label) { console.log(`Selected language: ${label} (${code})`); };
+        
+        // Mock global functions that might be called by the modal
+        window.confirmCustomValue = function() { 
+            const confirmationData = window.currentModalContext?.confirmationData;
+            console.log('Confirmed custom value:', confirmationData);
+            
+            // Show success message
+            if (confirmationData) {
+                const successMsg = document.createElement('div');
+                successMsg.className = 'success-message';
+                successMsg.style.position = 'fixed';
+                successMsg.style.top = '20px';
+                successMsg.style.right = '20px';
+                successMsg.style.zIndex = '9999';
+                successMsg.innerHTML = `
+                    <h4>✅ Value Saved!</h4>
+                    <p><strong>Value:</strong> ${confirmationData.value}</p>
+                    ${confirmationData.language ? `<p><strong>Language:</strong> ${confirmationData.languageLabel} (${confirmationData.language})</p>` : ''}
+                    <p><strong>Type:</strong> ${confirmationData.datatype}</p>
+                `;
+                document.body.appendChild(successMsg);
+                
+                setTimeout(() => {
+                    successMsg.remove();
+                }, 3000);
+            }
+            
+            window.closeTestModal();
+        };
+        
+        // Listen for custom string confirmation events
+        document.addEventListener('stringValueConfirmed', function(event) {
+            console.log('String value confirmed via custom event:', event.detail);
+            
+            const confirmationData = event.detail.confirmationData;
+            
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.className = 'success-message';
+            successMsg.style.position = 'fixed';
+            successMsg.style.top = '20px';
+            successMsg.style.right = '20px';
+            successMsg.style.zIndex = '9999';
+            successMsg.innerHTML = `
+                <h4>✅ Value Saved via Event!</h4>
+                <p><strong>Value:</strong> ${confirmationData.value}</p>
+                ${confirmationData.language ? `<p><strong>Language:</strong> ${confirmationData.languageLabel} (${confirmationData.language})</p>` : ''}
+                <p><strong>Type:</strong> ${confirmationData.datatype}</p>
+            `;
+            document.body.appendChild(successMsg);
+            
+            setTimeout(() => {
+                successMsg.remove();
+            }, 3000);
+        });
+        
+        window.testTableCellUpdates = function() {
+            const resultDiv = document.getElementById('table-test-result');
+            const tableContainer = document.getElementById('sample-table-container');
+            
+            try {
+                // Show the sample table
+                tableContainer.style.display = 'block';
+                
+                resultDiv.innerHTML = `
+                    <div class="success-message">
+                        <h4>Table Cell Update Test</h4>
+                        <p>📋 A sample table is now visible below with clickable cells</p>
+                        <p>1. Click any cell in the table below to open a modal</p>
+                        <p>2. Edit the value and click "Confirm"</p>
+                        <p>3. Watch the original table cell update immediately!</p>
+                        <p>4. Cell background turns green and status shows "✓ Custom value"</p>
+                        <p><strong>Available cells:</strong></p>
+                        <ul>
+                            <li>Label (string) - Click to edit text value</li>
+                            <li>Description (monolingual) - Click to edit with language</li>
+                            <li>License (string) - Edit the CC-BY 4.0 value</li>
+                        </ul>
+                    </div>
+                `;
+                
+                // Note: Table persistence is now handled through the application state system
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
+            }
+        };
+        
+        window.testTableSyncWithStorage = function() {
+            const resultDiv = document.getElementById('table-test-result');
+            const tableContainer = document.getElementById('sample-table-container');
+            
+            try {
+                // Show the sample table
+                tableContainer.style.display = 'block';
+                
+                // Note: Table values are now synced through the application state system
+                
+                resultDiv.innerHTML = `
+                    <div class="success-message">
+                        <h4>Table State Test Complete</h4>
+                        <p>🔄 Table now uses the application state system for persistence</p>
+                        <p>Values are saved to reconciliationData instead of localStorage</p>
+                        <p>This provides proper integration with the main application</p>
+                        <p><strong>How it works:</strong></p>
+                        <ol>
+                            <li>Edit cell values in the table above</li>
+                            <li>Values are immediately saved to application state</li>
+                            <li>State updates automatically sync with table display</li>
+                            <li>In the real app, state persists across sessions</li>
+                        </ol>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
+            }
+        };
+        
+        // Function to open modals from table cells
+        window.openTestModal = function(itemId, property, valueIndex, value, datatype) {
+            try {
+                const modal = window.testFunctions.createReconciliationModal(
+                    itemId,
+                    property,
+                    valueIndex,
+                    value,
+                    { datatype: datatype }
+                );
+                
+                document.getElementById('modal-title').textContent = `Edit ${property}`;
+                document.getElementById('modal-content').innerHTML = modal.innerHTML;
+                document.getElementById('test-modal').classList.remove('hidden');
+                
+                // Initialize the modal
+                setTimeout(() => {
+                    const modalElement = document.querySelector('.string-modal, .monolingual-modal');
+                    if (modalElement && window.testFunctions.initializeReconciliationModalFromDOM) {
+                        window.testFunctions.initializeReconciliationModalFromDOM();
+                    }
+                }, 100);
+                
+            } catch (error) {
+                console.error('Error opening test modal:', error);
+                alert('Error opening modal: ' + error.message);
+            }
+        };
     </script>
 </body>
 </html>
