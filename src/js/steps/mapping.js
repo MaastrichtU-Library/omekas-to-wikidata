@@ -68,7 +68,6 @@ import {
     populateLists,
     updateSectionCounts,
     populateKeyList,
-    populateManualPropertiesList,
     moveKeyToCategory,
     mapKeyToProperty,
     moveToNextUnmappedKey 
