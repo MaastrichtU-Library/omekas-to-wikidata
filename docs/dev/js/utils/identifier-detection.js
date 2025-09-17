@@ -378,7 +378,6 @@ export async function createIdentifierMapping(fieldKey, detection, sampleValue) 
         constraints = await getPropertyConstraints(detection.propertyId);
         constraintsFetched = true;
         
-        console.log(`Auto-mapping: Fetched constraints for ${detection.propertyId} (${detection.label})`);
     } catch (error) {
         console.warn(`Auto-mapping: Failed to fetch constraints for ${detection.propertyId}:`, error);
         constraintsError = error.message;
