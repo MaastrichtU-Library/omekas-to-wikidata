@@ -126,7 +126,7 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
         state
     } = dependencies;
 
-    return async function performBatchAutoAcceptance(data, mappedKeys, manualProperties = []) {
+    return async function performBatchAutoAcceptance(data, mappedKeys) {
         const batchJobs = [];
         let autoAcceptedCount = 0;
         
