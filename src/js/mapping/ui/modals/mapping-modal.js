@@ -177,7 +177,7 @@ export function openMappingModal(keyData) {
                             });
                             
                             // Clean up current mappingId if it was temporary
-                            if (currentMappingId.startsWith('temp_')) {
+                            if (currentMappingId.startsWith('temp_') && currentState.transformationBlocks) {
                                 delete currentState.transformationBlocks[currentMappingId];
                             }
                         }
