@@ -178,6 +178,36 @@ export function setupExportStep(state) {
     }
     
     /**
+     * Converts precision string to Wikidata precision number
+     * 
+     * Maps user-friendly precision names to Wikidata's numeric precision system:
+     * - 'day': 11 (most precise - full date)
+     * - 'month': 10 (month-level precision)
+     * - 'year': 9 (year-level precision)
+     * - 'decade': 8 (decade-level precision)
+     * 
+     * @param {string} precisionString - User-friendly precision name
+     * @returns {number} Wikidata precision number (defaults to 11 for day)
+     * 
+     * @example
+     * getPrecisionNumber('year') // 9
+     * getPrecisionNumber('month') // 10
+     * getPrecisionNumber('day') // 11
+     * getPrecisionNumber('decade') // 8
+     */
+    function getPrecisionNumber(precisionString) {
+        const precisionMapping = {
+            'day': 11,
+            'month': 10,
+            'year': 9,
+            'decade': 8,
+            'century': 7  // Future support
+        };
+        
+        return precisionMapping[precisionString] || 11; // Default to day precision
+    }
+    
+    /**
      * Formats dates for QuickStatements with appropriate precision indicators
      * 
      * Wikidata requires specific date formatting with precision values that indicate
@@ -190,39 +220,78 @@ export function setupExportStep(state) {
      * and must match the actual precision of the source data.
      * 
      * @param {string|Date} dateString - Date value to format
-     * @param {number} precision - Wikidata precision level (9=year, 10=month, 11=day)
+     * @param {number} precision - Wikidata precision level (8=decade, 9=year, 10=month, 11=day)
      * @returns {string|null} Formatted date string or null for invalid dates
      * 
      * @example
      * formatDate("2023-05-15", 11) // "+2023-05-15T00:00:00Z/11"
      * formatDate("2023-05", 10) // "+2023-05-01T00:00:00Z/10"
      * formatDate("2023", 9) // "+2023-01-01T00:00:00Z/9"
+     * formatDate("1990s", 8) // "+1990-01-01T00:00:00Z/8"
      * 
      * @description
      * Date formatting requirements:
      * - Must include timezone indicator (Z for UTC)
-     * - Must include precision suffix (/11, /10, /9)
-     * - Must handle various input formats gracefully
+     * - Must include precision suffix (/8, /9, /10, /11)
+     * - Must handle various input formats gracefully (full dates, year-month, year-only, decades)
      * - Must return null for unparseable dates
+     * - Automatically detects input format and adjusts parsing accordingly
      */
     function formatDate(dateString, precision = 11) {
         if (!dateString) return null;
         
         try {
-            let date;
-            if (dateString instanceof Date) {
-                date = dateString;
-            } else {
-                date = new Date(dateString);
+            let dateStr = String(dateString).trim();
+            let year, month, day;
+            
+            // Handle decade inputs (e.g., "1990s", "199x")
+            if (precision === 8 && /^\d{3}[0-9xX][sS]?$/.test(dateStr)) {
+                const decadeMatch = dateStr.match(/^(\d{3})[0-9xX]/);
+                if (decadeMatch) {
+                    year = `${decadeMatch[1]}0`;
+                    month = '01';
+                    day = '01';
+                }
+            }
+            // Handle year-only inputs (e.g., "2023")
+            else if (/^\d{4}$/.test(dateStr)) {
+                year = dateStr;
+                month = '01';
+                day = '01';
+            }
+            // Handle year-month inputs (e.g., "2023-05")
+            else if (/^\d{4}-\d{1,2}$/.test(dateStr)) {
+                const [y, m] = dateStr.split('-');
+                year = y;
+                month = m.padStart(2, '0');
+                day = '01';
+            }
+            // Handle full date inputs (e.g., "2023-05-15")
+            else if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateStr)) {
+                const [y, m, d] = dateStr.split('-');
+                year = y;
+                month = m.padStart(2, '0');
+                day = d.padStart(2, '0');
+            }
+            // Try to parse as Date object for other formats
+            else {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) {
+                    return null;
+                }
+                year = String(date.getFullYear());
+                month = String(date.getMonth() + 1).padStart(2, '0');
+                day = String(date.getDate()).padStart(2, '0');
             }
             
-            if (isNaN(date.getTime())) {
+            // Validate year is reasonable
+            if (!year || year.length < 4 || isNaN(parseInt(year))) {
                 return null;
             }
             
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
+            // Ensure we have valid month and day
+            month = month || '01';
+            day = day || '01';
             
             return `+${year}-${month}-${day}T00:00:00Z/${precision}`;
         } catch (error) {
@@ -509,7 +578,9 @@ export function setupExportStep(state) {
                                     value = match.id;
                                 } else if (match.type === 'custom') {
                                     if (match.datatype === 'time') {
-                                        value = formatDate(match.value);
+                                        // Extract precision from saved reconciliation data
+                                        const precision = getPrecisionNumber(match.precision);
+                                        value = formatDate(match.value, precision);
                                         if (!value) {
                                             errors.push(`Invalid date format for ${propertyKey}: ${match.value}`);
                                             return;
