@@ -283,6 +283,12 @@ function applyComposeTransformation(value, config) {
         return fieldValue || '';
     });
     
+    // Replace {{wikidata:QID}} references (these remain as-is for user reference)
+    // The QIDs themselves are the values we want to keep
+    result = result.replace(/\{\{wikidata:(Q\d+)\}\}/g, (match, qid) => {
+        return qid;  // Return just the QID without the wrapper
+    });
+    
     return result;
 }
 

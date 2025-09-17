@@ -75,12 +75,69 @@ export function calculateTotalReconciliableCells(data, mappedKeys) {
  */
 export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     // Handle both string keys and key objects
-    let key, selectedAtField;
+    let key, selectedAtField, isCustomProperty;
     if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
         key = keyOrKeyObj.key;
         selectedAtField = keyOrKeyObj.selectedAtField;
+        isCustomProperty = keyOrKeyObj.isCustomProperty === true;
     } else {
         key = keyOrKeyObj;
+    }
+    
+    // Check if this is a custom property
+    if (!isCustomProperty && key) {
+        isCustomProperty = key.startsWith('custom_');
+    }
+    
+    // Special handling for custom properties - they generate values through transformations
+    if (isCustomProperty) {
+        // Custom properties don't extract from data, they generate through compose patterns
+        // Return a placeholder value that will be transformed
+        let extractedValues = [''];  // Empty string as base value for transformation
+        
+        // Apply transformations if state is provided
+        if (state) {
+            try {
+                let propertyId;
+                if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.property && keyOrKeyObj.property.id) {
+                    propertyId = keyOrKeyObj.property.id;
+                }
+                
+                // Generate mapping ID to look up transformations
+                if (propertyId) {
+                    const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
+                    const transformationBlocks = state.getTransformationBlocks(mappingId);
+                    
+                    if (transformationBlocks && transformationBlocks.length > 0) {
+                        // For custom properties, ensure sourceData is available in compose blocks
+                        const enhancedBlocks = transformationBlocks.map(block => {
+                            if (block.type === 'compose' && !block.config.sourceData) {
+                                // Add the current item as sourceData for compose transformations
+                                return {
+                                    ...block,
+                                    config: {
+                                        ...block.config,
+                                        sourceData: item
+                                    }
+                                };
+                            }
+                            return block;
+                        });
+                        
+                        // Apply transformations
+                        extractedValues = extractedValues.map(originalValue => {
+                            const transformationResult = applyTransformationChain(originalValue, enhancedBlocks);
+                            // Get the final transformed value
+                            return transformationResult[transformationResult.length - 1]?.value || originalValue;
+                        });
+                    }
+                }
+            } catch (error) {
+                console.warn('Error applying transformations to custom property:', error);
+            }
+        }
+        
+        return extractedValues;
     }
     
     const value = item[key];

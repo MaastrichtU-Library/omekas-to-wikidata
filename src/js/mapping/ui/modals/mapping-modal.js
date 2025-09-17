@@ -383,13 +383,24 @@ export function createMappingModalContent(keyData) {
             }
         }
         
-        // If no existing block found, create a new one
+        // If no existing block found, create a new one with sourceData
         if (!composeBlock) {
+            // Get source data from the current state
+            let sourceData = {};
+            if (window.mappingStepState) {
+                const currentState = window.mappingStepState.getState();
+                if (currentState.fetchedData) {
+                    const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+                    sourceData = items.find(item => typeof item === 'object' && item !== null && Object.keys(item).length > 0) || {};
+                }
+            }
+            
             composeBlock = {
                 id: 'custom-compose',
                 type: 'compose',
                 config: {
-                    pattern: existingPattern || '{{value}}' // Default to {{value}} instead of placeholder text
+                    pattern: existingPattern || '{{value}}', // Default to {{value}} instead of placeholder text
+                    sourceData: sourceData // Include source data for field replacements
                 }
             };
         }

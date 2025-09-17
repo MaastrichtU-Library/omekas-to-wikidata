@@ -520,6 +520,21 @@ export function renderFindReplaceConfigUI(mappingId, block, state) {
 }
 
 /**
+ * Gets source data for compose transformations (for custom properties)
+ * @param {Object} currentState - Current application state
+ * @returns {Object} Source data object
+ */
+function getSourceDataForCompose(currentState) {
+    // For custom properties, we need access to the full item data
+    if (currentState.fetchedData) {
+        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+        // Return the first valid item as source data
+        return items.find(item => typeof item === 'object' && item !== null && Object.keys(item).length > 0) || {};
+    }
+    return {};
+}
+
+/**
  * Renders compose configuration UI
  * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
@@ -545,7 +560,14 @@ export function renderComposeConfigUI(mappingId, block, state) {
         placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
         className: 'pattern-input',
         onInput: (e) => {
-            state.updateTransformationBlock(mappingId, block.id, { pattern: e.target.value });
+            // Get sourceData for the transformation
+            const currentState = state.getState();
+            const sourceData = getSourceDataForCompose(currentState);
+            
+            state.updateTransformationBlock(mappingId, block.id, { 
+                pattern: e.target.value,
+                sourceData: sourceData 
+            });
             updateTransformationPreview(mappingId, state);
         }
     }, currentPattern);
