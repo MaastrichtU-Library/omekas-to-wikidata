@@ -207,11 +207,6 @@ export async function selectUnifiedProperty(property) {
                 const propertyData = await getCompletePropertyData(property.id);
                 
                 // Log property data to console for developer inspection
-                console.log(`🔍 Property ${property.id} metadata from Wikidata API:`, propertyData);
-                console.log('Available fields:', Object.keys(propertyData));
-                if (propertyData.constraints) {
-                    console.log('Constraints structure:', propertyData.constraints);
-                }
                 
                 // Update Stage 2 with actual data type
                 updateUnifiedStage2DataType(propertyData);
@@ -345,12 +340,10 @@ export async function setupEntitySchemaPropertySelection(state) {
         
         // Only log batch loading when actual API calls will be made
         if (uncachedIds.length > 0) {
-            console.log(`🚀 Batch loading ${uncachedIds.length} entity schema properties:`, uncachedIds.join(', '));
         }
         
         // Show cache hit info for debugging if any properties are cached
         if (cachedIds.length > 0) {
-            console.log(`✨ Using cached data for ${cachedIds.length} entity schema properties`);
         }
         
         // Single batch API call instead of sequential calls!
@@ -378,7 +371,6 @@ export async function setupEntitySchemaPropertySelection(state) {
         
         // Show completion message based on what actually happened
         if (uncachedIds.length > 0) {
-            console.log(`✅ Batch loading complete for ${uncachedIds.length} properties. ${cachedIds.length > 0 ? `${cachedIds.length} loaded from cache.` : ''}`);
         }
         
     } catch (error) {
@@ -767,16 +759,6 @@ export async function displayDataTypeConfiguration(property) {
         const propertyData = await getCompletePropertyData(property.id);
         
         // Log property data for developer inspection
-        console.log(`🔍 Property ${property.id} complete data from Wikidata API:`, propertyData);
-        console.log('Available fields:', Object.keys(propertyData));
-        console.log('Data type:', propertyData.datatype, '/', propertyData.datatypeLabel);
-        if (propertyData.constraints) {
-            console.log('Constraints:', {
-                format: propertyData.constraints.format,
-                valueType: propertyData.constraints.valueType,
-                other: propertyData.constraints.other
-            });
-        }
         
         // Update the stored property with complete data
         window.currentMappingSelectedProperty = propertyData;

@@ -26,7 +26,6 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
     const dataType = getDataTypeFromProperty(property, propertyData);
     const transformedValue = getTransformedValue(value, property);
     
-    console.log(`Creating reconciliation modal for type: ${dataType}, value: ${transformedValue}`);
     
     try {
         // Use factory to create type-specific modal
@@ -344,7 +343,6 @@ window.confirmReconciliation = function() {
             window.selectMatchAndAdvance(window.selectedMatch.id);
         } else {
             // Fallback: manually trigger the reconciliation logic
-            console.log('Confirm selected match:', window.selectedMatch);
             // Try to find and call the modal close and reconciliation logic
             if (typeof window.closeModal === 'function') {
                 window.closeModal();
@@ -357,7 +355,6 @@ window.confirmReconciliation = function() {
         if (typeof window.confirmCustomValue === 'function') {
             window.confirmCustomValue();
         } else {
-            console.log('Confirm custom value:', window.currentModalContext.currentValue || window.currentModalContext.transformedValue);
             // Try to find and call the modal close logic
             if (typeof window.closeModal === 'function') {
                 window.closeModal();
@@ -403,7 +400,6 @@ window.selectMatch = function(matchId) {
 
 window.useAsString = function() {
     // Convert the current reconciliation to string type
-    console.log('Convert to string');
 };
 
 window.createNewWikidataItem = function() {

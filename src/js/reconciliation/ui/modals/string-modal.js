@@ -122,7 +122,6 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
         // Update the state
         stateManager.updateState('reconciliationData', reconciliationData);
         
-        console.log('Value saved to state:', itemId, property, valueIndex, confirmationData);
         return true;
     } catch (error) {
         console.warn('Failed to save confirmed value to state:', error);
@@ -212,7 +211,6 @@ function updateSourceTableCell(sourceCell, confirmationData) {
         sourceCell.classList.remove('pending', 'error');
         sourceCell.classList.add('reconciled');
         
-        console.log('Updated source table cell:', displayText);
         
     } catch (error) {
         console.error('Failed to update source table cell:', error);
@@ -601,7 +599,6 @@ function updateValueDisplays(confirmationData) {
             window.currentModalContext.hasBeenEdited = true;
         }
         
-        console.log('Updated value displays with:', displayText);
     }
 }
 
@@ -720,9 +717,6 @@ window.confirmStringValue = function() {
         confirmationData.languageLabel = selectedLanguage.label;
     }
     
-    console.log('Confirm string/monolingual value:', confirmationData);
-    console.log('Original value was:', window.currentModalContext.originalValue);
-    console.log('Current input field value:', currentValue);
     
     // Store confirmation data in context for handlers
     window.currentModalContext.confirmationData = confirmationData;

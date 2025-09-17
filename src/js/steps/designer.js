@@ -74,18 +74,6 @@ export function setupDesignerStep(state) {
     const issuesList = document.getElementById('issues-list');
     const referenceWarning = document.getElementById('reference-warning');
     
-    console.log('Designer DOM elements:', {
-        exampleItemSelector: !!exampleItemSelector,
-        labelsContainer: !!labelsContainer,
-        descriptionsContainer: !!descriptionsContainer,
-        aliasesContainer: !!aliasesContainer,
-        addLabelLanguageBtn: !!addLabelLanguageBtn,
-        addDescriptionLanguageBtn: !!addDescriptionLanguageBtn,
-        addAliasLanguageBtn: !!addAliasLanguageBtn,
-        referencesList: !!referencesList,
-        propertiesList: !!propertiesList,
-        unavailableProperties: !!unavailableProperties
-    });
     
     // Buttons
     const autoDetectReferencesBtn = document.getElementById('auto-detect-references');

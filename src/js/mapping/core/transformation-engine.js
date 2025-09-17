@@ -560,18 +560,11 @@ export function renderComposeConfigUI(mappingId, block, state) {
         placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
         className: 'pattern-input',
         onInput: (e) => {
-            console.log('[COMPOSE] Pattern input changed:', {
-                mappingId,
-                blockId: block.id,
-                newPattern: e.target.value,
-                oldPattern: block.config.pattern
-            });
             
             // Get sourceData for the transformation
             const currentState = state.getState();
             const sourceData = getSourceDataForCompose(currentState);
             
-            console.log('[COMPOSE] Updating transformation block with pattern:', e.target.value);
             state.updateTransformationBlock(mappingId, block.id, { 
                 pattern: e.target.value,
                 sourceData: sourceData 
@@ -580,11 +573,6 @@ export function renderComposeConfigUI(mappingId, block, state) {
             // Verify the update
             const updatedBlocks = state.getTransformationBlocks(mappingId);
             const updatedBlock = updatedBlocks?.find(b => b.id === block.id);
-            console.log('[COMPOSE] After update, block state:', {
-                mappingId,
-                updatedBlock,
-                allBlocksForMapping: updatedBlocks
-            });
             
             updateTransformationPreview(mappingId, state);
         }

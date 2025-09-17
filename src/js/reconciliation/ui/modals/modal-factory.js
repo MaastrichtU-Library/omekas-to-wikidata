@@ -69,7 +69,6 @@ export function createReconciliationModalByType(dataType, itemId, property, valu
         throw new Error(`Unsupported reconciliation modal type: ${dataType}. Supported types: ${Object.keys(modalRegistry).join(', ')}`);
     }
     
-    console.log(`Creating ${modalHandler.name} for ${dataType} value:`, value);
     
     try {
         const modalElement = modalHandler.create(itemId, property, valueIndex, value, propertyData, existingMatches);
@@ -106,7 +105,6 @@ export function initializeReconciliationModal(modalElement) {
         throw new Error(`No modal handler found for data type: ${dataType}`);
     }
     
-    console.log(`Initializing ${modalHandler.name} for ${dataType}`);
     
     try {
         modalHandler.initialize(modalElement);
@@ -169,7 +167,6 @@ export function registerModalType(dataType, createFunction, initializeFunction, 
         name: name
     };
     
-    console.log(`Registered modal type: ${dataType} (${name})`);
 }
 
 /**
@@ -233,7 +230,6 @@ function escapeHtml(text) {
 
 // Global fallback handler
 window.confirmFallbackValue = function() {
-    console.log('Using fallback value confirmation');
     if (typeof window.closeReconciliationModal === 'function') {
         window.closeReconciliationModal();
     }

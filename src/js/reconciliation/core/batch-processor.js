@@ -202,12 +202,10 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
         
         for (const [property, jobs] of batchByProperty) {
             propertyIndex++;
-            console.log(`🔄 Processing property ${propertyIndex}/${totalProperties}: ${property} (${jobs.length} values)`);
             
             // Add inter-property delay to prevent API rate limiting
             if (propertyIndex > 1) {
                 const interPropertyDelay = Math.min(500 + (propertyIndex * 100), 2000); // Progressive delay, max 2s
-                console.log(`⏳ Inter-property delay: ${interPropertyDelay}ms`);
                 await new Promise(resolve => setTimeout(resolve, interPropertyDelay));
             }
             
@@ -332,11 +330,6 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
             }
             
             // Log property completion stats
-            console.log(`✅ Property ${property} completed:`, {
-                successful: propertySuccessCount.success,
-                errors: propertySuccessCount.error,
-                noMatches: propertySuccessCount.noMatches
-            });
         }
         
         // Update proceed button
@@ -405,7 +398,6 @@ export function createColumnReconciliationProcessor(dependencies) {
         updateButtonState(button, 'processing');
         
         try {
-            console.log(`🔄 Starting column reconciliation for property: ${property}`);
             
             // Filter jobs for this column only
             const columnJobs = [];
@@ -427,10 +419,8 @@ export function createColumnReconciliationProcessor(dependencies) {
                 });
             });
             
-            console.log(`📊 Column ${property}: Found ${columnJobs.length} values to reconcile`);
             
             if (columnJobs.length === 0) {
-                console.log(`⚠️ No values found to reconcile in column ${property}`);
                 updateButtonState(button, 'completed');
                 return;
             }
@@ -526,12 +516,6 @@ export function createColumnReconciliationProcessor(dependencies) {
             }
             
             // Log completion stats
-            console.log(`✅ Column ${property} reconciliation completed:`, {
-                total: columnJobs.length,
-                processed: processedCount,
-                autoAccepted: autoAcceptedCount,
-                errors: errorCount
-            });
             
             // Update button state to completed
             updateButtonState(button, 'completed');
@@ -570,21 +554,14 @@ export function createNextUnprocessedCellReconciler(dependencies) {
         }
         
         if (nextCell) {
-            console.log('🎯 Found next unprocessed cell:', {
-                status: nextCell.dataset.status,
-                itemId: nextCell.closest('[data-item-id]')?.dataset.itemId,
-                property: nextCell.closest('[data-property]')?.dataset.property
-            });
             nextCell.click();
         } else {
             // All cells processed - calculate progress and update state
-            console.log('✅ All reconciliation cells processed');
             
             if (reconciliationData && Object.keys(reconciliationData).length > 0) {
                 const progress = calculateCurrentProgress();
                 state.updateState('reconciliationProgress', progress);
                 
-                console.log('📊 Final reconciliation progress:', progress);
             }
             updateProceedButton();
         }
