@@ -27,6 +27,10 @@ import {
     createTimeModal, 
     initializeTimeModal 
 } from './time-modal.js';
+import { 
+    createExternalIdModal, 
+    initializeExternalIdModal 
+} from './external-id-modal.js';
 
 /**
  * Registry of modal handlers by data type
@@ -51,11 +55,15 @@ const modalRegistry = {
         create: createStringModal, // Reuse string modal with monolingual support
         initialize: initializeStringModal,
         name: 'Monolingual Text Entry'
+    },
+    'external-id': {
+        create: createExternalIdModal,
+        initialize: initializeExternalIdModal,
+        name: 'External Identifier'
     }
     // Future modal types will be registered here:
     // 'quantity': { create: createQuantityModal, initialize: initializeQuantityModal, name: 'Number/Quantity Input' },
-    // 'url': { create: createUrlModal, initialize: initializeUrlModal, name: 'URL Validation' },
-    // 'external-id': { create: createExternalIdModal, initialize: initializeExternalIdModal, name: 'External Identifier' }
+    // 'url': { create: createUrlModal, initialize: initializeUrlModal, name: 'URL Validation' }
 };
 
 /**
