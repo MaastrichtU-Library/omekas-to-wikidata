@@ -215,8 +215,33 @@ export function createExternalIdModal(itemId, property, valueIndex, value, prope
     const displayValue = confirmedData ? confirmedData.value : value;
     const hasConfirmedValue = confirmedData !== null;
     
+    // Add comprehensive debugging for constraint extraction
+    console.log('🔍 [External-ID Modal] Creating modal for:', {
+        itemId,
+        property,
+        valueIndex,
+        value,
+        displayValue,
+        hasPropertyData: !!propertyData,
+        propertyDataStructure: propertyData ? Object.keys(propertyData) : null
+    });
+    
     const regexConstraints = extractRegexConstraints(property, propertyData);
-    const validationResult = validateStringValue(displayValue, regexConstraints);
+    console.log('📋 [External-ID Modal] Extracted constraints:', {
+        hasConstraints: !!regexConstraints,
+        constraints: regexConstraints,
+        property,
+        propertyDataConstraints: propertyData?.constraints
+    });
+    
+    // Only validate if we have constraints
+    const validationResult = regexConstraints ? validateStringValue(displayValue, regexConstraints) : null;
+    console.log('✅ [External-ID Modal] Validation result:', {
+        hasValidationResult: !!validationResult,
+        validationResult,
+        willShowValidation: !!regexConstraints
+    });
+    
     const propertyLink = generatePropertyLink(property, propertyData);
     
     const modalContent = document.createElement('div');
@@ -259,7 +284,7 @@ export function createExternalIdModal(itemId, property, valueIndex, value, prope
                 <div class="input-container">
                     <input type="text" 
                            id="external-id-input" 
-                           class="external-id-input ${validationResult?.isValid === false ? 'validation-error' : (validationResult?.isValid === true ? 'validation-success' : '')}" 
+                           class="external-id-input ${regexConstraints && validationResult ? (validationResult.isValid === false ? 'validation-error' : (validationResult.isValid === true ? 'validation-success' : '')) : ''}" 
                            placeholder="Enter external identifier value..."
                            value="${escapeHtml(displayValue)}">
                     
@@ -425,15 +450,39 @@ function updateValidationState() {
     const propertyData = window.currentModalContext?.propertyData;
     const feedbackContainer = document.getElementById('validation-feedback');
     
-    if (!input || !property) return;
+    if (!input || !property) {
+        console.warn('⚠️ [External-ID Modal] updateValidationState called without required elements:', {
+            hasInput: !!input,
+            hasProperty: !!property
+        });
+        return;
+    }
     
-    // Get validation result
+    // Get constraints with debugging
     const constraints = extractRegexConstraints(property, propertyData);
+    console.log('🔄 [External-ID Modal] updateValidationState called:', {
+        property,
+        currentValue,
+        hasConstraints: !!constraints,
+        constraints,
+        propertyDataConstraints: propertyData?.constraints,
+        constraintSource: constraints?.source
+    });
+    
+    // Only validate if we have constraints
     const validationResult = constraints ? validateRealTime(currentValue, constraints) : null;
     
-    // Update input styling
+    // Clear all validation classes first
     input.className = input.className.replace(/validation-(success|error|warning)/g, '');
-    if (validationResult) {
+    
+    // Only apply validation styling if we have constraints AND a validation result
+    if (constraints && validationResult) {
+        console.log('✨ [External-ID Modal] Applying validation styling:', {
+            isValid: validationResult.isValid,
+            level: validationResult.level,
+            message: validationResult.message
+        });
+        
         if (validationResult.isValid) {
             input.classList.add('validation-success');
         } else if (validationResult.level === 'warning') {
@@ -441,19 +490,31 @@ function updateValidationState() {
         } else {
             input.classList.add('validation-error');
         }
+    } else {
+        console.log('⚪ [External-ID Modal] No validation styling applied - keeping neutral:', {
+            hasConstraints: !!constraints,
+            hasValidationResult: !!validationResult,
+            reason: !constraints ? 'No regex constraints available' : 'No validation result'
+        });
     }
     
-    // Update validation feedback
-    if (feedbackContainer && validationResult && validationResult.message) {
-        const icon = getValidationIcon(validationResult);
-        feedbackContainer.innerHTML = `
-            <div class="validation-message ${validationResult.level || (validationResult.isValid ? 'success' : 'error')}">
-                <span class="validation-icon">${icon}</span>
-                <span class="validation-text">${escapeHtml(validationResult.message)}</span>
-            </div>
-        `;
-    } else if (feedbackContainer) {
-        feedbackContainer.innerHTML = '';
+    // Update validation feedback only if we have constraints and validation result
+    if (feedbackContainer) {
+        if (constraints && validationResult && validationResult.message) {
+            const icon = getValidationIcon(validationResult);
+            feedbackContainer.innerHTML = `
+                <div class="validation-message ${validationResult.level || (validationResult.isValid ? 'success' : 'error')}">
+                    <span class="validation-icon">${icon}</span>
+                    <span class="validation-text">${escapeHtml(validationResult.message)}</span>
+                </div>
+            `;
+        } else {
+            // Clear feedback if no constraints or no validation result
+            feedbackContainer.innerHTML = '';
+            if (!constraints) {
+                console.log('📝 [External-ID Modal] No validation feedback shown - no constraints available');
+            }
+        }
     }
     
     // Update confirm button state
@@ -567,18 +628,40 @@ window.confirmExternalIdValue = function() {
     const propertyData = window.currentModalContext.propertyData;
     const constraints = extractRegexConstraints(property, propertyData);
     
+    console.log('🔒 [External-ID Modal] Confirmation validation check:', {
+        property,
+        currentValue,
+        hasConstraints: !!constraints,
+        constraints,
+        willValidate: !!constraints
+    });
+    
     if (constraints) {
         const validationResult = validateStringValue(currentValue, constraints);
+        console.log('⚖️ [External-ID Modal] Validation before confirmation:', {
+            isValid: validationResult.isValid,
+            message: validationResult.message,
+            pattern: constraints.pattern
+        });
+        
         if (!validationResult.isValid) {
+            console.log('⚠️ [External-ID Modal] Showing override dialog for invalid value');
             const confirmOverride = confirm(
                 `Warning: The value "${currentValue}" does not match the required format.\n\n` +
                 `Expected pattern: ${constraints.pattern}\n\n` +
                 `Do you want to use this value anyway?`
             );
             if (!confirmOverride) {
+                console.log('❌ [External-ID Modal] User cancelled override - not confirming value');
                 return;
+            } else {
+                console.log('✅ [External-ID Modal] User approved override - proceeding with invalid value');
             }
+        } else {
+            console.log('✅ [External-ID Modal] Value passes validation - proceeding');
         }
+    } else {
+        console.log('ℹ️ [External-ID Modal] No constraints available - skipping validation check');
     }
     
     // Prepare confirmation data

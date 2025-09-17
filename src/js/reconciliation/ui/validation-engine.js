@@ -88,40 +88,75 @@ const CONSTRAINT_DATABASE = {
  * @returns {Object|null} Constraint object or null if no constraints
  */
 export function extractRegexConstraints(property, propertyData = null) {
+    console.log('🔍 [Validation Engine] extractRegexConstraints called:', {
+        property,
+        hasPropertyData: !!propertyData,
+        propertyDataStructure: propertyData ? Object.keys(propertyData) : null,
+        propertyDataConstraints: propertyData?.constraints
+    });
+    
     // First check if we have explicit constraint data from Wikidata
     if (propertyData && propertyData.constraints) {
+        console.log('📋 [Validation Engine] Checking Wikidata constraints:', {
+            constraintsCount: propertyData.constraints.length,
+            constraints: propertyData.constraints
+        });
+        
         for (const constraint of propertyData.constraints) {
+            console.log('🔎 [Validation Engine] Examining constraint:', {
+                type: constraint.type,
+                hasPattern: !!constraint.pattern,
+                constraint
+            });
+            
             if (constraint.type === 'format' && constraint.pattern) {
-                return {
+                const result = {
                     pattern: constraint.pattern,
                     description: constraint.description || `Must match pattern: ${constraint.pattern}`,
                     source: 'wikidata'
                 };
+                console.log('✅ [Validation Engine] Found Wikidata format constraint:', result);
+                return result;
             }
         }
+        console.log('❌ [Validation Engine] No format constraints found in Wikidata data');
+    } else {
+        console.log('❌ [Validation Engine] No propertyData or constraints available');
     }
     
     // Fallback to local constraint database
     const lowerProperty = property.toLowerCase();
+    console.log('🗂️ [Validation Engine] Checking local constraint database:', {
+        lowerProperty,
+        availableKeys: Object.keys(CONSTRAINT_DATABASE)
+    });
     
     // Direct match first
     if (CONSTRAINT_DATABASE[lowerProperty]) {
-        return {
+        const result = {
             ...CONSTRAINT_DATABASE[lowerProperty],
             source: 'builtin'
         };
+        console.log('✅ [Validation Engine] Found direct match in local database:', result);
+        return result;
     }
     
     // Pattern matching for property names
     for (const [key, constraint] of Object.entries(CONSTRAINT_DATABASE)) {
         if (lowerProperty.includes(key)) {
-            return {
+            const result = {
                 ...constraint,
                 source: 'builtin'
             };
+            console.log('✅ [Validation Engine] Found pattern match in local database:', {
+                matchedKey: key,
+                result
+            });
+            return result;
         }
     }
     
+    console.log('❌ [Validation Engine] No constraints found anywhere for property:', property);
     return null;
 }
 
