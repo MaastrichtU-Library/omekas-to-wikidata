@@ -7386,6 +7386,32 @@ pre.sample-value {
    Enhanced String Modal Styles
    ======================================== */
 
+/* Saved value indicator */
+.saved-value-indicator {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e8f5e8;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+}
+
+.saved-value-indicator .section-title {
+    color: #155724;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.saved-value {
+    color: #155724;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 5px;
+    background-color: #d1f2d1;
+    border-radius: 3px;
+    border: 1px solid #b8e6b8;
+}
+
 /* String and Monolingual Modal Base Styles */
 .string-modal,
 .monolingual-modal {

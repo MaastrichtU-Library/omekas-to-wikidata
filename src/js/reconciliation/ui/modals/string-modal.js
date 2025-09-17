@@ -29,6 +29,44 @@ import {
 } from '../validation-engine.js';
 
 /**
+ * Get saved value for a specific item/property/valueIndex combination
+ * @param {string} itemId - Item ID
+ * @param {string} property - Property name
+ * @param {number} valueIndex - Value index
+ * @returns {Object|null} Saved confirmation data or null
+ */
+function getSavedValue(itemId, property, valueIndex) {
+    try {
+        const key = `reconciliation_${itemId}_${property}_${valueIndex}`;
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+        console.warn('Failed to retrieve saved value:', error);
+        return null;
+    }
+}
+
+/**
+ * Save value for a specific item/property/valueIndex combination
+ * @param {string} itemId - Item ID
+ * @param {string} property - Property name
+ * @param {number} valueIndex - Value index
+ * @param {Object} confirmationData - Data to save
+ */
+function saveValue(itemId, property, valueIndex, confirmationData) {
+    try {
+        const key = `reconciliation_${itemId}_${property}_${valueIndex}`;
+        localStorage.setItem(key, JSON.stringify({
+            ...confirmationData,
+            savedAt: new Date().toISOString()
+        }));
+        console.log('Value saved to localStorage:', key, confirmationData);
+    } catch (error) {
+        console.warn('Failed to save value:', error);
+    }
+}
+
+/**
  * Create enhanced String/Monolingual reconciliation modal content
  * @param {string} itemId - Item ID being reconciled
  * @param {string} property - Property name being reconciled
@@ -41,8 +79,14 @@ import {
 export function createStringModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
     const dataType = propertyData?.datatype || 'string';
     const isMonolingual = dataType === 'monolingualtext';
+    
+    // Check for previously saved value
+    const savedData = getSavedValue(itemId, property, valueIndex);
+    const displayValue = savedData ? savedData.value : value;
+    const hasSavedValue = savedData !== null;
+    
     const regexConstraints = extractRegexConstraints(property, propertyData);
-    const validationResult = validateStringValue(value, regexConstraints);
+    const validationResult = validateStringValue(displayValue, regexConstraints);
     const propertyLink = generatePropertyLink(property, propertyData);
     
     const modalContent = document.createElement('div');
@@ -53,11 +97,15 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
     modalContent.dataset.itemId = itemId;
     modalContent.dataset.property = property;
     modalContent.dataset.valueIndex = valueIndex;
-    modalContent.dataset.originalValue = value;
-    modalContent.dataset.currentValue = value;
+    modalContent.dataset.originalValue = value; // Always keep the original Omeka value
+    modalContent.dataset.currentValue = displayValue; // Use saved value if available
     modalContent.dataset.isMonolingual = isMonolingual.toString();
+    modalContent.dataset.hasSavedValue = hasSavedValue.toString();
     if (propertyData) {
         modalContent.dataset.propertyData = JSON.stringify(propertyData);
+    }
+    if (savedData) {
+        modalContent.dataset.savedData = JSON.stringify(savedData);
     }
     
     modalContent.innerHTML = `
@@ -71,6 +119,12 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
         <div class="value-display">
             <div class="section-title">Omeka S Value</div>
             <div class="original-value">${escapeHtml(value)}</div>
+            ${hasSavedValue ? `
+                <div class="saved-value-indicator">
+                    <div class="section-title">Previously Saved Value</div>
+                    <div class="saved-value">${escapeHtml(displayValue)}</div>
+                </div>
+            ` : ''}
         </div>
 
         <div class="string-section">
@@ -80,12 +134,12 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
                 <div class="input-container">
                     <textarea id="string-editor" 
                              class="string-input ${validationResult?.isValid === false ? 'validation-error' : (validationResult?.isValid === true ? 'validation-success' : '')}" 
-                             placeholder="${isMonolingual ? 'Enter text in selected language...' : 'Edit the string value...'}">${escapeHtml(value)}</textarea>
+                             placeholder="${isMonolingual ? 'Enter text in selected language...' : 'Edit the string value...'}">${escapeHtml(displayValue)}</textarea>
                     
                     <!-- Original Value Display (hidden initially) -->
                     <div class="original-value-hint hidden" id="original-value-hint">
-                        <span class="original-label">Original:</span>
-                        <span class="original-text clickable" onclick="resetToOriginalValue()">${escapeHtml(value)}</span>
+                        <span class="original-label">${hasSavedValue ? 'Reset to saved:' : 'Original:'}</span>
+                        <span class="original-text clickable" onclick="resetToOriginalValue()">${escapeHtml(displayValue)}</span>
                     </div>
                     
                     <!-- Validation Pattern Display -->
@@ -135,8 +189,11 @@ export function initializeStringModal(modalElement) {
     const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
     const isMonolingual = modalElement.dataset.isMonolingual === 'true';
+    const hasSavedValue = modalElement.dataset.hasSavedValue === 'true';
     const propertyData = modalElement.dataset.propertyData ? 
         JSON.parse(modalElement.dataset.propertyData) : null;
+    const savedData = modalElement.dataset.savedData ? 
+        JSON.parse(modalElement.dataset.savedData) : null;
     
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
@@ -149,7 +206,9 @@ export function initializeStringModal(modalElement) {
         dataType: modalElement.dataset.modalType,
         modalType: modalElement.dataset.modalType,
         isMonolingual: isMonolingual,
-        hasBeenEdited: false,
+        hasBeenEdited: hasSavedValue, // If we have a saved value, consider it edited
+        hasSavedValue: hasSavedValue,
+        savedData: savedData,
         selectedLanguage: null
     };
     
@@ -162,6 +221,14 @@ export function initializeStringModal(modalElement) {
     // Set up language selection for monolingual text
     if (isMonolingual) {
         setupLanguageSelection();
+        
+        // Restore saved language if available
+        if (savedData && savedData.language) {
+            window.currentModalContext.selectedLanguage = {
+                code: savedData.language,
+                label: savedData.languageLabel || savedData.language
+            };
+        }
     }
     
     // Initial validation and UI state
@@ -223,12 +290,15 @@ function setupLanguageSelection() {
     
     if (!languageSearch || !languageDropdown) return;
     
-    // Set default language from storage
+    // Set default language from storage or saved data
     const storedLanguage = getStoredLanguage();
-    if (storedLanguage) {
-        languageSearch.value = storedLanguage.label;
-        selectedLanguageCode.value = storedLanguage.code;
-        window.currentModalContext.selectedLanguage = storedLanguage;
+    const savedLanguage = window.currentModalContext.selectedLanguage;
+    const defaultLanguage = savedLanguage || storedLanguage;
+    
+    if (defaultLanguage) {
+        languageSearch.value = defaultLanguage.label;
+        selectedLanguageCode.value = defaultLanguage.code;
+        window.currentModalContext.selectedLanguage = defaultLanguage;
     }
     
     let searchTimeout;
@@ -467,6 +537,14 @@ window.confirmStringValue = function() {
     
     // Store confirmation data in context for handlers
     window.currentModalContext.confirmationData = confirmationData;
+    
+    // Save the value to persistence layer (localStorage for now)
+    saveValue(
+        window.currentModalContext.itemId,
+        window.currentModalContext.property,
+        window.currentModalContext.valueIndex,
+        confirmationData
+    );
     
     // Try multiple approaches to save the value
     let saved = false;
