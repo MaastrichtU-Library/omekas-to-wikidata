@@ -4,6 +4,9 @@
  * @module utils/identifier-detection
  */
 
+import { extractAvailableFields } from '../mapping/core/data-analyzer.js';
+import { getPropertyInfo, getPropertyConstraints } from '../api/wikidata.js';
+
 /**
  * Mapping of identifier types to their corresponding Wikidata properties
  */
@@ -320,34 +323,98 @@ function extractStringValue(value) {
 }
 
 /**
- * Creates a mapping object for an identifier field
+ * Creates a normalized mapping object for an identifier field with value field analysis
+ * This ensures auto-mapped identifiers have the same structure as manually mapped ones
  * @param {string} fieldKey - The field key to map
  * @param {Object} detection - The identifier detection result
- * @param {any} sampleValue - Sample value for display
- * @returns {Object} Mapping object ready to be added to mappedKeys
+ * @param {any} sampleValue - Sample value for display and field analysis
+ * @returns {Promise<Object>} Normalized mapping object ready to be added to mappedKeys
  */
-export function createIdentifierMapping(fieldKey, detection, sampleValue) {
+export async function createIdentifierMapping(fieldKey, detection, sampleValue) {
     // Format the display name like other mappings
     const displayValue = extractStringValue(sampleValue);
     const truncatedValue = displayValue && displayValue.length > 30 
         ? displayValue.substring(0, 30) + '...' 
         : displayValue;
     
+    // Analyze available fields in the sample value for value transformation
+    const availableFields = extractAvailableFields(sampleValue);
+    
+    // Determine the best default field using the same logic as manual mappings
+    // Priority: @id > @value > other @ fields > first available (but ignore @type)
+    let selectedAtField = null;
+    
+    if (availableFields.length > 1) {
+        // Find the most logical default field
+        let defaultField = availableFields.find(field => field.key === '@id');
+        if (!defaultField) {
+            defaultField = availableFields.find(field => field.key === '@value');
+        }
+        if (!defaultField) {
+            // Look for other @ fields, but exclude @type
+            defaultField = availableFields.find(field => 
+                field.key.startsWith('@') && field.key !== '@type'
+            );
+        }
+        if (!defaultField) {
+            // Fall back to first non-@type field
+            defaultField = availableFields.find(field => field.key !== '@type') || availableFields[0];
+        }
+        
+        selectedAtField = defaultField?.key || null;
+    }
+    
+    // Fetch property information and constraints via API
+    let propertyInfo = null;
+    let constraints = null;
+    let constraintsFetched = false;
+    let constraintsError = null;
+    
+    try {
+        // Fetch comprehensive property information
+        propertyInfo = await getPropertyInfo(detection.propertyId);
+        
+        // Fetch property constraints for validation and formatting
+        constraints = await getPropertyConstraints(detection.propertyId);
+        constraintsFetched = true;
+        
+        console.log(`Auto-mapping: Fetched constraints for ${detection.propertyId} (${detection.label})`);
+    } catch (error) {
+        console.warn(`Auto-mapping: Failed to fetch constraints for ${detection.propertyId}:`, error);
+        constraintsError = error.message;
+        
+        // Use fallback property info from detection
+        propertyInfo = {
+            id: detection.propertyId,
+            label: detection.label,
+            description: detection.description,
+            datatype: 'external-id',
+            datatypeLabel: 'External identifier'
+        };
+    }
+    
     return {
         key: fieldKey,
         property: {
             id: detection.propertyId,
-            label: detection.label,
-            description: detection.description,
-            datatype: 'external-id',  // Most identifiers are external IDs
-            datatypeLabel: 'External identifier'
+            label: propertyInfo.label,
+            description: propertyInfo.description,
+            datatype: propertyInfo.datatype,
+            datatypeLabel: propertyInfo.datatypeLabel,
+            constraints: constraints,
+            constraintsFetched: constraintsFetched,
+            constraintsError: constraintsError
         },
         linkedDataUri: null,  // Will be set if available
         mappedAt: new Date().toISOString(),
         autoMapped: true,  // Flag to indicate this was auto-detected
         identifierType: detection.type,
-        displayName: `${fieldKey} (${truncatedValue || detection.identifierValue})`
+        displayName: `${fieldKey} (${truncatedValue || detection.identifierValue})`,
+        sampleValue: sampleValue,  // Store sample value for field analysis
+        selectedAtField: selectedAtField,  // Store selected field for value extraction
+        availableFields: availableFields  // Store available fields for UI
     };
+}
 }
 
 /**
