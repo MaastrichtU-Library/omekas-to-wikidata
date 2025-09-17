@@ -2584,9 +2584,10 @@ pre.sample-value {
 }
 
 .property-value[data-status="skipped"] {
-    background-color: #fff3e0;
-    border-color: #ff9800;
+    background-color: #f5f5f5;
+    border-color: #bdbdbd;
     cursor: default;
+    opacity: 0.7;
 }
 
 .value-text {
@@ -2609,7 +2610,7 @@ pre.sample-value {
 }
 
 .value-status.skipped {
-    color: #f57c00;
+    color: #757575;
     font-weight: 500;
 }
 
@@ -3378,7 +3379,7 @@ pre.sample-value {
 }
 
 .value-status.skipped {
-    color: #ff9800;
+    color: #757575;
     font-style: italic;
 }
 
