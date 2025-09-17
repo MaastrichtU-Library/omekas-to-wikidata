@@ -337,8 +337,12 @@ export function createReconciliationTableFactory(dependencies) {
     
     return async function createReconciliationTable(data, mappedKeys, isReturningToStep = false) {
         
+        // Get manual properties from state for restoration and display
+        const currentState = state.getState();
+        const manualProperties = currentState.mappings?.manualProperties || [];
+        
         // Combine and sort all properties for display priority
-        const sortedProperties = combineAndSortProperties(mappedKeys);
+        const sortedProperties = combineAndSortProperties(mappedKeys, manualProperties);
         
         // Clear existing content
         if (propertyHeaders) {
@@ -625,7 +629,7 @@ export function createReconciliationTableFactory(dependencies) {
  * Create a factory function for restoring reconciliation display
  */
 export function createRestoreReconciliationDisplayFactory(reconciliationData) {
-    return function restoreReconciliationDisplay(data, mappedKeys) {
+    return function restoreReconciliationDisplay(data, mappedKeys, manualProperties = []) {
         data.forEach((item, index) => {
             const itemId = `item-${index}`;
             
@@ -658,6 +662,41 @@ export function createRestoreReconciliationDisplayFactory(reconciliationData) {
                             // Restore match percentage display for non-reconciled items with matches
                             const bestMatch = reconciledItem.matches[0];
                             updateCellDisplayWithMatch(itemId, keyName, valueIndex, bestMatch);
+                        }
+                    });
+                }
+            });
+            
+            // Restore manual properties reconciliation states
+            manualProperties.forEach(manualProp => {
+                const propertyId = manualProp.property.id;
+                const propData = reconciliationData[itemId]?.properties[propertyId];
+                
+                if (propData && propData.reconciled) {
+                    propData.reconciled.forEach((reconciledItem, valueIndex) => {
+                        const cellInfo = { itemId, property: propertyId, valueIndex };
+                        
+                        if (reconciledItem.status === 'reconciled' && reconciledItem.selectedMatch) {
+                            // Restore reconciled state
+                            updateCellDisplay(itemId, propertyId, valueIndex, 'reconciled', reconciledItem.selectedMatch);
+                        } else if (reconciledItem.status === 'skipped') {
+                            // Restore skipped state
+                            updateCellDisplay(itemId, propertyId, valueIndex, 'skipped');
+                        } else if (reconciledItem.status === 'no-item') {
+                            // Restore no-item state
+                            updateCellDisplay(itemId, propertyId, valueIndex, 'no-item');
+                        } else if (reconciledItem.status === 'error') {
+                            // Restore error state with enhanced error info
+                            const errorInfo = {
+                                message: reconciledItem.error || 'Unknown error',
+                                timestamp: reconciledItem.timestamp,
+                                retryable: reconciledItem.retryable !== false // Default to retryable
+                            };
+                            updateCellDisplayWithError(itemId, propertyId, valueIndex, errorInfo);
+                        } else if (reconciledItem.matches && reconciledItem.matches.length > 0) {
+                            // Restore match percentage display for non-reconciled manual properties with matches
+                            const bestMatch = reconciledItem.matches[0];
+                            updateCellDisplayWithMatch(itemId, propertyId, valueIndex, bestMatch);
                         }
                     });
                 }
