@@ -28,6 +28,12 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
     const dataType = getDataTypeFromProperty(property, propertyData, state);
     console.log('📊 Determined dataType:', dataType);
     
+    // Create enhanced propertyData with detected datatype if needed
+    const enhancedPropertyData = propertyData ? 
+        { ...propertyData, datatype: propertyData.datatype || dataType } : 
+        { datatype: dataType };
+    console.log('🔧 Enhanced propertyData:', enhancedPropertyData);
+    
     const transformedValue = getTransformedValue(value, property);
     console.log('🔄 Transformed value:', transformedValue);
     
@@ -41,7 +47,7 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
                 property, 
                 valueIndex, 
                 transformedValue, 
-                propertyData, 
+                enhancedPropertyData, 
                 existingMatches
             );
             
