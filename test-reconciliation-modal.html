@@ -125,7 +125,6 @@
             <button class="test-button" onclick="testOriginalValueReset()">Test Original Value Reset</button>
             <button class="test-button" onclick="testValidationBorders()">Test Validation Borders</button>
             <button class="test-button" onclick="testLanguageStorage()">Test Language Storage</button>
-            <button class="test-button" onclick="testRealTimeValueUpdates()">Test Real-time Value Updates</button>
             <div id="enhanced-result"></div>
         </div>
     </div>
@@ -571,26 +570,6 @@
                 successMsg.remove();
             }, 3000);
         });
-        
-        window.testRealTimeValueUpdates = function() {
-            const resultDiv = document.getElementById('enhanced-result');
-            try {
-                resultDiv.innerHTML = `
-                    <div class="success-message">
-                        <h4>Real-time Value Updates Test</h4>
-                        <p>🔄 This test demonstrates how the value displays update immediately after confirmation</p>
-                        <p>1. Open a string modal below</p>
-                        <p>2. Edit the text and click "Confirm"</p>
-                        <p>3. Notice the "Previously Saved Value" section appears/updates instantly</p>
-                        <p>4. Try editing and confirming again to see updates</p>
-                        <button onclick="testStringModalNoValidation()" class="test-button">Try String Modal</button>
-                        <button onclick="testMonolingualModal()" class="test-button">Try Monolingual Modal</button>
-                    </div>
-                `;
-            } catch (error) {
-                resultDiv.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
-            }
-        };
     </script>
 </body>
 </html>
