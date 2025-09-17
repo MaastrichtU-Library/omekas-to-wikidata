@@ -566,7 +566,7 @@ function hideLanguageDropdown() {
 }
 
 /**
- * Display language search results
+ * Display language search results with enhanced data
  * @param {Array} languages - Array of language objects
  * @param {string} query - Original search query
  */
@@ -591,53 +591,144 @@ function displayLanguageResults(languages, query = '') {
             `;
         }
     } else {
-        languageDropdown.innerHTML = languages.map(lang => `
-            <div class="language-option" onclick="selectLanguage('${escapeHtml(lang.code)}', '${escapeHtml(lang.label)}')">
-                <div class="language-option-content">
-                    <span class="language-label">${escapeHtml(lang.label)}</span>
-                    <span class="language-code">[${escapeHtml(lang.code)}]</span>
+        languageDropdown.innerHTML = languages.map(lang => {
+            // Create enhanced language option with rich data
+            const languageData = JSON.stringify({
+                id: lang.id || null,
+                code: lang.code,
+                label: lang.label,
+                description: lang.description || null,
+                iso639_1: lang.iso639_1 || null,
+                iso639_3: lang.iso639_3 || null,
+                wikimediaCode: lang.wikimediaCode || null,
+                source: lang.source || 'unknown'
+            });
+            
+            // Build display elements
+            let codesDisplay = '';
+            const codes = [];
+            if (lang.iso639_1) codes.push(lang.iso639_1);
+            if (lang.iso639_3 && lang.iso639_3 !== lang.iso639_1) codes.push(lang.iso639_3);
+            if (codes.length > 0) {
+                codesDisplay = `<span class="language-codes">[${codes.join(', ')}]</span>`;
+            }
+            
+            const sourceIndicator = lang.source === 'wikidata' ? 
+                '<span class="language-source-indicator" title="From Wikidata">🌐</span>' : '';
+            
+            const description = lang.description ? 
+                `<div class="language-description">${escapeHtml(lang.description)}</div>` : '';
+            
+            return `
+                <div class="language-option enhanced" onclick="selectEnhancedLanguage(\`${languageData.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)">
+                    <div class="language-option-content">
+                        <div class="language-main-info">
+                            <span class="language-label">${escapeHtml(lang.label)}</span>
+                            ${codesDisplay}
+                            ${sourceIndicator}
+                        </div>
+                        ${description}
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
     
     languageDropdown.classList.remove('hidden');
 }
 
 /**
- * Select a language from the dropdown
+ * Select an enhanced language from the dropdown (new version)
+ * @param {string} languageDataString - JSON string of language data
+ */
+window.selectEnhancedLanguage = function(languageDataString) {
+    try {
+        const languageData = JSON.parse(languageDataString);
+        selectLanguageData(languageData);
+    } catch (error) {
+        console.error('Failed to parse language data:', error);
+        // Fallback to basic selection
+        const parts = languageDataString.split('|');
+        if (parts.length >= 2) {
+            selectLanguageData({ code: parts[0], label: parts[1] });
+        }
+    }
+};
+
+/**
+ * Select a language from the dropdown (legacy version for compatibility)
  * @param {string} code - Language code
  * @param {string} label - Language label
  */
 window.selectLanguage = function(code, label) {
+    selectLanguageData({ code, label });
+};
+
+/**
+ * Internal function to handle language selection with enhanced data
+ * @param {Object} languageData - Language data object
+ */
+function selectLanguageData(languageData) {
     const languageSearch = document.getElementById('language-search');
     const selectedLanguageCode = document.getElementById('selected-language-code');
-    const languageDropdown = document.getElementById('language-dropdown');
     
-    if (languageSearch && selectedLanguageCode) {
-        languageSearch.value = label;
-        selectedLanguageCode.value = code;
-        
-        const selectedLanguage = { code, label };
-        window.currentModalContext.selectedLanguage = selectedLanguage;
-        
-        // Store the language preference for future use
-        setStoredLanguage(selectedLanguage);
-        
-        // Hide dropdown and show success feedback briefly
-        hideLanguageDropdown();
-        showLanguageSearchStatus(`Selected: ${label} [${code}]`, 'info');
-        
-        // Update confirmation button state
-        updateConfirmButtonState();
-        
-        // Give visual feedback that selection was made
-        languageSearch.style.backgroundColor = '#f0f8ff';
-        setTimeout(() => {
-            languageSearch.style.backgroundColor = '';
-        }, 1000);
+    if (!languageSearch || !selectedLanguageCode) {
+        console.error('Language selection elements not found');
+        return;
     }
-};
+    
+    // Use the best available code (prefer ISO 639-1, fallback to others)
+    const displayCode = languageData.iso639_1 || languageData.code;
+    const storageCode = languageData.code; // Store the actual code used by the system
+    
+    // Update form fields
+    languageSearch.value = languageData.label;
+    selectedLanguageCode.value = storageCode;
+    
+    // Create enhanced language object for storage
+    const selectedLanguage = {
+        id: languageData.id,
+        code: storageCode,
+        label: languageData.label,
+        description: languageData.description,
+        iso639_1: languageData.iso639_1,
+        iso639_3: languageData.iso639_3,
+        wikimediaCode: languageData.wikimediaCode,
+        source: languageData.source
+    };
+    
+    // Update modal context
+    window.currentModalContext.selectedLanguage = selectedLanguage;
+    
+    // Store language preference for future use (simplified version)
+    setStoredLanguage({
+        code: storageCode,
+        label: languageData.label
+    });
+    
+    // Hide dropdown and show success feedback
+    hideLanguageDropdown();
+    
+    // Enhanced feedback message
+    let feedbackMessage = `Selected: ${languageData.label}`;
+    if (displayCode !== languageData.label.toLowerCase()) {
+        feedbackMessage += ` [${displayCode}]`;
+    }
+    if (languageData.source === 'wikidata' && languageData.id) {
+        feedbackMessage += ` (${languageData.id})`;
+    }
+    
+    showLanguageSearchStatus(feedbackMessage, 'info');
+    
+    // Update confirmation button state
+    updateConfirmButtonState();
+    
+    // Visual feedback
+    languageSearch.style.backgroundColor = '#f0f8ff';
+    setTimeout(() => {
+        languageSearch.style.backgroundColor = '';
+    }, 1000);
+}
 
 /**
  * Show the original value hint below the input

@@ -7645,6 +7645,56 @@ pre.sample-value {
     font-size: 0.9rem;
 }
 
+/* Enhanced Language Option Styles */
+.language-option.enhanced {
+    padding: 0.5rem 0.75rem;
+}
+
+.language-main-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.language-codes {
+    font-size: 11px;
+    color: #666;
+    background: #f0f0f0;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-weight: normal;
+}
+
+.language-source-indicator {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-left: auto;
+}
+
+.language-description {
+    font-size: 0.8rem;
+    color: #666;
+    font-style: italic;
+    line-height: 1.2;
+    margin-top: 0.25rem;
+    padding-left: 0.25rem;
+    border-left: 2px solid #e9ecef;
+}
+
+.language-option.enhanced:hover .language-description {
+    color: #555;
+}
+
+.language-option.enhanced:hover .language-codes {
+    background: #e8e8e8;
+}
+
+.language-option.enhanced:hover .language-source-indicator {
+    opacity: 1;
+}
+
 /* Required Field Indicator */
 .required {
     color: #f44336;
