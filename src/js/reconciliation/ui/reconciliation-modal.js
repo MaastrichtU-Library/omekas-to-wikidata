@@ -1008,15 +1008,32 @@ export function createOpenReconciliationModalFactory(dependencies) {
             }
             
             // Initialize modal using the factory system
+            console.log('🔍 [RECONCILIATION MODAL] Looking for modal container to initialize...');
             const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
                                  document.querySelector('.wikidata-item-modal') ||
                                  document.querySelector('[data-modal-type]');
             
+            console.log('🔍 [RECONCILIATION MODAL] Modal container search result:', {
+                found: !!modalContainer,
+                className: modalContainer?.className,
+                id: modalContainer?.id,
+                querySelector1: !!document.querySelector('.reconciliation-modal-redesign'),
+                querySelector2: !!document.querySelector('.wikidata-item-modal'),
+                querySelector3: !!document.querySelector('[data-modal-type]')
+            });
+            
             if (modalContainer) {
+                console.log('✅ [RECONCILIATION MODAL] Modal container found, attempting initialization...');
                 try {
                     // Use the proper factory initialization
+                    console.log('🔄 [RECONCILIATION MODAL] About to call initializeReconciliationModal...');
                     initializeReconciliationModal(modalContainer);
+                    console.log('✅ [RECONCILIATION MODAL] initializeReconciliationModal completed successfully');
                 } catch (error) {
+                    console.warn('⚠️ [RECONCILIATION MODAL] Factory initialization failed, falling back to deprecated system:', {
+                        error: error.message,
+                        stack: error.stack
+                    });
                     // Fallback to deprecated system
                     const dataType = modalContainer.dataset.initDataType || 
                                    modalContainer.dataset.dataType || 
@@ -1032,10 +1049,20 @@ export function createOpenReconciliationModalFactory(dependencies) {
                         (modalContainer.dataset.propertyData ? JSON.parse(modalContainer.dataset.propertyData) : 
                          window.currentModalContext?.propertyData);
                     
+                    console.log('🔄 [RECONCILIATION MODAL] Using fallback initialization with:', {
+                        dataType,
+                        value,
+                        property,
+                        hasPropertyData: !!propertyData
+                    });
+                    
                     if (dataType && value) {
                         initializeModalInteractions(dataType, value, property, propertyData);
                     }
                 }
+            } else {
+                console.warn('⚠️ [RECONCILIATION MODAL] No modal container found for initialization');
+            }
             }
         }, 100);
         

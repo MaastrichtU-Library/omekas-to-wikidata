@@ -338,6 +338,14 @@ export function createExternalIdModal(itemId, property, valueIndex, value, prope
  * @param {HTMLElement} modalElement - The modal element
  */
 export function initializeExternalIdModal(modalElement) {
+    console.log('🚀 [EXTERNAL-ID MODAL] === initializeExternalIdModal CALLED ===');
+    console.log('🚀 [EXTERNAL-ID MODAL] Modal element:', {
+        element: modalElement,
+        className: modalElement?.className,
+        id: modalElement?.id,
+        hasElement: !!modalElement
+    });
+    
     const originalValue = modalElement.dataset.originalValue;
     const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
@@ -347,8 +355,23 @@ export function initializeExternalIdModal(modalElement) {
     const confirmedData = modalElement.dataset.confirmedData ? 
         JSON.parse(modalElement.dataset.confirmedData) : null;
     
+    console.log('🚀 [EXTERNAL-ID MODAL] Extracted data from modal element:', {
+        originalValue,
+        currentValue,
+        property,
+        hasConfirmedValue,
+        hasPropertyData: !!propertyData,
+        hasConfirmedData: !!confirmedData,
+        itemId: modalElement.dataset.itemId,
+        valueIndex: modalElement.dataset.valueIndex
+    });
+    
     // Find the source table cell that opened this modal
     const sourceCell = findSourceTableCell(modalElement.dataset.itemId, property, parseInt(modalElement.dataset.valueIndex));
+    console.log('🚀 [EXTERNAL-ID MODAL] Source cell search result:', {
+        found: !!sourceCell,
+        sourceCell
+    });
     
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
@@ -366,14 +389,31 @@ export function initializeExternalIdModal(modalElement) {
         sourceCell: sourceCell // Reference to the original table cell
     };
     
+    console.log('🚀 [EXTERNAL-ID MODAL] Set up window.currentModalContext:', window.currentModalContext);
+    
     // Set up external-id input with enhanced functionality
+    console.log('🚀 [EXTERNAL-ID MODAL] Looking for external-id-input element...');
     const externalIdInput = document.getElementById('external-id-input');
+    console.log('🚀 [EXTERNAL-ID MODAL] External-id input search result:', {
+        found: !!externalIdInput,
+        element: externalIdInput,
+        id: externalIdInput?.id,
+        className: externalIdInput?.className,
+        value: externalIdInput?.value
+    });
+    
     if (externalIdInput) {
+        console.log('✅ [EXTERNAL-ID MODAL] About to call setupExternalIdInput...');
         setupExternalIdInput(externalIdInput, property, propertyData);
+        console.log('✅ [EXTERNAL-ID MODAL] setupExternalIdInput completed');
+    } else {
+        console.error('❌ [EXTERNAL-ID MODAL] No external-id-input element found!');
     }
     
     // Initial validation and UI state
+    console.log('🚀 [EXTERNAL-ID MODAL] About to call initial updateValidationState...');
     updateValidationState();
+    console.log('✅ [EXTERNAL-ID MODAL] === initializeExternalIdModal FINISHED ===');
 }
 
 /**
