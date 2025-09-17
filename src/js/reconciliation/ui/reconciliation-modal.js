@@ -22,9 +22,14 @@ import {
  * This is the main entry point that routes to appropriate specialized modals
  */
 export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+    console.log('🎯 createReconciliationModal called with:', { itemId, property, valueIndex, value, propertyData, existingMatches });
+    
     // Determine data type from property
     const dataType = getDataTypeFromProperty(property, propertyData);
+    console.log('📊 Determined dataType:', dataType);
+    
     const transformedValue = getTransformedValue(value, property);
+    console.log('🔄 Transformed value:', transformedValue);
     
     
     try {
@@ -155,26 +160,36 @@ function initializeModalInteractions(dataType, value, property, propertyData) {
  * Determine data type from property information
  */
 function getDataTypeFromProperty(property, propertyData) {
+    console.log('🔍 getDataTypeFromProperty called with:', { property, propertyData });
+    
     // Check if we have explicit property data
     if (propertyData && propertyData.datatype) {
+        console.log('✅ Found explicit datatype in propertyData:', propertyData.datatype);
         return propertyData.datatype;
     }
+    
+    console.log('⚠️ No explicit propertyData.datatype found, using pattern matching');
     
     // Common property patterns for auto-detection
     const itemPatterns = ['creator', 'author', 'publisher', 'place', 'person', 'organization'];
     const stringPatterns = ['title', 'description', 'note', 'text', 'label'];
     
     const lowerProperty = property.toLowerCase();
+    console.log('🔍 Checking property patterns for:', lowerProperty);
     
     if (itemPatterns.some(pattern => lowerProperty.includes(pattern))) {
+        console.log('✅ Property matched item patterns, returning wikibase-item');
         return 'wikibase-item';
     }
     
     if (stringPatterns.some(pattern => lowerProperty.includes(pattern))) {
+        console.log('✅ Property matched string patterns, returning string');
         return 'string';
     }
     
     // Default to string for unknown properties
+    console.log('⚠️ Property did not match any patterns, defaulting to string');
+    console.log('💡 Property patterns checked:', { itemPatterns, stringPatterns });
     return 'string';
 }
 
