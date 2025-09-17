@@ -328,6 +328,7 @@ export function createReconciliationTableFactory(dependencies) {
         performBatchAutoAcceptance,
         restoreReconciliationDisplay,
         openReconciliationModal,
+        reconcileColumn,
         state
     } = dependencies;
 
@@ -397,6 +398,34 @@ export function createReconciliationTableFactory(dependencies) {
                             headerContent.appendChild(atFieldIndicator);
                         }
                         
+                        // Add reconciliation button for wikibase-item properties
+                        if (keyObj.property && keyObj.property.datatype === 'wikibase-item') {
+                            const buttonContainer = createElement('div', {
+                                className: 'reconcile-button-container'
+                            });
+                            
+                            const reconcileBtn = createElement('button', {
+                                className: 'reconcile-column-btn',
+                                title: `Reconcile all ${keyObj.property.label} values`,
+                                dataset: { 
+                                    property: keyName,
+                                    status: 'ready'
+                                }
+                            });
+                            
+                            const buttonText = createElement('span', {}, '🔄 Reconcile');
+                            reconcileBtn.appendChild(buttonText);
+                            
+                            // Add click handler for column reconciliation
+                            reconcileBtn.addEventListener('click', async (e) => {
+                                e.stopPropagation(); // Prevent header click
+                                await reconcileColumn(keyName, keyObj, data);
+                            });
+                            
+                            buttonContainer.appendChild(reconcileBtn);
+                            headerContent.appendChild(buttonContainer);
+                        }
+                        
                         // Set click handler to open mapping modal
                         clickHandler = () => {
                             if (window.openMappingModal) {
@@ -459,6 +488,35 @@ export function createReconciliationTableFactory(dependencies) {
                             className: 'required-indicator-header'
                         }, ' *');
                         headerContent.appendChild(requiredIndicator);
+                    }
+                    
+                    // Add reconciliation button for wikibase-item manual properties
+                    if (manualProp.property && manualProp.property.datatype === 'wikibase-item') {
+                        const buttonContainer = createElement('div', {
+                            className: 'reconcile-button-container'
+                        });
+                        
+                        const reconcileBtn = createElement('button', {
+                            className: 'reconcile-column-btn',
+                            title: `Reconcile all ${manualProp.property.label} values`,
+                            dataset: { 
+                                property: manualProp.property.id,
+                                status: 'ready',
+                                isManual: 'true'
+                            }
+                        });
+                        
+                        const buttonText = createElement('span', {}, '🔄 Reconcile');
+                        reconcileBtn.appendChild(buttonText);
+                        
+                        // Add click handler for manual property column reconciliation
+                        reconcileBtn.addEventListener('click', async (e) => {
+                            e.stopPropagation(); // Prevent header click
+                            await reconcileColumn(manualProp.property.id, manualProp, data);
+                        });
+                        
+                        buttonContainer.appendChild(reconcileBtn);
+                        headerContent.appendChild(buttonContainer);
                     }
                     
                     const th = createElement('th', {
@@ -551,11 +609,10 @@ export function createReconciliationTableFactory(dependencies) {
                 reconciliationRows.appendChild(tr);
             });
             
-            // Only perform batch auto-acceptance for fresh initialization, not when returning to step
-            if (!isReturningToStep) {
-                await performBatchAutoAcceptance(data, mappedKeys);
-            } else {
-                restoreReconciliationDisplay(data, mappedKeys);
+            // Only restore reconciliation display when returning to step
+            // No automatic reconciliation for fresh tables - users control reconciliation via column buttons
+            if (isReturningToStep) {
+                restoreReconciliationDisplay(data, mappedKeys, manualProperties);
             }
             
         } else {

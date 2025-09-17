@@ -345,6 +345,208 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
 }
 
 /**
+ * Update button state with visual feedback
+ */
+function updateButtonState(button, state) {
+    if (!button) return;
+    
+    button.dataset.status = state;
+    const textSpan = button.querySelector('span');
+    
+    switch (state) {
+        case 'processing':
+            textSpan.textContent = '⏳ Processing...';
+            button.disabled = true;
+            break;
+        case 'completed':
+            textSpan.textContent = '✅ Reconciled';
+            button.disabled = false;
+            setTimeout(() => {
+                textSpan.textContent = '🔄 Reconcile';
+                button.dataset.status = 'ready';
+            }, 2000);
+            break;
+        case 'error':
+            textSpan.textContent = '❌ Retry';
+            button.disabled = false;
+            break;
+        case 'ready':
+        default:
+            textSpan.textContent = '🔄 Reconcile';
+            button.disabled = false;
+            break;
+    }
+}
+
+/**
+ * Create column-specific reconciliation processor
+ * Factory function that creates a processor for reconciling all values in a single column
+ * @param {Object} dependencies - Dependency injection object containing required functions
+ * @returns {Function} Column reconciliation processor function
+ */
+export function createColumnReconciliationProcessor(dependencies) {
+    const {
+        extractPropertyValues,
+        markCellAsReconciled,
+        storeAllMatches,
+        storeEmptyMatches,
+        updateCellLoadingState,
+        updateCellDisplayAsNoMatches,
+        updateCellDisplayWithMatch,
+        updateProceedButton,
+        reconciliationData,
+        state
+    } = dependencies;
+
+    return async function reconcileColumn(property, keyObj, data) {
+        const button = document.querySelector(`[data-property="${property}"] .reconcile-column-btn`);
+        
+        // Update button state to processing
+        updateButtonState(button, 'processing');
+        
+        try {
+            console.log(`🔄 Starting column reconciliation for property: ${property}`);
+            
+            // Filter jobs for this column only
+            const columnJobs = [];
+            data.forEach((item, index) => {
+                const itemId = `item-${index}`;
+                // Pass the full keyObj and state to extractPropertyValues to handle transformations and @ field selection
+                const values = extractPropertyValues(item, keyObj, state);
+                
+                values.forEach((value, valueIndex) => {
+                    if (value && value.trim()) {
+                        columnJobs.push({
+                            itemId,
+                            property,
+                            valueIndex,
+                            value,
+                            keyObj
+                        });
+                    }
+                });
+            });
+            
+            console.log(`📊 Column ${property}: Found ${columnJobs.length} values to reconcile`);
+            
+            if (columnJobs.length === 0) {
+                console.log(`⚠️ No values found to reconcile in column ${property}`);
+                updateButtonState(button, 'completed');
+                return;
+            }
+            
+            // Process reconciliation for column with progress feedback
+            let processedCount = 0;
+            let autoAcceptedCount = 0;
+            let errorCount = 0;
+            
+            // Process jobs in smaller batches to provide better progress feedback
+            const batchSize = 5;
+            for (let i = 0; i < columnJobs.length; i += batchSize) {
+                const batch = columnJobs.slice(i, Math.min(i + batchSize, columnJobs.length));
+                
+                const batchPromises = batch.map(async (job) => {
+                    try {
+                        // Set loading state
+                        updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
+                        
+                        // Try reconciliation API
+                        let matches = await tryReconciliationApi(job.value, job.property, []);
+                        
+                        // If no good matches from API, try direct search
+                        if (!matches || matches.length === 0) {
+                            matches = await tryDirectWikidataSearch(job.value);
+                        }
+                        
+                        if (matches && matches.length > 0) {
+                            const bestMatch = matches[0];
+                            
+                            // Auto-accept 100% confidence matches
+                            if (bestMatch.score >= 100) {
+                                const autoAcceptResult = {
+                                    type: 'wikidata',
+                                    id: bestMatch.id,
+                                    label: bestMatch.name,
+                                    description: bestMatch.description,
+                                    qualifiers: {
+                                        autoAccepted: true,
+                                        reason: '100% confidence match',
+                                        score: bestMatch.score
+                                    }
+                                };
+                                
+                                markCellAsReconciled(
+                                    { itemId: job.itemId, property: job.property, valueIndex: job.valueIndex },
+                                    autoAcceptResult
+                                );
+                                autoAcceptedCount++;
+                            } else {
+                                // Store matches for manual review
+                                storeAllMatches(
+                                    { itemId: job.itemId, property: job.property, valueIndex: job.valueIndex },
+                                    matches,
+                                    bestMatch
+                                );
+                                updateCellDisplayWithMatch(job.itemId, job.property, job.valueIndex, bestMatch);
+                            }
+                        } else {
+                            // No matches found
+                            storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
+                            updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
+                        }
+                        
+                        processedCount++;
+                        
+                    } catch (error) {
+                        console.error(`Error reconciling ${job.property} value "${job.value}":`, error);
+                        
+                        // Store error information
+                        const errorInfo = {
+                            message: error.message,
+                            timestamp: new Date().toISOString(),
+                            retryable: isRetryableError(error)
+                        };
+                        
+                        storeReconciliationError(job, errorInfo, reconciliationData);
+                        updateCellDisplayWithError(job.itemId, job.property, job.valueIndex, errorInfo);
+                        errorCount++;
+                    } finally {
+                        // Remove loading state
+                        updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
+                    }
+                });
+                
+                // Wait for batch to complete
+                await Promise.all(batchPromises);
+                
+                // Add delay between batches to prevent API rate limiting
+                if (i + batchSize < columnJobs.length) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            
+            // Log completion stats
+            console.log(`✅ Column ${property} reconciliation completed:`, {
+                total: columnJobs.length,
+                processed: processedCount,
+                autoAccepted: autoAcceptedCount,
+                errors: errorCount
+            });
+            
+            // Update button state to completed
+            updateButtonState(button, 'completed');
+            
+            // Update proceed button state
+            updateProceedButton();
+            
+        } catch (error) {
+            console.error(`Fatal error reconciling column ${property}:`, error);
+            updateButtonState(button, 'error');
+        }
+    };
+}
+
+/**
  * Create next unprocessed cell reconciler with enhanced error handling
  */
 export function createNextUnprocessedCellReconciler(dependencies) {
