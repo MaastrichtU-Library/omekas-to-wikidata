@@ -68,7 +68,7 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
 
             <!-- Alternative Actions -->
             <div class="alternative-actions">
-                <p class="create-item-help">If the Wikidata item does not exist, you can <a href="#" onclick="createNewWikidataItem()" target="_blank">create it</a>.</p>
+                <p class="create-item-help">If the Wikidata item does not exist, you can <a href="https://www.wikidata.org/wiki/Special:NewItem" target="_blank">create it</a>.</p>
             </div>
         </div>
 
