@@ -557,7 +557,6 @@ export function renderComposeConfigUI(mappingId, block, state) {
     
     const patternTextarea = createElement('textarea', {
         rows: 3,
-        placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
         className: 'pattern-input',
         onInput: (e) => {
             console.log('[COMPOSE] Pattern input changed:', {
@@ -588,14 +587,9 @@ export function renderComposeConfigUI(mappingId, block, state) {
             
             updateTransformationPreview(mappingId, state);
         }
-    }, currentPattern);
+    }, '');
     patternField.appendChild(patternTextarea);
     
-    // Help text
-    const helpText = createElement('div', { 
-        className: 'help-text' 
-    }, '💡 Use {{value}} for the current value and {{field:path}} to insert other fields from this item');
-    patternField.appendChild(helpText);
     
     // Field search and insertion
     const fieldSearchSection = createElement('div', { className: 'field-search-section' });
