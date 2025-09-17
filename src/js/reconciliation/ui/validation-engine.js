@@ -390,63 +390,68 @@ export function validateBatch(values) {
 }
 
 /**
- * Search Wikidata languages via API
+ * Search languages with fallback-first approach for better reliability
  * @param {string} query - Language search query
  * @returns {Promise<Array>} Array of language objects with code and label
  */
 export async function searchWikidataLanguages(query) {
-    try {
-        const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=lexeme&limit=15`;
-        
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`Wikidata API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.search || data.search.length === 0) {
-            // Fallback to manual language list for common languages
-            return searchFallbackLanguages(query);
-        }
-        
-        // Extract languages from lexeme search results
-        const languages = [];
-        const seenCodes = new Set();
-        
-        for (const result of data.search) {
-            if (result.match && result.match.language) {
-                const langCode = result.match.language;
-                if (!seenCodes.has(langCode)) {
-                    languages.push({
-                        code: langCode,
-                        label: getLanguageLabel(langCode) || result.match.text || langCode
-                    });
-                    seenCodes.add(langCode);
-                }
-            }
-        }
-        
-        // Add common languages if few results
-        if (languages.length < 5) {
-            const commonLanguages = getCommonLanguages();
-            const queryLower = query.toLowerCase();
-            
-            for (const lang of commonLanguages) {
-                if (lang.label.toLowerCase().includes(queryLower) && !seenCodes.has(lang.code)) {
-                    languages.push(lang);
-                    seenCodes.add(lang.code);
-                }
-            }
-        }
-        
-        return languages.slice(0, 10);
-        
-    } catch (error) {
-        console.error('Wikidata language search failed:', error);
-        // Fallback to manual search
-        return searchFallbackLanguages(query);
+    // Use fallback search as primary method for better reliability
+    const fallbackResults = searchFallbackLanguages(query);
+    
+    if (fallbackResults.length > 0) {
+        return fallbackResults;
     }
+    
+    // Only try Wikidata API if fallback finds nothing and query is substantial
+    if (query.length >= 3) {
+        try {
+            // Use a more appropriate API endpoint for language search
+            const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query + ' language')}&language=en&format=json&origin=*&type=item&limit=10`;
+            
+            const response = await fetch(apiUrl, {
+                timeout: 3000 // 3 second timeout
+            });
+            
+            if (!response.ok) {
+                console.warn(`Wikidata API error: ${response.status}`);
+                return fallbackResults;
+            }
+            
+            const data = await response.json();
+            
+            if (data.search && data.search.length > 0) {
+                const languages = [];
+                const seenCodes = new Set();
+                
+                // Look for items that appear to be languages
+                for (const result of data.search) {
+                    if (result.description && 
+                        (result.description.includes('language') || 
+                         result.description.includes('dialect'))) {
+                        
+                        // Try to extract language code from the result
+                        const langCode = extractLanguageCode(result.label);
+                        if (langCode && !seenCodes.has(langCode)) {
+                            languages.push({
+                                code: langCode,
+                                label: result.label
+                            });
+                            seenCodes.add(langCode);
+                        }
+                    }
+                }
+                
+                if (languages.length > 0) {
+                    return languages.slice(0, 8);
+                }
+            }
+        } catch (error) {
+            console.warn('Wikidata language search failed:', error);
+        }
+    }
+    
+    // Return fallback results (might be empty)
+    return fallbackResults;
 }
 
 /**
@@ -455,11 +460,62 @@ export async function searchWikidataLanguages(query) {
  * @returns {Array} Array of matching languages
  */
 function searchFallbackLanguages(query) {
-    const queryLower = query.toLowerCase();
+    const queryLower = query.toLowerCase().trim();
+    
+    if (!queryLower) {
+        return [];
+    }
+    
     return getCommonLanguages().filter(lang => 
         lang.label.toLowerCase().includes(queryLower) ||
-        lang.code.toLowerCase().includes(queryLower)
-    ).slice(0, 10);
+        lang.code.toLowerCase().includes(queryLower) ||
+        lang.code.toLowerCase().startsWith(queryLower)
+    ).slice(0, 12);
+}
+
+/**
+ * Extract language code from a language name
+ * @param {string} languageName - Language name to extract code from
+ * @returns {string|null} Language code or null if not found
+ */
+function extractLanguageCode(languageName) {
+    const lowerName = languageName.toLowerCase();
+    
+    // Direct lookup in common languages
+    const directMatch = getCommonLanguages().find(lang => 
+        lang.label.toLowerCase() === lowerName
+    );
+    
+    if (directMatch) {
+        return directMatch.code;
+    }
+    
+    // Pattern matching for common language name variations
+    const patterns = {
+        'english': 'en',
+        'spanish': 'es', 
+        'french': 'fr',
+        'german': 'de',
+        'italian': 'it',
+        'portuguese': 'pt',
+        'russian': 'ru',
+        'japanese': 'ja',
+        'chinese': 'zh',
+        'arabic': 'ar',
+        'dutch': 'nl',
+        'polish': 'pl',
+        'turkish': 'tr',
+        'korean': 'ko',
+        'hindi': 'hi'
+    };
+    
+    for (const [pattern, code] of Object.entries(patterns)) {
+        if (lowerName.includes(pattern)) {
+            return code;
+        }
+    }
+    
+    return null;
 }
 
 /**

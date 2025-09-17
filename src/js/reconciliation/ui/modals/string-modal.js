@@ -305,12 +305,16 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
             ${isMonolingual ? `
                 <div class="language-selection">
                     <div class="section-title">Language <span class="required">*</span></div>
+                    <div class="language-help-text">
+                        Select the language for this text value. If no language is specified, the text will be treated as the default for all languages.
+                    </div>
                     <div class="language-container">
                         <input type="text" 
                                id="language-search" 
                                class="language-input" 
-                               placeholder="Search for language..." 
+                               placeholder="Type to search languages (e.g., English, German, fr)..." 
                                autocomplete="off">
+                        <div class="language-search-status hidden" id="language-search-status"></div>
                         <div class="language-dropdown hidden" id="language-dropdown"></div>
                         <input type="hidden" id="selected-language-code" value="">
                     </div>
@@ -439,6 +443,7 @@ function setupStringEditor(editor, property, propertyData) {
 function setupLanguageSelection() {
     const languageSearch = document.getElementById('language-search');
     const languageDropdown = document.getElementById('language-dropdown');
+    const languageStatus = document.getElementById('language-search-status');
     const selectedLanguageCode = document.getElementById('selected-language-code');
     
     if (!languageSearch || !languageDropdown) return;
@@ -452,52 +457,146 @@ function setupLanguageSelection() {
         languageSearch.value = defaultLanguage.label;
         selectedLanguageCode.value = defaultLanguage.code;
         window.currentModalContext.selectedLanguage = defaultLanguage;
+        updateConfirmButtonState();
     }
     
     let searchTimeout;
+    let currentSearchQuery = '';
     
     // Search languages as user types
     languageSearch.addEventListener('input', function() {
         clearTimeout(searchTimeout);
         const query = this.value.trim();
+        currentSearchQuery = query;
         
-        if (query.length < 2) {
-            languageDropdown.classList.add('hidden');
+        // Clear selection if user is typing something different
+        if (window.currentModalContext.selectedLanguage && 
+            query !== window.currentModalContext.selectedLanguage.label) {
+            selectedLanguageCode.value = '';
+            window.currentModalContext.selectedLanguage = null;
+            updateConfirmButtonState();
+        }
+        
+        if (query.length < 1) {
+            hideLanguageDropdown();
             return;
         }
         
+        // Show loading state for queries longer than 1 character
+        if (query.length >= 2) {
+            showLanguageSearchStatus('Searching languages...', 'loading');
+        }
+        
         searchTimeout = setTimeout(async () => {
+            // Only search if this is still the current query
+            if (currentSearchQuery !== query) return;
+            
             try {
                 const languages = await searchWikidataLanguages(query);
-                displayLanguageResults(languages);
+                
+                // Verify this is still the current search
+                if (currentSearchQuery === query) {
+                    displayLanguageResults(languages, query);
+                }
             } catch (error) {
                 console.error('Language search failed:', error);
+                if (currentSearchQuery === query) {
+                    showLanguageSearchStatus('Search failed. Try typing a different language name.', 'error');
+                    displayLanguageResults([], query);
+                }
             }
-        }, 300);
+        }, query.length >= 3 ? 300 : 500); // Longer delay for short queries
+    });
+    
+    // Handle focus to show recent results if available
+    languageSearch.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2 && languageDropdown.innerHTML.trim()) {
+            languageDropdown.classList.remove('hidden');
+        }
     });
     
     // Hide dropdown when clicking outside
     document.addEventListener('click', function(event) {
         if (!event.target.closest('.language-container')) {
-            languageDropdown.classList.add('hidden');
+            hideLanguageDropdown();
         }
     });
 }
 
 /**
+ * Show language search status message
+ * @param {string} message - Status message
+ * @param {string} type - Status type (loading, error, info)
+ */
+function showLanguageSearchStatus(message, type = 'info') {
+    const statusElement = document.getElementById('language-search-status');
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = `language-search-status ${type}`;
+        statusElement.classList.remove('hidden');
+        
+        // Auto-hide after 3 seconds for non-loading messages
+        if (type !== 'loading') {
+            setTimeout(() => {
+                statusElement.classList.add('hidden');
+            }, 3000);
+        }
+    }
+}
+
+/**
+ * Hide language search status
+ */
+function hideLanguageSearchStatus() {
+    const statusElement = document.getElementById('language-search-status');
+    if (statusElement) {
+        statusElement.classList.add('hidden');
+    }
+}
+
+/**
+ * Hide language dropdown and status
+ */
+function hideLanguageDropdown() {
+    const languageDropdown = document.getElementById('language-dropdown');
+    if (languageDropdown) {
+        languageDropdown.classList.add('hidden');
+    }
+    hideLanguageSearchStatus();
+}
+
+/**
  * Display language search results
  * @param {Array} languages - Array of language objects
+ * @param {string} query - Original search query
  */
-function displayLanguageResults(languages) {
+function displayLanguageResults(languages, query = '') {
     const languageDropdown = document.getElementById('language-dropdown');
     
+    hideLanguageSearchStatus(); // Hide loading status
+    
     if (languages.length === 0) {
-        languageDropdown.innerHTML = '<div class="no-results">No languages found</div>';
+        if (query.length >= 2) {
+            languageDropdown.innerHTML = `
+                <div class="no-results">
+                    <div class="no-results-message">No languages found for "${escapeHtml(query)}"</div>
+                    <div class="no-results-hint">Try typing a different language name or code (e.g., "en", "English", "German")</div>
+                </div>
+            `;
+        } else {
+            languageDropdown.innerHTML = `
+                <div class="search-hint">
+                    <div class="search-hint-message">Start typing to search languages</div>
+                </div>
+            `;
+        }
     } else {
         languageDropdown.innerHTML = languages.map(lang => `
             <div class="language-option" onclick="selectLanguage('${escapeHtml(lang.code)}', '${escapeHtml(lang.label)}')">
-                <span class="language-label">${escapeHtml(lang.label)}</span>
-                <span class="language-code">${escapeHtml(lang.code)}</span>
+                <div class="language-option-content">
+                    <span class="language-label">${escapeHtml(lang.label)}</span>
+                    <span class="language-code">[${escapeHtml(lang.code)}]</span>
+                </div>
             </div>
         `).join('');
     }
@@ -521,12 +620,22 @@ window.selectLanguage = function(code, label) {
         
         const selectedLanguage = { code, label };
         window.currentModalContext.selectedLanguage = selectedLanguage;
+        
+        // Store the language preference for future use
         setStoredLanguage(selectedLanguage);
         
-        languageDropdown.classList.add('hidden');
+        // Hide dropdown and show success feedback briefly
+        hideLanguageDropdown();
+        showLanguageSearchStatus(`Selected: ${label} [${code}]`, 'info');
         
         // Update confirmation button state
         updateConfirmButtonState();
+        
+        // Give visual feedback that selection was made
+        languageSearch.style.backgroundColor = '#f0f8ff';
+        setTimeout(() => {
+            languageSearch.style.backgroundColor = '';
+        }, 1000);
     }
 };
 
