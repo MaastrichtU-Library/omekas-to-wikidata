@@ -21,10 +21,9 @@ let currentDraggedElement = null;
  * Renders the value transformation UI for Stage 3
  * @param {Object} keyData - The mapped key data
  * @param {Object} state - The application state
- * @param {boolean} forceComposeMode - If true, only show compose transformation and expand by default
  * @returns {HTMLElement} The transformation UI container
  */
-export function renderValueTransformationUI(keyData, state, forceComposeMode = false) {
+export function renderValueTransformationUI(keyData, state) {
     const container = createElement('div', {
         className: 'value-transformation-container',
         id: 'value-transformation-section'
@@ -63,8 +62,7 @@ export function renderValueTransformationUI(keyData, state, forceComposeMode = f
     
     const availableFields = extractAvailableFields(rawSampleValue);
     
-    // Hide field selector in force compose mode since there's no Omeka key
-    if (availableFields.length > 1 && !forceComposeMode) {
+    if (availableFields.length > 1) {
         const fieldSelectorSection = createElement('div', { className: 'field-selector-section' });
         
         const selectorLabel = createElement('label', { className: 'field-selector-label' }, 
@@ -134,28 +132,20 @@ export function renderValueTransformationUI(keyData, state, forceComposeMode = f
 
     // Sample value for transformations
     let selectedField;
-    let sampleValue;
-    
-    if (forceComposeMode) {
-        // For force compose mode, use a generic sample value
-        selectedField = null;
-        sampleValue = 'Custom Value';
+    if (availableFields.length > 1) {
+        // Use the saved/selected field key
+        selectedField = state.getSelectedTransformationField(mappingId) || availableFields[0]?.key;
     } else {
-        if (availableFields.length > 1) {
-            // Use the saved/selected field key
-            selectedField = state.getSelectedTransformationField(mappingId) || availableFields[0]?.key;
-        } else {
-            // Only one field available, save it
-            selectedField = availableFields[0]?.key;
-            if (selectedField) {
-                state.setSelectedTransformationField(mappingId, selectedField);
-            }
+        // Only one field available, save it
+        selectedField = availableFields[0]?.key;
+        if (selectedField) {
+            state.setSelectedTransformationField(mappingId, selectedField);
         }
-        
-        sampleValue = selectedField ? 
-            getFieldValueFromSample(rawSampleValue, selectedField) :
-            convertSampleValueToString(rawSampleValue) || 'Sample Value';
     }
+    
+    const sampleValue = selectedField ? 
+        getFieldValueFromSample(rawSampleValue, selectedField) :
+        convertSampleValueToString(rawSampleValue) || 'Sample Value';
 
     // Transformation blocks container
     const blocksContainer = createElement('div', {
@@ -164,46 +154,30 @@ export function renderValueTransformationUI(keyData, state, forceComposeMode = f
         'data-mapping-id': mappingId
     });
 
-    // For force compose mode, automatically add a compose block and hide the add section
-    if (forceComposeMode) {
-        // Check if there are no existing blocks, then add a compose block automatically
-        const currentState = state.getState();
-        const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
-        
-        if (existingBlocks.length === 0) {
-            const composeBlock = createTransformationBlock('compose');
-            state.addTransformationBlock(mappingId, composeBlock);
-        }
-    }
+    // Add transformation section - SIMPLE dropdown approach (original working method)
+    const addBlockSection = createElement('div', { className: 'add-block-section' });
+    const blockTypeSelect = createElement('select', {
+        className: 'block-type-select',
+        id: `block-type-select-${mappingId}`
+    });
 
-    // Hide add block section in force compose mode
-    let addBlockSection = null;
-    if (!forceComposeMode) {
-        // Add transformation section - SIMPLE dropdown approach (original working method)
-        addBlockSection = createElement('div', { className: 'add-block-section' });
-        const blockTypeSelect = createElement('select', {
-            className: 'block-type-select',
-            id: `block-type-select-${mappingId}`
-        });
+    // Add options for each block type
+    Object.entries(BLOCK_METADATA).forEach(([type, metadata]) => {
+        const option = createElement('option', {
+            value: type,
+            disabled: metadata.isPlaceholder
+        }, metadata.name);
+        blockTypeSelect.appendChild(option);
+    });
 
-        // Add options for each block type
-        Object.entries(BLOCK_METADATA).forEach(([type, metadata]) => {
-            const option = createElement('option', {
-                value: type,
-                disabled: metadata.isPlaceholder
-            }, metadata.name);
-            blockTypeSelect.appendChild(option);
-        });
+    // SIMPLE add button - original working approach
+    const addBlockBtn = createElement('button', {
+        className: 'button button--secondary',
+        onClick: () => addTransformationBlock(mappingId, blockTypeSelect.value, state)
+    }, '+ Add Transformation');
 
-        // SIMPLE add button - original working approach
-        const addBlockBtn = createElement('button', {
-            className: 'button button--secondary',
-            onClick: () => addTransformationBlock(mappingId, blockTypeSelect.value, state)
-        }, '+ Add Transformation');
-
-        addBlockSection.appendChild(blockTypeSelect);
-        addBlockSection.appendChild(addBlockBtn);
-    }
+    addBlockSection.appendChild(blockTypeSelect);
+    addBlockSection.appendChild(addBlockBtn);
 
     // Store sample value for refreshes
     blocksContainer.dataset.sampleValue = sampleValue;
@@ -212,9 +186,7 @@ export function renderValueTransformationUI(keyData, state, forceComposeMode = f
     renderTransformationBlocks(mappingId, sampleValue, blocksContainer, state);
 
     container.appendChild(blocksContainer);
-    if (addBlockSection) {
-        container.appendChild(addBlockSection);
-    }
+    container.appendChild(addBlockSection);
 
     return container;
 }
