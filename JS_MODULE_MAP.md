@@ -167,6 +167,24 @@ The application follows a **modular, event-driven architecture**:
 - Purpose: Format and display reconciliation information
 - Key exports: `formatReconciliationStatus()`, `displayMatchScore()`
 
+#### Modals (`reconciliation/ui/modals/`)
+
+**modal-factory.js**
+- Purpose: Central factory for creating reconciliation modals by data type
+- Key exports: `createReconciliationModalByType()`, `initializeReconciliationModal()`, `isModalTypeSupported()`
+
+**wikidata-item-modal.js**
+- Purpose: Wikidata entity reconciliation modal
+- Key exports: `createWikidataItemModal()`, `initializeWikidataItemModal()`
+
+**string-modal.js**
+- Purpose: String and monolingual text reconciliation modal
+- Key exports: `createStringModal()`, `initializeStringModal()`
+
+**time-modal.js**
+- Purpose: Point-in-time (date) reconciliation modal with precision detection
+- Key exports: `createTimeModal()`, `initializeTimeModal()`
+
 ### Index Files
 - `mapping/index.js` - Re-exports all mapping module functions
 - `reconciliation/index.js` - Re-exports all reconciliation functions
