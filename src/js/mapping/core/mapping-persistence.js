@@ -148,5 +148,5 @@ export async function loadMappingFromData(mappingData, state) {
     
     // Update UI
     const { populateLists } = await import('../../mapping/ui/mapping-lists.js');
-    populateLists();
+    populateLists(state);
 }
