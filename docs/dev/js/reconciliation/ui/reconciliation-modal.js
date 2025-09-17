@@ -966,36 +966,50 @@ export function createOpenReconciliationModalFactory(dependencies) {
             window.currentModalContext = null;
         });
         
-        // Verify context is available immediately after modal opens
+        // Create a backup context that persists through the modal lifecycle
+        const backupContext = {
+            itemId: itemId,
+            property: property,
+            valueIndex: parseInt(valueIndex),
+            originalValue: value,
+            currentValue: value,
+            propertyData: manualProp?.property || null,
+            dataType: dataType,
+            modalType: dataType,
+            existingMatches: existingMatches
+        };
+        
+        // Ensure context is available after modal opens
         setTimeout(() => {
             if (!window.currentModalContext) {
-                // Emergency context restoration
-                window.currentModalContext = {
-                    itemId: itemId,
-                    property: property,
-                    valueIndex: parseInt(valueIndex),
-                    originalValue: value,
-                    currentValue: value,
-                    propertyData: manualProp?.property || null,
-                    dataType: dataType,
-                    modalType: dataType,
-                    existingMatches: existingMatches
-                };
+                // Restore context from backup if lost
+                window.currentModalContext = backupContext;
             }
         }, 10);
         
-        // Preserve dataset attributes after modal is inserted into DOM
+        // Additional safety check before initialization
         setTimeout(() => {
-            const insertedModalContainer = document.querySelector('.reconciliation-modal-redesign');
+            if (!window.currentModalContext) {
+                window.currentModalContext = backupContext;
+            }
+        }, 50);
+        
+        // Preserve dataset attributes after modal is inserted into DOM
+        // CRITICAL: This must happen BEFORE initialization
+        setTimeout(() => {
+            const insertedModalContainer = document.querySelector('.reconciliation-modal-redesign') ||
+                                           document.querySelector('#modal-content') ||
+                                           document.querySelector('.modal-content');
             if (insertedModalContainer && modalElement.dataset) {
                 // Copy all dataset attributes from original element to inserted element
                 Object.keys(modalElement.dataset).forEach(key => {
                     insertedModalContainer.dataset[key] = modalElement.dataset[key];
                 });
             }
-        }, 50); // Small delay to ensure modal is in DOM
+        }, 25); // Reduced delay to happen before initialization
         
-        // Setup modal functionality after DOM is rendered
+        // Setup modal functionality after DOM is rendered - split into two phases
+        // Phase 1: Set data attributes (needs to happen first)
         setTimeout(() => {
             // Try multiple possible selectors for modal content
             const modalContent = document.querySelector('#modal-content') || 
@@ -1030,7 +1044,10 @@ export function createOpenReconciliationModalFactory(dependencies) {
                     console.log('✅ [RECONCILIATION MODAL] Copied data attributes:', copiedAttrs);
                 }
             }
-            
+        }, 30); // Run first to set attributes
+        
+        // Phase 2: Initialize the modal (needs data attributes to be set)
+        setTimeout(() => {
             // Initialize modal using the factory system
             console.log('🔍 [RECONCILIATION MODAL] Looking for modal container to initialize...');
             const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
@@ -1054,9 +1071,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
                 console.log('✅ [RECONCILIATION MODAL] Modal container found, attempting initialization...');
                 try {
                     // Use the proper factory initialization
-                    console.log('🔄 [RECONCILIATION MODAL] About to call initializeReconciliationModal...');
                     initializeReconciliationModal(modalContainer);
-                    console.log('✅ [RECONCILIATION MODAL] initializeReconciliationModal completed successfully');
                 } catch (error) {
                     console.warn('⚠️ [RECONCILIATION MODAL] Factory initialization failed, falling back to deprecated system:', {
                         error: error.message,
@@ -1091,7 +1106,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
             } else {
                 console.warn('⚠️ [RECONCILIATION MODAL] No modal container found for initialization');
             }
-        }, 100);
+        }, 60); // Run after attributes are set
         
         // Start automatic reconciliation for Wikidata items
         // Note: dataType already declared above, reusing it
