@@ -21,10 +21,21 @@ import {
  * Create reconciliation modal using factory system
  * This is the main entry point that routes to appropriate specialized modals
  */
-export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, state = null) {
+    console.log('🎯 createReconciliationModal called with:', { itemId, property, valueIndex, value, propertyData, existingMatches, hasState: !!state });
+    
     // Determine data type from property
-    const dataType = getDataTypeFromProperty(property, propertyData);
+    const dataType = getDataTypeFromProperty(property, propertyData, state);
+    console.log('📊 Determined dataType:', dataType);
+    
+    // Create enhanced propertyData with detected datatype if needed
+    const enhancedPropertyData = propertyData ? 
+        { ...propertyData, datatype: propertyData.datatype || dataType } : 
+        { datatype: dataType };
+    console.log('🔧 Enhanced propertyData:', enhancedPropertyData);
+    
     const transformedValue = getTransformedValue(value, property);
+    console.log('🔄 Transformed value:', transformedValue);
     
     
     try {
@@ -36,7 +47,7 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
                 property, 
                 valueIndex, 
                 transformedValue, 
-                propertyData, 
+                enhancedPropertyData, 
                 existingMatches
             );
             
@@ -154,28 +165,216 @@ function initializeModalInteractions(dataType, value, property, propertyData) {
 /**
  * Determine data type from property information
  */
-function getDataTypeFromProperty(property, propertyData) {
-    // Check if we have explicit property data
+/**
+ * Helper function to get property type from mapping data
+ * @param {string} property - Property name (e.g., 'custom_label', 'custom_P31')
+ * @param {Object} state - Application state containing mappings
+ * @returns {string|null} Property type if found in mappings
+ */
+function getPropertyTypeFromMappings(property, state) {
+    console.log('🗺️ getPropertyTypeFromMappings called with:', { property });
+    
+    if (!state) {
+        console.log('⚠️ No state provided to getPropertyTypeFromMappings');
+        return null;
+    }
+    
+    const currentState = typeof state.getState === 'function' ? state.getState() : state;
+    
+    // Add detailed logging of mappings structure
+    console.log('📋 Current mappings structure:', {
+        hasManualProperties: !!currentState.mappings?.manualProperties,
+        manualPropertiesCount: currentState.mappings?.manualProperties?.length || 0,
+        hasMappedKeys: !!currentState.mappings?.mappedKeys,
+        mappedKeysCount: currentState.mappings?.mappedKeys?.length || 0,
+        mappedKeysKeys: currentState.mappings?.mappedKeys?.map(k => k.key) || []
+    });
+    
+    // Check manual properties first
+    if (currentState.mappings?.manualProperties) {
+        console.log('🔍 Checking manual properties for:', property);
+        const manualProp = currentState.mappings.manualProperties.find(mp => 
+            mp.property?.id === property || 
+            `custom_${mp.property?.id}` === property ||
+            mp.wikidataProperty === property ||
+            `custom_${mp.wikidataProperty}` === property
+        );
+        
+        if (manualProp && manualProp.propertyType) {
+            console.log('✅ Found property type in manual properties:', manualProp.propertyType);
+            return manualProp.propertyType;
+        }
+    }
+    
+    // Check mapped keys - FIX: Remove the incorrect condition
+    if (currentState.mappings?.mappedKeys) {
+        console.log('🔍 Checking mapped keys for:', property);
+        console.log('📋 Available mapped keys:', currentState.mappings.mappedKeys.map(k => ({
+            key: k.key,
+            propertyId: k.property?.id,
+            datatype: k.property?.datatype,
+            propertyType: k.propertyType
+        })));
+        
+        const mappedKey = currentState.mappings.mappedKeys.find(key => 
+            key.key === property || 
+            key.property?.id === property
+        );
+        
+        if (mappedKey) {
+            console.log('🎯 Found matching mapped key:', {
+                key: mappedKey.key,
+                propertyId: mappedKey.property?.id,
+                datatype: mappedKey.property?.datatype,
+                propertyType: mappedKey.propertyType
+            });
+            
+            if (mappedKey.property?.datatype) {
+                console.log('✅ Found datatype in mapped keys:', mappedKey.property.datatype);
+                return mappedKey.property.datatype;
+            }
+            
+            if (mappedKey.propertyType) {
+                console.log('✅ Found propertyType in mapped keys:', mappedKey.propertyType);
+                return mappedKey.propertyType;
+            }
+        }
+    }
+    
+    console.log('❌ Property type not found in mappings');
+    return null;
+}
+
+function getDataTypeFromProperty(property, propertyData, state = null) {
+    console.log('🔍 getDataTypeFromProperty called with:', { property, propertyData, hasState: !!state });
+    
+    // Priority 1: Check if we have explicit property data with datatype
     if (propertyData && propertyData.datatype) {
+        console.log('✅ Found explicit datatype in propertyData:', propertyData.datatype);
         return propertyData.datatype;
     }
     
-    // Common property patterns for auto-detection
-    const itemPatterns = ['creator', 'author', 'publisher', 'place', 'person', 'organization'];
-    const stringPatterns = ['title', 'description', 'note', 'text', 'label'];
+    // Priority 2: Check if we have property data with propertyType (for manual properties)
+    if (propertyData && propertyData.propertyType) {
+        console.log('✅ Found propertyType in propertyData:', propertyData.propertyType);
+        return propertyData.propertyType;
+    }
     
+    // Priority 3: Look up property type in mapping data
+    if (state) {
+        const mappingType = getPropertyTypeFromMappings(property, state);
+        if (mappingType) {
+            return mappingType;
+        }
+    }
+    
+    // Priority 4: Check for specific label properties (custom_label, label, etc.)
     const lowerProperty = property.toLowerCase();
+    if (lowerProperty.includes('label') || lowerProperty.includes('title') || lowerProperty.includes('name') || lowerProperty.includes('caption')) {
+        console.log('✅ Property matched label/title patterns, returning monolingualtext');
+        return 'monolingualtext';
+    }
+    
+    // Priority 5: Check if we have property data with id field to determine type by specific property IDs
+    if (propertyData && propertyData.id) {
+        const propertyId = propertyData.id;
+        console.log('🔍 Found property ID:', propertyId);
+        
+        const propertyTypeFromId = getPropertyTypeByWikidataId(propertyId);
+        if (propertyTypeFromId) {
+            console.log('✅ Property ID matched known property types, returning:', propertyTypeFromId);
+            return propertyTypeFromId;
+        }
+    }
+    
+    // Priority 6: Extract property ID from property name (handles custom_P31 format)
+    const propertyIdMatch = property.match(/P\d+/);
+    if (propertyIdMatch) {
+        const extractedPropertyId = propertyIdMatch[0];
+        console.log('🔍 Extracted property ID from property name:', extractedPropertyId);
+        
+        const propertyTypeFromId = getPropertyTypeByWikidataId(extractedPropertyId);
+        if (propertyTypeFromId) {
+            console.log('✅ Extracted property ID matched known property types, returning:', propertyTypeFromId);
+            return propertyTypeFromId;
+        }
+    }
+    
+    console.log('⚠️ No explicit property type found, using pattern matching');
+    
+    // Priority 7: Enhanced pattern matching
+    const itemPatterns = ['creator', 'author', 'publisher', 'place', 'person', 'organization', 'location', 'country', 'institution'];
+    const stringPatterns = ['identifier', 'id', 'number', 'code', 'url', 'uri', 'isbn', 'issn'];
+    const monolingualPatterns = ['description', 'note', 'text', 'comment', 'caption'];
+    
+    console.log('🔍 Checking property patterns for:', lowerProperty);
     
     if (itemPatterns.some(pattern => lowerProperty.includes(pattern))) {
+        console.log('✅ Property matched item patterns, returning wikibase-item');
         return 'wikibase-item';
     }
     
+    if (monolingualPatterns.some(pattern => lowerProperty.includes(pattern))) {
+        console.log('✅ Property matched monolingual patterns, returning monolingualtext');
+        return 'monolingualtext';
+    }
+    
     if (stringPatterns.some(pattern => lowerProperty.includes(pattern))) {
+        console.log('✅ Property matched string patterns, returning string');
         return 'string';
     }
     
     // Default to string for unknown properties
+    console.log('⚠️ Property did not match any patterns, defaulting to string');
+    console.log('💡 Property patterns checked:', { itemPatterns, stringPatterns, monolingualPatterns });
     return 'string';
+}
+
+/**
+ * Get property type by Wikidata property ID
+ * @param {string} propertyId - Wikidata property ID (e.g., 'P31', 'P1476')
+ * @returns {string|null} Property type or null if not known
+ */
+function getPropertyTypeByWikidataId(propertyId) {
+    // Known wikibase-item properties
+    const itemPropertyIds = [
+        'P31', 'P279', 'P361', 'P17', 'P27', 'P106', 'P39', 'P108', 'P155', 'P156',
+        'P123', 'P50', 'P57', 'P58', 'P162', 'P170', 'P175', 'P195', 'P276', 'P291',
+        'P495', 'P800', 'P921', 'P1001', 'P2283', 'P131', 'P159', 'P488', 'P749', 'P1435'
+    ];
+    
+    // Known monolingualtext properties  
+    const monolingualPropertyIds = [
+        'P1476', 'P1448', 'P1705', 'P2561', 'P1449', 'P1477', 'P1813', 'P1810', 'P1533'
+    ];
+    
+    // Known string properties
+    const stringPropertyIds = [
+        'P243', 'P8091', 'P214', 'P213', 'P244', 'P227', 'P269', 'P396', 'P646', 'P345'
+    ];
+    
+    // Known time properties
+    const timePropertyIds = [
+        'P571', 'P577', 'P569', 'P570', 'P580', 'P582', 'P585', 'P1619', 'P1249'
+    ];
+    
+    if (itemPropertyIds.includes(propertyId)) {
+        return 'wikibase-item';
+    }
+    
+    if (monolingualPropertyIds.includes(propertyId)) {
+        return 'monolingualtext';
+    }
+    
+    if (stringPropertyIds.includes(propertyId)) {
+        return 'string';
+    }
+    
+    if (timePropertyIds.includes(propertyId)) {
+        return 'time';
+    }
+    
+    return null;
 }
 
 /**
@@ -615,7 +814,7 @@ export function createReconciliationModalContentFactory(dependencies) {
         }
         
         // Use the main createReconciliationModal function
-        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, propertyData);
+        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, propertyData, null, state);
         
         // Return just the innerHTML content for compatibility
         return modalElement.innerHTML;
@@ -643,7 +842,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
         currentReconciliationCell = { itemId, property, valueIndex, value, manualProp };
         
         // Set up context immediately before any async operations
-        const dataType = getDataTypeFromProperty(property, manualProp?.property);
+        const dataType = getDataTypeFromProperty(property, manualProp?.property, state);
         window.currentModalContext = {
             itemId: itemId,
             property: property,
@@ -667,7 +866,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
         }
         
         // Create modal content
-        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches);
+        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches, state);
         
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
