@@ -533,8 +533,12 @@ export function renderComposeConfigUI(mappingId, block, state) {
     const patternField = createElement('div', { className: 'config-field' });
     patternField.appendChild(createElement('label', {}, 'Pattern:'));
     
-    // Ensure pattern has a value, default to {{value}} if empty
-    const currentPattern = (block.config.pattern && block.config.pattern.trim()) || '{{value}}';
+    // Ensure pattern has a value, default to {{value}} if empty or placeholder text
+    const currentPattern = (block.config.pattern && 
+                           block.config.pattern.trim() && 
+                           block.config.pattern.trim() !== 'Enter your custom pattern here...') 
+                           ? block.config.pattern.trim() 
+                           : '{{value}}';
     
     const patternTextarea = createElement('textarea', {
         rows: 3,

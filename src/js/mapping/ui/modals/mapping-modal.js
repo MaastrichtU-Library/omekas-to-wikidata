@@ -351,16 +351,35 @@ export function createMappingModalContent(keyData) {
         
         // Create or load existing transformation block for compose functionality
         let composeBlock;
+        let existingPattern = null;
         
-        // Check if this custom property already has transformation data
-        if (keyData.key && keyData.property && window.mappingStepState) {
+        // Check for existing transformation data in multiple locations
+        if (window.mappingStepState) {
             const currentState = window.mappingStepState.getState();
-            const mappingId = window.mappingStepState.generateMappingId(keyData.key, keyData.property.id);
-            const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
-            const existingComposeBlock = existingBlocks.find(block => block.type === 'compose');
+            const possibleMappingIds = [];
             
-            if (existingComposeBlock) {
-                composeBlock = existingComposeBlock;
+            // Build list of possible mappingIds to check for existing patterns
+            if (keyData.key && keyData.property) {
+                // Final mappingId for saved custom properties
+                possibleMappingIds.push(window.mappingStepState.generateMappingId(keyData.key, keyData.property.id));
+            }
+            if (keyData.key) {
+                // Temporary mappingId for custom properties being edited
+                possibleMappingIds.push(`temp_${keyData.key}`);
+            }
+            // Always check the general temporary ID
+            possibleMappingIds.push('temp_custom_property');
+            
+            // Look for existing compose blocks in any of these locations
+            for (const mappingId of possibleMappingIds) {
+                const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
+                const existingComposeBlock = existingBlocks.find(block => block.type === 'compose');
+                
+                if (existingComposeBlock && existingComposeBlock.config.pattern) {
+                    composeBlock = existingComposeBlock;
+                    existingPattern = existingComposeBlock.config.pattern;
+                    break;
+                }
             }
         }
         
@@ -370,7 +389,7 @@ export function createMappingModalContent(keyData) {
                 id: 'custom-compose',
                 type: 'compose',
                 config: {
-                    pattern: 'Enter your custom pattern here...'
+                    pattern: existingPattern || '{{value}}' // Default to {{value}} instead of placeholder text
                 }
             };
         }
@@ -386,6 +405,15 @@ export function createMappingModalContent(keyData) {
         } else {
             // For completely new custom properties
             mappingId = 'temp_custom_property';
+        }
+        
+        // Add the compose block to the transformation state if it's not already there
+        const currentState = window.mappingStepState.getState();
+        const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
+        const hasExistingComposeBlock = existingBlocks.find(block => block.id === composeBlock.id);
+        
+        if (!hasExistingComposeBlock) {
+            window.mappingStepState.addTransformationBlock(mappingId, composeBlock);
         }
         
         // Import the compose config UI
