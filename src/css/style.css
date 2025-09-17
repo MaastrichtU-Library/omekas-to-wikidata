@@ -7391,23 +7391,20 @@ pre.sample-value {
 /* Validation State Borders - Apply to both string-input and external-id-input */
 .string-input.validation-success,
 .external-id-input.validation-success {
-    border-color: #4caf50 !important;
-    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2) !important;
-    background-color: rgba(76, 175, 80, 0.05) !important;
+    border-color: #28a745 !important;
+    box-shadow: 0 0 0 1px rgba(40, 167, 69, 0.15) !important;
 }
 
 .string-input.validation-error,
 .external-id-input.validation-error {
-    border-color: #f44336 !important;
-    box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.2) !important;
-    background-color: rgba(244, 67, 54, 0.05) !important;
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.15) !important;
 }
 
 .string-input.validation-warning,
 .external-id-input.validation-warning {
-    border-color: #ff9800 !important;
-    box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2) !important;
-    background-color: rgba(255, 152, 0, 0.05) !important;
+    border-color: #fd7e14 !important;
+    box-shadow: 0 0 0 1px rgba(253, 126, 20, 0.15) !important;
 }
 
 /* External-ID Input Default Styling */
@@ -7487,7 +7484,7 @@ pre.sample-value {
     border-radius: 3px;
     border: 1px solid #ddd;
     font-size: 12px;
-    color: #d63384;
+    color: #333;
     word-break: break-all;
 }
 
