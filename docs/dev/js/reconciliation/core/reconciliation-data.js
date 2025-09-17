@@ -496,3 +496,85 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
     
     return reconciliationData;
 }
+
+/**
+ * Intelligently merges existing reconciliation data with new property mappings
+ * Preserves existing reconciliation work while adding support for new properties
+ * 
+ * @param {Object} existingReconciliationData - Current reconciliation data to preserve
+ * @param {Array} data - Array of Omeka S items
+ * @param {Array} currentMappedKeys - All current mapped keys (existing + new)
+ * @param {Object} [state] - Optional state object for applying transformations
+ * @returns {Object} Merged reconciliation data with preserved existing work and new properties
+ */
+export function mergeReconciliationData(existingReconciliationData, data, currentMappedKeys, state = null) {
+    console.log('🔄 Starting intelligent reconciliation data merge');
+    
+    // Start with a copy of existing data
+    const mergedData = JSON.parse(JSON.stringify(existingReconciliationData));
+    
+    // Track which properties are already in the existing data
+    const existingProperties = new Set();
+    Object.values(mergedData).forEach(itemData => {
+        if (itemData.properties) {
+            Object.keys(itemData.properties).forEach(prop => existingProperties.add(prop));
+        }
+    });
+    
+    // Identify new properties that need to be added
+    const newProperties = [];
+    currentMappedKeys.forEach(keyObj => {
+        const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+        if (!existingProperties.has(keyName)) {
+            newProperties.push(keyObj);
+            console.log(`🆕 Found new property to add: ${keyName}`);
+        }
+    });
+    
+    // If no new properties, return existing data
+    if (newProperties.length === 0) {
+        console.log('✅ No new properties detected, returning existing reconciliation data');
+        return mergedData;
+    }
+    
+    // Add new properties to existing items
+    data.forEach((item, index) => {
+        const itemId = `item-${index}`;
+        
+        // Ensure item exists in merged data
+        if (!mergedData[itemId]) {
+            mergedData[itemId] = {
+                originalData: item,
+                properties: {}
+            };
+        }
+        
+        // Add new properties to this item
+        newProperties.forEach(keyObj => {
+            const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+            
+            // Extract values for the new property
+            const values = extractPropertyValues(item, keyObj, state);
+            
+            // Initialize reconciliation structure for the new property
+            mergedData[itemId].properties[keyName] = {
+                originalValues: values,
+                references: [],
+                propertyMetadata: typeof keyObj === 'object' ? keyObj : null,
+                reconciled: values.map(() => ({
+                    status: 'pending',
+                    matches: [],
+                    selectedMatch: null,
+                    manualValue: null,
+                    qualifiers: {},
+                    confidence: 0
+                }))
+            };
+            
+            console.log(`✅ Added new property ${keyName} to item ${itemId} with ${values.length} values`);
+        });
+    });
+    
+    console.log(`🎉 Successfully merged reconciliation data: preserved existing data + added ${newProperties.length} new properties`);
+    return mergedData;
+}

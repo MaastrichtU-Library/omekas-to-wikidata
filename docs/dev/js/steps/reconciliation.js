@@ -41,6 +41,7 @@ import {
     createReconciliationRequirementReasonGetter,
     validateReconciliationRequirements,
     initializeReconciliationDataStructure,
+    mergeReconciliationData,
     
     // Progress tracking
     createProgressCalculator,
@@ -425,24 +426,36 @@ export function setupReconciliationStep(state) {
         const mappedKeys = validation.availableMappedKeys;
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         
-        // Check if we already have reconciliation data from a previous session
+        // Smart reconciliation data handling: preserve existing work when possible
         let isReturningToStep = false;
+        let finalReconciliationData;
+        
         if (currentState.reconciliationData && Object.keys(currentState.reconciliationData).length > 0) {
-            // Clear existing data and copy from state (mutate, don't reassign)
-            Object.keys(reconciliationData).forEach(key => delete reconciliationData[key]);
-            Object.assign(reconciliationData, currentState.reconciliationData);
+            console.log('🔄 Existing reconciliation data found, checking if merge is needed');
+            
+            // Use intelligent merging to preserve existing reconciliation work while adding new properties
+            finalReconciliationData = mergeReconciliationData(
+                currentState.reconciliationData, 
+                data, 
+                mappedKeys, 
+                state
+            );
             isReturningToStep = true;
         } else {
-            // Initialize reconciliation progress
-            const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
-            state.setReconciliationProgress(0, totalCells);
+            console.log('🆕 No existing reconciliation data, initializing from scratch');
             
             // Initialize reconciliation data structure using extracted function
-            const newData = modules.initializeReconciliationDataStructure(data, mappedKeys, state);
-            // Clear existing data and copy new data (mutate, don't reassign)
-            Object.keys(reconciliationData).forEach(key => delete reconciliationData[key]);
-            Object.assign(reconciliationData, newData);
+            finalReconciliationData = initializeReconciliationDataStructure(data, mappedKeys, state);
         }
+        
+        // Clear existing data and copy final data (mutate, don't reassign)
+        Object.keys(reconciliationData).forEach(key => delete reconciliationData[key]);
+        Object.assign(reconciliationData, finalReconciliationData);
+        
+        // Recalculate progress based on the final reconciliation data structure
+        const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
+        const currentProgress = modules.calculateCurrentProgress();
+        state.setReconciliationProgress(currentProgress.completed, totalCells);
         
         // Update proceed button
         modules.updateProceedButton();
