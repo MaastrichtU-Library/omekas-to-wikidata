@@ -410,9 +410,32 @@ window.confirmStringValue = function() {
         return;
     }
     
-    const currentValue = window.currentModalContext.currentValue || window.currentModalContext.originalValue;
+    // Get the actual current value from the input field (most reliable)
+    const stringEditor = document.getElementById('string-editor');
+    const currentValue = stringEditor ? stringEditor.value : (window.currentModalContext.currentValue || window.currentModalContext.originalValue);
+    
+    // Update context with the actual current value
+    if (stringEditor) {
+        window.currentModalContext.currentValue = stringEditor.value;
+    }
+    
     const isMonolingual = window.currentModalContext.isMonolingual;
-    const selectedLanguage = window.currentModalContext.selectedLanguage;
+    
+    // Get the actual selected language from DOM elements (most reliable)
+    let selectedLanguage = window.currentModalContext.selectedLanguage;
+    if (isMonolingual) {
+        const languageSearch = document.getElementById('language-search');
+        const selectedLanguageCode = document.getElementById('selected-language-code');
+        
+        if (languageSearch && selectedLanguageCode && selectedLanguageCode.value) {
+            selectedLanguage = {
+                code: selectedLanguageCode.value,
+                label: languageSearch.value
+            };
+            // Update context with actual values
+            window.currentModalContext.selectedLanguage = selectedLanguage;
+        }
+    }
     
     // Validate required fields
     if (!currentValue.trim()) {
@@ -439,6 +462,8 @@ window.confirmStringValue = function() {
     }
     
     console.log('Confirm string/monolingual value:', confirmationData);
+    console.log('Original value was:', window.currentModalContext.originalValue);
+    console.log('Current input field value:', currentValue);
     
     // Store confirmation data in context for handlers
     window.currentModalContext.confirmationData = confirmationData;
