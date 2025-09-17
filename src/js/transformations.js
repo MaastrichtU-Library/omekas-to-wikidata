@@ -73,7 +73,8 @@ export const BLOCK_METADATA = {
  * @returns {string} The transformed value
  */
 export function applyTransformation(value, block) {
-    if (!value || !block || !block.type || !block.config) {
+    // Allow empty strings through, but protect against null/undefined
+    if (value === null || value === undefined || !block || !block.type || !block.config) {
         return value;
     }
     
