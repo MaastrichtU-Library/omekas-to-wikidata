@@ -112,33 +112,12 @@ export function createReconciliationModalByType(dataType, itemId, property, valu
  * @throws {Error} If modal type cannot be determined or is not supported
  */
 export function initializeReconciliationModal(modalElement) {
-    console.log('🏭 [MODAL FACTORY] === initializeReconciliationModal CALLED ===');
-    console.log('🏭 [MODAL FACTORY] Modal element details:', {
-        element: modalElement,
-        className: modalElement?.className,
-        id: modalElement?.id,
-        tagName: modalElement?.tagName,
-        hasElement: !!modalElement
-    });
-    
     if (!modalElement) {
-        console.error('❌ [MODAL FACTORY] No modal element provided');
         throw new Error('Modal element is required for initialization');
     }
     
-    console.log('🏭 [MODAL FACTORY] Modal element datasets:', {
-        allDatasets: modalElement.dataset,
-        dataType: modalElement.dataset.dataType,
-        modalFactory: modalElement.dataset.modalFactory,
-        modalType: modalElement.dataset.modalType
-    });
-    
     const dataType = modalElement.dataset.dataType;
     if (!dataType) {
-        console.error('❌ [MODAL FACTORY] Modal element missing data-type attribute:', {
-            availableDatasets: Object.keys(modalElement.dataset),
-            datasetValues: modalElement.dataset
-        });
         throw new Error('Modal element missing data-type attribute');
     }
     
@@ -158,9 +137,7 @@ export function initializeReconciliationModal(modalElement) {
     });
     
     try {
-        console.log('🔄 [MODAL FACTORY] About to call modalHandler.initialize...');
         modalHandler.initialize(modalElement);
-        console.log('✅ [MODAL FACTORY] Modal initialization completed successfully');
     } catch (error) {
         console.error(`❌ [MODAL FACTORY] Error initializing ${modalHandler.name}:`, {
             error: error.message,
