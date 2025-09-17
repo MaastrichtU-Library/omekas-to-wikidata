@@ -344,7 +344,17 @@ function getValueByPath(obj, path) {
         let current = obj;
         
         for (const key of keys) {
-            if (current && typeof current === 'object' && current[key] !== undefined) {
+            // Check if key is a number (array index)
+            const isArrayIndex = /^\d+$/.test(key);
+            
+            if (isArrayIndex && Array.isArray(current)) {
+                const index = parseInt(key, 10);
+                if (index >= 0 && index < current.length) {
+                    current = current[index];
+                } else {
+                    return '';
+                }
+            } else if (current && typeof current === 'object' && current[key] !== undefined) {
                 current = current[key];
             } else {
                 return '';
@@ -356,6 +366,7 @@ function getValueByPath(obj, path) {
             return current;
         } else if (current && typeof current === 'object') {
             // Try to extract meaningful value from Omeka S structures
+            if (current['@id']) return String(current['@id']);
             if (current['@value']) return String(current['@value']);
             if (current['o:label']) return String(current['o:label']);
             if (current['value']) return String(current['value']);
