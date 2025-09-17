@@ -37,12 +37,17 @@ const modalRegistry = {
         create: createStringModal,
         initialize: initializeStringModal,
         name: 'String Validation'
+    },
+    'monolingualtext': {
+        create: createStringModal, // Reuse string modal with monolingual support
+        initialize: initializeStringModal,
+        name: 'Monolingual Text Entry'
     }
     // Future modal types will be registered here:
     // 'time': { create: createTimeModal, initialize: initializeTimeModal, name: 'Date/Time Selection' },
     // 'quantity': { create: createQuantityModal, initialize: initializeQuantityModal, name: 'Number/Quantity Input' },
     // 'url': { create: createUrlModal, initialize: initializeUrlModal, name: 'URL Validation' },
-    // 'monolingualtext': { create: createMonolingualModal, initialize: initializeMonolingualModal, name: 'Text with Language' }
+    // 'external-id': { create: createExternalIdModal, initialize: initializeExternalIdModal, name: 'External Identifier' }
 };
 
 /**
