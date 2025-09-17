@@ -129,11 +129,6 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                             return block;
                         });
                         
-                        console.log('[EXTRACT] Enhanced blocks for transformation:', {
-                            itemId: item['o:id'] || 'unknown',
-                            blocksCount: enhancedBlocks.length,
-                            composeBlocks: enhancedBlocks.filter(b => b.type === 'compose').length
-                        });
                         
                         // Apply transformations
                         extractedValues = extractedValues.map(originalValue => {
