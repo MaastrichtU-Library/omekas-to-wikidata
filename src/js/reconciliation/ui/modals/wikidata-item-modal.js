@@ -40,7 +40,7 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
     modalContent.innerHTML = `
         <div class="modal-header">
             <div class="data-type-indicator">
-                <span class="data-type-label">Expected:</span>
+                <span class="data-type-label">Expecting</span>
                 <span class="data-type-value">Wikidata Item</span>
             </div>
         </div>
