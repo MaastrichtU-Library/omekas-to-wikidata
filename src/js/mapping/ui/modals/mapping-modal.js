@@ -46,8 +46,43 @@ export function openMappingModal(keyData) {
         // Create modal content
         const modalContent = createMappingModalContent(keyData);
         
-        // Create buttons
-        const buttons = [
+        // Create buttons based on whether this is an empty key or not
+        const isEmptyKey = !keyData.key || keyData.key.trim() === '';
+        const buttons = isEmptyKey ? [
+            // For empty keys, show simpler button set
+            {
+                text: 'Cancel',
+                type: 'secondary',
+                keyboardShortcut: 'Escape',
+                callback: () => {
+                    modalUI.closeModal();
+                }
+            },
+            {
+                text: 'Add Property',
+                type: 'primary',
+                keyboardShortcut: 'Enter',
+                callback: () => {
+                    const selectedProperty = getSelectedPropertyFromModal();
+                    if (selectedProperty) {
+                        // For empty keys, create a synthetic key data using compose transformation
+                        const syntheticKeyData = {
+                            ...keyData,
+                            key: `custom_${selectedProperty.id}`,
+                            type: 'custom',
+                            frequency: 1,
+                            totalItems: 1,
+                            isCustomProperty: true
+                        };
+                        mapKeyToProperty(syntheticKeyData, selectedProperty, window.mappingStepState);
+                        modalUI.closeModal();
+                        showMessage('Custom property added successfully', 'success', 3000);
+                    } else {
+                        showMessage('Please select a Wikidata property first.', 'warning', 3000);
+                    }
+                }
+            }
+        ] : [
             {
                 text: 'Ignore',
                 type: 'secondary',
@@ -126,7 +161,7 @@ export function openMappingModal(keyData) {
         ];
         
         // Open modal with mapping relationship header
-        const modalTitle = createMappingRelationshipTitle(keyData.key, null);
+        const modalTitle = isEmptyKey ? 'Select Value' : createMappingRelationshipTitle(keyData.key, null);
         modalUI.openModal(
             modalTitle,
             modalContent,
@@ -157,6 +192,9 @@ export function createMappingModalContent(keyData) {
     // Check if this is a metadata property (labels, descriptions, aliases)
     const isMetadata = keyData.isMetadata || ['label', 'description', 'aliases'].includes(keyData.key?.toLowerCase());
     
+    // Check if this is an empty key (Add Wikidata Property button)
+    const isEmptyKey = !keyData.key || keyData.key.trim() === '';
+    
     const container = createElement('div', {
         className: 'mapping-modal-content two-column-layout'
     });
@@ -175,21 +213,33 @@ export function createMappingModalContent(keyData) {
         container.appendChild(duplicateNotice);
     }
     
-    // LEFT COLUMN - Omeka S Data
+    // LEFT COLUMN - Omeka S Data (or empty for custom properties)
     const leftColumn = createElement('div', {
         className: 'mapping-column left-column'
     });
     
-    // Column header
-    const leftHeader = createElement('div', {
-        className: 'column-header'
-    }, 'Omeka S Data');
-    leftColumn.appendChild(leftHeader);
-    
-    // Key information section
-    const keyInfo = createElement('div', {
-        className: 'key-info'
-    });
+    if (isEmptyKey) {
+        // For empty keys, just show column header with placeholder
+        const leftHeader = createElement('div', {
+            className: 'column-header'
+        }, 'Value Composition');
+        leftColumn.appendChild(leftHeader);
+        
+        const placeholderMessage = createElement('div', {
+            className: 'empty-key-message'
+        }, 'Use the compose transformation on the right to create custom property values.');
+        leftColumn.appendChild(placeholderMessage);
+    } else {
+        // Column header
+        const leftHeader = createElement('div', {
+            className: 'column-header'
+        }, 'Omeka S Data');
+        leftColumn.appendChild(leftHeader);
+        
+        // Key information section
+        const keyInfo = createElement('div', {
+            className: 'key-info'
+        });
     
     const keyDisplay = keyData.linkedDataUri 
         ? `<a href="${keyData.linkedDataUri}" target="_blank" class="clickable-key">${keyData.key}</a>`
@@ -371,7 +421,8 @@ export function createMappingModalContent(keyData) {
     transformationContent.appendChild(valueTransformationContainer);
     
     transformationSection.appendChild(transformationContent);
-    leftColumn.appendChild(transformationSection);
+        leftColumn.appendChild(transformationSection);
+    }
     
     container.appendChild(leftColumn);
     
