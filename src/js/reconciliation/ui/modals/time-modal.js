@@ -253,16 +253,30 @@ export function createTimeModal(itemId, property, valueIndex, value, propertyDat
         </div>
 
         <div class="time-section">
-            <!-- Date Input -->
+            <!-- Date Input with integrated precision controls -->
             <div class="date-editor">
                 <div class="section-title">Edit Date Value</div>
-                <div class="input-container">
+                <div class="date-input-group">
                     <input type="text" 
                            id="date-editor" 
                            class="date-input flexible-date-input" 
                            placeholder="Enter date (e.g., 2023, 2023-06, 2023-06-15, 1990s)"
                            value="${escapeHtml(displayValue)}"
                            data-auto-precision="true">
+                    
+                    <!-- Precision Selection (moved inside date-input-group) -->
+                    <div class="precision-section">
+                        <div class="section-title">Date Precision</div>
+                        <select id="precision-select" class="precision-select">
+                            <option value="day" ${detectedPrecision === 'day' ? 'selected' : ''}>Day precision</option>
+                            <option value="month" ${detectedPrecision === 'month' ? 'selected' : ''}>Month precision</option>
+                            <option value="year" ${detectedPrecision === 'year' ? 'selected' : ''}>Year precision</option>
+                            <option value="decade" ${detectedPrecision === 'decade' ? 'selected' : ''}>Decade precision</option>
+                        </select>
+                        <div class="precision-description" id="precision-description">
+                            Automatically detected precision: <strong>${detectedPrecision}</strong>
+                        </div>
+                    </div>
                     
                     <!-- Original Value Display (hidden initially) -->
                     <div class="original-value-hint hidden" id="original-value-hint">
@@ -273,22 +287,6 @@ export function createTimeModal(itemId, property, valueIndex, value, propertyDat
                     <!-- Format Hint -->
                     <div class="date-format-hint" id="date-format-hint">
                         Supports: Year (2023), Month (2023-06), Day (2023-06-15), Decade (1990s)
-                    </div>
-                </div>
-            </div>
-
-            <!-- Precision Selection -->
-            <div class="precision-selection">
-                <div class="section-title">Date Precision</div>
-                <div class="precision-container">
-                    <select id="precision-select" class="precision-select">
-                        <option value="day" ${detectedPrecision === 'day' ? 'selected' : ''}>Day precision</option>
-                        <option value="month" ${detectedPrecision === 'month' ? 'selected' : ''}>Month precision</option>
-                        <option value="year" ${detectedPrecision === 'year' ? 'selected' : ''}>Year precision</option>
-                        <option value="decade" ${detectedPrecision === 'decade' ? 'selected' : ''}>Decade precision</option>
-                    </select>
-                    <div class="precision-description" id="precision-description">
-                        Automatically detected precision: <strong>${detectedPrecision}</strong>
                     </div>
                 </div>
             </div>

@@ -658,9 +658,17 @@ export function setupDynamicDatePrecision(container) {
     const dateInputs = container.querySelectorAll('.flexible-date-input[data-auto-precision="true"]');
     
     dateInputs.forEach(dateInput => {
-        const precisionSelect = dateInput.closest('.date-input-group').querySelector('.precision-select');
-        const datePicker = dateInput.closest('.date-input-group').querySelector('.date-picker-fallback');
-        const datePickerBtn = dateInput.closest('.date-input-group').querySelector('.date-picker-btn');
+        const dateInputGroup = dateInput.closest('.date-input-group');
+        
+        // Skip if we can't find the expected DOM structure
+        if (!dateInputGroup) {
+            console.warn('setupDynamicDatePrecision: Could not find .date-input-group parent for date input');
+            return;
+        }
+        
+        const precisionSelect = dateInputGroup.querySelector('.precision-select');
+        const datePicker = dateInputGroup.querySelector('.date-picker-fallback');
+        const datePickerBtn = dateInputGroup.querySelector('.date-picker-btn');
         
         // Auto-detect precision on input change
         dateInput.addEventListener('input', function() {
@@ -679,6 +687,8 @@ export function setupDynamicDatePrecision(container) {
                 
                 // Trigger change event to notify other parts of the application
                 precisionSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+                console.warn('setupDynamicDatePrecision: Could not find .precision-select element');
             }
             
             // Update visual feedback
