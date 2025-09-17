@@ -123,35 +123,44 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                     });
                     
                     if (transformationBlocks && transformationBlocks.length > 0) {
-                        // For custom properties, ensure sourceData is available in compose blocks
+                        // For custom properties, create per-item blocks with current item as sourceData
+                        // This ensures each item uses its own data for field replacements
                         const enhancedBlocks = transformationBlocks.map(block => {
                             if (block.type === 'compose') {
-                                console.log('[EXTRACT] Compose block config before enhancement:', block.config);
-                                if (!block.config.sourceData) {
-                                    // Add the current item as sourceData for compose transformations
-                                    return {
-                                        ...block,
-                                        config: {
-                                            ...block.config,
-                                            sourceData: item
-                                        }
-                                    };
-                                }
+                                console.log('[EXTRACT] Compose block config before enhancement:', {
+                                    blockId: block.id,
+                                    currentItemId: item['o:id'] || 'unknown',
+                                    hasExistingSourceData: !!block.config.sourceData
+                                });
+                                // Always use current item as sourceData for compose transformations
+                                // This ensures each item gets its own field values
+                                return {
+                                    ...block,
+                                    config: {
+                                        ...block.config,
+                                        sourceData: item
+                                    }
+                                };
                             }
                             return block;
                         });
                         
-                        console.log('[EXTRACT] Enhanced blocks for transformation:', enhancedBlocks);
+                        console.log('[EXTRACT] Enhanced blocks for transformation:', {
+                            itemId: item['o:id'] || 'unknown',
+                            blocksCount: enhancedBlocks.length,
+                            composeBlocks: enhancedBlocks.filter(b => b.type === 'compose').length
+                        });
                         
                         // Apply transformations
                         extractedValues = extractedValues.map(originalValue => {
                             const transformationResult = applyTransformationChain(originalValue, enhancedBlocks);
                             // Get the final transformed value
                             const finalValue = transformationResult[transformationResult.length - 1]?.value || originalValue;
-                            console.log('[EXTRACT] Transformation result:', {
+                            console.log('[EXTRACT] Transformation result for item:', {
+                                itemId: item['o:id'] || 'unknown',
                                 originalValue,
-                                transformationResult,
-                                finalValue
+                                finalValue,
+                                transformationSteps: transformationResult.length
                             });
                             return finalValue;
                         });
@@ -168,7 +177,12 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
             console.log('[EXTRACT] No state provided for custom property transformation');
         }
         
-        console.log('[EXTRACT] Final extracted values for custom property:', extractedValues);
+        console.log('[EXTRACT] Final extracted values for custom property:', {
+            itemId: item['o:id'] || 'unknown',
+            key: key,
+            valuesCount: extractedValues.length,
+            values: extractedValues
+        });
         return extractedValues;
     }
     
