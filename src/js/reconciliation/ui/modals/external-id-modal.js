@@ -397,6 +397,13 @@ function escapeHtml(text) {
 function setupExternalIdInput(input, property, propertyData) {
     let isFirstEdit = true;
     
+    console.log('🚀 [SETUP] Setting up external-id input:', {
+        inputId: input.id,
+        property,
+        hasPropertyData: !!propertyData,
+        propertyData
+    });
+    
     // Clear any previous validation timeout
     if (window.validationTimeout) {
         clearTimeout(window.validationTimeout);
@@ -405,6 +412,13 @@ function setupExternalIdInput(input, property, propertyData) {
     // Set up input event for original value display and validation
     input.addEventListener('input', function(e) {
         const currentValue = input.value;
+        console.log('⌨️ [KEYSTROKE] INPUT event fired:', {
+            eventType: 'input',
+            currentValue: `"${currentValue}"`,
+            valueLength: currentValue.length,
+            property,
+            timestamp: new Date().toISOString()
+        });
         
         // Show original value hint on first edit
         if (isFirstEdit && currentValue !== window.currentModalContext.originalValue) {
@@ -417,29 +431,60 @@ function setupExternalIdInput(input, property, propertyData) {
         window.currentModalContext.currentValue = currentValue;
         
         // Update validation immediately - no debouncing for input events
+        console.log('🔄 [KEYSTROKE] About to call updateValidationState from input event');
         updateValidationState();
     });
     
     // Set up keyup for additional feedback
-    input.addEventListener('keyup', function() {
+    input.addEventListener('keyup', function(e) {
         const currentValue = input.value;
+        console.log('⌨️ [KEYSTROKE] KEYUP event fired:', {
+            eventType: 'keyup',
+            key: e.key,
+            keyCode: e.keyCode,
+            currentValue: `"${currentValue}"`,
+            valueLength: currentValue.length,
+            property,
+            timestamp: new Date().toISOString()
+        });
+        
         window.currentModalContext.currentValue = currentValue;
+        console.log('🔄 [KEYSTROKE] About to call updateValidationState from keyup event');
         updateValidationState();
     });
     
     // Set up blur event for final validation
     input.addEventListener('blur', function() {
+        const currentValue = input.value;
+        console.log('⌨️ [KEYSTROKE] BLUR event fired:', {
+            eventType: 'blur',
+            currentValue: `"${currentValue}"`,
+            valueLength: currentValue.length,
+            property,
+            timestamp: new Date().toISOString()
+        });
         updateValidationState();
     });
     
     // Set up paste event for validation after paste
     input.addEventListener('paste', function() {
+        console.log('⌨️ [KEYSTROKE] PASTE event fired');
         // Small delay to let paste complete
         setTimeout(() => {
-            window.currentModalContext.currentValue = input.value;
+            const currentValue = input.value;
+            console.log('⌨️ [KEYSTROKE] PASTE completed:', {
+                eventType: 'paste',
+                currentValue: `"${currentValue}"`,
+                valueLength: currentValue.length,
+                property,
+                timestamp: new Date().toISOString()
+            });
+            window.currentModalContext.currentValue = currentValue;
             updateValidationState();
         }, 10);
     });
+    
+    console.log('✅ [SETUP] All event listeners attached for external-id input');
 }
 
 /**
@@ -456,9 +501,11 @@ function showOriginalValueHint() {
  * Update validation state and visual feedback
  */
 function updateValidationState() {
+    console.log('🎯 [VALIDATION] === updateValidationState CALLED ===');
+    
     const input = document.getElementById('external-id-input');
     if (!input) {
-        console.warn('⚠️ [External-ID Modal] updateValidationState called without input element');
+        console.error('❌ [VALIDATION] No input element found with id "external-id-input"');
         return;
     }
     
@@ -468,58 +515,93 @@ function updateValidationState() {
     const propertyData = window.currentModalContext?.propertyData;
     const feedbackContainer = document.getElementById('validation-feedback');
     
+    console.log('📊 [VALIDATION] Initial state:', {
+        currentValue: `"${currentValue}"`,
+        valueLength: currentValue.length,
+        property,
+        hasPropertyData: !!propertyData,
+        modalContext: window.currentModalContext ? 'exists' : 'missing',
+        feedbackContainer: feedbackContainer ? 'exists' : 'missing'
+    });
+    
     // Update context with current value from input
     if (window.currentModalContext) {
         window.currentModalContext.currentValue = currentValue;
     }
     
     if (!property) {
-        console.warn('⚠️ [External-ID Modal] updateValidationState called without property');
+        console.error('❌ [VALIDATION] No property available - cannot validate');
         return;
     }
     
     // Get constraints with debugging
+    console.log('🔍 [VALIDATION] About to extract regex constraints...');
     const constraints = extractRegexConstraints(property, propertyData);
-    console.log('🔄 [External-ID Modal] updateValidationState called:', {
-        property,
-        currentValue,
-        currentValueLength: currentValue.length,
+    console.log('📋 [VALIDATION] Constraints extraction result:', {
         hasConstraints: !!constraints,
         constraints,
-        propertyDataConstraints: propertyData?.constraints,
-        constraintSource: constraints?.source
+        constraintPattern: constraints?.pattern,
+        constraintSource: constraints?.source,
+        propertyDataStructure: propertyData ? Object.keys(propertyData) : null,
+        propertyDataConstraints: propertyData?.constraints
     });
     
     // Clear all validation classes first - preserve other classes
+    const classesBefore = input.className;
     input.classList.remove('validation-success', 'validation-error', 'validation-warning');
+    console.log('🧹 [VALIDATION] Cleared validation classes:', {
+        classesBefore,
+        classesAfter: input.className
+    });
     
     // Only validate if we have constraints
-    const validationResult = constraints ? validateRealTime(currentValue, constraints) : null;
+    let validationResult = null;
+    if (constraints) {
+        console.log('⚖️ [VALIDATION] About to call validateRealTime with:', {
+            currentValue: `"${currentValue}"`,
+            constraintPattern: constraints.pattern,
+            constraintDescription: constraints.description
+        });
+        validationResult = validateRealTime(currentValue, constraints);
+        console.log('📝 [VALIDATION] validateRealTime returned:', {
+            validationResult,
+            isValid: validationResult?.isValid,
+            level: validationResult?.level,
+            message: validationResult?.message
+        });
+    } else {
+        console.log('⚠️ [VALIDATION] No constraints found - skipping validation');
+    }
     
     // Only apply validation styling if we have constraints AND a validation result
     if (constraints && validationResult) {
-        console.log('✨ [External-ID Modal] Applying validation styling:', {
-            isValid: validationResult.isValid,
-            level: validationResult.level,
-            message: validationResult.message,
-            inputClasses: input.className
-        });
+        console.log('🎨 [VALIDATION] Applying validation styling based on result...');
         
+        let classToAdd = '';
         if (validationResult.isValid === true) {
+            classToAdd = 'validation-success';
             input.classList.add('validation-success');
         } else if (validationResult.level === 'warning') {
+            classToAdd = 'validation-warning';
             input.classList.add('validation-warning');
         } else {
+            classToAdd = 'validation-error';
             input.classList.add('validation-error');
         }
         
-        console.log('🎨 [External-ID Modal] Input classes after validation:', input.className);
+        console.log('✅ [VALIDATION] Applied validation class:', {
+            classAdded: classToAdd,
+            isValid: validationResult.isValid,
+            level: validationResult.level,
+            finalClasses: input.className,
+            computedStyle: window.getComputedStyle(input).borderColor
+        });
     } else {
-        console.log('⚪ [External-ID Modal] No validation styling applied - keeping neutral:', {
+        console.log('⚪ [VALIDATION] No validation styling applied:', {
             hasConstraints: !!constraints,
             hasValidationResult: !!validationResult,
             reason: !constraints ? 'No regex constraints available' : 'No validation result',
-            inputClasses: input.className
+            finalClasses: input.className
         });
     }
     
@@ -527,23 +609,29 @@ function updateValidationState() {
     if (feedbackContainer) {
         if (constraints && validationResult && validationResult.message) {
             const icon = getValidationIcon(validationResult);
-            feedbackContainer.innerHTML = `
+            const feedbackHTML = `
                 <div class="validation-message ${validationResult.level || (validationResult.isValid ? 'success' : 'error')}">
                     <span class="validation-icon">${icon}</span>
                     <span class="validation-text">${escapeHtml(validationResult.message)}</span>
                 </div>
             `;
+            feedbackContainer.innerHTML = feedbackHTML;
+            console.log('💬 [VALIDATION] Updated feedback container:', {
+                message: validationResult.message,
+                icon,
+                level: validationResult.level
+            });
         } else {
             // Clear feedback if no constraints or no validation result
             feedbackContainer.innerHTML = '';
-            if (!constraints) {
-                console.log('📝 [External-ID Modal] No validation feedback shown - no constraints available');
-            }
+            console.log('🧹 [VALIDATION] Cleared feedback container');
         }
     }
     
     // Update confirm button state
     updateConfirmButtonState();
+    
+    console.log('🏁 [VALIDATION] === updateValidationState FINISHED ===');
 }
 
 /**
