@@ -7388,15 +7388,44 @@ pre.sample-value {
     box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
 }
 
-/* Validation State Borders */
-.string-input.validation-success {
-    border-color: #4caf50;
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+/* Validation State Borders - Apply to both string-input and external-id-input */
+.string-input.validation-success,
+.external-id-input.validation-success {
+    border-color: #4caf50 !important;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2) !important;
+    background-color: rgba(76, 175, 80, 0.05) !important;
 }
 
-.string-input.validation-error {
-    border-color: #f44336;
-    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+.string-input.validation-error,
+.external-id-input.validation-error {
+    border-color: #f44336 !important;
+    box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.2) !important;
+    background-color: rgba(244, 67, 54, 0.05) !important;
+}
+
+.string-input.validation-warning,
+.external-id-input.validation-warning {
+    border-color: #ff9800 !important;
+    box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2) !important;
+    background-color: rgba(255, 152, 0, 0.05) !important;
+}
+
+/* External-ID Input Default Styling */
+.external-id-input {
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    background-color: #fff;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.external-id-input:focus {
+    outline: none;
+    border-color: #007cba;
+    box-shadow: 0 0 0 2px rgba(0, 124, 186, 0.2);
 }
 
 /* Original Value Hint */

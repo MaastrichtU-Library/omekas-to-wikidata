@@ -397,8 +397,13 @@ function escapeHtml(text) {
 function setupExternalIdInput(input, property, propertyData) {
     let isFirstEdit = true;
     
+    // Clear any previous validation timeout
+    if (window.validationTimeout) {
+        clearTimeout(window.validationTimeout);
+    }
+    
     // Set up input event for original value display and validation
-    input.addEventListener('input', function() {
+    input.addEventListener('input', function(e) {
         const currentValue = input.value;
         
         // Show original value hint on first edit
@@ -408,10 +413,17 @@ function setupExternalIdInput(input, property, propertyData) {
             isFirstEdit = false;
         }
         
-        // Update current value in context
+        // Update current value in context immediately
         window.currentModalContext.currentValue = currentValue;
         
-        // Update validation in real-time
+        // Update validation immediately - no debouncing for input events
+        updateValidationState();
+    });
+    
+    // Set up keyup for additional feedback
+    input.addEventListener('keyup', function() {
+        const currentValue = input.value;
+        window.currentModalContext.currentValue = currentValue;
         updateValidationState();
     });
     
@@ -420,13 +432,13 @@ function setupExternalIdInput(input, property, propertyData) {
         updateValidationState();
     });
     
-    // Set up keypress event for immediate feedback
-    input.addEventListener('keyup', function() {
-        // Debounce validation for better performance
-        clearTimeout(window.validationTimeout);
-        window.validationTimeout = setTimeout(() => {
+    // Set up paste event for validation after paste
+    input.addEventListener('paste', function() {
+        // Small delay to let paste complete
+        setTimeout(() => {
+            window.currentModalContext.currentValue = input.value;
             updateValidationState();
-        }, 200);
+        }, 10);
     });
 }
 
@@ -445,16 +457,24 @@ function showOriginalValueHint() {
  */
 function updateValidationState() {
     const input = document.getElementById('external-id-input');
-    const currentValue = window.currentModalContext?.currentValue || '';
+    if (!input) {
+        console.warn('⚠️ [External-ID Modal] updateValidationState called without input element');
+        return;
+    }
+    
+    // Get current value from input field directly (most reliable)
+    const currentValue = input.value;
     const property = window.currentModalContext?.property;
     const propertyData = window.currentModalContext?.propertyData;
     const feedbackContainer = document.getElementById('validation-feedback');
     
-    if (!input || !property) {
-        console.warn('⚠️ [External-ID Modal] updateValidationState called without required elements:', {
-            hasInput: !!input,
-            hasProperty: !!property
-        });
+    // Update context with current value from input
+    if (window.currentModalContext) {
+        window.currentModalContext.currentValue = currentValue;
+    }
+    
+    if (!property) {
+        console.warn('⚠️ [External-ID Modal] updateValidationState called without property');
         return;
     }
     
@@ -463,38 +483,43 @@ function updateValidationState() {
     console.log('🔄 [External-ID Modal] updateValidationState called:', {
         property,
         currentValue,
+        currentValueLength: currentValue.length,
         hasConstraints: !!constraints,
         constraints,
         propertyDataConstraints: propertyData?.constraints,
         constraintSource: constraints?.source
     });
     
+    // Clear all validation classes first - preserve other classes
+    input.classList.remove('validation-success', 'validation-error', 'validation-warning');
+    
     // Only validate if we have constraints
     const validationResult = constraints ? validateRealTime(currentValue, constraints) : null;
-    
-    // Clear all validation classes first
-    input.className = input.className.replace(/validation-(success|error|warning)/g, '');
     
     // Only apply validation styling if we have constraints AND a validation result
     if (constraints && validationResult) {
         console.log('✨ [External-ID Modal] Applying validation styling:', {
             isValid: validationResult.isValid,
             level: validationResult.level,
-            message: validationResult.message
+            message: validationResult.message,
+            inputClasses: input.className
         });
         
-        if (validationResult.isValid) {
+        if (validationResult.isValid === true) {
             input.classList.add('validation-success');
         } else if (validationResult.level === 'warning') {
             input.classList.add('validation-warning');
         } else {
             input.classList.add('validation-error');
         }
+        
+        console.log('🎨 [External-ID Modal] Input classes after validation:', input.className);
     } else {
         console.log('⚪ [External-ID Modal] No validation styling applied - keeping neutral:', {
             hasConstraints: !!constraints,
             hasValidationResult: !!validationResult,
-            reason: !constraints ? 'No regex constraints available' : 'No validation result'
+            reason: !constraints ? 'No regex constraints available' : 'No validation result',
+            inputClasses: input.className
         });
     }
     
