@@ -415,7 +415,6 @@ export async function createIdentifierMapping(fieldKey, detection, sampleValue) 
         availableFields: availableFields  // Store available fields for UI
     };
 }
-}
 
 /**
  * Analyzes all fields in the data for identifiers
