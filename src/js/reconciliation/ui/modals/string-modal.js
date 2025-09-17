@@ -37,12 +37,14 @@ import {
  */
 function getConfirmedValue(itemId, property, valueIndex) {
     try {
-        if (!window.currentState) {
+        // Try multiple ways to access the state system
+        const stateManager = window.debugState || window.currentState;
+        if (!stateManager) {
             console.warn('No state system available');
             return null;
         }
         
-        const state = window.currentState.getState();
+        const state = stateManager.getState();
         const reconciliationData = state.reconciliationData || {};
         
         const itemData = reconciliationData[itemId];
@@ -80,12 +82,14 @@ function getConfirmedValue(itemId, property, valueIndex) {
  */
 function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
     try {
-        if (!window.currentState) {
+        // Try multiple ways to access the state system
+        const stateManager = window.debugState || window.currentState;
+        if (!stateManager) {
             console.warn('No state system available');
             return false;
         }
         
-        const state = window.currentState.getState();
+        const state = stateManager.getState();
         const reconciliationData = { ...state.reconciliationData } || {};
         
         // Ensure the structure exists
@@ -116,7 +120,7 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
         };
         
         // Update the state
-        window.currentState.updateState('reconciliationData', reconciliationData);
+        stateManager.updateState('reconciliationData', reconciliationData);
         
         console.log('Value saved to state:', itemId, property, valueIndex, confirmationData);
         return true;
