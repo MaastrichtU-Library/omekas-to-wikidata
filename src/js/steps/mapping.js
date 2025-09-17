@@ -194,6 +194,24 @@ export function setupMappingStep(state) {
         });
     }
     
+    // Add Wikidata property functionality
+    const addWikidataPropertyBtn = document.getElementById('add-wikidata-property');
+    if (addWikidataPropertyBtn) {
+        addWikidataPropertyBtn.addEventListener('click', () => {
+            // Create empty key data for the modal
+            const emptyKeyData = {
+                key: '',
+                type: 'unknown',
+                frequency: 0,
+                totalItems: 0,
+                sampleValue: ''
+            };
+            
+            // Open the mapping modal with empty data
+            openMappingModal(emptyKeyData);
+        });
+    }
+    
     // Export functions globally for use by other modules
     window.openMappingModal = openMappingModal;
 }
