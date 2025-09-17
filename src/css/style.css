@@ -7462,7 +7462,7 @@ pre.sample-value {
 .validation-pattern {
     margin-top: 0.5rem;
     padding: 0.5rem;
-    background: #fff3cd;
+    /* background: #fff3cd; */
     border: 1px solid #ffeaa7;
     border-radius: 4px;
     font-size: 13px;
