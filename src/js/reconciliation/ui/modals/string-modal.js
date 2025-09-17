@@ -487,7 +487,32 @@ function setupLanguageSelection() {
     let searchTimeout;
     let currentSearchQuery = '';
     
-    console.log('🌐 Attaching input event listener to language search');
+    console.log('🌐 Attaching ALL event listeners to language search input');
+    
+    // Add comprehensive keystroke logging
+    languageSearch.addEventListener('keydown', function(event) {
+        console.log('⌨️ KEYDOWN event fired! Key:', event.key, 'Code:', event.code, 'Value:', this.value);
+    });
+    
+    languageSearch.addEventListener('keyup', function(event) {
+        console.log('⌨️ KEYUP event fired! Key:', event.key, 'Code:', event.code, 'Value:', this.value);
+    });
+    
+    languageSearch.addEventListener('keypress', function(event) {
+        console.log('⌨️ KEYPRESS event fired! Key:', event.key, 'Code:', event.code, 'Value:', this.value);
+    });
+    
+    languageSearch.addEventListener('change', function(event) {
+        console.log('⌨️ CHANGE event fired! Value:', this.value, 'Event:', event);
+    });
+    
+    languageSearch.addEventListener('focus', function(event) {
+        console.log('⌨️ FOCUS event fired! Value:', this.value, 'Event:', event);
+    });
+    
+    languageSearch.addEventListener('blur', function(event) {
+        console.log('⌨️ BLUR event fired! Value:', this.value, 'Event:', event);
+    });
     
     // Search languages as user types
     languageSearch.addEventListener('input', function(event) {
