@@ -76,7 +76,6 @@ import {
 import { 
     openMappingModal,
     createMappingModalContent,
-    createUnifiedPropertyModalContent,
     openRawJsonModal 
 } from '../mapping/ui/property-modals.js';
 import { initializeEntitySchemaSelector } from '../entity-schemas/entity-schema-selector.js';
