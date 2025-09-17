@@ -98,27 +98,84 @@ export function extractRegexConstraints(property, propertyData = null) {
     // First check if we have explicit constraint data from Wikidata
     if (propertyData && propertyData.constraints) {
         console.log('📋 [Validation Engine] Checking Wikidata constraints:', {
-            constraintsCount: propertyData.constraints.length,
+            constraintsStructure: Object.keys(propertyData.constraints),
+            hasFormat: !!propertyData.constraints.format,
+            formatCount: propertyData.constraints.format?.length || 0,
             constraints: propertyData.constraints
         });
         
-        for (const constraint of propertyData.constraints) {
-            console.log('🔎 [Validation Engine] Examining constraint:', {
-                type: constraint.type,
-                hasPattern: !!constraint.pattern,
-                constraint
-            });
+        // Check for format constraints array (new structure)
+        if (propertyData.constraints.format && Array.isArray(propertyData.constraints.format)) {
+            console.log('📝 [Validation Engine] Checking format constraints array:');
             
-            if (constraint.type === 'format' && constraint.pattern) {
-                const result = {
-                    pattern: constraint.pattern,
-                    description: constraint.description || `Must match pattern: ${constraint.pattern}`,
-                    source: 'wikidata'
-                };
-                console.log('✅ [Validation Engine] Found Wikidata format constraint:', result);
-                return result;
+            for (const formatConstraint of propertyData.constraints.format) {
+                console.log('🔎 [Validation Engine] Examining format constraint:', {
+                    hasRegex: !!formatConstraint.regex,
+                    hasPattern: !!formatConstraint.pattern,
+                    formatConstraint
+                });
+                
+                // Look for regex field (new structure)
+                if (formatConstraint.regex) {
+                    const result = {
+                        pattern: formatConstraint.regex,
+                        description: formatConstraint.description || `Must match pattern: ${formatConstraint.regex}`,
+                        source: 'wikidata',
+                        rank: formatConstraint.rank
+                    };
+                    console.log('✅ [Validation Engine] Found Wikidata format constraint (regex field):', result);
+                    return result;
+                }
+                
+                // Fallback to pattern field (legacy structure)
+                if (formatConstraint.pattern) {
+                    const result = {
+                        pattern: formatConstraint.pattern,
+                        description: formatConstraint.description || `Must match pattern: ${formatConstraint.pattern}`,
+                        source: 'wikidata',
+                        rank: formatConstraint.rank
+                    };
+                    console.log('✅ [Validation Engine] Found Wikidata format constraint (pattern field):', result);
+                    return result;
+                }
             }
         }
+        
+        // Legacy check: constraints as direct array (old structure)
+        if (Array.isArray(propertyData.constraints)) {
+            console.log('📝 [Validation Engine] Checking legacy constraints array:');
+            for (const constraint of propertyData.constraints) {
+                console.log('🔎 [Validation Engine] Examining legacy constraint:', {
+                    type: constraint.type,
+                    hasPattern: !!constraint.pattern,
+                    hasRegex: !!constraint.regex,
+                    constraint
+                });
+                
+                if (constraint.type === 'format') {
+                    if (constraint.regex) {
+                        const result = {
+                            pattern: constraint.regex,
+                            description: constraint.description || `Must match pattern: ${constraint.regex}`,
+                            source: 'wikidata'
+                        };
+                        console.log('✅ [Validation Engine] Found legacy format constraint (regex field):', result);
+                        return result;
+                    }
+                    
+                    if (constraint.pattern) {
+                        const result = {
+                            pattern: constraint.pattern,
+                            description: constraint.description || `Must match pattern: ${constraint.pattern}`,
+                            source: 'wikidata'
+                        };
+                        console.log('✅ [Validation Engine] Found legacy format constraint (pattern field):', result);
+                        return result;
+                    }
+                }
+            }
+        }
+        
         console.log('❌ [Validation Engine] No format constraints found in Wikidata data');
     } else {
         console.log('❌ [Validation Engine] No propertyData or constraints available');

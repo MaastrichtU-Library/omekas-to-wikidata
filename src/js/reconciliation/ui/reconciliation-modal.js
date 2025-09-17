@@ -24,15 +24,30 @@ import {
 export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, state = null) {
     console.log('🎯 createReconciliationModal called with:', { itemId, property, valueIndex, value, propertyData, existingMatches, hasState: !!state });
     
-    // Determine data type from property
-    const dataType = getDataTypeFromProperty(property, propertyData, state);
+    // NEW: Get both datatype and enhanced property data from mappings
+    const propertyLookupResult = getDataTypeAndPropertyData(property, propertyData, state);
+    const dataType = propertyLookupResult.datatype;
     console.log('📊 Determined dataType:', dataType);
+    console.log('🔍 Property lookup result:', {
+        datatype: propertyLookupResult.datatype,
+        hasEnhancedData: !!propertyLookupResult.enhancedPropertyData,
+        enhancedDataKeys: propertyLookupResult.enhancedPropertyData ? Object.keys(propertyLookupResult.enhancedPropertyData) : null,
+        hasConstraints: !!propertyLookupResult.enhancedPropertyData?.constraints
+    });
     
-    // Create enhanced propertyData with detected datatype if needed
-    const enhancedPropertyData = propertyData ? 
-        { ...propertyData, datatype: propertyData.datatype || dataType } : 
-        { datatype: dataType };
-    console.log('🔧 Enhanced propertyData:', enhancedPropertyData);
+    // Use enhanced property data from mapping lookup if available, otherwise use provided data
+    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData && 
+                                 Object.keys(propertyLookupResult.enhancedPropertyData).length > 1 ?
+        propertyLookupResult.enhancedPropertyData : 
+        (propertyData ? 
+            { ...propertyData, datatype: propertyData.datatype || dataType } : 
+            { datatype: dataType });
+    
+    console.log('🔧 Final enhanced propertyData:', {
+        ...enhancedPropertyData,
+        hasConstraints: !!enhancedPropertyData.constraints,
+        constraintsStructure: enhancedPropertyData.constraints ? Object.keys(enhancedPropertyData.constraints) : null
+    });
     
     const transformedValue = getTransformedValue(value, property);
     console.log('🔄 Transformed value:', transformedValue);
@@ -166,16 +181,16 @@ function initializeModalInteractions(dataType, value, property, propertyData) {
  * Determine data type from property information
  */
 /**
- * Helper function to get property type from mapping data
- * @param {string} property - Property name (e.g., 'custom_label', 'custom_P31')
+ * Enhanced function to get property data from mapping data
+ * @param {string} property - Property name (e.g., 'custom_label', 'custom_P31', 'schema:sameAs')
  * @param {Object} state - Application state containing mappings
- * @returns {string|null} Property type if found in mappings
+ * @returns {Object|null} Object with { datatype, fullProperty } if found in mappings, null otherwise
  */
-function getPropertyTypeFromMappings(property, state) {
-    console.log('🗺️ getPropertyTypeFromMappings called with:', { property });
+function getPropertyDataFromMappings(property, state) {
+    console.log('🗺️ getPropertyDataFromMappings called with:', { property });
     
     if (!state) {
-        console.log('⚠️ No state provided to getPropertyTypeFromMappings');
+        console.log('⚠️ No state provided to getPropertyDataFromMappings');
         return null;
     }
     
@@ -200,20 +215,27 @@ function getPropertyTypeFromMappings(property, state) {
             `custom_${mp.wikidataProperty}` === property
         );
         
-        if (manualProp && manualProp.propertyType) {
-            console.log('✅ Found property type in manual properties:', manualProp.propertyType);
-            return manualProp.propertyType;
+        if (manualProp && (manualProp.propertyType || manualProp.property)) {
+            console.log('✅ Found property in manual properties:', {
+                propertyType: manualProp.propertyType,
+                hasFullProperty: !!manualProp.property
+            });
+            return {
+                datatype: manualProp.propertyType || manualProp.property?.datatype,
+                fullProperty: manualProp.property
+            };
         }
     }
     
-    // Check mapped keys - FIX: Remove the incorrect condition
+    // Check mapped keys 
     if (currentState.mappings?.mappedKeys) {
         console.log('🔍 Checking mapped keys for:', property);
-        console.log('📋 Available mapped keys:', currentState.mappings.mappedKeys.map(k => ({
+        console.log('�� Available mapped keys:', currentState.mappings.mappedKeys.map(k => ({
             key: k.key,
             propertyId: k.property?.id,
             datatype: k.property?.datatype,
-            propertyType: k.propertyType
+            propertyType: k.propertyType,
+            hasConstraints: !!k.property?.constraints
         })));
         
         const mappedKey = currentState.mappings.mappedKeys.find(key => 
@@ -226,45 +248,82 @@ function getPropertyTypeFromMappings(property, state) {
                 key: mappedKey.key,
                 propertyId: mappedKey.property?.id,
                 datatype: mappedKey.property?.datatype,
-                propertyType: mappedKey.propertyType
+                propertyType: mappedKey.propertyType,
+                hasFullProperty: !!mappedKey.property,
+                hasConstraints: !!mappedKey.property?.constraints,
+                constraintsStructure: mappedKey.property?.constraints ? Object.keys(mappedKey.property.constraints) : null
             });
             
-            if (mappedKey.property?.datatype) {
-                console.log('✅ Found datatype in mapped keys:', mappedKey.property.datatype);
-                return mappedKey.property.datatype;
-            }
-            
-            if (mappedKey.propertyType) {
-                console.log('✅ Found propertyType in mapped keys:', mappedKey.propertyType);
-                return mappedKey.propertyType;
+            const datatype = mappedKey.property?.datatype || mappedKey.propertyType;
+            if (datatype) {
+                console.log('✅ Returning full property data from mapped keys:', {
+                    datatype,
+                    hasFullProperty: !!mappedKey.property,
+                    propertyConstraints: mappedKey.property?.constraints
+                });
+                return {
+                    datatype: datatype,
+                    fullProperty: mappedKey.property
+                };
             }
         }
     }
     
-    console.log('❌ Property type not found in mappings');
+    console.log('❌ Property data not found in mappings');
     return null;
 }
 
-function getDataTypeFromProperty(property, propertyData, state = null) {
-    console.log('🔍 getDataTypeFromProperty called with:', { property, propertyData, hasState: !!state });
+/**
+ * Legacy compatibility function - now calls enhanced version
+ * @param {string} property - Property name 
+ * @param {Object} state - Application state containing mappings
+ * @returns {string|null} Property type if found in mappings
+ */
+function getPropertyTypeFromMappings(property, state) {
+    const result = getPropertyDataFromMappings(property, state);
+    return result?.datatype || null;
+}
+
+/**
+ * Enhanced function to get datatype and property data from various sources
+ * @param {string} property - Property name
+ * @param {Object} propertyData - Existing property data (if any)
+ * @param {Object} state - Application state
+ * @returns {Object} Object with { datatype, enhancedPropertyData }
+ */
+function getDataTypeAndPropertyData(property, propertyData, state = null) {
+    console.log('🔍 getDataTypeAndPropertyData called with:', { property, propertyData, hasState: !!state });
     
     // Priority 1: Check if we have explicit property data with datatype
     if (propertyData && propertyData.datatype) {
         console.log('✅ Found explicit datatype in propertyData:', propertyData.datatype);
-        return propertyData.datatype;
+        return {
+            datatype: propertyData.datatype,
+            enhancedPropertyData: propertyData // Use existing property data as-is
+        };
     }
     
     // Priority 2: Check if we have property data with propertyType (for manual properties)
     if (propertyData && propertyData.propertyType) {
         console.log('✅ Found propertyType in propertyData:', propertyData.propertyType);
-        return propertyData.propertyType;
+        return {
+            datatype: propertyData.propertyType,
+            enhancedPropertyData: propertyData // Use existing property data as-is
+        };
     }
     
-    // Priority 3: Look up property type in mapping data
+    // Priority 3: Look up property data in mapping data (NEW: get full property object)
     if (state) {
-        const mappingType = getPropertyTypeFromMappings(property, state);
-        if (mappingType) {
-            return mappingType;
+        const mappingData = getPropertyDataFromMappings(property, state);
+        if (mappingData && mappingData.datatype) {
+            console.log('✅ Found full property data from mappings:', {
+                datatype: mappingData.datatype,
+                hasConstraints: !!mappingData.fullProperty?.constraints
+            });
+            return {
+                datatype: mappingData.datatype,
+                enhancedPropertyData: mappingData.fullProperty || { datatype: mappingData.datatype }
+            };
         }
     }
     
@@ -272,7 +331,10 @@ function getDataTypeFromProperty(property, propertyData, state = null) {
     const lowerProperty = property.toLowerCase();
     if (lowerProperty.includes('label') || lowerProperty.includes('title') || lowerProperty.includes('name') || lowerProperty.includes('caption')) {
         console.log('✅ Property matched label/title patterns, returning monolingualtext');
-        return 'monolingualtext';
+        return {
+            datatype: 'monolingualtext',
+            enhancedPropertyData: propertyData || { datatype: 'monolingualtext' }
+        };
     }
     
     // Priority 5: Check if we have property data with id field to determine type by specific property IDs
@@ -283,7 +345,10 @@ function getDataTypeFromProperty(property, propertyData, state = null) {
         const propertyTypeFromId = getPropertyTypeByWikidataId(propertyId);
         if (propertyTypeFromId) {
             console.log('✅ Property ID matched known property types, returning:', propertyTypeFromId);
-            return propertyTypeFromId;
+            return {
+                datatype: propertyTypeFromId,
+                enhancedPropertyData: propertyData || { datatype: propertyTypeFromId }
+            };
         }
     }
     
@@ -296,7 +361,10 @@ function getDataTypeFromProperty(property, propertyData, state = null) {
         const propertyTypeFromId = getPropertyTypeByWikidataId(extractedPropertyId);
         if (propertyTypeFromId) {
             console.log('✅ Extracted property ID matched known property types, returning:', propertyTypeFromId);
-            return propertyTypeFromId;
+            return {
+                datatype: propertyTypeFromId,
+                enhancedPropertyData: propertyData || { datatype: propertyTypeFromId }
+            };
         }
     }
     
@@ -311,23 +379,47 @@ function getDataTypeFromProperty(property, propertyData, state = null) {
     
     if (itemPatterns.some(pattern => lowerProperty.includes(pattern))) {
         console.log('✅ Property matched item patterns, returning wikibase-item');
-        return 'wikibase-item';
+        return {
+            datatype: 'wikibase-item',
+            enhancedPropertyData: propertyData || { datatype: 'wikibase-item' }
+        };
     }
     
     if (monolingualPatterns.some(pattern => lowerProperty.includes(pattern))) {
         console.log('✅ Property matched monolingual patterns, returning monolingualtext');
-        return 'monolingualtext';
+        return {
+            datatype: 'monolingualtext',
+            enhancedPropertyData: propertyData || { datatype: 'monolingualtext' }
+        };
     }
     
     if (stringPatterns.some(pattern => lowerProperty.includes(pattern))) {
         console.log('✅ Property matched string patterns, returning string');
-        return 'string';
+        return {
+            datatype: 'string',
+            enhancedPropertyData: propertyData || { datatype: 'string' }
+        };
     }
     
     // Default to string for unknown properties
     console.log('⚠️ Property did not match any patterns, defaulting to string');
     console.log('💡 Property patterns checked:', { itemPatterns, stringPatterns, monolingualPatterns });
-    return 'string';
+    return {
+        datatype: 'string',
+        enhancedPropertyData: propertyData || { datatype: 'string' }
+    };
+}
+
+/**
+ * Legacy compatibility wrapper for getDataTypeFromProperty
+ * @param {string} property - Property name
+ * @param {Object} propertyData - Existing property data (if any)
+ * @param {Object} state - Application state
+ * @returns {string} Just the datatype string (for backward compatibility)
+ */
+function getDataTypeFromProperty(property, propertyData, state = null) {
+    const result = getDataTypeAndPropertyData(property, propertyData, state);
+    return result.datatype;
 }
 
 /**
