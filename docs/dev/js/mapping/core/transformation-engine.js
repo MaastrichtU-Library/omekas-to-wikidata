@@ -520,6 +520,21 @@ export function renderFindReplaceConfigUI(mappingId, block, state) {
 }
 
 /**
+ * Gets source data for compose transformations (for custom properties)
+ * @param {Object} currentState - Current application state
+ * @returns {Object} Source data object
+ */
+function getSourceDataForCompose(currentState) {
+    // For custom properties, we need access to the full item data
+    if (currentState.fetchedData) {
+        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+        // Return the first valid item as source data
+        return items.find(item => typeof item === 'object' && item !== null && Object.keys(item).length > 0) || {};
+    }
+    return {};
+}
+
+/**
  * Renders compose configuration UI
  * @param {string} mappingId - The mapping ID
  * @param {Object} block - The transformation block
@@ -533,15 +548,44 @@ export function renderComposeConfigUI(mappingId, block, state) {
     const patternField = createElement('div', { className: 'config-field' });
     patternField.appendChild(createElement('label', {}, 'Pattern:'));
     
-    // Ensure pattern has a value, default to {{value}} if empty
-    const currentPattern = (block.config.pattern && block.config.pattern.trim()) || '{{value}}';
+    // Ensure pattern has a value, default to {{value}} if empty or placeholder text
+    const currentPattern = (block.config.pattern && 
+                           block.config.pattern.trim() && 
+                           block.config.pattern.trim() !== 'Enter your custom pattern here...') 
+                           ? block.config.pattern.trim() 
+                           : '{{value}}';
     
     const patternTextarea = createElement('textarea', {
         rows: 3,
         placeholder: 'Write your sentence and use {{value}} for current value or {{field:path}} for other fields...',
         className: 'pattern-input',
         onInput: (e) => {
-            state.updateTransformationBlock(mappingId, block.id, { pattern: e.target.value });
+            console.log('[COMPOSE] Pattern input changed:', {
+                mappingId,
+                blockId: block.id,
+                newPattern: e.target.value,
+                oldPattern: block.config.pattern
+            });
+            
+            // Get sourceData for the transformation
+            const currentState = state.getState();
+            const sourceData = getSourceDataForCompose(currentState);
+            
+            console.log('[COMPOSE] Updating transformation block with pattern:', e.target.value);
+            state.updateTransformationBlock(mappingId, block.id, { 
+                pattern: e.target.value,
+                sourceData: sourceData 
+            });
+            
+            // Verify the update
+            const updatedBlocks = state.getTransformationBlocks(mappingId);
+            const updatedBlock = updatedBlocks?.find(b => b.id === block.id);
+            console.log('[COMPOSE] After update, block state:', {
+                mappingId,
+                updatedBlock,
+                allBlocksForMapping: updatedBlocks
+            });
+            
             updateTransformationPreview(mappingId, state);
         }
     }, currentPattern);
@@ -589,58 +633,57 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
     
     // Get the original item data for this property
     const keyData = window.currentMappingKeyData;
-    if (!keyData) {
+    const state = window.mappingStepState;
+    const currentState = state.getState();
+    
+    let allFields;
+    let fullItemData = null;
+    
+    if (currentState.fetchedData) {
+        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
+        
+        // Check if this is a custom property (no real key or starts with 'custom_')
+        const isCustomProperty = !keyData || !keyData.key || keyData.key.startsWith('custom_') || keyData.isCustomProperty;
+        
+        if (isCustomProperty) {
+            // For custom properties, use any available item to extract all possible fields
+            fullItemData = items.find(item => typeof item === 'object' && item !== null && Object.keys(item).length > 0) || items[0];
+        } else {
+            // For regular properties, find the item that contains this specific property
+            fullItemData = items.find(item => {
+                if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
+                    return true;
+                }
+                return false;
+            });
+            
+            // If we couldn't find a specific item, use the first item as fallback
+            if (!fullItemData && items.length > 0) {
+                fullItemData = items[0];
+            }
+        }
+    }
+    
+    if (!fullItemData) {
         resultsContainer.appendChild(createElement('div', { 
             className: 'no-fields-message' 
         }, 'No field data available'));
         return;
     }
     
-    let allFields;
-    let fullItemData = null;
-    
-    // Get the full item data for the onClick handler (needed in both cases)
-    const state = window.mappingStepState;
-    const currentState = state.getState();
-    
-    if (currentState.fetchedData) {
-        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-        
-        // Find the item that contains this property value
-        fullItemData = items.find(item => {
-            if (typeof item === 'object' && item !== null && item[keyData.key] !== undefined) {
-                return true;
-            }
-            return false;
-        });
-        
-        // If we couldn't find a specific item, use the first item as fallback
-        if (!fullItemData && items.length > 0) {
-            fullItemData = items[0];
-        }
-    }
-    
     // Use pre-extracted fields if available (optimization)
-    if (keyData.extractedFields) {
+    if (keyData && keyData.extractedFields) {
         allFields = keyData.extractedFields;
     } else {
-        // Fallback to current behavior for backward compatibility
-        if (!keyData.sampleValue) {
-            resultsContainer.appendChild(createElement('div', { 
-                className: 'no-fields-message' 
-            }, 'No field data available'));
-            return;
-        }
-        
-        if (!fullItemData) {
+        // For custom properties or when no pre-extracted fields, extract from full item
+        if (fullItemData) {
+            allFields = extractAllFields(fullItemData);
+        } else {
             resultsContainer.appendChild(createElement('div', { 
                 className: 'no-fields-message' 
             }, 'No full item data available'));
             return;
         }
-        
-        // Extract all fields from the full item data instead of just the property value
-        allFields = extractAllFields(fullItemData);
     }
     
     const filteredFields = searchFields(allFields, searchTerm);

@@ -423,7 +423,6 @@ export function setupReconciliationStep(state) {
         
         // Extract data for processing
         const mappedKeys = validation.availableMappedKeys;
-        const manualProperties = currentState.mappings.manualProperties || [];
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
         
         // Check if we already have reconciliation data from a previous session
@@ -435,11 +434,11 @@ export function setupReconciliationStep(state) {
             isReturningToStep = true;
         } else {
             // Initialize reconciliation progress
-            const totalCells = calculateTotalReconciliableCells(data, mappedKeys, manualProperties);
+            const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
             state.setReconciliationProgress(0, totalCells);
             
             // Initialize reconciliation data structure using extracted function
-            const newData = modules.initializeReconciliationDataStructure(data, mappedKeys, manualProperties, state);
+            const newData = modules.initializeReconciliationDataStructure(data, mappedKeys, state);
             // Clear existing data and copy new data (mutate, don't reassign)
             Object.keys(reconciliationData).forEach(key => delete reconciliationData[key]);
             Object.assign(reconciliationData, newData);
@@ -449,7 +448,7 @@ export function setupReconciliationStep(state) {
         modules.updateProceedButton();
         
         // Create reconciliation table
-        await modules.createReconciliationTable(data, mappedKeys, manualProperties, isReturningToStep);
+        await modules.createReconciliationTable(data, mappedKeys, isReturningToStep);
         
         // Update state
         state.updateState('reconciliationData', reconciliationData);

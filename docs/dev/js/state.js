@@ -52,7 +52,6 @@ export function setupState() {
             nonLinkedKeys: [],
             mappedKeys: [],
             ignoredKeys: [],
-            manualProperties: [],
             transformationBlocks: {}, // mappingId -> array of transformation blocks
             selectedTransformationFields: {} // mappingId -> selected field key
         },
@@ -695,9 +694,6 @@ export function setupState() {
         if (!state.mappings.ignoredKeys) {
             state.mappings.ignoredKeys = [];
         }
-        if (!state.mappings.manualProperties) {
-            state.mappings.manualProperties = [];
-        }
         if (!state.mappings.transformationBlocks) {
             state.mappings.transformationBlocks = {};
         }
@@ -772,53 +768,6 @@ export function setupState() {
         persistState();
     }
     
-    /**
-     * Adds a manual property
-     * @param {Object} manualProperty - Manual property object with property, defaultValue, isRequired
-     */
-    function addManualProperty(manualProperty) {
-        ensureMappingArrays();
-        
-        const oldValue = [...state.mappings.manualProperties];
-        
-        // Check if property already exists
-        const existingIndex = state.mappings.manualProperties.findIndex(p => p.property.id === manualProperty.property.id);
-        if (existingIndex === -1) {
-            state.mappings.manualProperties.push({
-                ...manualProperty,
-                addedAt: new Date().toISOString()
-            });
-            state.hasUnsavedChanges = true;
-            
-            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-                path: 'mappings.manualProperties',
-                oldValue,
-                newValue: [...state.mappings.manualProperties]
-            });
-        }
-    }
-    
-    /**
-     * Removes a manual property by property ID
-     * @param {String} propertyId - The Wikidata property ID to remove
-     */
-    function removeManualProperty(propertyId) {
-        ensureMappingArrays();
-        
-        const oldValue = [...state.mappings.manualProperties];
-        const index = state.mappings.manualProperties.findIndex(p => p.property.id === propertyId);
-        
-        if (index > -1) {
-            state.mappings.manualProperties.splice(index, 1);
-            state.hasUnsavedChanges = true;
-            
-            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-                path: 'mappings.manualProperties',
-                oldValue,
-                newValue: [...state.mappings.manualProperties]
-            });
-        }
-    }
     
     /**
      * Loads mock data for testing purposes
@@ -890,7 +839,14 @@ export function setupState() {
             order: state.mappings.transformationBlocks[mappingId].length
         };
         
-        state.mappings.transformationBlocks[mappingId].push(blockWithId);
+        // Check if a block with this ID already exists
+        const existingBlockIndex = state.mappings.transformationBlocks[mappingId].findIndex(b => b.id === blockWithId.id);
+        if (existingBlockIndex !== -1) {
+            // Update existing block instead of adding duplicate
+            state.mappings.transformationBlocks[mappingId][existingBlockIndex] = blockWithId;
+        } else {
+            state.mappings.transformationBlocks[mappingId].push(blockWithId);
+        }
         state.hasUnsavedChanges = true;
         
         eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
@@ -1199,8 +1155,6 @@ export function setupState() {
         addToMappingCategory,
         removeFromMappingCategory,
         ensureMappingArrays,
-        addManualProperty,
-        removeManualProperty,
         // Convenience methods for transformation blocks
         generateMappingId,
         addTransformationBlock,

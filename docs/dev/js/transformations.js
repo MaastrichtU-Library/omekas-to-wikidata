@@ -73,7 +73,8 @@ export const BLOCK_METADATA = {
  * @returns {string} The transformed value
  */
 export function applyTransformation(value, block) {
-    if (!value || !block || !block.type || !block.config) {
+    // Allow empty strings through, but protect against null/undefined
+    if (value === null || value === undefined || !block || !block.type || !block.config) {
         return value;
     }
     
@@ -270,19 +271,41 @@ function applyFindReplaceTransformation(value, config) {
 function applyComposeTransformation(value, config) {
     const { pattern = '{{value}}', sourceData = {} } = config;
     
+    console.log('[COMPOSE_TRANSFORM] Applying compose transformation:', {
+        inputValue: value,
+        pattern: pattern,
+        hasSourceData: !!sourceData && Object.keys(sourceData).length > 0,
+        sourceDataKeys: Object.keys(sourceData || {}).slice(0, 5)  // Show first 5 keys
+    });
+    
     if (!pattern) return value;
     
     let result = pattern;
     
     // Replace {{value}} with the current value
     result = result.replace(/\{\{value\}\}/g, value || '');
+    console.log('[COMPOSE_TRANSFORM] After {{value}} replacement:', result);
     
     // Replace {{field:path}} with values from source data
     result = result.replace(/\{\{field:([^}]+)\}\}/g, (match, fieldPath) => {
         const fieldValue = getValueByPath(sourceData, fieldPath);
+        console.log('[COMPOSE_TRANSFORM] Replacing field:', {
+            fieldPath,
+            fieldValue,
+            found: !!fieldValue
+        });
         return fieldValue || '';
     });
+    console.log('[COMPOSE_TRANSFORM] After {{field:path}} replacement:', result);
     
+    // Replace {{wikidata:QID}} references (these remain as-is for user reference)
+    // The QIDs themselves are the values we want to keep
+    result = result.replace(/\{\{wikidata:(Q\d+)\}\}/g, (match, qid) => {
+        console.log('[COMPOSE_TRANSFORM] Found Wikidata QID:', qid);
+        return qid;  // Return just the QID without the wrapper
+    });
+    
+    console.log('[COMPOSE_TRANSFORM] Final result:', result);
     return result;
 }
 
@@ -322,7 +345,17 @@ function getValueByPath(obj, path) {
         let current = obj;
         
         for (const key of keys) {
-            if (current && typeof current === 'object' && current[key] !== undefined) {
+            // Check if key is a number (array index)
+            const isArrayIndex = /^\d+$/.test(key);
+            
+            if (isArrayIndex && Array.isArray(current)) {
+                const index = parseInt(key, 10);
+                if (index >= 0 && index < current.length) {
+                    current = current[index];
+                } else {
+                    return '';
+                }
+            } else if (current && typeof current === 'object' && current[key] !== undefined) {
                 current = current[key];
             } else {
                 return '';
@@ -334,6 +367,7 @@ function getValueByPath(obj, path) {
             return current;
         } else if (current && typeof current === 'object') {
             // Try to extract meaningful value from Omeka S structures
+            if (current['@id']) return String(current['@id']);
             if (current['@value']) return String(current['@value']);
             if (current['o:label']) return String(current['o:label']);
             if (current['value']) return String(current['value']);

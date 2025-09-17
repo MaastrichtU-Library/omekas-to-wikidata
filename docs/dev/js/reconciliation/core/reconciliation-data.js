@@ -17,7 +17,7 @@ import { applyTransformationChain } from '../../transformations.js';
  * - Resource planning and performance estimation
  * - User expectation management for large datasets
  */
-export function calculateTotalReconciliableCells(data, mappedKeys, manualProperties = []) {
+export function calculateTotalReconciliableCells(data, mappedKeys) {
     let total = 0;
     data.forEach(item => {
         // Count mapped property cells
@@ -26,9 +26,6 @@ export function calculateTotalReconciliableCells(data, mappedKeys, manualPropert
             const values = extractPropertyValues(item, keyObj);
             total += values.length;
         });
-        
-        // Count manual property cells (each manual property counts as 1 cell per item)
-        total += manualProperties.length;
     });
     return total;
 }
@@ -78,12 +75,101 @@ export function calculateTotalReconciliableCells(data, mappedKeys, manualPropert
  */
 export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     // Handle both string keys and key objects
-    let key, selectedAtField;
+    let key, selectedAtField, isCustomProperty;
     if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
         key = keyOrKeyObj.key;
         selectedAtField = keyOrKeyObj.selectedAtField;
+        isCustomProperty = keyOrKeyObj.isCustomProperty === true;
     } else {
         key = keyOrKeyObj;
+    }
+    
+    // Check if this is a custom property
+    if (!isCustomProperty && key) {
+        isCustomProperty = key.startsWith('custom_');
+    }
+    
+    // Special handling for custom properties - they generate values through transformations
+    if (isCustomProperty) {
+        console.log('[EXTRACT] Custom property detected:', {
+            key,
+            keyOrKeyObj,
+            isCustomProperty
+        });
+        
+        // Custom properties don't extract from data, they generate through compose patterns
+        // Return a placeholder value that will be transformed
+        let extractedValues = [''];  // Empty string as base value for transformation
+        
+        // Apply transformations if state is provided
+        if (state) {
+            try {
+                let propertyId;
+                if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.property && keyOrKeyObj.property.id) {
+                    propertyId = keyOrKeyObj.property.id;
+                }
+                
+                console.log('[EXTRACT] Looking for transformations, propertyId:', propertyId);
+                
+                // Generate mapping ID to look up transformations
+                if (propertyId) {
+                    const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
+                    const transformationBlocks = state.getTransformationBlocks(mappingId);
+                    
+                    console.log('[EXTRACT] Transformation blocks for custom property:', {
+                        mappingId,
+                        transformationBlocks,
+                        blocksCount: transformationBlocks?.length || 0
+                    });
+                    
+                    if (transformationBlocks && transformationBlocks.length > 0) {
+                        // For custom properties, ensure sourceData is available in compose blocks
+                        const enhancedBlocks = transformationBlocks.map(block => {
+                            if (block.type === 'compose') {
+                                console.log('[EXTRACT] Compose block config before enhancement:', block.config);
+                                if (!block.config.sourceData) {
+                                    // Add the current item as sourceData for compose transformations
+                                    return {
+                                        ...block,
+                                        config: {
+                                            ...block.config,
+                                            sourceData: item
+                                        }
+                                    };
+                                }
+                            }
+                            return block;
+                        });
+                        
+                        console.log('[EXTRACT] Enhanced blocks for transformation:', enhancedBlocks);
+                        
+                        // Apply transformations
+                        extractedValues = extractedValues.map(originalValue => {
+                            const transformationResult = applyTransformationChain(originalValue, enhancedBlocks);
+                            // Get the final transformed value
+                            const finalValue = transformationResult[transformationResult.length - 1]?.value || originalValue;
+                            console.log('[EXTRACT] Transformation result:', {
+                                originalValue,
+                                transformationResult,
+                                finalValue
+                            });
+                            return finalValue;
+                        });
+                    } else {
+                        console.log('[EXTRACT] No transformation blocks found for custom property');
+                    }
+                } else {
+                    console.log('[EXTRACT] No propertyId found for custom property');
+                }
+            } catch (error) {
+                console.warn('[EXTRACT] Error applying transformations to custom property:', error);
+            }
+        } else {
+            console.log('[EXTRACT] No state provided for custom property transformation');
+        }
+        
+        console.log('[EXTRACT] Final extracted values for custom property:', extractedValues);
+        return extractedValues;
     }
     
     const value = item[key];
@@ -161,8 +247,8 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
 /**
  * Combine and sort all properties (mapped and manual) to prioritize label, description, aliases, and instance of
  */
-export function combineAndSortProperties(mappedKeys, manualProperties) {
-    // Create a unified array with both mapped and manual properties
+export function combineAndSortProperties(mappedKeys) {
+    // Create array with mapped properties only
     const allProperties = [];
     
     // Add mapped properties with a type indicator
@@ -174,38 +260,16 @@ export function combineAndSortProperties(mappedKeys, manualProperties) {
         });
     });
     
-    // Add manual properties with a type indicator  
-    manualProperties.forEach((manualProp, index) => {
-        allProperties.push({
-            type: 'manual',
-            data: manualProp,
-            originalIndex: index + mappedKeys.length // Offset by mapped keys length
-        });
-    });
-    
-    // Sort the combined array
+    // Sort the array
     return allProperties.sort((a, b) => {
         const getPriority = (item) => {
-            let label = '';
-            let id = '';
-            
             if (item.type === 'mapped') {
                 const property = typeof item.data === 'string' ? null : item.data.property;
                 if (!property) return 100;
-                label = property.label ? property.label.toLowerCase() : '';
-                id = property.id || '';
-            } else if (item.type === 'manual') {
-                label = item.data.property.label ? item.data.property.label.toLowerCase() : '';
-                id = item.data.property.id || '';
             }
             
-            // Priority order: label, description, aliases, instance of (P31), then everything else
-            if (label === 'label') return 1;
-            if (label === 'description') return 2;
-            if (label === 'aliases' || label === 'alias') return 3;
-            if (id === 'P31' || label === 'instance of') return 4;
-            
-            return 50; // All other properties maintain relative order
+            // All properties maintain their original relative order
+            return 1;
         };
         
         const aPriority = getPriority(a);
@@ -375,7 +439,7 @@ export function validateReconciliationRequirements(currentState) {
  * @param {Array} manualProperties - Array of manual properties
  * @param {Object} [state] - Optional state object for applying transformations
  */
-export function initializeReconciliationDataStructure(data, mappedKeys, manualProperties, state = null) {
+export function initializeReconciliationDataStructure(data, mappedKeys, state = null) {
     const reconciliationData = {};
     
     data.forEach((item, index) => {
@@ -405,29 +469,6 @@ export function initializeReconciliationDataStructure(data, mappedKeys, manualPr
             };
         });
         
-        // Initialize each manual property with default values
-        manualProperties.forEach(manualProp => {
-            const propertyId = manualProp.property.id;
-            const defaultValue = manualProp.defaultValue;
-            
-            // Create default values array - manual properties get one value per item
-            const values = defaultValue ? [defaultValue] : [''];
-            
-            reconciliationData[itemId].properties[propertyId] = {
-                originalValues: values,
-                references: [], // References specific to this property
-                isManualProperty: true, // Mark as manual property
-                manualPropertyData: manualProp, // Store complete manual property data
-                reconciled: values.map(() => ({
-                    status: 'pending', // pending, reconciled, skipped, failed
-                    matches: [],
-                    selectedMatch: null,
-                    manualValue: defaultValue || null,
-                    qualifiers: {},
-                    confidence: 0
-                }))
-            };
-        });
     });
     
     return reconciliationData;

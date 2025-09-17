@@ -68,17 +68,13 @@ import {
     populateLists,
     updateSectionCounts,
     populateKeyList,
-    populateManualPropertiesList,
     moveKeyToCategory,
     mapKeyToProperty,
     moveToNextUnmappedKey 
 } from '../mapping/ui/mapping-lists.js';
 import { 
     openMappingModal,
-    openManualPropertyEditModal,
-    openAddManualPropertyModal,
     createMappingModalContent,
-    createUnifiedPropertyModalContent,
     openRawJsonModal 
 } from '../mapping/ui/property-modals.js';
 import { initializeEntitySchemaSelector } from '../entity-schemas/entity-schema-selector.js';
@@ -109,7 +105,6 @@ export function setupMappingStep(state) {
     window.mappingStepState = state;
     
     // Initialize DOM elements
-    const addManualPropertyBtn = document.getElementById('add-manual-property');
     const loadMappingBtn = document.getElementById('load-mapping');
     const saveMappingBtn = document.getElementById('save-mapping');
     const loadMappingFileInput = document.getElementById('load-mapping-file');
@@ -199,14 +194,24 @@ export function setupMappingStep(state) {
         });
     }
     
-    // Add manual property functionality
-    if (addManualPropertyBtn) {
-        addManualPropertyBtn.addEventListener('click', () => {
-            openAddManualPropertyModal();
+    // Add Wikidata property functionality
+    const addWikidataPropertyBtn = document.getElementById('add-wikidata-property');
+    if (addWikidataPropertyBtn) {
+        addWikidataPropertyBtn.addEventListener('click', () => {
+            // Create empty key data for the modal
+            const emptyKeyData = {
+                key: '',
+                type: 'unknown',
+                frequency: 0,
+                totalItems: 0,
+                sampleValue: ''
+            };
+            
+            // Open the mapping modal with empty data
+            openMappingModal(emptyKeyData);
         });
     }
     
     // Export functions globally for use by other modules
     window.openMappingModal = openMappingModal;
-    window.openManualPropertyEditModal = openManualPropertyEditModal;
 }

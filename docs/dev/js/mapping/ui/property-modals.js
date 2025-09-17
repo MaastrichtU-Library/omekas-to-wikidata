@@ -7,7 +7,5 @@
 
 // Re-export all modal functions for backward compatibility
 export * from './modals/mapping-modal.js';
-export * from './modals/manual-property-modal.js';
-export * from './modals/add-property-modal.js';
 export * from './modals/json-modal.js';
 export * from './modals/modal-helpers.js';
