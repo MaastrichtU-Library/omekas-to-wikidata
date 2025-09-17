@@ -99,6 +99,82 @@ function insertWikidataItemReference(item) {
 }
 
 /**
+ * Handle selection of metadata field (Labels, Descriptions, Aliases)
+ */
+function selectMetadataField(metadataOption) {
+    // Clear any existing property selection
+    const searchInput = document.getElementById('property-search-input');
+    if (searchInput) searchInput.value = '';
+    
+    const suggestions = document.getElementById('property-suggestions');
+    if (suggestions) suggestions.innerHTML = '';
+    
+    // Remove selected class from all buttons
+    document.querySelectorAll('.metadata-select-button').forEach(btn => {
+        btn.classList.remove('selected');
+        btn.style.borderColor = '#ddd';
+        btn.style.background = 'white';
+    });
+    
+    // Add selected class to clicked button
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('selected');
+        event.currentTarget.style.borderColor = '#3366cc';
+        event.currentTarget.style.background = '#e6f0ff';
+    }
+    
+    // Create metadata property object
+    const metadataProperty = {
+        id: metadataOption.id,
+        label: metadataOption.label,
+        description: metadataOption.description,
+        datatype: 'monolingualtext',
+        datatypeLabel: 'Monolingual text',
+        isMetadata: true,
+        helpUrl: metadataOption.helpUrl
+    };
+    
+    // Store as selected property
+    window.currentMappingSelectedProperty = metadataProperty;
+    
+    // Update the selected property display
+    const selectedSection = document.getElementById('selected-property');
+    const selectedDetails = document.getElementById('selected-property-details');
+    
+    if (selectedSection && selectedDetails) {
+        selectedSection.style.display = 'block';
+        selectedDetails.innerHTML = `
+            <div class="property-info metadata-property-info">
+                <h3>${metadataOption.icon} ${metadataProperty.label}</h3>
+                <p class="property-id">Metadata Field</p>
+                <p>${metadataProperty.description}</p>
+                <a href="${metadataOption.helpUrl}" target="_blank" rel="noopener">
+                    Learn more about ${metadataProperty.label} →
+                </a>
+                <div class="metadata-notice" style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+                    <strong>Note:</strong> This is a metadata field for Wikidata entities. 
+                    Values will be treated as language-specific text.
+                </div>
+            </div>
+        `;
+    }
+    
+    // Update datatype display
+    const datatypeDisplay = document.getElementById('detected-datatype');
+    if (datatypeDisplay) {
+        datatypeDisplay.innerHTML = `
+            <span class="datatype-label">Monolingual text</span>
+        `;
+    }
+    
+    // Show datatype section
+    const datatypeSection = document.getElementById('datatype-info-section');
+    if (datatypeSection) {
+        datatypeSection.style.display = 'block';
+    }
+}
+
+/**
  * Opens the mapping modal for a key
  */
 export function openMappingModal(keyData) {
@@ -162,7 +238,8 @@ export function openMappingModal(keyData) {
                             type: 'custom',
                             frequency: keyData.frequency || 1,
                             totalItems: keyData.totalItems || 1,
-                            isCustomProperty: true
+                            isCustomProperty: true,
+                            isMetadata: selectedProperty.isMetadata || false
                         };
                         
                         console.log('[SAVE] Custom key data:', customKeyData);
@@ -484,7 +561,7 @@ export function createMappingModalContent(keyData) {
         
         // Add the compose block to the transformation state if it's not already there
         const currentState = window.mappingStepState.getState();
-        const existingBlocks = currentState.transformationBlocks?.[mappingId] || [];
+        const existingBlocks = currentState.mappings?.transformationBlocks?.[mappingId] || [];
         const hasExistingComposeBlock = existingBlocks.find(block => block.id === composeBlock.id);
         
         console.log('[MODAL] Before adding block:', {
@@ -806,6 +883,114 @@ export function createMappingModalContent(keyData) {
             </div>
         `;
     } else {
+        // For custom properties, add metadata quick select buttons
+        if (isCustomProperty) {
+            // Add metadata quick select buttons
+            const metadataButtonsSection = createElement('div', {
+                className: 'metadata-buttons-section',
+                style: 'margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px solid #e0e0e0;'
+            });
+            
+            const metadataHeader = createElement('h4', {
+                style: 'margin-bottom: 10px;'
+            }, 'Quick Select Metadata Fields');
+            
+            const metadataDescription = createElement('p', {
+                style: 'margin-bottom: 15px; font-size: 0.9em; color: #666;'
+            }, 'Select one of these to map your data to Wikidata entity metadata:');
+            
+            const buttonsContainer = createElement('div', {
+                className: 'metadata-buttons-grid',
+                style: 'display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;'
+            });
+            
+            // Create metadata buttons
+            const metadataOptions = [
+                {
+                    id: 'label',
+                    label: 'Labels',
+                    icon: '🏷️',
+                    description: 'Main name for entities',
+                    helpUrl: 'https://www.wikidata.org/wiki/Help:Label'
+                },
+                {
+                    id: 'description',
+                    label: 'Descriptions',
+                    icon: '📝',
+                    description: 'Short disambiguating phrases',
+                    helpUrl: 'https://www.wikidata.org/wiki/Help:Description'
+                },
+                {
+                    id: 'aliases',
+                    label: 'Aliases',
+                    icon: '🔄',
+                    description: 'Alternative names',
+                    helpUrl: 'https://www.wikidata.org/wiki/Help:Aliases'
+                }
+            ];
+            
+            metadataOptions.forEach(option => {
+                const button = createElement('button', {
+                    className: 'metadata-select-button',
+                    style: `
+                        padding: 12px;
+                        border: 2px solid #ddd;
+                        background: white;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        text-align: center;
+                    `,
+                    onClick: () => selectMetadataField(option),
+                    onMouseOver: (e) => {
+                        if (!e.target.classList.contains('selected')) {
+                            e.target.style.borderColor = '#3366cc';
+                            e.target.style.background = '#f0f4ff';
+                        }
+                    },
+                    onMouseOut: (e) => {
+                        if (!e.target.classList.contains('selected')) {
+                            e.target.style.borderColor = '#ddd';
+                            e.target.style.background = 'white';
+                        }
+                    }
+                });
+                
+                button.innerHTML = `
+                    <div style="font-size: 1.5em; margin-bottom: 5px;">${option.icon}</div>
+                    <div style="font-weight: bold; margin-bottom: 3px;">${option.label}</div>
+                    <div style="font-size: 0.8em; color: #666;">${option.description}</div>
+                `;
+                
+                buttonsContainer.appendChild(button);
+            });
+            
+            metadataButtonsSection.appendChild(metadataHeader);
+            metadataButtonsSection.appendChild(metadataDescription);
+            metadataButtonsSection.appendChild(buttonsContainer);
+            searchSection.appendChild(metadataButtonsSection);
+            
+            // Add divider
+            const divider = createElement('div', {
+                style: 'margin: 20px 0; border-bottom: 1px solid #ddd; position: relative;'
+            });
+            
+            const orLabel = createElement('span', {
+                style: `
+                    position: absolute;
+                    top: -10px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: white;
+                    padding: 0 10px;
+                    color: #999;
+                `
+            }, 'OR');
+            
+            divider.appendChild(orLabel);
+            searchSection.appendChild(divider);
+        }
+        
         // Check if entity schema is selected to conditionally add dropdown
         const schemaState = window.mappingStepState?.getState();
         const selectedSchema = schemaState?.selectedEntitySchema;
@@ -822,7 +1007,7 @@ export function createMappingModalContent(keyData) {
             </div>
         ` : '';
         
-        searchSection.innerHTML = `
+        const regularSearchHTML = `
             ${entitySchemaDropdownHTML}
             <h4>Search Properties</h4>
             <input type="text" id="property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
@@ -839,6 +1024,11 @@ export function createMappingModalContent(keyData) {
                 </div>
             </div>
         `;
+        
+        // Create a container div for the regular search HTML
+        const regularSearchContainer = createElement('div');
+        regularSearchContainer.innerHTML = regularSearchHTML;
+        searchSection.appendChild(regularSearchContainer);
     }
     rightColumn.appendChild(searchSection);
     
