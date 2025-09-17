@@ -320,7 +320,6 @@ export function createValidationUI(container, value, constraints, onUpdate) {
         }
     };
 }
-}
 
 /**
  * Get status icon for validation result
