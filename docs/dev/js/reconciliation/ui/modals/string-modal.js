@@ -305,12 +305,16 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
             ${isMonolingual ? `
                 <div class="language-selection">
                     <div class="section-title">Language <span class="required">*</span></div>
+                    <div class="language-help-text">
+                        Select the language for this text value. If no language is specified, the text will be treated as the default for all languages.
+                    </div>
                     <div class="language-container">
                         <input type="text" 
                                id="language-search" 
                                class="language-input" 
-                               placeholder="Search for language..." 
+                               placeholder="Type to search languages (e.g., English, German, fr)..." 
                                autocomplete="off">
+                        <div class="language-search-status hidden" id="language-search-status"></div>
                         <div class="language-dropdown hidden" id="language-dropdown"></div>
                         <input type="hidden" id="selected-language-code" value="">
                     </div>
@@ -334,6 +338,8 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
  * @param {HTMLElement} modalElement - The modal element
  */
 export function initializeStringModal(modalElement) {
+    console.log('🔧 initializeStringModal called with:', modalElement);
+    
     const originalValue = modalElement.dataset.originalValue;
     const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
@@ -343,6 +349,11 @@ export function initializeStringModal(modalElement) {
         JSON.parse(modalElement.dataset.propertyData) : null;
     const confirmedData = modalElement.dataset.confirmedData ? 
         JSON.parse(modalElement.dataset.confirmedData) : null;
+    
+    console.log('🔧 Modal initialization data:', {
+        originalValue, currentValue, property, isMonolingual, 
+        hasConfirmedValue, propertyData, confirmedData
+    });
     
     // Find the source table cell that opened this modal
     const sourceCell = findSourceTableCell(modalElement.dataset.itemId, property, parseInt(modalElement.dataset.valueIndex));
@@ -367,16 +378,20 @@ export function initializeStringModal(modalElement) {
     
     // Set up string editor with enhanced functionality
     const stringEditor = document.getElementById('string-editor');
+    console.log('🔧 String editor found:', stringEditor);
     if (stringEditor) {
         setupStringEditor(stringEditor, property, propertyData);
     }
     
     // Set up language selection for monolingual text
+    console.log('🔧 Checking if monolingual:', isMonolingual);
     if (isMonolingual) {
+        console.log('🌐 Setting up language selection for monolingual text');
         setupLanguageSelection();
         
         // Restore confirmed language if available
         if (confirmedData && confirmedData.language) {
+            console.log('🌐 Restoring confirmed language:', confirmedData.language);
             window.currentModalContext.selectedLanguage = {
                 code: confirmedData.language,
                 label: confirmedData.languageLabel || confirmedData.language
@@ -385,6 +400,7 @@ export function initializeStringModal(modalElement) {
     }
     
     // Initial validation and UI state
+    console.log('🔧 Updating validation state');
     updateValidationState();
 }
 
@@ -437,11 +453,24 @@ function setupStringEditor(editor, property, propertyData) {
  * Set up language selection functionality for monolingual text
  */
 function setupLanguageSelection() {
+    console.log('🌐 setupLanguageSelection called');
+    
     const languageSearch = document.getElementById('language-search');
     const languageDropdown = document.getElementById('language-dropdown');
+    const languageStatus = document.getElementById('language-search-status');
     const selectedLanguageCode = document.getElementById('selected-language-code');
     
-    if (!languageSearch || !languageDropdown) return;
+    console.log('🌐 Language DOM elements found:', {
+        languageSearch: !!languageSearch,
+        languageDropdown: !!languageDropdown,
+        languageStatus: !!languageStatus,
+        selectedLanguageCode: !!selectedLanguageCode
+    });
+    
+    if (!languageSearch || !languageDropdown) {
+        console.error('🌐 Missing required language DOM elements!');
+        return;
+    }
     
     // Set default language from storage or confirmed data
     const storedLanguage = getStoredLanguage();
@@ -452,83 +481,318 @@ function setupLanguageSelection() {
         languageSearch.value = defaultLanguage.label;
         selectedLanguageCode.value = defaultLanguage.code;
         window.currentModalContext.selectedLanguage = defaultLanguage;
+        updateConfirmButtonState();
     }
     
     let searchTimeout;
+    let currentSearchQuery = '';
+    
+    console.log('🌐 Attaching ALL event listeners to language search input');
+    
+    // Add comprehensive keystroke logging
+    languageSearch.addEventListener('keydown', function(event) {
+        console.log('⌨️ KEYDOWN event fired! Key:', event.key, 'Code:', event.code, 'Value:', this.value);
+    });
+    
+    languageSearch.addEventListener('keyup', function(event) {
+        console.log('⌨️ KEYUP event fired! Key:', event.key, 'Code:', event.code, 'Value:', this.value);
+    });
+    
+    languageSearch.addEventListener('keypress', function(event) {
+        console.log('⌨️ KEYPRESS event fired! Key:', event.key, 'Code:', event.code, 'Value:', this.value);
+    });
+    
+    languageSearch.addEventListener('change', function(event) {
+        console.log('⌨️ CHANGE event fired! Value:', this.value, 'Event:', event);
+    });
+    
+    languageSearch.addEventListener('focus', function(event) {
+        console.log('⌨️ FOCUS event fired! Value:', this.value, 'Event:', event);
+    });
+    
+    languageSearch.addEventListener('blur', function(event) {
+        console.log('⌨️ BLUR event fired! Value:', this.value, 'Event:', event);
+    });
     
     // Search languages as user types
-    languageSearch.addEventListener('input', function() {
+    languageSearch.addEventListener('input', function(event) {
+        console.log('🌐 Language input event fired! Value:', this.value, 'Event:', event);
+        
         clearTimeout(searchTimeout);
         const query = this.value.trim();
+        currentSearchQuery = query;
         
-        if (query.length < 2) {
-            languageDropdown.classList.add('hidden');
+        console.log('🌐 Processing language search query:', query);
+        
+        // Clear selection if user is typing something different
+        if (window.currentModalContext.selectedLanguage && 
+            query !== window.currentModalContext.selectedLanguage.label) {
+            selectedLanguageCode.value = '';
+            window.currentModalContext.selectedLanguage = null;
+            updateConfirmButtonState();
+        }
+        
+        if (query.length < 1) {
+            console.log('🌐 Query too short, hiding dropdown');
+            hideLanguageDropdown();
             return;
         }
         
+        // Show loading state for queries longer than 1 character
+        if (query.length >= 2) {
+            console.log('🌐 Showing loading status for query:', query);
+            showLanguageSearchStatus('Searching languages...', 'loading');
+        }
+        
         searchTimeout = setTimeout(async () => {
-            try {
-                const languages = await searchWikidataLanguages(query);
-                displayLanguageResults(languages);
-            } catch (error) {
-                console.error('Language search failed:', error);
+            console.log('🌐 Executing language search for:', query);
+            
+            // Only search if this is still the current query
+            if (currentSearchQuery !== query) {
+                console.log('🌐 Query changed, skipping search');
+                return;
             }
-        }, 300);
+            
+            try {
+                console.log('🌐 Calling searchWikidataLanguages with:', query);
+                const languages = await searchWikidataLanguages(query);
+                console.log('🌐 Language search returned:', languages);
+                
+                // Verify this is still the current search
+                if (currentSearchQuery === query) {
+                    displayLanguageResults(languages, query);
+                }
+            } catch (error) {
+                console.error('🌐 Language search failed:', error);
+                if (currentSearchQuery === query) {
+                    showLanguageSearchStatus('Search failed. Try typing a different language name.', 'error');
+                    displayLanguageResults([], query);
+                }
+            }
+        }, query.length >= 3 ? 300 : 500); // Longer delay for short queries
+    });
+    
+    // Handle focus to show recent results if available
+    languageSearch.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2 && languageDropdown.innerHTML.trim()) {
+            languageDropdown.classList.remove('hidden');
+        }
     });
     
     // Hide dropdown when clicking outside
     document.addEventListener('click', function(event) {
         if (!event.target.closest('.language-container')) {
-            languageDropdown.classList.add('hidden');
+            hideLanguageDropdown();
         }
     });
 }
 
 /**
- * Display language search results
- * @param {Array} languages - Array of language objects
+ * Show language search status message
+ * @param {string} message - Status message
+ * @param {string} type - Status type (loading, error, info)
  */
-function displayLanguageResults(languages) {
+function showLanguageSearchStatus(message, type = 'info') {
+    const statusElement = document.getElementById('language-search-status');
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = `language-search-status ${type}`;
+        statusElement.classList.remove('hidden');
+        
+        // Auto-hide after 3 seconds for non-loading messages
+        if (type !== 'loading') {
+            setTimeout(() => {
+                statusElement.classList.add('hidden');
+            }, 3000);
+        }
+    }
+}
+
+/**
+ * Hide language search status
+ */
+function hideLanguageSearchStatus() {
+    const statusElement = document.getElementById('language-search-status');
+    if (statusElement) {
+        statusElement.classList.add('hidden');
+    }
+}
+
+/**
+ * Hide language dropdown and status
+ */
+function hideLanguageDropdown() {
+    const languageDropdown = document.getElementById('language-dropdown');
+    if (languageDropdown) {
+        languageDropdown.classList.add('hidden');
+    }
+    hideLanguageSearchStatus();
+}
+
+/**
+ * Display language search results with enhanced data
+ * @param {Array} languages - Array of language objects
+ * @param {string} query - Original search query
+ */
+function displayLanguageResults(languages, query = '') {
     const languageDropdown = document.getElementById('language-dropdown');
     
+    hideLanguageSearchStatus(); // Hide loading status
+    
     if (languages.length === 0) {
-        languageDropdown.innerHTML = '<div class="no-results">No languages found</div>';
+        if (query.length >= 2) {
+            languageDropdown.innerHTML = `
+                <div class="no-results">
+                    <div class="no-results-message">No languages found for "${escapeHtml(query)}"</div>
+                    <div class="no-results-hint">Try typing a different language name or code (e.g., "en", "English", "German")</div>
+                </div>
+            `;
+        } else {
+            languageDropdown.innerHTML = `
+                <div class="search-hint">
+                    <div class="search-hint-message">Start typing to search languages</div>
+                </div>
+            `;
+        }
     } else {
-        languageDropdown.innerHTML = languages.map(lang => `
-            <div class="language-option" onclick="selectLanguage('${escapeHtml(lang.code)}', '${escapeHtml(lang.label)}')">
-                <span class="language-label">${escapeHtml(lang.label)}</span>
-                <span class="language-code">${escapeHtml(lang.code)}</span>
-            </div>
-        `).join('');
+        languageDropdown.innerHTML = languages.map(lang => {
+            // Create enhanced language option with rich data
+            const languageData = JSON.stringify({
+                id: lang.id || null,
+                code: lang.code,
+                label: lang.label,
+                description: lang.description || null,
+                iso639_1: lang.iso639_1 || null,
+                iso639_3: lang.iso639_3 || null,
+                wikimediaCode: lang.wikimediaCode || null,
+                source: lang.source || 'unknown'
+            });
+            
+            // Build display elements
+            let codesDisplay = '';
+            const codes = [];
+            if (lang.iso639_1) codes.push(lang.iso639_1);
+            if (lang.iso639_3 && lang.iso639_3 !== lang.iso639_1) codes.push(lang.iso639_3);
+            if (codes.length > 0) {
+                codesDisplay = `<span class="language-codes">[${codes.join(', ')}]</span>`;
+            }
+            
+            const sourceIndicator = lang.source === 'wikidata' ? 
+                '<span class="language-source-indicator" title="From Wikidata">🌐</span>' : '';
+            
+            const description = lang.description ? 
+                `<div class="language-description">${escapeHtml(lang.description)}</div>` : '';
+            
+            return `
+                <div class="language-option enhanced" onclick="selectEnhancedLanguage(\`${languageData.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)">
+                    <div class="language-option-content">
+                        <div class="language-main-info">
+                            <span class="language-label">${escapeHtml(lang.label)}</span>
+                            ${codesDisplay}
+                            ${sourceIndicator}
+                        </div>
+                        ${description}
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
     
     languageDropdown.classList.remove('hidden');
 }
 
 /**
- * Select a language from the dropdown
+ * Select an enhanced language from the dropdown (new version)
+ * @param {string} languageDataString - JSON string of language data
+ */
+window.selectEnhancedLanguage = function(languageDataString) {
+    try {
+        const languageData = JSON.parse(languageDataString);
+        selectLanguageData(languageData);
+    } catch (error) {
+        console.error('Failed to parse language data:', error);
+        // Fallback to basic selection
+        const parts = languageDataString.split('|');
+        if (parts.length >= 2) {
+            selectLanguageData({ code: parts[0], label: parts[1] });
+        }
+    }
+};
+
+/**
+ * Select a language from the dropdown (legacy version for compatibility)
  * @param {string} code - Language code
  * @param {string} label - Language label
  */
 window.selectLanguage = function(code, label) {
+    selectLanguageData({ code, label });
+};
+
+/**
+ * Internal function to handle language selection with enhanced data
+ * @param {Object} languageData - Language data object
+ */
+function selectLanguageData(languageData) {
     const languageSearch = document.getElementById('language-search');
     const selectedLanguageCode = document.getElementById('selected-language-code');
-    const languageDropdown = document.getElementById('language-dropdown');
     
-    if (languageSearch && selectedLanguageCode) {
-        languageSearch.value = label;
-        selectedLanguageCode.value = code;
-        
-        const selectedLanguage = { code, label };
-        window.currentModalContext.selectedLanguage = selectedLanguage;
-        setStoredLanguage(selectedLanguage);
-        
-        languageDropdown.classList.add('hidden');
-        
-        // Update confirmation button state
-        updateConfirmButtonState();
+    if (!languageSearch || !selectedLanguageCode) {
+        console.error('Language selection elements not found');
+        return;
     }
-};
+    
+    // Use the best available code (prefer ISO 639-1, fallback to others)
+    const displayCode = languageData.iso639_1 || languageData.code;
+    const storageCode = languageData.code; // Store the actual code used by the system
+    
+    // Update form fields
+    languageSearch.value = languageData.label;
+    selectedLanguageCode.value = storageCode;
+    
+    // Create enhanced language object for storage
+    const selectedLanguage = {
+        id: languageData.id,
+        code: storageCode,
+        label: languageData.label,
+        description: languageData.description,
+        iso639_1: languageData.iso639_1,
+        iso639_3: languageData.iso639_3,
+        wikimediaCode: languageData.wikimediaCode,
+        source: languageData.source
+    };
+    
+    // Update modal context
+    window.currentModalContext.selectedLanguage = selectedLanguage;
+    
+    // Store language preference for future use (simplified version)
+    setStoredLanguage({
+        code: storageCode,
+        label: languageData.label
+    });
+    
+    // Hide dropdown and show success feedback
+    hideLanguageDropdown();
+    
+    // Enhanced feedback message
+    let feedbackMessage = `Selected: ${languageData.label}`;
+    if (displayCode !== languageData.label.toLowerCase()) {
+        feedbackMessage += ` [${displayCode}]`;
+    }
+    if (languageData.source === 'wikidata' && languageData.id) {
+        feedbackMessage += ` (${languageData.id})`;
+    }
+    
+    showLanguageSearchStatus(feedbackMessage, 'info');
+    
+    // Update confirmation button state
+    updateConfirmButtonState();
+    
+    // Visual feedback
+    languageSearch.style.backgroundColor = '#f0f8ff';
+    setTimeout(() => {
+        languageSearch.style.backgroundColor = '';
+    }, 1000);
+}
 
 /**
  * Show the original value hint below the input
