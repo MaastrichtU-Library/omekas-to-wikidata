@@ -167,23 +167,32 @@ The application follows a **modular, event-driven architecture**:
 - Purpose: Format and display reconciliation information
 - Key exports: `formatReconciliationStatus()`, `displayMatchScore()`
 
+**validation-engine.js**
+- Purpose: Enhanced validation system for string properties and external identifiers
+- Key exports: `extractRegexConstraints()`, `validateStringValue()`, `validateRealTime()`, `searchWikidataLanguages()`
 #### Modals (`reconciliation/ui/modals/`)
 
 **modal-factory.js**
 - Purpose: Central factory for creating reconciliation modals by data type
 - Key exports: `createReconciliationModalByType()`, `initializeReconciliationModal()`, `isModalTypeSupported()`
+- Supported types: wikibase-item, string, time, monolingualtext, external-id
 
 **wikidata-item-modal.js**
-- Purpose: Wikidata entity reconciliation modal
+- Purpose: Wikidata entity reconciliation modal interface
 - Key exports: `createWikidataItemModal()`, `initializeWikidataItemModal()`
 
 **string-modal.js**
-- Purpose: String and monolingual text reconciliation modal
+- Purpose: String and monolingual text reconciliation modal interface
 - Key exports: `createStringModal()`, `initializeStringModal()`
 
 **time-modal.js**
 - Purpose: Point-in-time (date) reconciliation modal with precision detection
 - Key exports: `createTimeModal()`, `initializeTimeModal()`
+
+**external-id-modal.js**
+- Purpose: External identifier validation modal with regex constraints
+- Key exports: `createExternalIdModal()`, `initializeExternalIdModal()`
+- Features: Real-time regex validation, user override capability, property constraint display
 
 ### Index Files
 - `mapping/index.js` - Re-exports all mapping module functions
