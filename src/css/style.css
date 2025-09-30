@@ -2041,6 +2041,27 @@ pre.sample-value {
     margin-left: 0.5rem;
 }
 
+/* Required property placeholder styling */
+.required-mapping-placeholder {
+    color: var(--danger-color);
+}
+
+.required-property-name {
+    font-weight: 600;
+    color: #d32f2f;
+    font-size: 0.9rem;
+}
+
+.required-property-description {
+    font-size: 0.75rem;
+    color: #c62828;
+    font-style: italic;
+}
+
+.required-mapping-item:hover {
+    background-color: rgba(244, 67, 54, 0.05);
+}
+
 .key-list li {
     padding: 0.3rem 0.5rem;
     border-bottom: 1px solid #eee;

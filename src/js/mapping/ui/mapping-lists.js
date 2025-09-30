@@ -227,21 +227,100 @@ export function updateSectionCounts(mappings) {
 }
 
 /**
+ * Checks if a mapping exists for a given property ID
+ */
+function hasMappingForProperty(keys, propertyId) {
+    return keys.some(keyObj => {
+        const property = typeof keyObj === 'object' ? keyObj.property : null;
+        return property?.id === propertyId;
+    });
+}
+
+/**
+ * Creates a required property placeholder element
+ */
+function createRequiredPropertyPlaceholder(propertyId, propertyLabel, description) {
+    // Create the main container
+    const placeholderDisplay = createElement('div', {
+        className: 'key-item-compact required-mapping-placeholder'
+    });
+
+    // Property name in red
+    const propertyName = createElement('span', {
+        className: 'required-property-name'
+    }, propertyLabel);
+    placeholderDisplay.appendChild(propertyName);
+
+    // Arrow separator
+    const arrow = createElement('span', {
+        className: 'property-info'
+    }, ' → ');
+    placeholderDisplay.appendChild(arrow);
+
+    // Description text
+    const descriptionText = createElement('span', {
+        className: 'required-property-description'
+    }, description);
+    placeholderDisplay.appendChild(descriptionText);
+
+    // Create list item with click handler
+    const onClick = propertyId === 'label'
+        ? () => window.openModalWithLabelPreselected?.()
+        : () => window.openModalWithInstanceOfPreselected?.();
+
+    const li = createListItem(placeholderDisplay, {
+        className: 'clickable key-item-clickable-compact required-mapping-item',
+        onClick: onClick
+    });
+
+    return li;
+}
+
+/**
  * Populates a specific key list
  */
 export function populateKeyList(listElement, keys, type) {
     if (!listElement) return;
-    
+
     listElement.innerHTML = '';
-    
+
+    // Add required property placeholders for mapped keys section
+    if (type === 'mapped') {
+        const hasLabelMapping = hasMappingForProperty(keys, 'label');
+        const hasInstanceOfMapping = hasMappingForProperty(keys, 'P31');
+
+        // Add Label placeholder if no label mapping exists
+        if (!hasLabelMapping) {
+            const labelPlaceholder = createRequiredPropertyPlaceholder(
+                'label',
+                'Label',
+                'Labels are required for all Wikidata items'
+            );
+            listElement.appendChild(labelPlaceholder);
+        }
+
+        // Add Instance of placeholder if no instance of mapping exists
+        if (!hasInstanceOfMapping) {
+            const instanceOfPlaceholder = createRequiredPropertyPlaceholder(
+                'P31',
+                'Instance of',
+                'Instance of is required for all Wikidata items'
+            );
+            listElement.appendChild(instanceOfPlaceholder);
+        }
+    }
+
     if (!keys.length) {
-        const placeholderText = type === 'non-linked'
-            ? 'All keys have been processed'
-            : type === 'mapped'
-                ? 'No mapped keys yet'
-                : 'No ignored keys';
-        const placeholder = createListItem(placeholderText, { isPlaceholder: true });
-        listElement.appendChild(placeholder);
+        // Only show "No mapped keys yet" if there are also no placeholders
+        if (type !== 'mapped' || listElement.children.length === 0) {
+            const placeholderText = type === 'non-linked'
+                ? 'All keys have been processed'
+                : type === 'mapped'
+                    ? 'No mapped keys yet'
+                    : 'No ignored keys';
+            const placeholder = createListItem(placeholderText, { isPlaceholder: true });
+            listElement.appendChild(placeholder);
+        }
         return;
     }
     
