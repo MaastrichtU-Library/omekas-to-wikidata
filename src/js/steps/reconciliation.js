@@ -394,7 +394,7 @@ export function setupReconciliationStep(state) {
         const modalContent = createLinkItemModal(itemId, itemNumber, currentQid);
 
         modalUI.openModal(
-            `Link item ${itemNumber} to existing Wikidata item`,
+            `Link item ${itemNumber} to an existing Wikidata item`,
             modalContent,
             []
         );
