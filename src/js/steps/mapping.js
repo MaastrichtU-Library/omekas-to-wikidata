@@ -216,12 +216,16 @@ export function setupMappingStep(state) {
     const addLabelBtn = document.getElementById('add-label');
     if (addLabelBtn) {
         addLabelBtn.addEventListener('click', () => {
+            // Get total items from current state for custom mappings
+            const currentState = window.mappingStepState?.getState();
+            const totalItems = currentState?.fetchedData?.length || 0;
+
             // Create empty key data for the modal
             const emptyKeyData = {
                 key: '',
                 type: 'unknown',
-                frequency: 0,
-                totalItems: 0,
+                frequency: totalItems,
+                totalItems: totalItems,
                 sampleValue: ''
             };
 
@@ -303,12 +307,16 @@ export function setupMappingStep(state) {
     const addDescriptionBtn = document.getElementById('add-description');
     if (addDescriptionBtn) {
         addDescriptionBtn.addEventListener('click', () => {
+            // Get total items from current state for custom mappings
+            const currentState = window.mappingStepState?.getState();
+            const totalItems = currentState?.fetchedData?.length || 0;
+
             // Create empty key data for the modal
             const emptyKeyData = {
                 key: '',
                 type: 'unknown',
-                frequency: 0,
-                totalItems: 0,
+                frequency: totalItems,
+                totalItems: totalItems,
                 sampleValue: ''
             };
 
@@ -390,12 +398,16 @@ export function setupMappingStep(state) {
     const addAliasesBtn = document.getElementById('add-aliases');
     if (addAliasesBtn) {
         addAliasesBtn.addEventListener('click', () => {
+            // Get total items from current state for custom mappings
+            const currentState = window.mappingStepState?.getState();
+            const totalItems = currentState?.fetchedData?.length || 0;
+
             // Create empty key data for the modal
             const emptyKeyData = {
                 key: '',
                 type: 'unknown',
-                frequency: 0,
-                totalItems: 0,
+                frequency: totalItems,
+                totalItems: totalItems,
                 sampleValue: ''
             };
 
@@ -477,12 +489,16 @@ export function setupMappingStep(state) {
     const addInstanceOfBtn = document.getElementById('add-instance-of');
     if (addInstanceOfBtn) {
         addInstanceOfBtn.addEventListener('click', () => {
+            // Get total items from current state for custom mappings
+            const currentState = window.mappingStepState?.getState();
+            const totalItems = currentState?.fetchedData?.length || 0;
+
             // Create empty key data for the modal
             const emptyKeyData = {
                 key: '',
                 type: 'unknown',
-                frequency: 0,
-                totalItems: 0,
+                frequency: totalItems,
+                totalItems: totalItems,
                 sampleValue: ''
             };
 
