@@ -11,6 +11,7 @@
 | Search Wikidata properties | `mapping/core/property-searcher.js` |
 | Transform field values | `transformations.js` |
 | Reconcile entities with Wikidata | `steps/reconciliation.js`, `reconciliation/` |
+| Detect and display reference links | `steps/step4.js`, `references/` |
 | Call Wikidata API | `api/wikidata.js` |
 | Create UI elements | `ui/components.js` |
 | Handle modals | `modals.js` |
@@ -72,10 +73,10 @@ The application follows a **modular, event-driven architecture**:
 - Key features: Batch processing, entity matching, progress tracking
 - Dependencies: reconciliation/*, api/wikidata.js
 
-### **designer.js**
-- Purpose: Step 4 - References (placeholder step - emptied)
-- Key features: Minimal placeholder setup, navigation handling
-- Dependencies: None (placeholder step)
+### **step4.js**
+- Purpose: Step 4 - Detect and display reference links
+- Key features: Automatic reference detection, display with counts and examples
+- Dependencies: references/core/detector.js, references/ui/display.js, events.js
 
 ### **export.js**
 - Purpose: Step 5 - Generate QuickStatements for Wikidata import
@@ -201,6 +202,33 @@ The application follows a **modular, event-driven architecture**:
 - Features: Search Wikidata items, display results with label/QID/description, select to link
 - Impact: Linked items generate UPDATE statements instead of CREATE in export
 
+### References Module (`references/`)
+
+#### Core (`references/core/`)
+
+**detector.js**
+- Purpose: Detect reference links from Omeka S API data
+- Key exports: `detectReferences()`, `detectOmekaItemLink()`, `detectOCLCLinks()`, `detectARKIdentifiers()`, `getReferenceTypeLabel()`, `getReferenceTypeDescription()`
+- Reference types: Omeka API Item links, OCLC WorldCat links, ARK identifiers
+- Returns: Item-specific references with summary statistics and base URLs
+
+**custom-references.js**
+- Purpose: Manage user-created custom references
+- Key exports: `createCustomReference()`, `validateCustomReference()`, `convertAutoDetectedToEditable()`, `getDisplayBaseUrl()`
+- Features: Create and validate custom references, convert auto-detected to editable format
+
+#### UI (`references/ui/`)
+
+**display.js**
+- Purpose: Render reference detection results with counts, tooltips, and editing capabilities
+- Key exports: `renderReferencesSection()`, `createReferenceListItem()`, `createCustomReferenceListItem()`, `createTooltip()`
+- Features: Reference list with selection/ignore toggle, position-preserved custom replacements, base URL display
+
+**custom-reference-modal.js**
+- Purpose: Modal interface for adding and editing custom references
+- Key exports: `openCustomReferenceModal()`
+- Features: Item-specific URL inputs, pre-filled editing, complete data preservation
+
 ### Index Files
 - `mapping/index.js` - Re-exports all mapping module functions
 - `reconciliation/index.js` - Re-exports all reconciliation functions
@@ -306,7 +334,7 @@ app.js
     ├── input.js ←── utils/cors-proxy.js
     ├── mapping.js ←── mapping/* + transformations.js
     ├── reconciliation.js ←── reconciliation/*
-    ├── designer.js
+    ├── step4.js ←── references/*
     └── export.js
 
 api/wikidata.js ← used by mapping & reconciliation
