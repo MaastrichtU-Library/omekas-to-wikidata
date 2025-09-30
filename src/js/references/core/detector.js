@@ -218,7 +218,7 @@ export function getReferenceTypeLabel(type) {
  */
 export function getReferenceTypeDescription(type) {
     const descriptions = {
-        'omeka-item': 'Link to the item through Omeka S',
+        'omeka-item': 'Link to the item through Omeka S API',
         'oclc': 'OCLC WorldCat bibliographic identifier',
         'ark': 'Archival Resource Key persistent identifier'
     };
