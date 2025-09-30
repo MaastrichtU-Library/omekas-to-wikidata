@@ -389,13 +389,14 @@ export function setupReconciliationStep(state) {
         const currentQid = state.getLinkedItem(itemId);
         const modalContent = createLinkItemModal(itemId, itemNumber, currentQid);
 
-        modalUI.openModal(modalContent, {
-            title: `Link item ${itemNumber} to existing Wikidata item`,
-            size: 'large',
-            onOpen: () => {
-                initializeLinkItemModal(modalContent);
-            }
-        });
+        modalUI.openModal(
+            `Link item ${itemNumber} to existing Wikidata item`,
+            modalContent,
+            []
+        );
+
+        // Initialize modal after opening
+        initializeLinkItemModal(modalContent);
     }
 
     /**

@@ -34,6 +34,7 @@ function createItemCellContent(itemId, itemNumber, linkedQid = null) {
         const unlinkBtn = createElement('button', {
             className: 'unlink-btn',
             title: 'Unlink this item',
+            style: 'background: none; border: none; padding: 0 4px; margin-left: 4px; cursor: pointer; font-size: 16px; font-weight: bold; color: #666; vertical-align: baseline;',
             onclick: () => {
                 if (window.onItemUnlinked) {
                     window.onItemUnlinked(itemId, itemNumber);
@@ -53,6 +54,7 @@ function createItemCellContent(itemId, itemNumber, linkedQid = null) {
         const linkBtn = createElement('button', {
             className: 'link-item-btn',
             title: 'Link to existing Wikidata item',
+            style: 'background: none; border: none; padding: 0; margin-left: 4px; cursor: pointer; font-size: 14px; vertical-align: baseline;',
             onclick: () => {
                 if (window.openLinkItemModal) {
                     window.openLinkItemModal(itemId, itemNumber);
