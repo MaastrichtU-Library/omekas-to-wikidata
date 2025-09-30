@@ -48,7 +48,11 @@ export function renderReferencesSection(summary, container, totalItems = 0) {
     });
 
     // Create summary (header)
-    const summaryElement = createElement('summary');
+    const summaryElement = createElement('summary', {
+        style: {
+            textAlign: 'left'
+        }
+    });
 
     const titleSpan = createElement('span', {
         className: 'section-title'
@@ -182,25 +186,12 @@ export function createTooltip(examples, type) {
             border: '1px solid #ccc',
             borderRadius: '4px',
             padding: '10px',
-            maxWidth: '400px',
+            maxWidth: '700px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
         }
     });
 
-    // Create header
-    const header = createElement('div', {
-        className: 'tooltip-header',
-        style: {
-            fontWeight: 'bold',
-            marginBottom: '8px',
-            fontSize: '12px',
-            color: '#333'
-        }
-    }, `Example values (showing up to ${examples.length})`);
-
-    tooltip.appendChild(header);
-
-    // Create list of examples
+    // Create list of examples (no header)
     const list = createElement('ul', {
         className: 'tooltip-examples-list',
         style: {
@@ -220,12 +211,8 @@ export function createTooltip(examples, type) {
             }
         });
 
-        // Truncate long URLs for display
-        const displayValue = example.value.length > 60
-            ? example.value.substring(0, 60) + '...'
-            : example.value;
-
-        listItem.textContent = displayValue;
+        // Display full URL without truncation
+        listItem.textContent = example.value;
         list.appendChild(listItem);
     });
 
