@@ -4677,63 +4677,6 @@ pre.sample-value {
     color: #333;
 }
 
-/* Issues Section */
-.issues-section {
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background-color: #fff8f8;
-    border: 1px solid var(--danger-color);
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.issues-section h3 {
-    color: var(--danger-color);
-    margin-bottom: 1rem;
-    font-size: 1.3rem;
-}
-
-.issues-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.issue-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background-color: white;
-    border: 1px solid #ffcdd2;
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-
-.issue-icon {
-    color: var(--danger-color);
-    font-size: 1.1rem;
-}
-
-.issue-text {
-    flex: 1;
-    color: #666;
-}
-
-.issue-action {
-    padding: 0.3rem 0.6rem;
-    background-color: var(--danger-color);
-    color: white;
-    border: none;
-    border-radius: 3px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.issue-action:hover {
-    background-color: #c62828;
-}
 
 /* Placeholder styling */
 .designer-container .placeholder {
