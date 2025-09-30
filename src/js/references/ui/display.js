@@ -11,8 +11,9 @@ import { getReferenceTypeLabel, getReferenceTypeDescription } from '../core/dete
  * Renders the references section in the UI
  * @param {Object} summary - Reference summary with counts and examples
  * @param {HTMLElement} container - Container element to render into
+ * @param {number} totalItems - Total number of items in dataset
  */
-export function renderReferencesSection(summary, container) {
+export function renderReferencesSection(summary, container, totalItems = 0) {
     if (!container) {
         console.error('No container provided for references section');
         return;
@@ -32,50 +33,74 @@ export function renderReferencesSection(summary, container) {
         return;
     }
 
-    // Create reference type cards
+    // Create title
+    const title = createElement('h3', {
+        className: 'references-title'
+    }, 'Available References');
+    container.appendChild(title);
+
+    // Create list
+    const list = createElement('ul', {
+        className: 'references-list'
+    });
+
+    // Create reference type list items
     const referenceTypes = ['omeka-item', 'oclc', 'ark'];
 
     referenceTypes.forEach(type => {
         const data = summary[type];
         if (data && data.count > 0) {
-            const card = createReferenceTypeCard(type, data);
-            container.appendChild(card);
+            const listItem = createReferenceListItem(type, data, totalItems);
+            list.appendChild(listItem);
         }
     });
+
+    container.appendChild(list);
 }
 
 /**
- * Creates a card displaying a reference type with count and tooltip
+ * Creates a list item displaying a reference type with count and tooltip
  * @param {string} type - Reference type
  * @param {Object} data - Reference data with count and examples
- * @returns {HTMLElement} Card element
+ * @param {number} totalItems - Total number of items in dataset
+ * @returns {HTMLElement} List item element
  */
-export function createReferenceTypeCard(type, data) {
+export function createReferenceListItem(type, data, totalItems) {
     const label = getReferenceTypeLabel(type);
     const description = getReferenceTypeDescription(type);
 
-    // Create card container
-    const card = createElement('div', {
-        className: 'reference-type-card'
+    // Create list item
+    const listItem = createElement('li', {
+        className: 'reference-list-item',
+        style: {
+            position: 'relative',
+            marginBottom: '8px'
+        }
     });
 
-    // Create header with label and count
-    const header = createElement('div', {
-        className: 'reference-type-header'
-    });
+    // Create text content: "Label (count/total items) - Description"
+    const textContent = `${label} (${data.count}/${totalItems} items) - ${description}`;
 
-    const titleSpan = createElement('span', {
-        className: 'reference-type-title'
-    }, `${label} (${data.count} ${data.count === 1 ? 'item' : 'items'})`);
+    const textSpan = createElement('span', {
+        className: 'reference-text'
+    }, textContent);
 
     // Create info icon with tooltip
     const infoIcon = createElement('span', {
         className: 'reference-info-icon',
-        title: 'Hover for examples'
+        title: 'Hover for examples',
+        style: {
+            marginLeft: '8px',
+            cursor: 'pointer',
+            color: '#0066cc'
+        }
     }, 'ⓘ');
 
     // Create tooltip element
     const tooltip = createTooltip(data.examples, type);
+
+    // Add tooltip to body for proper positioning
+    document.body.appendChild(tooltip);
 
     // Add hover handlers for tooltip
     let hideTimeout;
@@ -84,11 +109,10 @@ export function createReferenceTypeCard(type, data) {
         clearTimeout(hideTimeout);
         tooltip.style.display = 'block';
 
-        // Position tooltip near the icon
+        // Position tooltip near the icon using fixed positioning
         const iconRect = infoIcon.getBoundingClientRect();
-        const cardRect = card.getBoundingClientRect();
-        tooltip.style.left = `${iconRect.left - cardRect.left + 20}px`;
-        tooltip.style.top = `${iconRect.top - cardRect.top - 10}px`;
+        tooltip.style.left = `${iconRect.right + 10}px`;
+        tooltip.style.top = `${iconRect.top}px`;
     });
 
     infoIcon.addEventListener('mouseleave', () => {
@@ -106,20 +130,10 @@ export function createReferenceTypeCard(type, data) {
         tooltip.style.display = 'none';
     });
 
-    header.appendChild(titleSpan);
-    header.appendChild(infoIcon);
+    listItem.appendChild(textSpan);
+    listItem.appendChild(infoIcon);
 
-    // Create description
-    const descDiv = createElement('div', {
-        className: 'reference-type-description'
-    }, description);
-
-    // Assemble card
-    card.appendChild(header);
-    card.appendChild(descDiv);
-    card.appendChild(tooltip);
-
-    return card;
+    return listItem;
 }
 
 /**
@@ -133,7 +147,7 @@ export function createTooltip(examples, type) {
         className: 'reference-tooltip',
         style: {
             display: 'none',
-            position: 'absolute',
+            position: 'fixed',
             zIndex: '1000',
             backgroundColor: '#fff',
             border: '1px solid #ccc',
@@ -195,7 +209,8 @@ export function createTooltip(examples, type) {
  * Updates the references display with new summary data
  * @param {Object} summary - Updated reference summary
  * @param {HTMLElement} container - Container element
+ * @param {number} totalItems - Total number of items in dataset
  */
-export function updateReferencesDisplay(summary, container) {
-    renderReferencesSection(summary, container);
+export function updateReferencesDisplay(summary, container, totalItems = 0) {
+    renderReferencesSection(summary, container, totalItems);
 }

@@ -204,9 +204,9 @@ export function detectARKIdentifiers(item) {
  */
 export function getReferenceTypeLabel(type) {
     const labels = {
-        'omeka-item': 'Omeka Item Links',
-        'oclc': 'OCLC WorldCat Links',
-        'ark': 'ARK Identifiers'
+        'omeka-item': 'Omeka item',
+        'oclc': 'OCLC WorldCat',
+        'ark': 'ARK identifier'
     };
     return labels[type] || type;
 }
@@ -218,9 +218,9 @@ export function getReferenceTypeLabel(type) {
  */
 export function getReferenceTypeDescription(type) {
     const descriptions = {
-        'omeka-item': 'Direct links to Omeka S item API endpoints',
-        'oclc': 'OCLC WorldCat bibliographic control numbers',
-        'ark': 'Archival Resource Key persistent identifiers'
+        'omeka-item': 'Link to the item through Omeka S',
+        'oclc': 'OCLC WorldCat bibliographic identifier',
+        'ark': 'Archival Resource Key persistent identifier'
     };
     return descriptions[type] || '';
 }

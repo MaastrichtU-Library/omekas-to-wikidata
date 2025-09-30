@@ -72,14 +72,20 @@ function handleStep4Entry(state, container) {
     state.updateState('references.itemReferences', detectionResults.itemReferences, false);
     state.updateState('references.summary', detectionResults.summary, false);
 
+    // Get total number of items
+    const totalItems = Array.isArray(currentState.fetchedData)
+        ? currentState.fetchedData.length
+        : 1;
+
     // Render the references section
     if (container) {
-        renderReferencesSection(detectionResults.summary, container);
+        renderReferencesSection(detectionResults.summary, container, totalItems);
     }
 
     // Log detection results for debugging
     console.log('References detected:', {
         itemCount: Object.keys(detectionResults.itemReferences).length,
+        totalItems: totalItems,
         summary: detectionResults.summary
     });
 }
