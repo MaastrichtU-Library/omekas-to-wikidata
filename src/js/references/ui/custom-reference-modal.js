@@ -261,34 +261,37 @@ export function openCustomReferenceModal(state, onSubmit, options = {}) {
                 return;
             }
 
-            // Create or update reference
+            // Create or update reference - ALWAYS use createCustomReference for complete objects
             try {
+                let customRef;
+
                 if (isEdit && existingReference) {
-                    // Return updated data with ID for state update
-                    const updatedData = {
+                    // Preserve existing metadata when editing
+                    const options = {
                         id: existingReference.id,
-                        name,
-                        items: itemReferences.filter(item => item.url !== '')
+                        createdAt: existingReference.createdAt
                     };
 
-                    // Close modal
-                    document.body.removeChild(overlay);
-
-                    // Call onSubmit callback with updated data
-                    if (onSubmit) {
-                        onSubmit(updatedData);
+                    // If this was originally an auto-detected reference, preserve that info
+                    if (existingReference.originalType) {
+                        options.originalType = existingReference.originalType;
+                    } else if (existingReference.isAutoDetected) {
+                        // First time converting from auto-detected
+                        options.originalType = existingReference.type;
                     }
+
+                    customRef = createCustomReference(name, itemReferences, options);
                 } else {
-                    // Create new custom reference
-                    const customRef = createCustomReference(name, itemReferences);
+                    // Create brand new custom reference
+                    customRef = createCustomReference(name, itemReferences);
+                }
 
-                    // Close modal
-                    document.body.removeChild(overlay);
+                // Close modal
+                document.body.removeChild(overlay);
 
-                    // Call onSubmit callback
-                    if (onSubmit) {
-                        onSubmit(customRef);
-                    }
+                // Call onSubmit callback with complete reference object
+                if (onSubmit) {
+                    onSubmit(customRef);
                 }
             } catch (error) {
                 errorContainer.textContent = error.message;

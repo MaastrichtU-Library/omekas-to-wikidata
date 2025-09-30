@@ -883,9 +883,9 @@ export function setupState() {
     /**
      * Updates an existing custom reference
      * @param {string} id - ID of the custom reference to update
-     * @param {Object} updatedData - Updated reference data {name, items}
+     * @param {Object} updatedReference - Complete reference object from createCustomReference
      */
-    function updateCustomReference(id, updatedData) {
+    function updateCustomReference(id, updatedReference) {
         if (!state.references.customReferences) {
             return;
         }
@@ -898,23 +898,9 @@ export function setupState() {
 
         const oldValue = [...state.references.customReferences];
 
-        // Update the reference with new data while preserving id and metadata
-        const existingRef = state.references.customReferences[index];
-
-        // Filter out items with empty URLs
-        const validItems = updatedData.items.filter(item => item.url && item.url.trim() !== '');
-
-        // Import extractBaseUrl from custom-references module for consistency
-        const baseUrl = validItems.length > 0 ? updatedData.items[0].url.match(/^(https?:\/\/[^\/]+)/)?.[0] || updatedData.items[0].url : existingRef.baseUrl;
-
-        state.references.customReferences[index] = {
-            ...existingRef,
-            name: updatedData.name || existingRef.name,
-            items: validItems,
-            baseUrl,
-            count: validItems.length,
-            updatedAt: new Date().toISOString()
-        };
+        // Replace with the complete updated reference object
+        // The modal now provides a complete reference via createCustomReference
+        state.references.customReferences[index] = updatedReference;
 
         state.hasUnsavedChanges = true;
 

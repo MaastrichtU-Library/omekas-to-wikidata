@@ -117,6 +117,11 @@ function handleStep4Entry(state, container) {
                         // Add as new custom reference (converted from auto-detected)
                         state.addCustomReference(customRef);
 
+                        // Hide the original auto-detected reference by toggling it to "ignored"
+                        if (customRef.originalType && state.isReferenceTypeSelected(customRef.originalType)) {
+                            state.toggleReferenceType(customRef.originalType);
+                        }
+
                         // Re-render the references section
                         handleStep4Entry(state, container);
                     }, {
@@ -129,9 +134,9 @@ function handleStep4Entry(state, container) {
                     const existingReference = customReferences.find(ref => ref.id === referenceId);
 
                     if (existingReference) {
-                        openCustomReferenceModal(state, (updatedData) => {
-                            // Update the existing custom reference
-                            state.updateCustomReference(updatedData.id, updatedData);
+                        openCustomReferenceModal(state, (customRef) => {
+                            // Update the existing custom reference with complete data
+                            state.updateCustomReference(customRef.id, customRef);
 
                             // Re-render the references section
                             handleStep4Entry(state, container);

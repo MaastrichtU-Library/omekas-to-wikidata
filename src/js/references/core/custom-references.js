@@ -8,9 +8,10 @@
  * Creates a custom reference object from user input
  * @param {string} name - Name of the custom reference
  * @param {Array} itemReferences - Array of {itemId, url} objects
+ * @param {Object} options - Optional parameters {id, originalType}
  * @returns {Object} Custom reference object
  */
-export function createCustomReference(name, itemReferences) {
+export function createCustomReference(name, itemReferences, options = {}) {
     // Filter out items with empty URLs
     const validItems = itemReferences.filter(item => item.url && item.url.trim() !== '');
 
@@ -21,15 +22,27 @@ export function createCustomReference(name, itemReferences) {
     // Extract base URL from the first valid reference
     const baseUrl = extractBaseUrl(validItems[0].url);
 
-    return {
-        id: `custom-ref-${Date.now()}`,
+    const reference = {
+        id: options.id || `custom-ref-${Date.now()}`,
         name: name || 'Custom reference',
         type: 'custom',
         items: validItems,
         baseUrl,
         count: validItems.length,
-        createdAt: new Date().toISOString()
+        createdAt: options.createdAt || new Date().toISOString()
     };
+
+    // If this is a conversion from auto-detected, store the original type
+    if (options.originalType) {
+        reference.originalType = options.originalType;
+    }
+
+    // If this is an update, add updatedAt timestamp
+    if (options.id && options.createdAt) {
+        reference.updatedAt = new Date().toISOString();
+    }
+
+    return reference;
 }
 
 /**
