@@ -446,14 +446,24 @@ export function setupExportStep(state) {
                 if (!hasValidReconciledProperties(itemData)) {
                     return; // Skip this item entirely
                 }
-                
-                // Create new item since it has valid reconciled properties
-                quickStatementsText += 'CREATE\n';
 
-                // Note: Label/description/alias configuration removed (was in step 4 designer)
-                // Items will be created without labels - these can be added manually in Wikidata
+                // Check if item is linked to an existing Wikidata item
+                const linkedQid = currentState.linkedItems ? currentState.linkedItems[itemId] : null;
 
-                var itemPrefix = 'LAST';
+                var itemPrefix;
+                if (linkedQid) {
+                    // Item is linked to existing Wikidata item - use QID directly, don't create new item
+                    itemPrefix = linkedQid;
+                    console.log(`📎 Linking ${itemId} to existing item ${linkedQid}`);
+                } else {
+                    // Create new item since it has valid reconciled properties
+                    quickStatementsText += 'CREATE\n';
+
+                    // Note: Label/description/alias configuration removed (was in step 4 designer)
+                    // Items will be created without labels - these can be added manually in Wikidata
+
+                    itemPrefix = 'LAST';
+                }
                 
                 // Process each property
                 Object.keys(itemData.properties).forEach(propertyKey => {

@@ -112,6 +112,15 @@ button {
     flex-shrink: 0;
 }
 
+.add-metadata-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 /* Custom Entity Schema Selector */
 .entity-schema-selector-custom {
     position: relative;
@@ -2008,6 +2017,27 @@ pre.sample-value {
     color: #666;
     font-style: italic;
     margin-left: 0.5rem;
+}
+
+/* Required property placeholder styling */
+.required-mapping-placeholder {
+    color: var(--danger-color);
+}
+
+.required-property-name {
+    font-weight: 600;
+    color: #d32f2f;
+    font-size: 0.9rem;
+}
+
+.required-property-description {
+    font-size: 0.75rem;
+    color: #c62828;
+    font-style: italic;
+}
+
+.required-mapping-item:hover {
+    background-color: rgba(244, 67, 54, 0.05);
 }
 
 .key-list li {
@@ -6869,4 +6899,53 @@ pre.sample-value {
         max-width: 100%;
         word-break: break-all;
     }
+}
+
+/* Wikidata match item styles for search results */
+.wikidata-match-item {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    margin-bottom: 0.5rem;
+    border: 1px solid transparent;
+}
+
+.wikidata-match-item:hover {
+    background-color: #f5f5f5;
+    border-color: #e0e0e0;
+}
+
+.wikidata-match-item:active {
+    background-color: #eeeeee;
+}
+
+.match-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.match-title {
+    font-weight: 500;
+    color: #333;
+    line-height: 1.4;
+}
+
+.match-qid-inline {
+    color: #0d6efd;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.9em;
+    font-weight: normal;
+}
+
+.match-description {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.3;
+}
+
+.results-list {
+    display: flex;
+    flex-direction: column;
 }

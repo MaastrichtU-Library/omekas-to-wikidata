@@ -71,6 +71,7 @@ export function setupState() {
             completed: 0
         },
         reconciliationData: [],
+        linkedItems: {}, // Maps itemId to Wikidata QID for items linked to existing Wikidata items
         
         // Step 4: References
         references: {
@@ -774,6 +775,7 @@ export function setupState() {
     
     
     /**
+<<<<<<< HEAD
      * Toggles a reference type between selected and ignored
      * @param {string} type - Reference type to toggle (e.g., 'omeka-item', 'oclc', 'ark')
      */
@@ -913,6 +915,79 @@ export function setupState() {
 
         // Persist state to localStorage
         persistState();
+    }
+
+    /**
+     * Links an item to an existing Wikidata item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     * @param {string} qid - Wikidata QID (e.g., 'Q12345')
+     */
+    function linkItemToWikidata(itemId, qid) {
+        if (!itemId || !qid) {
+            console.error('Both itemId and qid are required for linking');
+            return;
+        }
+
+        const oldLinkedItems = JSON.parse(JSON.stringify(state.linkedItems || {}));
+
+        if (!state.linkedItems) {
+            state.linkedItems = {};
+        }
+
+        state.linkedItems[itemId] = qid;
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners of the link update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `linkedItems.${itemId}`,
+            oldValue: oldLinkedItems[itemId] || null,
+            newValue: qid
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Unlinks an item from its Wikidata item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     */
+    function unlinkItem(itemId) {
+        if (!itemId) {
+            console.error('itemId is required for unlinking');
+            return;
+        }
+
+        if (!state.linkedItems || !state.linkedItems[itemId]) {
+            // Item is not linked, nothing to do
+            return;
+        }
+
+        const oldQid = state.linkedItems[itemId];
+        delete state.linkedItems[itemId];
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners of the unlink
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `linkedItems.${itemId}`,
+            oldValue: oldQid,
+            newValue: null
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Gets the linked Wikidata QID for an item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     * @returns {string|null} Wikidata QID or null if not linked
+     */
+    function getLinkedItem(itemId) {
+        if (!itemId || !state.linkedItems) {
+            return null;
+        }
+        return state.linkedItems[itemId] || null;
     }
 
     /**
@@ -1321,6 +1396,10 @@ export function setupState() {
         removeCustomReference,
         getCustomReferences,
         updateCustomReference,
+        // Convenience methods for linked items
+        linkItemToWikidata,
+        unlinkItem,
+        getLinkedItem,
         // Convenience methods for Entity Schema
         setSelectedEntitySchema,
         getSelectedEntitySchema,
