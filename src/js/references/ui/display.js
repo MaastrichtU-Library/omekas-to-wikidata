@@ -7,6 +7,7 @@
 import { createElement, showMessage } from '../../ui/components.js';
 import { getReferenceTypeLabel, getReferenceTypeDescription } from '../core/detector.js';
 import { getDisplayBaseUrl } from '../core/custom-references.js';
+import { openPropertyReferenceModal } from './property-reference-modal.js';
 
 /**
  * Renders the references section in the UI
@@ -696,8 +697,7 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
     // Create list item
     const listItem = createElement('li', {
         style: {
-            opacity: '1',
-            cursor: 'pointer'
+            opacity: '1'
         }
     });
 
@@ -779,40 +779,31 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
         }
     }, referenceCount > 0 ? referenceCountText : 'No references');
 
+    // Add click handler to reference count to open modal
+    if (state) {
+        referenceCountSpan.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent list item click
+            openPropertyReferenceModal(
+                property.id,
+                property.label,
+                state,
+                onReferenceAssignment
+            );
+        });
+
+        // Add hover effect to reference count
+        referenceCountSpan.addEventListener('mouseenter', () => {
+            referenceCountSpan.style.textDecoration = 'underline';
+        });
+
+        referenceCountSpan.addEventListener('mouseleave', () => {
+            referenceCountSpan.style.textDecoration = 'none';
+        });
+    }
+
     // Append left section and count to wrapper
     keyItemCompact.appendChild(leftSection);
     keyItemCompact.appendChild(referenceCountSpan);
-
-    // Add click handler to assign references
-    if (state) {
-        listItem.addEventListener('click', () => {
-            // Get currently selected reference types
-            const selectedReferenceTypes = state.getSelectedReferenceTypes();
-
-            // Check if any references are selected
-            if (selectedReferenceTypes.length === 0) {
-                showMessage('Please select or add a reference first', 'error', 3000);
-                return;
-            }
-
-            // Assign references to this property
-            state.assignReferencesToProperty(property.id, selectedReferenceTypes);
-
-            // Trigger re-render
-            if (onReferenceAssignment) {
-                onReferenceAssignment();
-            }
-        });
-
-        // Add hover effect
-        listItem.addEventListener('mouseenter', () => {
-            listItem.style.backgroundColor = '#f5f5f5';
-        });
-
-        listItem.addEventListener('mouseleave', () => {
-            listItem.style.backgroundColor = 'transparent';
-        });
-    }
 
     listItem.appendChild(keyItemCompact);
 
