@@ -579,6 +579,29 @@ function setupLanguageSelection() {
         }
     });
     
+    // Handle language option clicks using event delegation
+    languageDropdown.addEventListener('click', function(event) {
+        const languageOption = event.target.closest('.language-option');
+        if (languageOption) {
+            console.log('🌐 Language option clicked:', languageOption);
+            
+            // Extract language data from data attributes
+            const languageData = {
+                id: languageOption.dataset.languageId || null,
+                code: languageOption.dataset.languageCode,
+                label: languageOption.dataset.languageLabel,
+                description: languageOption.dataset.languageDescription || null,
+                iso639_1: languageOption.dataset.languageIso6391 || null,
+                iso639_3: languageOption.dataset.languageIso6393 || null,
+                wikimediaCode: languageOption.dataset.languageWikimediaCode || null,
+                source: languageOption.dataset.languageSource || 'unknown'
+            };
+            
+            console.log('🌐 Extracted language data:', languageData);
+            selectLanguageData(languageData);
+        }
+    });
+    
     // Hide dropdown when clicking outside
     document.addEventListener('click', function(event) {
         if (!event.target.closest('.language-container')) {
@@ -656,18 +679,6 @@ function displayLanguageResults(languages, query = '') {
         }
     } else {
         languageDropdown.innerHTML = languages.map(lang => {
-            // Create enhanced language option with rich data
-            const languageData = JSON.stringify({
-                id: lang.id || null,
-                code: lang.code,
-                label: lang.label,
-                description: lang.description || null,
-                iso639_1: lang.iso639_1 || null,
-                iso639_3: lang.iso639_3 || null,
-                wikimediaCode: lang.wikimediaCode || null,
-                source: lang.source || 'unknown'
-            });
-            
             // Build display elements
             let codesDisplay = '';
             const codes = [];
@@ -684,7 +695,15 @@ function displayLanguageResults(languages, query = '') {
                 `<div class="language-description">${escapeHtml(lang.description)}</div>` : '';
             
             return `
-                <div class="language-option enhanced" onclick="selectEnhancedLanguage(\`${languageData.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)">
+                <div class="language-option enhanced" 
+                     data-language-id="${escapeHtml(lang.id || '')}"
+                     data-language-code="${escapeHtml(lang.code)}"
+                     data-language-label="${escapeHtml(lang.label)}"
+                     data-language-description="${escapeHtml(lang.description || '')}"
+                     data-language-iso639-1="${escapeHtml(lang.iso639_1 || '')}"
+                     data-language-iso639-3="${escapeHtml(lang.iso639_3 || '')}"
+                     data-language-wikimedia-code="${escapeHtml(lang.wikimediaCode || '')}"
+                     data-language-source="${escapeHtml(lang.source || 'unknown')}">
                     <div class="language-option-content">
                         <div class="language-main-info">
                             <span class="language-label">${escapeHtml(lang.label)}</span>
@@ -701,32 +720,6 @@ function displayLanguageResults(languages, query = '') {
     languageDropdown.classList.remove('hidden');
 }
 
-/**
- * Select an enhanced language from the dropdown (new version)
- * @param {string} languageDataString - JSON string of language data
- */
-window.selectEnhancedLanguage = function(languageDataString) {
-    try {
-        const languageData = JSON.parse(languageDataString);
-        selectLanguageData(languageData);
-    } catch (error) {
-        console.error('Failed to parse language data:', error);
-        // Fallback to basic selection
-        const parts = languageDataString.split('|');
-        if (parts.length >= 2) {
-            selectLanguageData({ code: parts[0], label: parts[1] });
-        }
-    }
-};
-
-/**
- * Select a language from the dropdown (legacy version for compatibility)
- * @param {string} code - Language code
- * @param {string} label - Language label
- */
-window.selectLanguage = function(code, label) {
-    selectLanguageData({ code, label });
-};
 
 /**
  * Internal function to handle language selection with enhanced data
