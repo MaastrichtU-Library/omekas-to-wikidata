@@ -37,7 +37,7 @@ The application follows a **modular, event-driven architecture**:
 
 ### **state.js**
 - Purpose: Centralized state management with persistence
-- Key exports: `setupState()`, convenience methods like `updateMappings()`, `incrementReconciliationCompleted()`
+- Key exports: `setupState()`, convenience methods like `updateMappings()`, `incrementReconciliationCompleted()`, `linkItemToWikidata()`, `unlinkItem()`, `getLinkedItem()`
 - Dependencies: events.js
 
 ### **events.js**
@@ -157,7 +157,8 @@ The application follows a **modular, event-driven architecture**:
 
 **reconciliation-table.js**
 - Purpose: Display reconciliation results in table
-- Key exports: `renderReconciliationTable()`, `updateTableRow()`
+- Key exports: `renderReconciliationTable()`, `updateTableRow()`, `updateItemCellDisplay()`
+- Features: Item cell with link button to link items to existing Wikidata items
 
 **reconciliation-modal.js**
 - Purpose: Reconciliation configuration and details modal
@@ -193,6 +194,12 @@ The application follows a **modular, event-driven architecture**:
 - Purpose: External identifier validation modal with regex constraints
 - Key exports: `createExternalIdModal()`, `initializeExternalIdModal()`
 - Features: Real-time regex validation, user override capability, property constraint display
+
+**link-item-modal.js**
+- Purpose: Link items to existing Wikidata items instead of creating new ones
+- Key exports: `createLinkItemModal()`, `initializeLinkItemModal()`
+- Features: Search Wikidata items, display results with label/QID/description, select to link
+- Impact: Linked items generate UPDATE statements instead of CREATE in export
 
 ### Index Files
 - `mapping/index.js` - Re-exports all mapping module functions

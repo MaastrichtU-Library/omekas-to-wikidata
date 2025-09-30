@@ -10,6 +10,83 @@ import { createElement } from '../../ui/components.js';
 import { combineAndSortProperties, extractPropertyValues } from '../core/reconciliation-data.js';
 
 /**
+ * Create item cell content with link button
+ * @param {string} itemId - Item ID (e.g., 'item-0')
+ * @param {number} itemNumber - Item number for display (e.g., 1)
+ * @param {string|null} linkedQid - Linked Wikidata QID if any
+ * @returns {HTMLElement} Item cell content
+ */
+function createItemCellContent(itemId, itemNumber, linkedQid = null) {
+    const container = createElement('div', {
+        className: 'item-cell-content',
+        dataset: { itemId: itemId }
+    });
+
+    if (linkedQid) {
+        // Display linked QID with unlink button
+        const qidLink = createElement('a', {
+            href: `https://www.wikidata.org/wiki/${linkedQid}`,
+            target: '_blank',
+            className: 'linked-qid-display',
+            title: `Linked to ${linkedQid} - Click to view on Wikidata`
+        }, linkedQid);
+
+        const unlinkBtn = createElement('button', {
+            className: 'unlink-btn',
+            title: 'Unlink this item',
+            onclick: () => {
+                if (window.onItemUnlinked) {
+                    window.onItemUnlinked(itemId, itemNumber);
+                }
+            }
+        }, '×');
+
+        container.appendChild(qidLink);
+        container.appendChild(document.createTextNode(' '));
+        container.appendChild(unlinkBtn);
+    } else {
+        // Display "new item N" with link button
+        const itemText = createElement('span', {
+            className: 'item-number-text'
+        }, `new item ${itemNumber}`);
+
+        const linkBtn = createElement('button', {
+            className: 'link-item-btn',
+            title: 'Link to existing Wikidata item',
+            onclick: () => {
+                if (window.openLinkItemModal) {
+                    window.openLinkItemModal(itemId, itemNumber);
+                }
+            }
+        }, '🔗');
+
+        container.appendChild(itemText);
+        container.appendChild(document.createTextNode(' '));
+        container.appendChild(linkBtn);
+    }
+
+    return container;
+}
+
+/**
+ * Update item cell to reflect link status
+ * @param {string} itemId - Item ID (e.g., 'item-0')
+ * @param {number} itemNumber - Item number for display (e.g., 1)
+ * @param {string|null} linkedQid - Linked Wikidata QID if any
+ */
+export function updateItemCellDisplay(itemId, itemNumber, linkedQid = null) {
+    const itemCell = document.querySelector(`#row-${itemId} .item-cell`);
+    if (!itemCell) return;
+
+    // Clear existing content
+    itemCell.innerHTML = '';
+
+    // Add new content
+    const content = createItemCellContent(itemId, itemNumber, linkedQid);
+    itemCell.appendChild(content);
+}
+
+/**
  * Update cell display to show error state (duplicated from batch-processor for UI access)
  */
 function updateCellDisplayWithError(itemId, property, valueIndex, errorInfo) {
@@ -555,11 +632,14 @@ export function createReconciliationTableFactory(dependencies) {
                     className: 'reconciliation-row'
                 });
                 
-                // Add item cell
-                const itemTitle = `new item ${index + 1}`;
+                // Add item cell with link button
+                const itemNumber = index + 1;
+                const linkedQid = state.getLinkedItem ? state.getLinkedItem(itemId) : null;
                 const itemCell = createElement('td', {
                     className: 'item-cell'
-                }, itemTitle);
+                });
+                const itemCellContent = createItemCellContent(itemId, itemNumber, linkedQid);
+                itemCell.appendChild(itemCellContent);
                 tr.appendChild(itemCell);
                 
                 // Add property cells (using sorted order to match headers)

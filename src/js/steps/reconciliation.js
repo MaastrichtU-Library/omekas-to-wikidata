@@ -28,6 +28,8 @@ import { setupModalUI } from '../ui/modal-ui.js';
 import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes, setupDynamicDatePrecision, standardizeDateInput } from '../utils/property-types.js';
 import { getConstraintBasedTypes, buildContextualProperties, validateAgainstFormatConstraints, scoreMatchWithConstraints, getConstraintSummary } from '../utils/constraint-helpers.js';
 import { eventSystem } from '../events.js';
+import { createLinkItemModal, initializeLinkItemModal } from '../reconciliation/ui/modals/link-item-modal.js';
+import { updateItemCellDisplay } from '../reconciliation/ui/reconciliation-table.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
 import {
@@ -377,7 +379,61 @@ export function setupReconciliationStep(state) {
             modules.loadMockDataForTesting();
         });
     }
-    
+
+    /**
+     * Opens the link item modal for linking an item to an existing Wikidata item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     * @param {number} itemNumber - Item number for display (e.g., 1)
+     */
+    function openLinkItemModal(itemId, itemNumber) {
+        const currentQid = state.getLinkedItem(itemId);
+        const modalContent = createLinkItemModal(itemId, itemNumber, currentQid);
+
+        modalUI.openModal(modalContent, {
+            title: `Link item ${itemNumber} to existing Wikidata item`,
+            size: 'large',
+            onOpen: () => {
+                initializeLinkItemModal(modalContent);
+            }
+        });
+    }
+
+    /**
+     * Callback when an item is linked to a Wikidata item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     * @param {string} qid - Wikidata QID (e.g., 'Q12345')
+     * @param {number} itemNumber - Item number for display
+     */
+    function onItemLinked(itemId, qid, itemNumber) {
+        // Update state
+        state.linkItemToWikidata(itemId, qid);
+
+        // Update table display
+        updateItemCellDisplay(itemId, itemNumber, qid);
+
+        console.log(`✅ Linked ${itemId} to ${qid}`);
+    }
+
+    /**
+     * Callback when an item is unlinked from a Wikidata item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     * @param {number} itemNumber - Item number for display
+     */
+    function onItemUnlinked(itemId, itemNumber) {
+        // Update state
+        state.unlinkItem(itemId);
+
+        // Update table display
+        updateItemCellDisplay(itemId, itemNumber, null);
+
+        console.log(`✅ Unlinked ${itemId}`);
+    }
+
+    // Make link item functions globally accessible
+    window.openLinkItemModal = openLinkItemModal;
+    window.onItemLinked = onItemLinked;
+    window.onItemUnlinked = onItemUnlinked;
+
     /**
      * Initializes the reconciliation interface and processes all reconcilable data
      * 
