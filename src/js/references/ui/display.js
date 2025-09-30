@@ -191,14 +191,14 @@ export function createTooltip(examples, type) {
         }
     });
 
-    // Create list of examples (no header)
+    // Create list of examples (no header, no bullets)
     const list = createElement('ul', {
         className: 'tooltip-examples-list',
         style: {
             margin: '0',
-            padding: '0 0 0 20px',
+            padding: '0',
             fontSize: '11px',
-            listStyle: 'disc'
+            listStyle: 'none'
         }
     });
 
@@ -206,13 +206,30 @@ export function createTooltip(examples, type) {
         const listItem = createElement('li', {
             style: {
                 marginBottom: '4px',
-                wordBreak: 'break-all',
-                color: '#666'
+                wordBreak: 'break-all'
             }
         });
 
-        // Display full URL without truncation
-        listItem.textContent = example.value;
+        // Create clickable link
+        const link = createElement('a', {
+            href: example.value,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            style: {
+                color: '#0066cc',
+                textDecoration: 'none'
+            }
+        }, example.value);
+
+        // Add hover effect
+        link.addEventListener('mouseenter', () => {
+            link.style.textDecoration = 'underline';
+        });
+        link.addEventListener('mouseleave', () => {
+            link.style.textDecoration = 'none';
+        });
+
+        listItem.appendChild(link);
         list.appendChild(listItem);
     });
 
