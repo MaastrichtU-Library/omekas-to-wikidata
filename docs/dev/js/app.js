@@ -12,7 +12,7 @@ import { setupState } from './state.js';
 import { setupInputStep } from './steps/input.js';
 import { setupMappingStep } from './steps/mapping.js';
 import { setupReconciliationStep } from './steps/reconciliation.js';
-import { setupDesignerStep } from './steps/designer.js';
+import { setupStep4 } from './steps/step4.js';
 import { setupExportStep } from './steps/export.js';
 import { setupModals } from './modals.js';
 
@@ -33,7 +33,7 @@ function initializeApp() {
     setupInputStep(state);
     setupMappingStep(state);
     setupReconciliationStep(state);
-    setupDesignerStep(state);
+    setupStep4(state);
     setupExportStep(state);
     
     // Set up application-level event listeners

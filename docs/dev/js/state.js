@@ -73,12 +73,14 @@ export function setupState() {
         reconciliationData: [],
         linkedItems: {}, // Maps itemId to Wikidata QID for items linked to existing Wikidata items
         
-        // Step 4: References (placeholder step - emptied)
-        references: [], // Deprecated - step 4 emptied
-        selectedExampleItem: '', // Deprecated - step 4 emptied
-        designerData: [], // Deprecated - step 4 emptied
-        globalReferences: [], // Deprecated - step 4 emptied
-        
+        // Step 4: References
+        references: {
+            itemReferences: {}, // Map of itemId -> array of reference objects
+            summary: {}, // Map of referenceType -> {count, examples: [{itemId, value}]}
+            selectedTypes: ['omeka-item', 'oclc', 'ark'], // List of selected reference types (default: all selected)
+            customReferences: [] // Array of custom reference objects added by user
+        },
+
         // Step 5: Export
         quickStatements: '',
         exportTimestamp: null
@@ -172,8 +174,10 @@ export function setupState() {
             const reconciledCount = Object.keys(savedState.reconciliationData).length;
             summary.push(`• ${reconciledCount} item${reconciledCount > 1 ? 's' : ''} with reconciliation data`);
         }
-        if (savedState.references && savedState.references.length > 0) {
-            summary.push(`• ${savedState.references.length} reference${savedState.references.length > 1 ? 's' : ''} configured`);
+        if (savedState.references && savedState.references.itemReferences &&
+            Object.keys(savedState.references.itemReferences).length > 0) {
+            const refCount = Object.keys(savedState.references.itemReferences).length;
+            summary.push(`• ${refCount} item${refCount > 1 ? 's' : ''} with references`);
         }
         
         summaryEl.innerHTML = summary.length > 0 ? 
@@ -771,6 +775,149 @@ export function setupState() {
     
     
     /**
+<<<<<<< HEAD
+     * Toggles a reference type between selected and ignored
+     * @param {string} type - Reference type to toggle (e.g., 'omeka-item', 'oclc', 'ark')
+     */
+    function toggleReferenceType(type) {
+        const oldSelectedTypes = [...state.references.selectedTypes];
+        const index = state.references.selectedTypes.indexOf(type);
+
+        if (index === -1) {
+            // Not selected, add it
+            state.references.selectedTypes.push(type);
+        } else {
+            // Already selected, remove it
+            state.references.selectedTypes.splice(index, 1);
+        }
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners of the reference type toggle
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.selectedTypes',
+            oldValue: oldSelectedTypes,
+            newValue: [...state.references.selectedTypes]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Checks if a reference type is selected
+     * @param {string} type - Reference type to check
+     * @returns {boolean} True if the reference type is selected
+     */
+    function isReferenceTypeSelected(type) {
+        return state.references.selectedTypes.includes(type);
+    }
+
+    /**
+     * Adds a custom reference to the state
+     * @param {Object} customRef - Custom reference object
+     */
+    function addCustomReference(customRef) {
+        if (!state.references.customReferences) {
+            state.references.customReferences = [];
+        }
+
+        const oldValue = [...state.references.customReferences];
+        state.references.customReferences.push(customRef);
+
+        // Also add to selectedTypes so it's selected by default
+        if (!state.references.selectedTypes.includes(customRef.id)) {
+            state.references.selectedTypes.push(customRef.id);
+        }
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.customReferences',
+            oldValue,
+            newValue: [...state.references.customReferences]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Removes a custom reference from the state
+     * @param {string} id - ID of the custom reference to remove
+     */
+    function removeCustomReference(id) {
+        if (!state.references.customReferences) {
+            return;
+        }
+
+        const oldValue = [...state.references.customReferences];
+        state.references.customReferences = state.references.customReferences.filter(ref => ref.id !== id);
+
+        // Also remove from selectedTypes
+        const typeIndex = state.references.selectedTypes.indexOf(id);
+        if (typeIndex !== -1) {
+            state.references.selectedTypes.splice(typeIndex, 1);
+        }
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.customReferences',
+            oldValue,
+            newValue: [...state.references.customReferences]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Gets all custom references
+     * @returns {Array} Array of custom reference objects
+     */
+    function getCustomReferences() {
+        return state.references.customReferences || [];
+    }
+
+    /**
+     * Updates an existing custom reference
+     * @param {string} id - ID of the custom reference to update
+     * @param {Object} updatedReference - Complete reference object from createCustomReference
+     */
+    function updateCustomReference(id, updatedReference) {
+        if (!state.references.customReferences) {
+            return;
+        }
+
+        const index = state.references.customReferences.findIndex(ref => ref.id === id);
+        if (index === -1) {
+            console.error(`Custom reference with id ${id} not found`);
+            return;
+        }
+
+        const oldValue = [...state.references.customReferences];
+
+        // Replace with the complete updated reference object
+        // The modal now provides a complete reference via createCustomReference
+        state.references.customReferences[index] = updatedReference;
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.customReferences',
+            oldValue,
+            newValue: [...state.references.customReferences]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
      * Links an item to an existing Wikidata item
      * @param {string} itemId - Item ID (e.g., 'item-0')
      * @param {string} qid - Wikidata QID (e.g., 'Q12345')
@@ -1242,6 +1389,13 @@ export function setupState() {
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,
         setReconciliationProgress,
+        // Convenience methods for references
+        toggleReferenceType,
+        isReferenceTypeSelected,
+        addCustomReference,
+        removeCustomReference,
+        getCustomReferences,
+        updateCustomReference,
         // Convenience methods for linked items
         linkItemToWikidata,
         unlinkItem,

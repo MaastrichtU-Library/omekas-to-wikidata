@@ -3798,12 +3798,9 @@ pre.sample-value {
     align-self: stretch;
 }
 
-/* Step 4: References (placeholder step - emptied) */
+/* Step 4: References */
 .references-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-    text-align: center;
+    /* No specific styling - uses full width like mapping-container */
 }
 
 /* Modal Container Styles */
