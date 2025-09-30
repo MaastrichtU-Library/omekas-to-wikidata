@@ -4,6 +4,8 @@
  * @module references/core/custom-references
  */
 
+import { getReferenceTypeLabel } from './detector.js';
+
 /**
  * Creates a custom reference object from user input
  * @param {string} name - Name of the custom reference
@@ -188,14 +190,8 @@ export function convertAutoDetectedToEditable(type, state) {
         }
     });
 
-    // Get label for this type
-    const typeLabels = {
-        'omeka-item': 'Omeka item',
-        'oclc': 'OCLC WorldCat',
-        'ark': 'ARK identifier'
-    };
-
-    const name = typeLabels[type] || type;
+    // Get label for this type using the centralized function
+    const name = getReferenceTypeLabel(type);
     const baseUrl = items.length > 0 ? extractBaseUrl(items[0].url) : '';
 
     return {
