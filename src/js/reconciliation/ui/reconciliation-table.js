@@ -556,7 +556,7 @@ export function createReconciliationTableFactory(dependencies) {
                 });
                 
                 // Add item cell
-                const itemTitle = item['o:title'] || item['title'] || `Item ${index + 1}`;
+                const itemTitle = `new item ${index + 1}`;
                 const itemCell = createElement('td', {
                     className: 'item-cell'
                 }, itemTitle);
