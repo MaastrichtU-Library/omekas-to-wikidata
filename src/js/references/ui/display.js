@@ -12,8 +12,9 @@ import { getReferenceTypeLabel, getReferenceTypeDescription } from '../core/dete
  * @param {Object} summary - Reference summary with counts and examples
  * @param {HTMLElement} container - Container element to render into
  * @param {number} totalItems - Total number of items in dataset
+ * @param {Object} state - Application state management instance
  */
-export function renderReferencesSection(summary, container, totalItems = 0) {
+export function renderReferencesSection(summary, container, totalItems = 0, state = null) {
     if (!container) {
         console.error('No container provided for references section');
         return;
@@ -77,7 +78,7 @@ export function renderReferencesSection(summary, container, totalItems = 0) {
     referenceTypes.forEach(type => {
         const data = summary[type];
         if (data && data.count > 0) {
-            const listItem = createReferenceListItem(type, data, totalItems);
+            const listItem = createReferenceListItem(type, data, totalItems, state);
             list.appendChild(listItem);
         }
     });
@@ -91,40 +92,83 @@ export function renderReferencesSection(summary, container, totalItems = 0) {
  * @param {string} type - Reference type
  * @param {Object} data - Reference data with count and examples
  * @param {number} totalItems - Total number of items in dataset
+ * @param {Object} state - Application state management instance
  * @returns {HTMLElement} List item element
  */
-export function createReferenceListItem(type, data, totalItems) {
+export function createReferenceListItem(type, data, totalItems, state = null) {
     const label = getReferenceTypeLabel(type);
     const description = getReferenceTypeDescription(type);
 
+    // Check if this type is selected (default to selected if no state)
+    const isSelected = state ? state.isReferenceTypeSelected(type) : true;
+
     // Create list item (uses same classes as mapping lists)
-    const listItem = createElement('li');
+    const listItem = createElement('li', {
+        style: {
+            opacity: isSelected ? '1' : '0.5',
+            transition: 'opacity 0.2s ease'
+        }
+    });
 
     // Create compact key item wrapper
     const keyItemCompact = createElement('div', {
-        className: 'key-item-compact'
+        className: 'key-item-compact',
+        style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%'
+        }
+    });
+
+    // Create left section (text + frequency + info icon)
+    const leftSection = createElement('div', {
+        style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+        }
     });
 
     // Create key name with label and description
     const keyName = createElement('span', {
-        className: 'key-name-compact'
+        className: 'key-name-compact',
+        style: {
+            textDecoration: isSelected ? 'none' : 'line-through'
+        }
     }, `${label} - ${description}`);
 
-    // Create info icon with tooltip (inline with text)
+    // Create frequency indicator (count display) - moved between text and info icon
+    const frequency = createElement('span', {
+        className: 'key-frequency',
+        style: {
+            fontSize: '0.9em',
+            color: '#666'
+        }
+    }, `${data.count}/${totalItems} items`);
+
+    // Create info icon with tooltip
     const infoIcon = createElement('span', {
         className: 'reference-info-icon',
         title: 'Hover for examples',
         style: {
-            marginLeft: '8px',
             cursor: 'pointer',
-            color: '#0066cc'
+            color: '#0066cc',
+            fontSize: '1.1em'
         }
     }, 'ⓘ');
 
-    // Create frequency indicator (count display)
-    const frequency = createElement('span', {
-        className: 'key-frequency'
-    }, `(${data.count}/${totalItems})`);
+    // Create status indicator on the right
+    const status = createElement('span', {
+        className: 'reference-status',
+        style: {
+            fontSize: '0.85em',
+            fontWeight: '500',
+            color: isSelected ? '#2ecc71' : '#95a5a6',
+            cursor: 'pointer',
+            userSelect: 'none'
+        }
+    }, isSelected ? 'Selected' : 'Ignored');
 
     // Create tooltip element
     const tooltip = createTooltip(data.examples, type);
@@ -160,10 +204,38 @@ export function createReferenceListItem(type, data, totalItems) {
         tooltip.style.display = 'none';
     });
 
-    // Append all elements in the correct order
-    keyItemCompact.appendChild(keyName);
-    keyItemCompact.appendChild(infoIcon);
-    keyItemCompact.appendChild(frequency);
+    // Add click handler to toggle selection state
+    if (state) {
+        status.addEventListener('click', () => {
+            state.toggleReferenceType(type);
+            const newIsSelected = state.isReferenceTypeSelected(type);
+
+            // Update visual state
+            listItem.style.opacity = newIsSelected ? '1' : '0.5';
+            keyName.style.textDecoration = newIsSelected ? 'none' : 'line-through';
+            status.textContent = newIsSelected ? 'Selected' : 'Ignored';
+            status.style.color = newIsSelected ? '#2ecc71' : '#95a5a6';
+        });
+
+        // Add hover effect to status
+        status.addEventListener('mouseenter', () => {
+            status.style.textDecoration = 'underline';
+        });
+
+        status.addEventListener('mouseleave', () => {
+            status.style.textDecoration = 'none';
+        });
+    }
+
+    // Append all elements in the correct order: text -> frequency -> info icon
+    leftSection.appendChild(keyName);
+    leftSection.appendChild(frequency);
+    leftSection.appendChild(infoIcon);
+
+    // Append left section and status to the wrapper
+    keyItemCompact.appendChild(leftSection);
+    keyItemCompact.appendChild(status);
+
     listItem.appendChild(keyItemCompact);
 
     return listItem;
@@ -243,7 +315,8 @@ export function createTooltip(examples, type) {
  * @param {Object} summary - Updated reference summary
  * @param {HTMLElement} container - Container element
  * @param {number} totalItems - Total number of items in dataset
+ * @param {Object} state - Application state management instance
  */
-export function updateReferencesDisplay(summary, container, totalItems = 0) {
-    renderReferencesSection(summary, container, totalItems);
+export function updateReferencesDisplay(summary, container, totalItems = 0, state = null) {
+    renderReferencesSection(summary, container, totalItems, state);
 }

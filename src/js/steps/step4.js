@@ -79,7 +79,7 @@ function handleStep4Entry(state, container) {
 
     // Render the references section
     if (container) {
-        renderReferencesSection(detectionResults.summary, container, totalItems);
+        renderReferencesSection(detectionResults.summary, container, totalItems, state);
     }
 
     // Log detection results for debugging

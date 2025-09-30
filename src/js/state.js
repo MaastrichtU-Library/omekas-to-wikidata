@@ -75,7 +75,8 @@ export function setupState() {
         // Step 4: References
         references: {
             itemReferences: {}, // Map of itemId -> array of reference objects
-            summary: {} // Map of referenceType -> {count, examples: [{itemId, value}]}
+            summary: {}, // Map of referenceType -> {count, examples: [{itemId, value}]}
+            selectedTypes: ['omeka-item', 'oclc', 'ark'] // List of selected reference types (default: all selected)
         },
 
         // Step 5: Export
@@ -772,6 +773,44 @@ export function setupState() {
     
     
     /**
+     * Toggles a reference type between selected and ignored
+     * @param {string} type - Reference type to toggle (e.g., 'omeka-item', 'oclc', 'ark')
+     */
+    function toggleReferenceType(type) {
+        const oldSelectedTypes = [...state.references.selectedTypes];
+        const index = state.references.selectedTypes.indexOf(type);
+
+        if (index === -1) {
+            // Not selected, add it
+            state.references.selectedTypes.push(type);
+        } else {
+            // Already selected, remove it
+            state.references.selectedTypes.splice(index, 1);
+        }
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners of the reference type toggle
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.selectedTypes',
+            oldValue: oldSelectedTypes,
+            newValue: [...state.references.selectedTypes]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Checks if a reference type is selected
+     * @param {string} type - Reference type to check
+     * @returns {boolean} True if the reference type is selected
+     */
+    function isReferenceTypeSelected(type) {
+        return state.references.selectedTypes.includes(type);
+    }
+
+    /**
      * Loads mock data for testing purposes
      * @param {Object} mockItems - Mock items data with items array
      * @param {Object} mockMapping - Mock mapping data with mappings object
@@ -1170,6 +1209,9 @@ export function setupState() {
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,
         setReconciliationProgress,
+        // Convenience methods for references
+        toggleReferenceType,
+        isReferenceTypeSelected,
         // Convenience methods for Entity Schema
         setSelectedEntitySchema,
         getSelectedEntitySchema,
