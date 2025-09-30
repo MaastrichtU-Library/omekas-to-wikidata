@@ -33,24 +33,38 @@ export function renderReferencesSection(summary, container, totalItems = 0) {
         return;
     }
 
-    // Create title
-    const title = createElement('h3', {
-        className: 'references-title',
-        style: {
-            textAlign: 'left',
-            marginBottom: '16px'
+    // Calculate total items with at least one reference
+    const itemsWithReferences = new Set();
+    Object.values(summary).forEach(data => {
+        if (data.examples) {
+            data.examples.forEach(example => itemsWithReferences.add(example.itemId));
         }
+    });
+
+    // Create section (details element)
+    const section = createElement('details', {
+        className: 'section',
+        open: true
+    });
+
+    // Create summary (header)
+    const summaryElement = createElement('summary');
+
+    const titleSpan = createElement('span', {
+        className: 'section-title'
     }, 'Available References');
-    container.appendChild(title);
+
+    const countSpan = createElement('span', {
+        className: 'section-count'
+    }, `(${itemsWithReferences.size}/${totalItems})`);
+
+    summaryElement.appendChild(titleSpan);
+    summaryElement.appendChild(countSpan);
+    section.appendChild(summaryElement);
 
     // Create list
     const list = createElement('ul', {
-        className: 'references-list',
-        style: {
-            textAlign: 'left',
-            listStylePosition: 'inside',
-            paddingLeft: '0'
-        }
+        className: 'key-list'
     });
 
     // Create reference type list items
@@ -64,7 +78,8 @@ export function renderReferencesSection(summary, container, totalItems = 0) {
         }
     });
 
-    container.appendChild(list);
+    section.appendChild(list);
+    container.appendChild(section);
 }
 
 /**
@@ -78,24 +93,20 @@ export function createReferenceListItem(type, data, totalItems) {
     const label = getReferenceTypeLabel(type);
     const description = getReferenceTypeDescription(type);
 
-    // Create list item
-    const listItem = createElement('li', {
-        className: 'reference-list-item',
-        style: {
-            position: 'relative',
-            marginBottom: '8px',
-            textAlign: 'left'
-        }
+    // Create list item (uses same classes as mapping lists)
+    const listItem = createElement('li');
+
+    // Create compact key item wrapper
+    const keyItemCompact = createElement('div', {
+        className: 'key-item-compact'
     });
 
-    // Create text content: "Label (count/total items) - Description"
-    const textContent = `${label} (${data.count}/${totalItems} items) - ${description}`;
+    // Create key name with label and description
+    const keyName = createElement('span', {
+        className: 'key-name-compact'
+    }, `${label} - ${description}`);
 
-    const textSpan = createElement('span', {
-        className: 'reference-text'
-    }, textContent);
-
-    // Create info icon with tooltip
+    // Create info icon with tooltip (inline with text)
     const infoIcon = createElement('span', {
         className: 'reference-info-icon',
         title: 'Hover for examples',
@@ -105,6 +116,11 @@ export function createReferenceListItem(type, data, totalItems) {
             color: '#0066cc'
         }
     }, 'ⓘ');
+
+    // Create frequency indicator (count display)
+    const frequency = createElement('span', {
+        className: 'key-frequency'
+    }, `(${data.count}/${totalItems})`);
 
     // Create tooltip element
     const tooltip = createTooltip(data.examples, type);
@@ -140,8 +156,11 @@ export function createReferenceListItem(type, data, totalItems) {
         tooltip.style.display = 'none';
     });
 
-    listItem.appendChild(textSpan);
-    listItem.appendChild(infoIcon);
+    // Append all elements in the correct order
+    keyItemCompact.appendChild(keyName);
+    keyItemCompact.appendChild(infoIcon);
+    keyItemCompact.appendChild(frequency);
+    listItem.appendChild(keyItemCompact);
 
     return listItem;
 }
