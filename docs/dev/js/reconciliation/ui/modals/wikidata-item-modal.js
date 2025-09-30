@@ -59,9 +59,8 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
             <div class="manual-search">
                 <div class="section-title">Search Wikidata</div>
                 <div class="search-container">
-                    <input type="text" id="wikidata-search" class="search-input" 
-                           placeholder="Search for a different item..." value="${escapeHtml(value)}">
-                    <button class="btn btn-primary" onclick="performWikidataEntitySearch()">Search</button>
+                    <input type="text" id="wikidata-search" class="search-input"
+                           placeholder="Type to search..." value="${escapeHtml(value)}" style="width: 100%;">
                 </div>
                 <div class="search-results" id="search-results"></div>
             </div>
@@ -88,9 +87,9 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
  */
 export function initializeWikidataItemModal(modalElement) {
     const value = modalElement.dataset.value;
-    const existingMatches = modalElement.dataset.existingMatches ? 
+    const existingMatches = modalElement.dataset.existingMatches ?
         JSON.parse(modalElement.dataset.existingMatches) : null;
-    
+
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
         itemId: modalElement.dataset.itemId,
@@ -98,15 +97,33 @@ export function initializeWikidataItemModal(modalElement) {
         valueIndex: parseInt(modalElement.dataset.valueIndex),
         originalValue: value,
         currentValue: value,
-        propertyData: modalElement.dataset.propertyData ? 
+        propertyData: modalElement.dataset.propertyData ?
             JSON.parse(modalElement.dataset.propertyData) : null,
         dataType: 'wikibase-item',
         existingMatches: existingMatches,
         modalType: 'wikidata-item'
     };
-    
+
     // Load existing matches for Wikidata items
     loadWikidataItemMatches(value, existingMatches);
+
+    // Set up keystroke-based search with debounce
+    const searchInput = document.getElementById('wikidata-search');
+    if (searchInput) {
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            // Set new timeout to search after 300ms of no typing
+            searchTimeout = setTimeout(() => {
+                window.performWikidataEntitySearch();
+            }, 300);
+        });
+    }
 }
 
 /**
@@ -205,15 +222,16 @@ export function createWikidataMatchItem(match) {
     const safeMatchId = escapeHtml(match.id);
     // Escape match.id for safe use in JavaScript string literals
     const jsEscapedId = match.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-    
+    const label = escapeHtml(match.label || 'Unnamed');
+    const description = match.description ? escapeHtml(match.description) : '';
+
     return `
         <div class="wikidata-match-item" data-match-id="${safeMatchId}" onclick="applyWikidataMatchDirectly('${jsEscapedId}')">
             <div class="match-content">
-                <div class="match-label">${escapeHtml(match.label || 'Unnamed')}</div>
-                <div class="match-id">
-                    <a href="https://www.wikidata.org/wiki/${safeMatchId}" target="_blank" onclick="event.stopPropagation()">${safeMatchId}</a>
+                <div class="match-title">
+                    ${label} <span class="match-qid-inline">(${safeMatchId})</span>
                 </div>
-                <div class="match-description">${escapeHtml(match.description || 'No description')}</div>
+                ${description ? `<div class="match-description">${description}</div>` : ''}
             </div>
         </div>
     `;
