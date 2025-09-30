@@ -72,11 +72,11 @@ export function setupState() {
         },
         reconciliationData: [],
         
-        // Step 4: Designer
-        references: [], // Deprecated - references now stored in reconciliationData
-        selectedExampleItem: '',
-        designerData: [],
-        globalReferences: [], // References that apply to all items/properties
+        // Step 4: References (placeholder step - emptied)
+        references: [], // Deprecated - step 4 emptied
+        selectedExampleItem: '', // Deprecated - step 4 emptied
+        designerData: [], // Deprecated - step 4 emptied
+        globalReferences: [], // Deprecated - step 4 emptied
         
         // Step 5: Export
         quickStatements: '',
@@ -500,7 +500,7 @@ export function setupState() {
                 return state.reconciliationProgress.completed === state.reconciliationProgress.total && 
                        state.reconciliationProgress.total > 0;
             case 4:
-                return state.references.length > 0 && state.designerData.length > 0;
+                return true; // Always valid - empty placeholder step
             default:
                 return false;
         }

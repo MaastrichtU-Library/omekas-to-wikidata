@@ -21,8 +21,8 @@ The tool guides users through a 5-step process:
 
 1. **Input**: Configure Omeka S API endpoint and import JSON data (with automatic CORS handling)
 2. **Mapping**: Map JSON keys to Wikidata properties with load/save functionality
-3. **Reconciliation**: Match data values to existing Wikidata entities 
-4. **Designer**: Design complete Wikidata items with sources and qualifiers, supporting multilingual labels (mul)
+3. **Reconciliation**: Match data values to existing Wikidata entities
+4. **References**: Placeholder step for future reference configuration
 5. **Export**: Generate QuickStatements for bulk import to Wikidata
 
 ## Load/Save Mapping Functionality

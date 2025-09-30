@@ -73,9 +73,9 @@ The application follows a **modular, event-driven architecture**:
 - Dependencies: reconciliation/*, api/wikidata.js
 
 ### **designer.js**
-- Purpose: Step 4 - Configure references and sources
-- Key features: Reference management, source configuration
-- Dependencies: state.js, ui/components.js
+- Purpose: Step 4 - References (placeholder step - emptied)
+- Key features: Minimal placeholder setup, navigation handling
+- Dependencies: None (placeholder step)
 
 ### **export.js**
 - Purpose: Step 5 - Generate QuickStatements for Wikidata import
