@@ -299,6 +299,248 @@ export function setupMappingStep(state) {
         });
     }
 
+    // Add Description functionality
+    const addDescriptionBtn = document.getElementById('add-description');
+    if (addDescriptionBtn) {
+        addDescriptionBtn.addEventListener('click', () => {
+            // Create empty key data for the modal
+            const emptyKeyData = {
+                key: '',
+                type: 'unknown',
+                frequency: 0,
+                totalItems: 0,
+                sampleValue: ''
+            };
+
+            // Open the mapping modal with empty data
+            openMappingModal(emptyKeyData);
+
+            // Wait 150ms for setupPropertySearch to finish (it runs at 100ms),
+            // then set the description property
+            setTimeout(() => {
+                const descriptionProperty = {
+                    id: 'description',
+                    label: 'Descriptions',
+                    description: 'Short disambiguating phrases',
+                    datatype: 'monolingualtext',
+                    datatypeLabel: 'Monolingual text',
+                    isMetadata: true,
+                    helpUrl: 'https://www.wikidata.org/wiki/Help:Description'
+                };
+
+                // Set the selected property
+                window.currentMappingSelectedProperty = descriptionProperty;
+
+                // Update UI to show selection
+                const selectedSection = document.getElementById('selected-property');
+                const selectedDetails = document.getElementById('selected-property-details');
+
+                if (selectedSection && selectedDetails) {
+                    selectedSection.style.display = 'block';
+                    selectedDetails.innerHTML = `
+                        <div class="property-info metadata-property-info">
+                            <h3>📝 ${descriptionProperty.label}</h3>
+                            <p class="property-id">Metadata Field</p>
+                            <p>${descriptionProperty.description}</p>
+                            <a href="${descriptionProperty.helpUrl}" target="_blank" rel="noopener">
+                                Learn more about ${descriptionProperty.label} →
+                            </a>
+                            <div class="metadata-notice" style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+                                <strong>Note:</strong> This is a metadata field for Wikidata entities.
+                                Values will be treated as language-specific text.
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Update datatype display
+                const datatypeDisplay = document.getElementById('detected-datatype');
+                if (datatypeDisplay) {
+                    datatypeDisplay.innerHTML = `
+                        <span class="datatype-label">Monolingual text</span>
+                    `;
+                }
+
+                // Show datatype section
+                const datatypeSection = document.getElementById('datatype-info-section');
+                if (datatypeSection) {
+                    datatypeSection.style.display = 'block';
+                }
+
+                // Highlight the Descriptions button if it exists
+                const descriptionsButton = Array.from(document.querySelectorAll('.metadata-select-button'))
+                    .find(btn => btn.textContent.includes('Descriptions'));
+                if (descriptionsButton) {
+                    // Remove selected class from all buttons
+                    document.querySelectorAll('.metadata-select-button').forEach(btn => {
+                        btn.classList.remove('selected');
+                        btn.style.borderColor = '#ddd';
+                        btn.style.background = 'white';
+                    });
+                    // Add selected class to Descriptions button
+                    descriptionsButton.classList.add('selected');
+                    descriptionsButton.style.borderColor = '#3366cc';
+                    descriptionsButton.style.background = '#e6f0ff';
+                }
+            }, 150);
+        });
+    }
+
+    // Add Aliases functionality
+    const addAliasesBtn = document.getElementById('add-aliases');
+    if (addAliasesBtn) {
+        addAliasesBtn.addEventListener('click', () => {
+            // Create empty key data for the modal
+            const emptyKeyData = {
+                key: '',
+                type: 'unknown',
+                frequency: 0,
+                totalItems: 0,
+                sampleValue: ''
+            };
+
+            // Open the mapping modal with empty data
+            openMappingModal(emptyKeyData);
+
+            // Wait 150ms for setupPropertySearch to finish (it runs at 100ms),
+            // then set the aliases property
+            setTimeout(() => {
+                const aliasesProperty = {
+                    id: 'aliases',
+                    label: 'Aliases',
+                    description: 'Alternative names',
+                    datatype: 'monolingualtext',
+                    datatypeLabel: 'Monolingual text',
+                    isMetadata: true,
+                    helpUrl: 'https://www.wikidata.org/wiki/Help:Aliases'
+                };
+
+                // Set the selected property
+                window.currentMappingSelectedProperty = aliasesProperty;
+
+                // Update UI to show selection
+                const selectedSection = document.getElementById('selected-property');
+                const selectedDetails = document.getElementById('selected-property-details');
+
+                if (selectedSection && selectedDetails) {
+                    selectedSection.style.display = 'block';
+                    selectedDetails.innerHTML = `
+                        <div class="property-info metadata-property-info">
+                            <h3>🔄 ${aliasesProperty.label}</h3>
+                            <p class="property-id">Metadata Field</p>
+                            <p>${aliasesProperty.description}</p>
+                            <a href="${aliasesProperty.helpUrl}" target="_blank" rel="noopener">
+                                Learn more about ${aliasesProperty.label} →
+                            </a>
+                            <div class="metadata-notice" style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+                                <strong>Note:</strong> This is a metadata field for Wikidata entities.
+                                Values will be treated as language-specific text.
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Update datatype display
+                const datatypeDisplay = document.getElementById('detected-datatype');
+                if (datatypeDisplay) {
+                    datatypeDisplay.innerHTML = `
+                        <span class="datatype-label">Monolingual text</span>
+                    `;
+                }
+
+                // Show datatype section
+                const datatypeSection = document.getElementById('datatype-info-section');
+                if (datatypeSection) {
+                    datatypeSection.style.display = 'block';
+                }
+
+                // Highlight the Aliases button if it exists
+                const aliasesButton = Array.from(document.querySelectorAll('.metadata-select-button'))
+                    .find(btn => btn.textContent.includes('Aliases'));
+                if (aliasesButton) {
+                    // Remove selected class from all buttons
+                    document.querySelectorAll('.metadata-select-button').forEach(btn => {
+                        btn.classList.remove('selected');
+                        btn.style.borderColor = '#ddd';
+                        btn.style.background = 'white';
+                    });
+                    // Add selected class to Aliases button
+                    aliasesButton.classList.add('selected');
+                    aliasesButton.style.borderColor = '#3366cc';
+                    aliasesButton.style.background = '#e6f0ff';
+                }
+            }, 150);
+        });
+    }
+
+    // Add Instance of functionality
+    const addInstanceOfBtn = document.getElementById('add-instance-of');
+    if (addInstanceOfBtn) {
+        addInstanceOfBtn.addEventListener('click', () => {
+            // Create empty key data for the modal
+            const emptyKeyData = {
+                key: '',
+                type: 'unknown',
+                frequency: 0,
+                totalItems: 0,
+                sampleValue: ''
+            };
+
+            // Open the mapping modal with empty data
+            openMappingModal(emptyKeyData);
+
+            // Wait 150ms for setupPropertySearch to finish (it runs at 100ms),
+            // then set the instance of property
+            setTimeout(() => {
+                const instanceOfProperty = {
+                    id: 'P31',
+                    label: 'instance of',
+                    description: 'that class of which this subject is a particular example',
+                    datatype: 'wikibase-item',
+                    datatypeLabel: 'Item',
+                    url: 'https://www.wikidata.org/wiki/Property:P31'
+                };
+
+                // Set the selected property
+                window.currentMappingSelectedProperty = instanceOfProperty;
+
+                // Update UI to show selection
+                const selectedSection = document.getElementById('selected-property');
+                const selectedDetails = document.getElementById('selected-property-details');
+
+                if (selectedSection && selectedDetails) {
+                    selectedSection.style.display = 'block';
+                    selectedDetails.innerHTML = `
+                        <div class="property-info">
+                            <h3>${instanceOfProperty.label}</h3>
+                            <p class="property-id">${instanceOfProperty.id}</p>
+                            <p>${instanceOfProperty.description}</p>
+                            <a href="${instanceOfProperty.url}" target="_blank" rel="noopener">
+                                View on Wikidata →
+                            </a>
+                        </div>
+                    `;
+                }
+
+                // Update datatype display
+                const datatypeDisplay = document.getElementById('detected-datatype');
+                if (datatypeDisplay) {
+                    datatypeDisplay.innerHTML = `
+                        <span class="datatype-label">Item</span>
+                    `;
+                }
+
+                // Show datatype section
+                const datatypeSection = document.getElementById('datatype-info-section');
+                if (datatypeSection) {
+                    datatypeSection.style.display = 'block';
+                }
+
+                // Note: No metadata button to highlight since P31 is a regular property
+            }, 150);
+        });
+    }
+
     // Export functions globally for use by other modules
     window.openMappingModal = openMappingModal;
 }
