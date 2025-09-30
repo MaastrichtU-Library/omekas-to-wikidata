@@ -79,18 +79,11 @@ const modalRegistry = {
  * @throws {Error} If data type is not supported
  */
 export function createReconciliationModalByType(dataType, itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
-    console.log('🏭 createReconciliationModalByType called with dataType:', dataType);
-    console.log('🏭 Available modal types:', Object.keys(modalRegistry));
-    
     const modalHandler = modalRegistry[dataType];
     
     if (!modalHandler) {
-        console.error('❌ Unsupported modal type:', dataType);
         throw new Error(`Unsupported reconciliation modal type: ${dataType}. Supported types: ${Object.keys(modalRegistry).join(', ')}`);
     }
-    
-    console.log('✅ Found modal handler for type:', dataType, 'Handler name:', modalHandler.name);
-    
     try {
         const modalElement = modalHandler.create(itemId, property, valueIndex, value, propertyData, existingMatches);
         
@@ -101,7 +94,6 @@ export function createReconciliationModalByType(dataType, itemId, property, valu
         
         return modalElement;
     } catch (error) {
-        console.error(`Error creating ${modalHandler.name}:`, error);
         throw new Error(`Failed to create reconciliation modal for type ${dataType}: ${error.message}`);
     }
 }
@@ -120,31 +112,13 @@ export function initializeReconciliationModal(modalElement) {
     if (!dataType) {
         throw new Error('Modal element missing data-type attribute');
     }
-    
-    console.log('🏭 [MODAL FACTORY] Data type found:', dataType);
-    console.log('🏭 [MODAL FACTORY] Available modal types:', Object.keys(modalRegistry));
-    
     const modalHandler = modalRegistry[dataType];
     if (!modalHandler) {
-        console.error('❌ [MODAL FACTORY] No modal handler found for data type:', dataType);
         throw new Error(`No modal handler found for data type: ${dataType}`);
     }
-    
-    console.log('✅ [MODAL FACTORY] Modal handler found:', {
-        dataType,
-        handlerName: modalHandler.name,
-        hasInitialize: typeof modalHandler.initialize === 'function'
-    });
-    
     try {
         modalHandler.initialize(modalElement);
     } catch (error) {
-        console.error(`❌ [MODAL FACTORY] Error initializing ${modalHandler.name}:`, {
-            error: error.message,
-            stack: error.stack,
-            dataType,
-            modalElement
-        });
         throw new Error(`Failed to initialize reconciliation modal for type ${dataType}: ${error.message}`);
     }
 }
@@ -193,7 +167,6 @@ export function getModalTypeInfo(dataType) {
  */
 export function registerModalType(dataType, createFunction, initializeFunction, name) {
     if (modalRegistry[dataType]) {
-        console.warn(`Modal type ${dataType} is already registered. Overwriting.`);
     }
     
     modalRegistry[dataType] = {
