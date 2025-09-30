@@ -196,7 +196,6 @@ export function setupDesignerStep(state) {
         initializeLanguageMappings();
         displayReferences();
         displayProperties();
-        checkForIssues();
         updateProceedButton();
         
         // Try to auto-detect references on init
@@ -3812,90 +3811,6 @@ export function setupDesignerStep(state) {
                 });
             }
         });
-    }
-    
-    // Check for issues
-    function checkForIssues() {
-        const issuesSection = document.querySelector('.issues-section');
-        const issuesList = document.getElementById('issues-list');
-        if (!issuesSection || !issuesList) {
-            console.error('Designer - issues section not found!');
-            return;
-        }
-        
-        const issues = [];
-        const currentState = state.getState();
-        const oldReferences = currentState.references || [];
-        const globalReferences = currentState.globalReferences || [];
-        const allReferences = [...oldReferences, ...globalReferences];
-        const fetchedData = currentState.fetchedData || [];
-        const reconciliationData = currentState.reconciliationData || {};
-        
-        // Ensure all properties have references arrays
-        ensureReferencesArrays(reconciliationData);
-        
-        // Check if any property has references
-        let hasAnyReferences = false;
-        for (const itemKey of Object.keys(reconciliationData)) {
-            const itemData = reconciliationData[itemKey];
-            if (itemData.properties) {
-                for (const propertyKey of Object.keys(itemData.properties)) {
-                    const propData = itemData.properties[propertyKey];
-                    if (propData.references?.length > 0) {
-                        hasAnyReferences = true;
-                        break;
-                    }
-                }
-                if (hasAnyReferences) break;
-            }
-        }
-        
-        // Also check if any global references exist (even if not applied yet)
-        if (!hasAnyReferences && allReferences.length === 0) {
-            issues.push({
-                type: 'no-references',
-                text: 'No references added. At least one reference is required.',
-                icon: '⚠️'
-            });
-        }
-        
-        // Update issues display
-        issuesList.innerHTML = '';
-        
-        if (issues.length === 0) {
-            // Hide the entire issues section when there are no issues
-            issuesSection.style.display = 'none';
-        } else {
-            // Show the issues section when there are issues
-            issuesSection.style.display = 'block';
-            
-            issues.forEach(issue => {
-                const issueItem = createElement('div', {
-                    className: 'issue-item'
-                });
-                
-                const issueIcon = createElement('span', {
-                    className: 'issue-icon'
-                }, issue.icon);
-                
-                const issueText = createElement('span', {
-                    className: 'issue-text'
-                }, issue.text);
-                
-                issueItem.appendChild(issueIcon);
-                issueItem.appendChild(issueText);
-                
-                if (issue.type === 'no-references') {
-                    const fixBtn = createButton('Add Reference', {
-                        className: 'issue-action',
-                        onClick: addManualReference
-                    });
-                    issueItem.appendChild(fixBtn);
-                }
-                
-                issuesList.appendChild(issueItem);
-            });
-        }
     }
     
     // Update preview
