@@ -36,6 +36,10 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
     if (propertyData) {
         modalContent.dataset.propertyData = JSON.stringify(propertyData);
     }
+    // Store existing matches to preserve them through modal initialization
+    if (existingMatches) {
+        modalContent.dataset.existingMatches = JSON.stringify(existingMatches);
+    }
     
     modalContent.innerHTML = `
         <div class="data-type-indicator">
@@ -87,8 +91,14 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
  */
 export function initializeWikidataItemModal(modalElement) {
     const value = modalElement.dataset.value;
-    const existingMatches = modalElement.dataset.existingMatches ?
+    // Try to get existingMatches from dataset first, then fallback to window.currentModalContext
+    let existingMatches = modalElement.dataset.existingMatches ?
         JSON.parse(modalElement.dataset.existingMatches) : null;
+
+    // Fallback to window.currentModalContext if dataset doesn't have matches
+    if (!existingMatches && window.currentModalContext && window.currentModalContext.existingMatches) {
+        existingMatches = window.currentModalContext.existingMatches;
+    }
 
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
@@ -100,7 +110,7 @@ export function initializeWikidataItemModal(modalElement) {
         propertyData: modalElement.dataset.propertyData ?
             JSON.parse(modalElement.dataset.propertyData) : null,
         dataType: 'wikibase-item',
-        existingMatches: existingMatches,
+        existingMatches: existingMatches,  // Store the matches we retrieved
         modalType: 'wikidata-item'
     };
 
@@ -134,14 +144,18 @@ export function initializeWikidataItemModal(modalElement) {
 export async function loadWikidataItemMatches(value, existingMatches = null) {
     const matchesContainer = document.getElementById('existing-matches');
     if (!matchesContainer) return;
-    
+
     try {
         let matches = existingMatches;
-        
-        // If no existing matches provided, search for new ones
-        if (!matches || matches.length === 0) {
+
+        // Only search for new matches if we truly don't have any existing ones
+        // Check both if it's null/undefined AND if it's an empty array
+        if (matches === null || matches === undefined) {
+            // No existing matches provided, search for new ones
             matches = await searchWikidataEntities(value);
         }
+        // If we have an empty array, that means reconciliation was attempted but no matches found
+        // Don't search again in this case
         
         if (matches && matches.length > 0) {
             const topMatches = matches.slice(0, 3); // Show top 3 matches
