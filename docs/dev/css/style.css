@@ -112,6 +112,15 @@ button {
     flex-shrink: 0;
 }
 
+.add-metadata-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 /* Custom Entity Schema Selector */
 .entity-schema-selector-custom {
     position: relative;
@@ -2008,6 +2017,27 @@ pre.sample-value {
     color: #666;
     font-style: italic;
     margin-left: 0.5rem;
+}
+
+/* Required property placeholder styling */
+.required-mapping-placeholder {
+    color: var(--danger-color);
+}
+
+.required-property-name {
+    font-weight: 600;
+    color: #d32f2f;
+    font-size: 0.9rem;
+}
+
+.required-property-description {
+    font-size: 0.75rem;
+    color: #c62828;
+    font-style: italic;
+}
+
+.required-mapping-item:hover {
+    background-color: rgba(244, 67, 54, 0.05);
 }
 
 .key-list li {
