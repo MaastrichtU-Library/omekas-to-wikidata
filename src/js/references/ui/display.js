@@ -24,6 +24,9 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
     // Clear existing content
     container.innerHTML = '';
 
+    // Render properties section first
+    renderPropertiesSection(container, totalItems, state);
+
     // Check if there are any references
     const hasReferences = Object.values(summary).some(data => data.count > 0);
 
@@ -596,6 +599,127 @@ export function createAddCustomReferenceButton(state) {
 
     // Store click handler data attribute for step4.js to attach handler
     listItem.dataset.action = 'add-custom-reference';
+
+    return listItem;
+}
+
+/**
+ * Renders the properties section showing mapped properties from step 2
+ * @param {HTMLElement} container - Container element to render into
+ * @param {number} totalItems - Total number of items in dataset
+ * @param {Object} state - Application state management instance
+ */
+export function renderPropertiesSection(container, totalItems, state) {
+    if (!state) {
+        return;
+    }
+
+    const currentState = state.getState();
+    const mappedKeys = currentState.mappings?.mappedKeys || [];
+
+    if (mappedKeys.length === 0) {
+        return;
+    }
+
+    // Create section (details element)
+    const section = createElement('details', {
+        className: 'section',
+        open: true
+    });
+
+    // Create summary (header)
+    const summaryElement = createElement('summary', {
+        style: {
+            textAlign: 'left'
+        }
+    });
+
+    const titleSpan = createElement('span', {
+        className: 'section-title'
+    }, 'Mapped Properties');
+
+    const countSpan = createElement('span', {
+        className: 'section-count'
+    }, `(${mappedKeys.length})`);
+
+    summaryElement.appendChild(titleSpan);
+    summaryElement.appendChild(countSpan);
+    section.appendChild(summaryElement);
+
+    // Create list
+    const list = createElement('ul', {
+        className: 'key-list'
+    });
+
+    // Render each mapped property
+    mappedKeys.forEach(mappedKey => {
+        const listItem = createPropertyListItem(mappedKey, totalItems);
+        list.appendChild(listItem);
+    });
+
+    section.appendChild(list);
+    container.appendChild(section);
+}
+
+/**
+ * Creates a list item for a mapped property
+ * @param {Object} mappedKey - Mapped key object with property information
+ * @param {number} totalItems - Total number of items in dataset
+ * @returns {HTMLElement} List item element
+ */
+function createPropertyListItem(mappedKey, totalItems) {
+    const property = mappedKey.property;
+    const sourceKey = mappedKey.key;
+
+    // Create list item
+    const listItem = createElement('li', {
+        style: {
+            opacity: '1'
+        }
+    });
+
+    // Create compact key item wrapper
+    const keyItemCompact = createElement('div', {
+        className: 'key-item-compact',
+        style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%'
+        }
+    });
+
+    // Create left section (text + frequency)
+    const leftSection = createElement('div', {
+        style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+        }
+    });
+
+    // Create key name with property label
+    const keyName = createElement('span', {
+        className: 'key-name-compact'
+    }, `${property.id}: ${property.label}`);
+
+    // Create frequency indicator
+    const frequency = createElement('span', {
+        className: 'key-frequency',
+        style: {
+            fontSize: '0.9em',
+            color: '#666'
+        }
+    }, `from ${sourceKey}`);
+
+    // Append to left section
+    leftSection.appendChild(keyName);
+    leftSection.appendChild(frequency);
+
+    // Append left section to wrapper
+    keyItemCompact.appendChild(leftSection);
+
+    listItem.appendChild(keyItemCompact);
 
     return listItem;
 }
