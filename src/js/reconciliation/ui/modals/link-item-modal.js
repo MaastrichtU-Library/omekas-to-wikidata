@@ -35,13 +35,10 @@ export function createLinkItemModal(itemId, itemNumber, currentQid = null) {
     }
 
     modalContent.innerHTML = `
-        <div class="modal-header">
-            <h2>Link item ${itemNumber} to an existing Wikidata item</h2>
-            <p class="modal-description">Search for and select a Wikidata item to link. When linked, this item will update the existing Wikidata item instead of creating a new one.</p>
-        </div>
+        <p class="modal-description" style="margin-bottom: 1.5rem;">Search to check if this item already exists on Wikidata. If found, link it to avoid creating a duplicate.</p>
 
         ${currentQid ? `
-            <div class="current-link-display">
+            <div class="current-link-display" style="margin-bottom: 1.5rem;">
                 <div class="section-title">Currently Linked To</div>
                 <div class="linked-item-display">
                     <a href="https://www.wikidata.org/wiki/${escapeHtml(currentQid)}" target="_blank" class="linked-qid">${escapeHtml(currentQid)}</a>
@@ -50,15 +47,11 @@ export function createLinkItemModal(itemId, itemNumber, currentQid = null) {
         ` : ''}
 
         <div class="search-section">
-            <div class="section-title">Search Wikidata Items</div>
-            <div class="search-container">
+            <div class="search-container" style="margin-bottom: 1rem;">
                 <input type="text" id="link-item-search" class="search-input"
-                       placeholder="Enter search query (e.g., 'Albert Einstein', 'painting', 'Q12345')">
-                <button class="btn btn-primary" onclick="performLinkItemSearch()">Search</button>
+                       placeholder="Type to search (e.g., 'Albert Einstein', 'painting', 'Q12345')" style="width: 100%;">
             </div>
-            <div class="search-results" id="link-search-results">
-                <div class="search-help">Enter a search query to find Wikidata items</div>
-            </div>
+            <div class="search-results" id="link-search-results"></div>
         </div>
 
         <div class="modal-actions">
@@ -86,13 +79,21 @@ export function initializeLinkItemModal(modalElement) {
         modalType: 'link-item'
     };
 
-    // Set up enter key handler for search
+    // Set up keystroke-based search with debounce
     const searchInput = document.getElementById('link-item-search');
     if (searchInput) {
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                window.performLinkItemSearch();
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
             }
+
+            // Set new timeout to search after 300ms of no typing
+            searchTimeout = setTimeout(() => {
+                window.performLinkItemSearch();
+            }, 300);
         });
 
         // Focus the search input
@@ -119,15 +120,16 @@ function escapeHtml(text) {
 function createLinkItemResult(result) {
     const safeId = escapeHtml(result.id);
     const jsEscapedId = result.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    const label = escapeHtml(result.label || 'Unnamed');
+    const description = result.description ? escapeHtml(result.description) : '';
 
     return `
         <div class="wikidata-match-item link-item-result" data-qid="${safeId}" onclick="selectLinkItem('${jsEscapedId}')">
             <div class="match-content">
-                <div class="match-label">${escapeHtml(result.label || 'Unnamed')}</div>
-                <div class="match-id">
-                    <a href="https://www.wikidata.org/wiki/${safeId}" target="_blank" onclick="event.stopPropagation()">${safeId}</a>
+                <div class="match-title">
+                    ${label} <span class="match-qid-inline">(${safeId})</span>
                 </div>
-                <div class="match-description">${escapeHtml(result.description || 'No description')}</div>
+                ${description ? `<div class="match-description">${description}</div>` : ''}
             </div>
         </div>
     `;
@@ -146,7 +148,7 @@ window.performLinkItemSearch = async function() {
 
     const query = searchInput.value.trim();
     if (!query) {
-        resultsContainer.innerHTML = '<div class="search-help">Enter a search query to find Wikidata items</div>';
+        resultsContainer.innerHTML = '';
         return;
     }
 

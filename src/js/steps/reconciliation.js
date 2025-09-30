@@ -130,10 +130,14 @@ import {
  * 6. Prepare final reconciliation data for export step
  */
 export function setupReconciliationStep(state) {
-    
+
     // Initialize modal UI
     const modalUI = setupModalUI();
-    
+
+    // Make modal UI available globally for modals to close themselves
+    window.modalUI = modalUI;
+    window.closeModal = modalUI.closeModal;
+
     // Listen for STEP_CHANGED events to initialize reconciliation when entering step 3
     eventSystem.subscribe(eventSystem.Events.STEP_CHANGED, (data) => {
         if (data.newStep === 3) {
