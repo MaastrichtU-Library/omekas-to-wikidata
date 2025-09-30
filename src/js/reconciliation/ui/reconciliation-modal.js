@@ -863,7 +863,8 @@ export function createOpenReconciliationModalFactory(dependencies) {
         // Get existing matches from reconciliation data if available
         let existingMatches = null;
         const currentState = state.getState();
-        const reconciliationData = currentState.reconciliation?.data || {};
+        // FIXED: Use correct state path - reconciliationData is at root level, not under reconciliation.data
+        const reconciliationData = currentState.reconciliationData || {};
 
         console.log('🔴 [openReconciliationModal] Checking for existing matches:', {
             itemId,
