@@ -24,9 +24,6 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
     // Clear existing content
     container.innerHTML = '';
 
-    // Render properties section first
-    renderPropertiesSection(container, totalItems, state);
-
     // Check if there are any references
     const hasReferences = Object.values(summary).some(data => data.count > 0);
 
@@ -139,6 +136,9 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
 
     section.appendChild(list);
     container.appendChild(section);
+
+    // Render properties section after references
+    renderPropertiesSection(container, totalItems, state);
 }
 
 /**
@@ -636,7 +636,7 @@ export function renderPropertiesSection(container, totalItems, state) {
 
     const titleSpan = createElement('span', {
         className: 'section-title'
-    }, 'Mapped Properties');
+    }, 'Properties Available for References');
 
     const countSpan = createElement('span', {
         className: 'section-count'
@@ -669,7 +669,6 @@ export function renderPropertiesSection(container, totalItems, state) {
  */
 function createPropertyListItem(mappedKey, totalItems) {
     const property = mappedKey.property;
-    const sourceKey = mappedKey.key;
 
     // Create list item
     const listItem = createElement('li', {
@@ -689,32 +688,54 @@ function createPropertyListItem(mappedKey, totalItems) {
         }
     });
 
-    // Create left section (text + frequency)
+    // Create left section
     const leftSection = createElement('div', {
         style: {
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '4px'
         }
     });
 
-    // Create key name with property label
-    const keyName = createElement('span', {
+    // Create property label text
+    const labelText = createElement('span', {
         className: 'key-name-compact'
-    }, `${property.id}: ${property.label}`);
+    }, property.label);
 
-    // Create frequency indicator
-    const frequency = createElement('span', {
-        className: 'key-frequency',
+    // Create opening parenthesis
+    const openParen = createElement('span', {
+        className: 'key-name-compact'
+    }, ' (');
+
+    // Create clickable property ID link
+    const propertyLink = createElement('a', {
+        href: `https://www.wikidata.org/wiki/Property:${property.id}`,
+        target: '_blank',
+        rel: 'noopener noreferrer',
         style: {
-            fontSize: '0.9em',
-            color: '#666'
+            color: '#0066cc',
+            textDecoration: 'none'
         }
-    }, `from ${sourceKey}`);
+    }, property.id);
 
-    // Append to left section
-    leftSection.appendChild(keyName);
-    leftSection.appendChild(frequency);
+    // Add hover effect to link
+    propertyLink.addEventListener('mouseenter', () => {
+        propertyLink.style.textDecoration = 'underline';
+    });
+    propertyLink.addEventListener('mouseleave', () => {
+        propertyLink.style.textDecoration = 'none';
+    });
+
+    // Create closing parenthesis
+    const closeParen = createElement('span', {
+        className: 'key-name-compact'
+    }, ')');
+
+    // Append all elements to left section
+    leftSection.appendChild(labelText);
+    leftSection.appendChild(openParen);
+    leftSection.appendChild(propertyLink);
+    leftSection.appendChild(closeParen);
 
     // Append left section to wrapper
     keyItemCompact.appendChild(leftSection);
