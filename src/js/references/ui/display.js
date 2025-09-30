@@ -73,32 +73,62 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
         className: 'key-list'
     });
 
-    // Create reference type list items
+    // Build a map of originalType -> custom reference for position preservation
+    const customByOriginalType = new Map();
+    const customWithoutOriginalType = [];
+
+    if (state) {
+        const customReferences = state.getCustomReferences();
+        customReferences.forEach(customRef => {
+            if (customRef.originalType) {
+                customByOriginalType.set(customRef.originalType, customRef);
+            } else {
+                customWithoutOriginalType.push(customRef);
+            }
+        });
+    }
+
+    // Render references in order, with custom replacements in place of auto-detected
     const referenceTypes = ['omeka-item', 'oclc', 'ark'];
 
     referenceTypes.forEach(type => {
         const data = summary[type];
-        if (data && data.count > 0) {
-            const listItem = createReferenceListItem(type, data, totalItems, state);
-            list.appendChild(listItem);
-        }
-    });
 
-    // Add custom references
-    if (state) {
-        const customReferences = state.getCustomReferences();
-        customReferences.forEach(customRef => {
-            const data = {
+        // Check if there's a custom replacement for this auto-detected type
+        if (customByOriginalType.has(type)) {
+            // Render the custom replacement in this position
+            const customRef = customByOriginalType.get(type);
+            const customData = {
                 count: customRef.count,
                 examples: customRef.items.slice(0, 10).map(item => ({
                     itemId: item.itemId,
                     value: item.url
                 }))
             };
-            const listItem = createCustomReferenceListItem(customRef, data, totalItems, state);
+            const listItem = createCustomReferenceListItem(customRef, customData, totalItems, state);
             list.appendChild(listItem);
-        });
-    }
+        } else if (data && data.count > 0) {
+            // Only render auto-detected if it's not ignored and has no custom replacement
+            const isSelected = state ? state.isReferenceTypeSelected(type) : true;
+            if (isSelected) {
+                const listItem = createReferenceListItem(type, data, totalItems, state);
+                list.appendChild(listItem);
+            }
+        }
+    });
+
+    // Add remaining custom references (those without originalType)
+    customWithoutOriginalType.forEach(customRef => {
+        const data = {
+            count: customRef.count,
+            examples: customRef.items.slice(0, 10).map(item => ({
+                itemId: item.itemId,
+                value: item.url
+            }))
+        };
+        const listItem = createCustomReferenceListItem(customRef, data, totalItems, state);
+        list.appendChild(listItem);
+    });
 
     // Add "Add custom reference" button as a list item
     const addButton = createAddCustomReferenceButton(state);
@@ -118,7 +148,7 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
  */
 export function createReferenceListItem(type, data, totalItems, state = null) {
     const label = getReferenceTypeLabel(type);
-    const description = getReferenceTypeDescription(type);
+    const description = getReferenceTypeDescription(type, data);
 
     // Check if this type is selected (default to selected if no state)
     const isSelected = state ? state.isReferenceTypeSelected(type) : true;

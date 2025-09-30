@@ -204,7 +204,7 @@ export function detectARKIdentifiers(item) {
  */
 export function getReferenceTypeLabel(type) {
     const labels = {
-        'omeka-item': 'Omeka item',
+        'omeka-item': 'Omeka API item',
         'oclc': 'OCLC WorldCat',
         'ark': 'ARK identifier'
     };
@@ -212,15 +212,24 @@ export function getReferenceTypeLabel(type) {
 }
 
 /**
- * Gets a description for a reference type
+ * Gets a description for a reference type by extracting base URL from examples
  * @param {string} type - Reference type
- * @returns {string} Description
+ * @param {Object} data - Reference data with examples array
+ * @returns {string} Base URL without protocol
  */
-export function getReferenceTypeDescription(type) {
-    const descriptions = {
-        'omeka-item': 'Link to the item through Omeka S API',
-        'oclc': 'OCLC WorldCat bibliographic identifier',
-        'ark': 'Archival Resource Key persistent identifier'
-    };
-    return descriptions[type] || '';
+export function getReferenceTypeDescription(type, data) {
+    // Extract base URL from first example
+    if (data && data.examples && data.examples.length > 0) {
+        const firstUrl = data.examples[0].value;
+        try {
+            const url = new URL(firstUrl);
+            // Return origin without protocol
+            return url.hostname;
+        } catch (e) {
+            // If URL parsing fails, try to extract domain manually
+            const match = firstUrl.match(/^https?:\/\/([^\/]+)/);
+            return match ? match[1] : firstUrl;
+        }
+    }
+    return '';
 }
