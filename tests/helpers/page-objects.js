@@ -74,7 +74,7 @@ export class OmekaToWikidataPage {
       reconciliationRows: page.locator('#reconciliation-rows'),
       reconcileNextBtn: page.locator('#reconcile-next'),
       backToMappingBtn: page.locator('#back-to-mapping'),
-      proceedToDesignerBtn: page.locator('#proceed-to-designer'),
+      proceedToExportBtn: page.locator('#proceed-to-export'),
       testReconciliationModelBtn: page.locator('#test-reconciliation-model'),
       step3Section: page.locator('#step3'),
       reconciliationControls: page.locator('.reconciliation-controls'),
@@ -373,17 +373,17 @@ export class OmekaToWikidataPage {
   }
 
   /**
-   * Check if proceed to designer button is enabled
+   * Check if proceed to export button is enabled
    */
-  async canProceedToDesigner() {
-    return await this.reconciliation.proceedToDesignerBtn.isEnabled();
+  async canProceedToExport() {
+    return await this.reconciliation.proceedToExportBtn.isEnabled();
   }
 
   /**
-   * Proceed from reconciliation to designer step
+   * Proceed from reconciliation to export step (via step 4 placeholder)
    */
-  async proceedToDesigner() {
-    await this.reconciliation.proceedToDesignerBtn.click();
+  async proceedToExport() {
+    await this.reconciliation.proceedToExportBtn.click();
     await this.waitForStepLoad();
   }
 

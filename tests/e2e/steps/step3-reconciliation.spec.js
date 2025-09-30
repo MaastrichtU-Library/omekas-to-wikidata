@@ -55,7 +55,7 @@ test.describe('Step 3 - Reconciliation Tests @reconciliation', () => {
         await expect(app.reconciliation.reconciliationTable).toBeVisible();
         await expect(app.reconciliation.reconcileNextBtn).toBeVisible();
         await expect(app.reconciliation.reconciliationControls).toBeVisible();
-        await expect(app.reconciliation.proceedToDesignerBtn).toBeDisabled();
+        await expect(app.reconciliation.proceedToExportBtn).toBeDisabled();
       });
 
       assertNoErrors();
@@ -255,7 +255,7 @@ test.describe('Step 3 - Reconciliation Tests @reconciliation', () => {
       await test.step('Verify progress updates with reconciliation', async () => {
         const initialState = await page.evaluate(() => {
           return {
-            canProceed: !document.querySelector('#proceed-to-designer')?.disabled,
+            canProceed: !document.querySelector('#proceed-to-export')?.disabled,
             progressText: document.body.textContent
           };
         });
@@ -281,9 +281,9 @@ test.describe('Step 3 - Reconciliation Tests @reconciliation', () => {
       });
     });
 
-    test('proceed to designer availability', async ({ page }) => {
+    test('proceed to export availability', async ({ page }) => {
       await test.step('Check proceed button initial state', async () => {
-        const canProceed = await app.canProceedToDesigner();
+        const canProceed = await app.canProceedToExport();
         
         // Initially should be disabled until reconciliation is complete
         expect(typeof canProceed).toBe('boolean');

@@ -97,7 +97,7 @@ node .issues/sync-issues.js --issue 42
 
 ### Module Organization
 - **Feature-based structure:** Group by domain (`mapping/`, `reconciliation/`, `steps/`)
-- **Layer separation:** 
+- **Layer separation:**
   - `core/` - Business logic and data processing
   - `ui/` - Interface components and interactions
   - `utils/` - Helper functions and utilities
@@ -105,6 +105,7 @@ node .issues/sync-issues.js --issue 42
 - **File naming:** Use kebab-case with descriptive names
 - **Import paths:** Use relative imports within features, absolute for shared modules
 - **Index files:** Create `index.js` files to expose public APIs from modules
+- **Note:** Step 4 (References) is currently a placeholder step with minimal implementation
 
 **Example structure:**
 ```
@@ -118,7 +119,7 @@ src/js/
 │   ├── core/
 │   ├── ui/
 │   └── index.js
-├── steps/              # Workflow step handlers
+├── steps/              # Workflow step handlers (Step 4 is placeholder)
 ├── ui/                 # Shared UI components
 ├── utils/              # Cross-cutting utilities
 └── api/                # External service interfaces
