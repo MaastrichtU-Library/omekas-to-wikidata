@@ -49,7 +49,10 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
 
     console.log('🔵 [createWikidataItemModal] Dataset after setup:', {
         hasExistingMatchesInDataset: !!modalContent.dataset.existingMatches,
-        datasetKeys: Object.keys(modalContent.dataset)
+        datasetKeys: Object.keys(modalContent.dataset),
+        existingMatchesParam: existingMatches,
+        existingMatchesParamLength: existingMatches?.length,
+        WHY_NOT_STORED: 'Because there is no code to store existingMatches in dataset!'
     });
     
     modalContent.innerHTML = `
