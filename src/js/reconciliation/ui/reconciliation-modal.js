@@ -22,19 +22,9 @@ import {
  * This is the main entry point that routes to appropriate specialized modals
  */
 export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, state = null) {
-    console.log('🎯 createReconciliationModal called with:', { itemId, property, valueIndex, value, propertyData, existingMatches, hasState: !!state });
-    
     // NEW: Get both datatype and enhanced property data from mappings
     const propertyLookupResult = getDataTypeAndPropertyData(property, propertyData, state);
     const dataType = propertyLookupResult.datatype;
-    console.log('📊 Determined dataType:', dataType);
-    console.log('🔍 Property lookup result:', {
-        datatype: propertyLookupResult.datatype,
-        hasEnhancedData: !!propertyLookupResult.enhancedPropertyData,
-        enhancedDataKeys: propertyLookupResult.enhancedPropertyData ? Object.keys(propertyLookupResult.enhancedPropertyData) : null,
-        hasConstraints: !!propertyLookupResult.enhancedPropertyData?.constraints
-    });
-    
     // Use enhanced property data from mapping lookup if available, otherwise use provided data
     const enhancedPropertyData = propertyLookupResult.enhancedPropertyData && 
                                  Object.keys(propertyLookupResult.enhancedPropertyData).length > 1 ?
@@ -42,17 +32,7 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
         (propertyData ? 
             { ...propertyData, datatype: propertyData.datatype || dataType } : 
             { datatype: dataType });
-    
-    console.log('🔧 Final enhanced propertyData:', {
-        ...enhancedPropertyData,
-        hasConstraints: !!enhancedPropertyData.constraints,
-        constraintsStructure: enhancedPropertyData.constraints ? Object.keys(enhancedPropertyData.constraints) : null
-    });
-    
     const transformedValue = getTransformedValue(value, property);
-    console.log('🔄 Transformed value:', transformedValue);
-    
-    
     try {
         // Use factory to create type-specific modal
         if (isModalTypeSupported(dataType)) {
@@ -72,14 +52,11 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
             return modalElement;
         } else {
             // Use fallback modal for unsupported types
-            console.warn(`Unsupported modal type: ${dataType}. Using fallback modal.`);
             const fallbackModal = createFallbackModal(dataType, transformedValue);
             fallbackModal.classList.add('reconciliation-modal-redesign');
             return fallbackModal;
         }
     } catch (error) {
-        console.error('Error creating reconciliation modal:', error);
-        
         // Create emergency fallback
         const errorModal = createElement('div', { className: 'reconciliation-modal-redesign error-modal' });
         errorModal.innerHTML = `
@@ -114,7 +91,6 @@ export function initializeReconciliationModalFromDOM() {
                 initializeReconciliationModal(modalContainer);
             } else {
                 // Fallback to legacy initialization
-                console.warn('Using legacy modal initialization');
                 const dataType = modalContainer.dataset.initDataType || modalContainer.dataset.dataType;
                 const value = modalContainer.dataset.initValue || modalContainer.dataset.value;
                 const property = modalContainer.dataset.initProperty || modalContainer.dataset.property;
@@ -127,7 +103,6 @@ export function initializeReconciliationModalFromDOM() {
                 }
             }
         } catch (error) {
-            console.error('Error initializing reconciliation modal:', error);
         }
     }
 }
@@ -187,27 +162,15 @@ function initializeModalInteractions(dataType, value, property, propertyData) {
  * @returns {Object|null} Object with { datatype, fullProperty } if found in mappings, null otherwise
  */
 function getPropertyDataFromMappings(property, state) {
-    console.log('🗺️ getPropertyDataFromMappings called with:', { property });
-    
     if (!state) {
-        console.log('⚠️ No state provided to getPropertyDataFromMappings');
         return null;
     }
     
     const currentState = typeof state.getState === 'function' ? state.getState() : state;
     
     // Add detailed logging of mappings structure
-    console.log('📋 Current mappings structure:', {
-        hasManualProperties: !!currentState.mappings?.manualProperties,
-        manualPropertiesCount: currentState.mappings?.manualProperties?.length || 0,
-        hasMappedKeys: !!currentState.mappings?.mappedKeys,
-        mappedKeysCount: currentState.mappings?.mappedKeys?.length || 0,
-        mappedKeysKeys: currentState.mappings?.mappedKeys?.map(k => k.key) || []
-    });
-    
     // Check manual properties first
     if (currentState.mappings?.manualProperties) {
-        console.log('🔍 Checking manual properties for:', property);
         const manualProp = currentState.mappings.manualProperties.find(mp => 
             mp.property?.id === property || 
             `custom_${mp.property?.id}` === property ||
@@ -216,10 +179,6 @@ function getPropertyDataFromMappings(property, state) {
         );
         
         if (manualProp && (manualProp.propertyType || manualProp.property)) {
-            console.log('✅ Found property in manual properties:', {
-                propertyType: manualProp.propertyType,
-                hasFullProperty: !!manualProp.property
-            });
             return {
                 datatype: manualProp.propertyType || manualProp.property?.datatype,
                 fullProperty: manualProp.property
@@ -229,38 +188,14 @@ function getPropertyDataFromMappings(property, state) {
     
     // Check mapped keys 
     if (currentState.mappings?.mappedKeys) {
-        console.log('🔍 Checking mapped keys for:', property);
-        console.log('�� Available mapped keys:', currentState.mappings.mappedKeys.map(k => ({
-            key: k.key,
-            propertyId: k.property?.id,
-            datatype: k.property?.datatype,
-            propertyType: k.propertyType,
-            hasConstraints: !!k.property?.constraints
-        })));
-        
         const mappedKey = currentState.mappings.mappedKeys.find(key => 
             key.key === property || 
             key.property?.id === property
         );
         
         if (mappedKey) {
-            console.log('🎯 Found matching mapped key:', {
-                key: mappedKey.key,
-                propertyId: mappedKey.property?.id,
-                datatype: mappedKey.property?.datatype,
-                propertyType: mappedKey.propertyType,
-                hasFullProperty: !!mappedKey.property,
-                hasConstraints: !!mappedKey.property?.constraints,
-                constraintsStructure: mappedKey.property?.constraints ? Object.keys(mappedKey.property.constraints) : null
-            });
-            
             const datatype = mappedKey.property?.datatype || mappedKey.propertyType;
             if (datatype) {
-                console.log('✅ Returning full property data from mapped keys:', {
-                    datatype,
-                    hasFullProperty: !!mappedKey.property,
-                    propertyConstraints: mappedKey.property?.constraints
-                });
                 return {
                     datatype: datatype,
                     fullProperty: mappedKey.property
@@ -268,8 +203,6 @@ function getPropertyDataFromMappings(property, state) {
             }
         }
     }
-    
-    console.log('❌ Property data not found in mappings');
     return null;
 }
 
@@ -292,11 +225,8 @@ function getPropertyTypeFromMappings(property, state) {
  * @returns {Object} Object with { datatype, enhancedPropertyData }
  */
 function getDataTypeAndPropertyData(property, propertyData, state = null) {
-    console.log('🔍 getDataTypeAndPropertyData called with:', { property, propertyData, hasState: !!state });
-    
     // Priority 1: Check if we have explicit property data with datatype
     if (propertyData && propertyData.datatype) {
-        console.log('✅ Found explicit datatype in propertyData:', propertyData.datatype);
         return {
             datatype: propertyData.datatype,
             enhancedPropertyData: propertyData // Use existing property data as-is
@@ -305,7 +235,6 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     
     // Priority 2: Check if we have property data with propertyType (for manual properties)
     if (propertyData && propertyData.propertyType) {
-        console.log('✅ Found propertyType in propertyData:', propertyData.propertyType);
         return {
             datatype: propertyData.propertyType,
             enhancedPropertyData: propertyData // Use existing property data as-is
@@ -316,10 +245,6 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     if (state) {
         const mappingData = getPropertyDataFromMappings(property, state);
         if (mappingData && mappingData.datatype) {
-            console.log('✅ Found full property data from mappings:', {
-                datatype: mappingData.datatype,
-                hasConstraints: !!mappingData.fullProperty?.constraints
-            });
             return {
                 datatype: mappingData.datatype,
                 enhancedPropertyData: mappingData.fullProperty || { datatype: mappingData.datatype }
@@ -330,7 +255,6 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     // Priority 4: Check for specific label properties (custom_label, label, etc.)
     const lowerProperty = property.toLowerCase();
     if (lowerProperty.includes('label') || lowerProperty.includes('title') || lowerProperty.includes('name') || lowerProperty.includes('caption')) {
-        console.log('✅ Property matched label/title patterns, returning monolingualtext');
         return {
             datatype: 'monolingualtext',
             enhancedPropertyData: propertyData || { datatype: 'monolingualtext' }
@@ -340,11 +264,8 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     // Priority 5: Check if we have property data with id field to determine type by specific property IDs
     if (propertyData && propertyData.id) {
         const propertyId = propertyData.id;
-        console.log('🔍 Found property ID:', propertyId);
-        
         const propertyTypeFromId = getPropertyTypeByWikidataId(propertyId);
         if (propertyTypeFromId) {
-            console.log('✅ Property ID matched known property types, returning:', propertyTypeFromId);
             return {
                 datatype: propertyTypeFromId,
                 enhancedPropertyData: propertyData || { datatype: propertyTypeFromId }
@@ -356,29 +277,19 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     const propertyIdMatch = property.match(/P\d+/);
     if (propertyIdMatch) {
         const extractedPropertyId = propertyIdMatch[0];
-        console.log('🔍 Extracted property ID from property name:', extractedPropertyId);
-        
         const propertyTypeFromId = getPropertyTypeByWikidataId(extractedPropertyId);
         if (propertyTypeFromId) {
-            console.log('✅ Extracted property ID matched known property types, returning:', propertyTypeFromId);
             return {
                 datatype: propertyTypeFromId,
                 enhancedPropertyData: propertyData || { datatype: propertyTypeFromId }
             };
         }
     }
-    
-    console.log('⚠️ No explicit property type found, using pattern matching');
-    
     // Priority 7: Enhanced pattern matching
     const itemPatterns = ['creator', 'author', 'publisher', 'place', 'person', 'organization', 'location', 'country', 'institution'];
     const stringPatterns = ['identifier', 'id', 'number', 'code', 'url', 'uri', 'isbn', 'issn'];
     const monolingualPatterns = ['description', 'note', 'text', 'comment', 'caption'];
-    
-    console.log('🔍 Checking property patterns for:', lowerProperty);
-    
     if (itemPatterns.some(pattern => lowerProperty.includes(pattern))) {
-        console.log('✅ Property matched item patterns, returning wikibase-item');
         return {
             datatype: 'wikibase-item',
             enhancedPropertyData: propertyData || { datatype: 'wikibase-item' }
@@ -386,7 +297,6 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     }
     
     if (monolingualPatterns.some(pattern => lowerProperty.includes(pattern))) {
-        console.log('✅ Property matched monolingual patterns, returning monolingualtext');
         return {
             datatype: 'monolingualtext',
             enhancedPropertyData: propertyData || { datatype: 'monolingualtext' }
@@ -394,7 +304,6 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     }
     
     if (stringPatterns.some(pattern => lowerProperty.includes(pattern))) {
-        console.log('✅ Property matched string patterns, returning string');
         return {
             datatype: 'string',
             enhancedPropertyData: propertyData || { datatype: 'string' }
@@ -402,8 +311,6 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     }
     
     // Default to string for unknown properties
-    console.log('⚠️ Property did not match any patterns, defaulting to string');
-    console.log('💡 Property patterns checked:', { itemPatterns, stringPatterns, monolingualPatterns });
     return {
         datatype: 'string',
         enhancedPropertyData: propertyData || { datatype: 'string' }
@@ -522,7 +429,6 @@ async function searchWikidataItems(query) {
         }));
         
     } catch (error) {
-        console.error('Wikidata search failed:', error);
         return [];
     }
 }
@@ -579,7 +485,6 @@ export async function loadExistingMatches(value, existingMatches = null) {
             `;
         }
     } catch (error) {
-        console.error('Error loading matches:', error);
         matchesContainer.innerHTML = `
             <div class="section-title">Existing Matches</div>
             <div class="error-message">Error loading matches</div>
@@ -623,7 +528,6 @@ window.closeReconciliationModal = function() {
 
 window.confirmReconciliation = function() {
     if (!window.currentModalContext) {
-        console.error('No modal context available');
         return;
     }
     
@@ -794,7 +698,6 @@ window.showAllMatches = async function() {
             `;
         }
     } catch (error) {
-        console.error('Error showing all matches:', error);
     }
 };
 
@@ -1021,19 +924,13 @@ export function createOpenReconciliationModalFactory(dependencies) {
                 setupAutoAdvanceToggle();
                 
                 // Ensure modal content has proper data attributes for factory system
-                console.log('🔧 [RECONCILIATION MODAL] Adding data attributes to modal content...');
                 if (!modalContent.dataset.dataType && dataType) {
                     modalContent.dataset.dataType = dataType;
                     modalContent.dataset.modalFactory = 'reconciliation';
-                    console.log('✅ [RECONCILIATION MODAL] Added data-type and modal-factory attributes:', {
-                        dataType: modalContent.dataset.dataType,
-                        modalFactory: modalContent.dataset.modalFactory
-                    });
                 }
                 
                 // Copy all data attributes from the original modal element if available
                 if (modalElement && modalElement.dataset) {
-                    console.log('🔧 [RECONCILIATION MODAL] Copying data attributes from original modal element...');
                     let copiedAttrs = [];
                     Object.keys(modalElement.dataset).forEach(key => {
                         if (!modalContent.dataset[key]) { // Don't overwrite existing attributes
@@ -1041,7 +938,6 @@ export function createOpenReconciliationModalFactory(dependencies) {
                             copiedAttrs.push(key);
                         }
                     });
-                    console.log('✅ [RECONCILIATION MODAL] Copied data attributes:', copiedAttrs);
                 }
             }
         }, 30); // Run first to set attributes
@@ -1049,34 +945,16 @@ export function createOpenReconciliationModalFactory(dependencies) {
         // Phase 2: Initialize the modal (needs data attributes to be set)
         setTimeout(() => {
             // Initialize modal using the factory system
-            console.log('🔍 [RECONCILIATION MODAL] Looking for modal container to initialize...');
             const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
                                  document.querySelector('.wikidata-item-modal') ||
                                  document.querySelector('[data-modal-type]') ||
                                  document.querySelector('#modal-content') ||
                                  document.querySelector('.modal-content');
-            
-            console.log('🔍 [RECONCILIATION MODAL] Modal container search result:', {
-                found: !!modalContainer,
-                className: modalContainer?.className,
-                id: modalContainer?.id,
-                querySelector1: !!document.querySelector('.reconciliation-modal-redesign'),
-                querySelector2: !!document.querySelector('.wikidata-item-modal'),
-                querySelector3: !!document.querySelector('[data-modal-type]'),
-                querySelector4: !!document.querySelector('#modal-content'),
-                querySelector5: !!document.querySelector('.modal-content')
-            });
-            
             if (modalContainer) {
-                console.log('✅ [RECONCILIATION MODAL] Modal container found, attempting initialization...');
                 try {
                     // Use the proper factory initialization
                     initializeReconciliationModal(modalContainer);
                 } catch (error) {
-                    console.warn('⚠️ [RECONCILIATION MODAL] Factory initialization failed, falling back to deprecated system:', {
-                        error: error.message,
-                        stack: error.stack
-                    });
                     // Fallback to deprecated system
                     const dataType = modalContainer.dataset.initDataType || 
                                    modalContainer.dataset.dataType || 
@@ -1091,20 +969,11 @@ export function createOpenReconciliationModalFactory(dependencies) {
                         JSON.parse(modalContainer.dataset.initPropertyData) : 
                         (modalContainer.dataset.propertyData ? JSON.parse(modalContainer.dataset.propertyData) : 
                          window.currentModalContext?.propertyData);
-                    
-                    console.log('🔄 [RECONCILIATION MODAL] Using fallback initialization with:', {
-                        dataType,
-                        value,
-                        property,
-                        hasPropertyData: !!propertyData
-                    });
-                    
                     if (dataType && value) {
                         initializeModalInteractions(dataType, value, property, propertyData);
                     }
                 }
             } else {
-                console.warn('⚠️ [RECONCILIATION MODAL] No modal container found for initialization');
             }
         }, 60); // Run after attributes are set
         

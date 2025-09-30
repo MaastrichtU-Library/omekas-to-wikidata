@@ -32,7 +32,6 @@ function getConfirmedValue(itemId, property, valueIndex) {
         // Try multiple ways to access the state system
         const stateManager = window.debugState || window.currentState;
         if (!stateManager) {
-            console.warn('No state system available');
             return null;
         }
         
@@ -60,7 +59,6 @@ function getConfirmedValue(itemId, property, valueIndex) {
         
         return null;
     } catch (error) {
-        console.warn('Failed to retrieve confirmed value from state:', error);
         return null;
     }
 }
@@ -77,7 +75,6 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
         // Try multiple ways to access the state system
         const stateManager = window.debugState || window.currentState;
         if (!stateManager) {
-            console.warn('No state system available');
             return false;
         }
         
@@ -114,7 +111,6 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
         
         return true;
     } catch (error) {
-        console.warn('Failed to save confirmed value to state:', error);
         return false;
     }
 }
@@ -147,7 +143,6 @@ function findSourceTableCell(itemId, property, valueIndex) {
         const fallbackCell = document.querySelector(fallbackSelector);
         return fallbackCell;
     } catch (error) {
-        console.warn('Failed to find source table cell:', error, { itemId, property, valueIndex });
         return null;
     }
 }
@@ -159,7 +154,6 @@ function findSourceTableCell(itemId, property, valueIndex) {
  */
 function updateSourceTableCell(sourceCell, confirmationData) {
     if (!sourceCell) {
-        console.warn('No source cell found to update');
         return;
     }
     
@@ -170,7 +164,6 @@ function updateSourceTableCell(sourceCell, confirmationData) {
         const propertyValueDiv = sourceCell.querySelector('.property-value');
         
         if (!valueTextSpan) {
-            console.warn('Could not find .value-text span in source cell');
             return;
         }
         
@@ -195,7 +188,6 @@ function updateSourceTableCell(sourceCell, confirmationData) {
         sourceCell.classList.add('reconciled');
         
     } catch (error) {
-        console.error('Failed to update source table cell:', error);
     }
 }
 
@@ -216,32 +208,9 @@ export function createExternalIdModal(itemId, property, valueIndex, value, prope
     const hasConfirmedValue = confirmedData !== null;
     
     // Add comprehensive debugging for constraint extraction
-    console.log('🔍 [External-ID Modal] Creating modal for:', {
-        itemId,
-        property,
-        valueIndex,
-        value,
-        displayValue,
-        hasPropertyData: !!propertyData,
-        propertyDataStructure: propertyData ? Object.keys(propertyData) : null
-    });
-    
     const regexConstraints = extractRegexConstraints(property, propertyData);
-    console.log('📋 [External-ID Modal] Extracted constraints:', {
-        hasConstraints: !!regexConstraints,
-        constraints: regexConstraints,
-        property,
-        propertyDataConstraints: propertyData?.constraints
-    });
-    
     // Only validate if we have constraints
     const validationResult = regexConstraints ? validateStringValue(displayValue, regexConstraints) : null;
-    console.log('✅ [External-ID Modal] Validation result:', {
-        hasValidationResult: !!validationResult,
-        validationResult,
-        willShowValidation: !!regexConstraints
-    });
-    
     const propertyLink = generatePropertyLink(property, propertyData);
     
     const modalContent = document.createElement('div');
@@ -338,14 +307,6 @@ export function createExternalIdModal(itemId, property, valueIndex, value, prope
  * @param {HTMLElement} modalElement - The modal element
  */
 export function initializeExternalIdModal(modalElement) {
-    console.log('🚀 [EXTERNAL-ID MODAL] === initializeExternalIdModal CALLED ===');
-    console.log('🚀 [EXTERNAL-ID MODAL] Modal element:', {
-        element: modalElement,
-        className: modalElement?.className,
-        id: modalElement?.id,
-        hasElement: !!modalElement
-    });
-    
     const originalValue = modalElement.dataset.originalValue;
     const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
@@ -354,25 +315,8 @@ export function initializeExternalIdModal(modalElement) {
         JSON.parse(modalElement.dataset.propertyData) : null;
     const confirmedData = modalElement.dataset.confirmedData ? 
         JSON.parse(modalElement.dataset.confirmedData) : null;
-    
-    console.log('🚀 [EXTERNAL-ID MODAL] Extracted data from modal element:', {
-        originalValue,
-        currentValue,
-        property,
-        hasConfirmedValue,
-        hasPropertyData: !!propertyData,
-        hasConfirmedData: !!confirmedData,
-        itemId: modalElement.dataset.itemId,
-        valueIndex: modalElement.dataset.valueIndex
-    });
-    
     // Find the source table cell that opened this modal
     const sourceCell = findSourceTableCell(modalElement.dataset.itemId, property, parseInt(modalElement.dataset.valueIndex));
-    console.log('🚀 [EXTERNAL-ID MODAL] Source cell search result:', {
-        found: !!sourceCell,
-        sourceCell
-    });
-    
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
         itemId: modalElement.dataset.itemId,
@@ -388,32 +332,15 @@ export function initializeExternalIdModal(modalElement) {
         confirmedData: confirmedData,
         sourceCell: sourceCell // Reference to the original table cell
     };
-    
-    console.log('🚀 [EXTERNAL-ID MODAL] Set up window.currentModalContext:', window.currentModalContext);
-    
     // Set up external-id input with enhanced functionality
-    console.log('🚀 [EXTERNAL-ID MODAL] Looking for external-id-input element...');
     const externalIdInput = document.getElementById('external-id-input');
-    console.log('🚀 [EXTERNAL-ID MODAL] External-id input search result:', {
-        found: !!externalIdInput,
-        element: externalIdInput,
-        id: externalIdInput?.id,
-        className: externalIdInput?.className,
-        value: externalIdInput?.value
-    });
-    
     if (externalIdInput) {
-        console.log('✅ [EXTERNAL-ID MODAL] About to call setupExternalIdInput...');
         setupExternalIdInput(externalIdInput, property, propertyData);
-        console.log('✅ [EXTERNAL-ID MODAL] setupExternalIdInput completed');
     } else {
-        console.error('❌ [EXTERNAL-ID MODAL] No external-id-input element found!');
     }
     
     // Initial validation and UI state
-    console.log('🚀 [EXTERNAL-ID MODAL] About to call initial updateValidationState...');
     updateValidationState();
-    console.log('✅ [EXTERNAL-ID MODAL] === initializeExternalIdModal FINISHED ===');
 }
 
 /**
@@ -436,14 +363,6 @@ function escapeHtml(text) {
  */
 function setupExternalIdInput(input, property, propertyData) {
     let isFirstEdit = true;
-    
-    console.log('🚀 [SETUP] Setting up external-id input:', {
-        inputId: input.id,
-        property,
-        hasPropertyData: !!propertyData,
-        propertyData
-    });
-    
     // Clear any previous validation timeout
     if (window.validationTimeout) {
         clearTimeout(window.validationTimeout);
@@ -452,14 +371,6 @@ function setupExternalIdInput(input, property, propertyData) {
     // Set up input event for original value display and validation
     input.addEventListener('input', function(e) {
         const currentValue = input.value;
-        console.log('⌨️ [KEYSTROKE] INPUT event fired:', {
-            eventType: 'input',
-            currentValue: `"${currentValue}"`,
-            valueLength: currentValue.length,
-            property,
-            timestamp: new Date().toISOString()
-        });
-        
         // Show original value hint on first edit
         if (isFirstEdit && currentValue !== window.currentModalContext.originalValue) {
             showOriginalValueHint();
@@ -471,60 +382,31 @@ function setupExternalIdInput(input, property, propertyData) {
         window.currentModalContext.currentValue = currentValue;
         
         // Update validation immediately - no debouncing for input events
-        console.log('🔄 [KEYSTROKE] About to call updateValidationState from input event');
         updateValidationState();
     });
     
     // Set up keyup for additional feedback
     input.addEventListener('keyup', function(e) {
         const currentValue = input.value;
-        console.log('⌨️ [KEYSTROKE] KEYUP event fired:', {
-            eventType: 'keyup',
-            key: e.key,
-            keyCode: e.keyCode,
-            currentValue: `"${currentValue}"`,
-            valueLength: currentValue.length,
-            property,
-            timestamp: new Date().toISOString()
-        });
-        
         window.currentModalContext.currentValue = currentValue;
-        console.log('🔄 [KEYSTROKE] About to call updateValidationState from keyup event');
         updateValidationState();
     });
     
     // Set up blur event for final validation
     input.addEventListener('blur', function() {
         const currentValue = input.value;
-        console.log('⌨️ [KEYSTROKE] BLUR event fired:', {
-            eventType: 'blur',
-            currentValue: `"${currentValue}"`,
-            valueLength: currentValue.length,
-            property,
-            timestamp: new Date().toISOString()
-        });
         updateValidationState();
     });
     
     // Set up paste event for validation after paste
     input.addEventListener('paste', function() {
-        console.log('⌨️ [KEYSTROKE] PASTE event fired');
         // Small delay to let paste complete
         setTimeout(() => {
             const currentValue = input.value;
-            console.log('⌨️ [KEYSTROKE] PASTE completed:', {
-                eventType: 'paste',
-                currentValue: `"${currentValue}"`,
-                valueLength: currentValue.length,
-                property,
-                timestamp: new Date().toISOString()
-            });
             window.currentModalContext.currentValue = currentValue;
             updateValidationState();
         }, 10);
     });
-    
-    console.log('✅ [SETUP] All event listeners attached for external-id input');
 }
 
 /**
@@ -541,11 +423,8 @@ function showOriginalValueHint() {
  * Update validation state and visual feedback
  */
 function updateValidationState() {
-    console.log('🎯 [VALIDATION] === updateValidationState CALLED ===');
-    
     const input = document.getElementById('external-id-input');
     if (!input) {
-        console.error('❌ [VALIDATION] No input element found with id "external-id-input"');
         return;
     }
     
@@ -554,69 +433,29 @@ function updateValidationState() {
     const property = window.currentModalContext?.property;
     const propertyData = window.currentModalContext?.propertyData;
     const feedbackContainer = document.getElementById('validation-feedback');
-    
-    console.log('📊 [VALIDATION] Initial state:', {
-        currentValue: `"${currentValue}"`,
-        valueLength: currentValue.length,
-        property,
-        hasPropertyData: !!propertyData,
-        modalContext: window.currentModalContext ? 'exists' : 'missing',
-        feedbackContainer: feedbackContainer ? 'exists' : 'missing'
-    });
-    
     // Update context with current value from input
     if (window.currentModalContext) {
         window.currentModalContext.currentValue = currentValue;
     }
     
     if (!property) {
-        console.error('❌ [VALIDATION] No property available - cannot validate');
         return;
     }
     
     // Get constraints with debugging
-    console.log('🔍 [VALIDATION] About to extract regex constraints...');
     const constraints = extractRegexConstraints(property, propertyData);
-    console.log('📋 [VALIDATION] Constraints extraction result:', {
-        hasConstraints: !!constraints,
-        constraints,
-        constraintPattern: constraints?.pattern,
-        constraintSource: constraints?.source,
-        propertyDataStructure: propertyData ? Object.keys(propertyData) : null,
-        propertyDataConstraints: propertyData?.constraints
-    });
-    
     // Clear all validation classes first - preserve other classes
     const classesBefore = input.className;
     input.classList.remove('validation-success', 'validation-error', 'validation-warning');
-    console.log('🧹 [VALIDATION] Cleared validation classes:', {
-        classesBefore,
-        classesAfter: input.className
-    });
-    
     // Only validate if we have constraints
     let validationResult = null;
     if (constraints) {
-        console.log('⚖️ [VALIDATION] About to call validateRealTime with:', {
-            currentValue: `"${currentValue}"`,
-            constraintPattern: constraints.pattern,
-            constraintDescription: constraints.description
-        });
         validationResult = validateRealTime(currentValue, constraints);
-        console.log('📝 [VALIDATION] validateRealTime returned:', {
-            validationResult,
-            isValid: validationResult?.isValid,
-            level: validationResult?.level,
-            message: validationResult?.message
-        });
     } else {
-        console.log('⚠️ [VALIDATION] No constraints found - skipping validation');
     }
     
     // Only apply validation styling if we have constraints AND a validation result
     if (constraints && validationResult) {
-        console.log('🎨 [VALIDATION] Applying validation styling based on result...');
-        
         let classToAdd = '';
         if (validationResult.isValid === true) {
             classToAdd = 'validation-success';
@@ -628,21 +467,7 @@ function updateValidationState() {
             classToAdd = 'validation-error';
             input.classList.add('validation-error');
         }
-        
-        console.log('✅ [VALIDATION] Applied validation class:', {
-            classAdded: classToAdd,
-            isValid: validationResult.isValid,
-            level: validationResult.level,
-            finalClasses: input.className,
-            computedStyle: window.getComputedStyle(input).borderColor
-        });
     } else {
-        console.log('⚪ [VALIDATION] No validation styling applied:', {
-            hasConstraints: !!constraints,
-            hasValidationResult: !!validationResult,
-            reason: !constraints ? 'No regex constraints available' : 'No validation result',
-            finalClasses: input.className
-        });
     }
     
     // Update validation feedback only if we have constraints and validation result
@@ -656,22 +481,14 @@ function updateValidationState() {
                 </div>
             `;
             feedbackContainer.innerHTML = feedbackHTML;
-            console.log('💬 [VALIDATION] Updated feedback container:', {
-                message: validationResult.message,
-                icon,
-                level: validationResult.level
-            });
         } else {
             // Clear feedback if no constraints or no validation result
             feedbackContainer.innerHTML = '';
-            console.log('🧹 [VALIDATION] Cleared feedback container');
         }
     }
     
     // Update confirm button state
     updateConfirmButtonState();
-    
-    console.log('🏁 [VALIDATION] === updateValidationState FINISHED ===');
 }
 
 /**
@@ -757,7 +574,6 @@ window.resetExternalIdModal = function() {
 
 window.confirmExternalIdValue = function() {
     if (!window.currentModalContext) {
-        console.error('No modal context available for external-id confirmation');
         return;
     }
     
@@ -780,41 +596,21 @@ window.confirmExternalIdValue = function() {
     const property = window.currentModalContext.property;
     const propertyData = window.currentModalContext.propertyData;
     const constraints = extractRegexConstraints(property, propertyData);
-    
-    console.log('🔒 [External-ID Modal] Confirmation validation check:', {
-        property,
-        currentValue,
-        hasConstraints: !!constraints,
-        constraints,
-        willValidate: !!constraints
-    });
-    
     if (constraints) {
         const validationResult = validateStringValue(currentValue, constraints);
-        console.log('⚖️ [External-ID Modal] Validation before confirmation:', {
-            isValid: validationResult.isValid,
-            message: validationResult.message,
-            pattern: constraints.pattern
-        });
-        
         if (!validationResult.isValid) {
-            console.log('⚠️ [External-ID Modal] Showing override dialog for invalid value');
             const confirmOverride = confirm(
                 `Warning: The value "${currentValue}" does not match the required format.\n\n` +
                 `Expected pattern: ${constraints.pattern}\n\n` +
                 `Do you want to use this value anyway?`
             );
             if (!confirmOverride) {
-                console.log('❌ [External-ID Modal] User cancelled override - not confirming value');
                 return;
             } else {
-                console.log('✅ [External-ID Modal] User approved override - proceeding with invalid value');
             }
         } else {
-            console.log('✅ [External-ID Modal] Value passes validation - proceeding');
         }
     } else {
-        console.log('ℹ️ [External-ID Modal] No constraints available - skipping validation check');
     }
     
     // Prepare confirmation data
@@ -894,6 +690,5 @@ window.confirmExternalIdValue = function() {
             }, 1000);
         }
     } else {
-        console.warn('No save handler found - value may not be persisted');
     }
 };

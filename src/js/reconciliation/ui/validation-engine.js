@@ -88,44 +88,12 @@ const CONSTRAINT_DATABASE = {
  * @returns {Object|null} Constraint object or null if no constraints
  */
 export function extractRegexConstraints(property, propertyData = null) {
-    console.log('🔍 [CONSTRAINT EXTRACTION] === extractRegexConstraints CALLED ===');
-    console.log('🔍 [CONSTRAINT EXTRACTION] Input parameters:', {
-        property: `"${property}"`,
-        hasPropertyData: !!propertyData,
-        propertyDataType: typeof propertyData,
-        propertyDataStructure: propertyData ? Object.keys(propertyData) : null,
-        fullPropertyData: propertyData
-    });
-    
     // First check if we have explicit constraint data from Wikidata
     if (propertyData && propertyData.constraints) {
-        console.log('📋 [CONSTRAINT EXTRACTION] Found propertyData.constraints - analyzing structure...');
-        console.log('📋 [CONSTRAINT EXTRACTION] Constraints structure:', {
-            constraintsType: typeof propertyData.constraints,
-            constraintsKeys: propertyData.constraints ? Object.keys(propertyData.constraints) : null,
-            hasFormat: !!propertyData.constraints.format,
-            formatType: typeof propertyData.constraints.format,
-            formatIsArray: Array.isArray(propertyData.constraints.format),
-            formatLength: propertyData.constraints.format?.length || 0,
-            fullConstraints: propertyData.constraints
-        });
-        
         // Check for format constraints array (new structure)
         if (propertyData.constraints.format && Array.isArray(propertyData.constraints.format)) {
-            console.log('📝 [CONSTRAINT EXTRACTION] Processing format constraints array with', propertyData.constraints.format.length, 'items...');
-            
             for (let i = 0; i < propertyData.constraints.format.length; i++) {
                 const formatConstraint = propertyData.constraints.format[i];
-                console.log(`🔎 [CONSTRAINT EXTRACTION] Examining format constraint [${i}]:`, {
-                    constraintType: typeof formatConstraint,
-                    constraintKeys: formatConstraint ? Object.keys(formatConstraint) : null,
-                    hasRegex: !!formatConstraint.regex,
-                    regexValue: formatConstraint.regex,
-                    hasPattern: !!formatConstraint.pattern,
-                    patternValue: formatConstraint.pattern,
-                    fullConstraint: formatConstraint
-                });
-                
                 // Look for regex field (new structure)
                 if (formatConstraint.regex) {
                     const result = {
@@ -134,7 +102,6 @@ export function extractRegexConstraints(property, propertyData = null) {
                         source: 'wikidata',
                         rank: formatConstraint.rank
                     };
-                    console.log('✅ [CONSTRAINT EXTRACTION] FOUND constraint via regex field:', result);
                     return result;
                 }
                 
@@ -146,30 +113,15 @@ export function extractRegexConstraints(property, propertyData = null) {
                         source: 'wikidata',
                         rank: formatConstraint.rank
                     };
-                    console.log('✅ [CONSTRAINT EXTRACTION] FOUND constraint via pattern field:', result);
                     return result;
                 }
             }
-            console.log('❌ [CONSTRAINT EXTRACTION] No regex/pattern found in any format constraint');
         } else {
-            console.log('⚠️ [CONSTRAINT EXTRACTION] propertyData.constraints.format is not a valid array:', {
-                format: propertyData.constraints.format,
-                formatType: typeof propertyData.constraints.format,
-                formatIsArray: Array.isArray(propertyData.constraints.format)
-            });
         }
         
         // Legacy check: constraints as direct array (old structure)
         if (Array.isArray(propertyData.constraints)) {
-            console.log('📝 [Validation Engine] Checking legacy constraints array:');
             for (const constraint of propertyData.constraints) {
-                console.log('🔎 [Validation Engine] Examining legacy constraint:', {
-                    type: constraint.type,
-                    hasPattern: !!constraint.pattern,
-                    hasRegex: !!constraint.regex,
-                    constraint
-                });
-                
                 if (constraint.type === 'format') {
                     if (constraint.regex) {
                         const result = {
@@ -177,7 +129,6 @@ export function extractRegexConstraints(property, propertyData = null) {
                             description: constraint.description || `Must match pattern: ${constraint.regex}`,
                             source: 'wikidata'
                         };
-                        console.log('✅ [Validation Engine] Found legacy format constraint (regex field):', result);
                         return result;
                     }
                     
@@ -187,32 +138,22 @@ export function extractRegexConstraints(property, propertyData = null) {
                             description: constraint.description || `Must match pattern: ${constraint.pattern}`,
                             source: 'wikidata'
                         };
-                        console.log('✅ [Validation Engine] Found legacy format constraint (pattern field):', result);
                         return result;
                     }
                 }
             }
         }
-        
-        console.log('❌ [Validation Engine] No format constraints found in Wikidata data');
     } else {
-        console.log('❌ [Validation Engine] No propertyData or constraints available');
     }
     
     // Fallback to local constraint database
     const lowerProperty = property.toLowerCase();
-    console.log('🗂️ [Validation Engine] Checking local constraint database:', {
-        lowerProperty,
-        availableKeys: Object.keys(CONSTRAINT_DATABASE)
-    });
-    
     // Direct match first
     if (CONSTRAINT_DATABASE[lowerProperty]) {
         const result = {
             ...CONSTRAINT_DATABASE[lowerProperty],
             source: 'builtin'
         };
-        console.log('✅ [Validation Engine] Found direct match in local database:', result);
         return result;
     }
     
@@ -223,15 +164,9 @@ export function extractRegexConstraints(property, propertyData = null) {
                 ...constraint,
                 source: 'builtin'
             };
-            console.log('✅ [Validation Engine] Found pattern match in local database:', {
-                matchedKey: key,
-                result
-            });
             return result;
         }
     }
-    
-    console.log('❌ [Validation Engine] No constraints found anywhere for property:', property);
     return null;
 }
 
@@ -242,65 +177,29 @@ export function extractRegexConstraints(property, propertyData = null) {
  * @returns {Object} Validation result
  */
 export function validateStringValue(value, constraints) {
-    console.log('🧪 [STRING VALIDATION] === validateStringValue CALLED ===');
-    console.log('🧪 [STRING VALIDATION] Input parameters:', {
-        value: `"${value}"`,
-        valueType: typeof value,
-        valueTrimmed: value ? `"${value.trim()}"` : null,
-        hasConstraints: !!constraints,
-        constraintPattern: constraints?.pattern,
-        constraintErrorMessage: constraints?.errorMessage,
-        fullConstraints: constraints
-    });
-    
     if (!constraints || !constraints.pattern) {
-        console.log('⚠️ [STRING VALIDATION] No constraints or pattern - returning neutral');
         const result = {
             isValid: true,
             message: 'No validation constraints defined',
             level: 'info'
         };
-        console.log('🧪 [STRING VALIDATION] Returning:', result);
         return result;
     }
     
     if (!value || value.trim() === '') {
-        console.log('📭 [STRING VALIDATION] Empty value - returning error');
         const result = {
             isValid: false,
             message: 'Value cannot be empty',
             level: 'error'
         };
-        console.log('🧪 [STRING VALIDATION] Returning:', result);
         return result;
     }
     
     try {
         const pattern = constraints.pattern;
         const trimmedValue = value.trim();
-        
-        console.log('🔍 [STRING VALIDATION] About to test regex:', {
-            pattern: `"${pattern}"`,
-            trimmedValue: `"${trimmedValue}"`,
-            patternType: typeof pattern
-        });
-        
         const regex = new RegExp(pattern);
-        console.log('✅ [STRING VALIDATION] Regex object created successfully:', {
-            regexSource: regex.source,
-            regexFlags: regex.flags,
-            regexString: regex.toString()
-        });
-        
         const isValid = regex.test(trimmedValue);
-        console.log('🎯 [STRING VALIDATION] Regex test completed:', {
-            isValid,
-            pattern: `"${pattern}"`,
-            trimmedValue: `"${trimmedValue}"`,
-            regexTest: `/${pattern}/.test("${trimmedValue}")`,
-            result: isValid
-        });
-        
         const result = {
             isValid,
             message: isValid ? 'Value is valid' : (constraints.errorMessage || `Value does not match required pattern`),
@@ -309,23 +208,14 @@ export function validateStringValue(value, constraints) {
             description: constraints.description,
             examples: constraints.examples
         };
-        
-        console.log('🧪 [STRING VALIDATION] Final result:', result);
-        console.log('🧪 [STRING VALIDATION] === validateStringValue FINISHED ===');
         return result;
         
     } catch (error) {
-        console.error('❌ [STRING VALIDATION] Invalid regex pattern:', {
-            pattern: constraints.pattern,
-            error: error.message,
-            errorStack: error.stack
-        });
         const result = {
             isValid: true,
             message: 'Constraint pattern is invalid - validation skipped',
             level: 'warning'
         };
-        console.log('🧪 [STRING VALIDATION] Returning error result:', result);
         return result;
     }
 }
@@ -337,64 +227,32 @@ export function validateStringValue(value, constraints) {
  * @returns {Object} Real-time validation result
  */
 export function validateRealTime(value, constraints) {
-    console.log('⚖️ [REAL-TIME VALIDATION] === validateRealTime CALLED ===');
-    console.log('⚖️ [REAL-TIME VALIDATION] Input parameters:', {
-        value: `"${value}"`,
-        valueType: typeof value,
-        valueLength: value ? value.length : 0,
-        hasConstraints: !!constraints,
-        constraintsType: typeof constraints,
-        constraintPattern: constraints?.pattern,
-        fullConstraints: constraints
-    });
-    
     if (!constraints || !constraints.pattern) {
-        console.log('⚠️ [REAL-TIME VALIDATION] No constraints or pattern available - returning neutral result');
         const result = {
             isValid: true,
             message: '',
             showHint: false
         };
-        console.log('⚖️ [REAL-TIME VALIDATION] Returning:', result);
         return result;
     }
     
     // Empty value - show hint
     if (!value || value.trim() === '') {
-        console.log('📭 [REAL-TIME VALIDATION] Empty value detected - returning hint');
         const result = {
             isValid: false,
             message: constraints.description || 'Enter a value',
             showHint: true,
             level: 'info'
         };
-        console.log('⚖️ [REAL-TIME VALIDATION] Returning:', result);
         return result;
     }
-    
-    console.log('🧪 [REAL-TIME VALIDATION] About to call validateStringValue...');
     // Validate current value
     const result = validateStringValue(value, constraints);
-    console.log('📋 [REAL-TIME VALIDATION] validateStringValue returned:', {
-        result,
-        isValid: result?.isValid,
-        message: result?.message,
-        level: result?.level
-    });
-    
     // For invalid values, provide helpful hints
     if (!result.isValid && constraints.examples) {
         const originalMessage = result.message;
         result.message += `. Examples: ${constraints.examples.slice(0, 2).join(', ')}`;
-        console.log('💡 [REAL-TIME VALIDATION] Added examples to message:', {
-            originalMessage,
-            newMessage: result.message,
-            examples: constraints.examples.slice(0, 2)
-        });
     }
-    
-    console.log('⚖️ [REAL-TIME VALIDATION] Final result:', result);
-    console.log('⚖️ [REAL-TIME VALIDATION] === validateRealTime FINISHED ===');
     return result;
 }
 
@@ -587,18 +445,12 @@ export function validateBatch(values) {
  * @returns {Promise<Array>} Array of language objects with enhanced data
  */
 export async function searchWikidataLanguages(query) {
-    console.log('🔍 searchWikidataLanguages called with query:', query);
-    
     const queryTrimmed = query.trim();
     
     // Fast fallback results for immediate response
-    console.log('🔍 Getting fallback results for:', queryTrimmed);
     const fallbackResults = searchFallbackLanguages(queryTrimmed);
-    console.log('🔍 Fallback results:', fallbackResults);
-    
     // For very short queries, just return fallback
     if (queryTrimmed.length < 2) {
-        console.log('🔍 Query too short, returning fallback only');
         return fallbackResults;
     }
     
@@ -619,7 +471,6 @@ export async function searchWikidataLanguages(query) {
         return combinedResults.slice(0, 12); // Limit total results
         
     } catch (error) {
-        console.warn('Wikidata language search failed:', error);
         return fallbackResults;
     }
 }
@@ -792,25 +643,18 @@ function combineLanguageResults(wikidataResults, fallbackResults) {
  * @returns {Array} Array of matching languages
  */
 function searchFallbackLanguages(query) {
-    console.log('🔍 searchFallbackLanguages called with:', query);
-    
     const queryLower = query.toLowerCase().trim();
     
     if (!queryLower) {
-        console.log('🔍 Empty query, returning empty array');
         return [];
     }
     
     const commonLanguages = getCommonLanguages();
-    console.log('🔍 Common languages available:', commonLanguages.length);
-    
     const results = commonLanguages.filter(lang => 
         lang.label.toLowerCase().includes(queryLower) ||
         lang.code.toLowerCase().includes(queryLower) ||
         lang.code.toLowerCase().startsWith(queryLower)
     ).slice(0, 12);
-    
-    console.log('🔍 Fallback search results for "' + query + '":', results);
     return results;
 }
 
@@ -936,7 +780,6 @@ export function getStoredLanguage() {
         const stored = localStorage.getItem('reconciliation_last_language');
         return stored ? JSON.parse(stored) : null;
     } catch (error) {
-        console.error('Error reading stored language:', error);
         return null;
     }
 }
@@ -949,7 +792,6 @@ export function setStoredLanguage(language) {
     try {
         localStorage.setItem('reconciliation_last_language', JSON.stringify(language));
     } catch (error) {
-        console.error('Error storing language preference:', error);
     }
 }
 
