@@ -11,9 +11,8 @@
  * 
  * The export process is the culmination of the entire workflow - it transforms:
  * - Raw Omeka S metadata (step 1)
- * - Property mappings (step 2)  
+ * - Property mappings (step 2)
  * - Entity reconciliation (step 3)
- * - Structural configuration (step 4)
  * 
  * Into properly formatted QuickStatements that can be imported directly into Wikidata
  * without manual intervention or formatting corrections.
@@ -65,7 +64,6 @@ const LANGUAGE_PROPERTY_REGEX = /^[LDA][a-z]{2,3}(-[a-z]+)?$/;
  * - Validated Omeka S data with proper structure
  * - Complete property mappings to Wikidata properties
  * - Reconciled entities with confidence scores
- * - Final structural configuration and references
  * 
  * @param {Object} state - Application state management instance
  * @param {Function} state.getState - Retrieves complete application state
@@ -386,58 +384,6 @@ export function setupExportStep(state) {
     }
     
     /**
-     * Extract label or description value from item data with fallback to original fetched data
-     * 
-     * This function implements a two-stage fallback strategy:
-     * 1. First tries to get the value from reconciled data (user has explicitly matched/selected values)
-     * 2. Falls back to the original fetched data if no reconciled value exists
-     * 
-     * @param {Object} itemData - The item's reconciled data containing properties and their matches
-     * @param {string} propertyKey - The key/field name to extract the value from
-     * @param {Array} fetchedData - The original fetched data array from Omeka S
-     * @param {string} itemId - The item identifier in format "item-N" where N is the index
-     * @returns {string|null} The extracted value or null if not found
-     */
-    function getLabelOrDescriptionValue(itemData, propertyKey, fetchedData, itemId) {
-        // Stage 1: Try to get from reconciled data (preferred source)
-        // This contains user-selected matches from the reconciliation process
-        if (itemData.properties && itemData.properties[propertyKey]) {
-            const propertyData = itemData.properties[propertyKey];
-            if (propertyData.reconciled && propertyData.reconciled[0] && propertyData.reconciled[0].selectedMatch) {
-                // Return the matched value if available, otherwise the original value
-                return propertyData.reconciled[0].selectedMatch.value || propertyData.reconciled[0].original;
-            }
-        }
-        
-        // Stage 2: Fall back to original fetched data
-        // This is the raw data from Omeka S before any reconciliation
-        if (fetchedData && Array.isArray(fetchedData)) {
-            // Extract numeric index from itemId (format: "item-0", "item-1", etc.)
-            const itemIndex = parseInt(itemId.replace('item-', ''));
-            const originalItem = fetchedData[itemIndex];
-            
-            if (originalItem && originalItem[propertyKey] !== undefined && originalItem[propertyKey] !== null) {
-                let value = originalItem[propertyKey];
-                
-                // Handle complex Omeka S value structures
-                if (Array.isArray(value)) {
-                    // Take first value if property contains multiple values
-                    value = value[0];
-                }
-                if (typeof value === 'object' && value !== null) {
-                    // Extract value from Omeka S value objects
-                    // Try common Omeka S value properties in order of preference
-                    value = value['@value'] || value['o:label'] || JSON.stringify(value);
-                }
-                
-                return value;
-            }
-        }
-        
-        return null;
-    }
-    
-    /**
      * Check if an item has any valid reconciled properties that should be exported
      * 
      * An item is considered exportable if it has at least one property with a selectedMatch.
@@ -474,14 +420,12 @@ export function setupExportStep(state) {
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const manualProperties = currentState.mappings?.manualProperties || [];
         
-        // Combine old-style references with new global references
-        // Note: We don't filter by enabled anymore since we now use property-specific references
+        // Get references for statements
         const oldReferences = currentState.references || [];
         const globalReferences = currentState.globalReferences || [];
         const allReferences = [...oldReferences, ...globalReferences];
-        
+
         const entitySchema = currentState.entitySchema;
-        const designerData = currentState.designerData || {};
         
         if (!reconciliationData || Object.keys(reconciliationData).length === 0) {
             quickStatementsTextarea.value = 'No reconciliation data available. Please complete the reconciliation step.';
@@ -505,47 +449,10 @@ export function setupExportStep(state) {
                 
                 // Create new item since it has valid reconciled properties
                 quickStatementsText += 'CREATE\n';
-                
-                // Add labels for all configured languages
-                const labelMappings = designerData.labelMappings || {};
-                Object.keys(labelMappings).forEach(languageCode => {
-                    const propertyKey = labelMappings[languageCode];
-                    if (propertyKey) {
-                        const labelValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
-                        if (labelValue) {
-                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
-                            quickStatementsText += `LAST\tL${langSuffix}\t${escapeQuickStatementsString(labelValue)}\n`;
-                        }
-                    }
-                });
-                
-                // Add descriptions for all configured languages
-                const descriptionMappings = designerData.descriptionMappings || {};
-                Object.keys(descriptionMappings).forEach(languageCode => {
-                    const propertyKey = descriptionMappings[languageCode];
-                    if (propertyKey) {
-                        const descriptionValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
-                        if (descriptionValue) {
-                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
-                            quickStatementsText += `LAST\tD${langSuffix}\t${escapeQuickStatementsString(descriptionValue)}\n`;
-                        }
-                    }
-                });
-                
-                // Add aliases for all configured languages
-                const aliasMappings = designerData.aliasMappings || {};
-                Object.keys(aliasMappings).forEach(languageCode => {
-                    const propertyKey = aliasMappings[languageCode];
-                    if (propertyKey) {
-                        const aliasValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
-                        if (aliasValue) {
-                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
-                            quickStatementsText += `LAST\tA${langSuffix}\t${escapeQuickStatementsString(aliasValue)}\n`;
-                        }
-                    }
-                });
-                
-                
+
+                // Note: Label/description/alias configuration removed (was in step 4 designer)
+                // Items will be created without labels - these can be added manually in Wikidata
+
                 var itemPrefix = 'LAST';
                 
                 // Process each property

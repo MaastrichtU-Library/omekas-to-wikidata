@@ -45,7 +45,7 @@
                 </li>
                 <li class="step" data-step="4">
                     <div class="step__number step-number">4</div>
-                    <div class="step__label step-label">Wikidata Designer</div>
+                    <div class="step__label step-label">References</div>
                 </li>
                 <li class="step" data-step="5">
                     <div class="step__number step-number">5</div>
@@ -190,96 +190,15 @@
                 </div>
             </section>
 
-            <!-- Step 4: Wikidata Designer -->
+            <!-- Step 4: References -->
             <section id="step4" class="step-content">
-                <h2>Step 4: Wikidata Designer</h2>
-                <div class="designer-container">
-                    <!-- References Section -->
-                    <div class="references-section">
-                        <h3>References</h3>
-                        <p class="section-description">References will be added to all statements. Each reference includes the URL (P854) and retrieved date (P813).</p>
-                        
-                        <div class="references-list" id="references-list">
-                            <div class="placeholder">No references added yet. References will be auto-detected from sameAs and ARK identifiers.</div>
-                        </div>
-                        
-                        <div class="references-actions">
-                            <button id="auto-detect-references" class="button button--primary">Auto-detect References</button>
-                            <button id="search-reference" class="button button--secondary">Search in API Data</button>
-                            <button id="add-reference" class="button button--secondary">Add Manual Reference</button>
-                        </div>
-                        
-                        <div class="reference-warning" id="reference-warning" style="display: none;">
-                            <span class="warning-icon">⚠️</span>
-                            <span class="warning-text">No automatic references found. Please add a source manually.</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Item Selector -->
-                    <div class="item-selector-container">
-                        <label for="example-item-selector">View Item:</label>
-                        <select id="example-item-selector" class="item-selector">
-                            <option value="multi-item">Multi Item (All Properties)</option>
-                            <!-- Dynamically populated with actual items -->
-                        </select>
-                    </div>
-                    
-                    <!-- Item Designer Section -->
-                    <div class="item-designer-section">
-                        <h3>Item Designer</h3>
-                        
-                        <!-- Wikidata-like item header -->
-                        <div class="wikidata-item-header">
-                            <div class="labels-section">
-                                <h4>Labels</h4>
-                                <div id="labels-container" class="language-mappings-container">
-                                    <!-- Language-specific labels will be added here -->
-                                </div>
-                                <button type="button" id="add-label-language" class="button button--secondary button--small">+ Add Language for Label</button>
-                            </div>
-                            
-                            <div class="descriptions-section">
-                                <h4>Descriptions</h4>
-                                <div id="descriptions-container" class="language-mappings-container">
-                                    <!-- Language-specific descriptions will be added here -->
-                                </div>
-                                <button type="button" id="add-description-language" class="button button--secondary button--small">+ Add Language for Description</button>
-                            </div>
-                            
-                            <div class="aliases-section">
-                                <h4>Aliases</h4>
-                                <div id="aliases-container" class="language-mappings-container">
-                                    <!-- Language-specific aliases will be added here -->
-                                </div>
-                                <button type="button" id="add-alias-language" class="button button--secondary button--small">+ Add Language for Alias</button>
-                            </div>
-                        </div>
-                        
-                        <!-- Statements section -->
-                        <div class="statements-section">
-                            <h4>Statements</h4>
-                            <div class="properties-list" id="properties-list">
-                                <div class="placeholder">Properties will appear here after reconciliation</div>
-                            </div>
-                            <div class="add-statement-container">
-                                <button id="add-new-statement" class="button button--secondary">+ New Statement</button>
-                            </div>
-                        </div>
-                        
-                        <!-- Unavailable properties (shown when specific item selected) -->
-                        <div class="unavailable-properties" id="unavailable-properties" style="display: none;">
-                            <h4>Unavailable Properties for This Item</h4>
-                            <div class="unavailable-list" id="unavailable-list">
-                                <!-- Dynamically populated -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    
-                    <!-- Navigation -->
+                <h2>Step 4: References</h2>
+                <div class="references-container">
+                    <p>References configuration will be added here.</p>
+
                     <div class="navigation-buttons">
                         <button id="back-to-reconciliation" class="button button--secondary">Back to Reconciliation</button>
-                        <button id="proceed-to-export" class="button button--primary" disabled>Continue to Export</button>
+                        <button id="proceed-to-export" class="button button--primary">Continue to Export</button>
                     </div>
                 </div>
             </section>
