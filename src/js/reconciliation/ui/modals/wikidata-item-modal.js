@@ -24,9 +24,19 @@
  * @returns {HTMLElement} Modal content element
  */
 export function createWikidataItemModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+    console.log('🔵 [createWikidataItemModal] Called with:', {
+        itemId,
+        property,
+        valueIndex,
+        value,
+        existingMatches,
+        existingMatchesType: typeof existingMatches,
+        existingMatchesLength: existingMatches?.length
+    });
+
     const modalContent = document.createElement('div');
     modalContent.className = 'wikidata-item-modal';
-    
+
     // Store context for modal interactions
     modalContent.dataset.modalType = 'wikidata-item';
     modalContent.dataset.itemId = itemId;
@@ -36,6 +46,11 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
     if (propertyData) {
         modalContent.dataset.propertyData = JSON.stringify(propertyData);
     }
+
+    console.log('🔵 [createWikidataItemModal] Dataset after setup:', {
+        hasExistingMatchesInDataset: !!modalContent.dataset.existingMatches,
+        datasetKeys: Object.keys(modalContent.dataset)
+    });
     
     modalContent.innerHTML = `
         <div class="data-type-indicator">
@@ -86,9 +101,23 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
  * @param {HTMLElement} modalElement - The modal element
  */
 export function initializeWikidataItemModal(modalElement) {
+    console.log('🟢 [initializeWikidataItemModal] Starting initialization');
+    console.log('🟢 [initializeWikidataItemModal] modalElement.dataset:', {
+        ...modalElement.dataset,
+        hasExistingMatches: !!modalElement.dataset.existingMatches
+    });
+
     const value = modalElement.dataset.value;
     const existingMatches = modalElement.dataset.existingMatches ?
         JSON.parse(modalElement.dataset.existingMatches) : null;
+
+    console.log('🟢 [initializeWikidataItemModal] Retrieved existingMatches:', {
+        existingMatches,
+        existingMatchesType: typeof existingMatches,
+        existingMatchesLength: existingMatches?.length,
+        isNull: existingMatches === null,
+        windowContextMatches: window.currentModalContext?.existingMatches
+    });
 
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
@@ -103,6 +132,12 @@ export function initializeWikidataItemModal(modalElement) {
         existingMatches: existingMatches,
         modalType: 'wikidata-item'
     };
+
+    console.log('🟢 [initializeWikidataItemModal] Calling loadWikidataItemMatches with:', {
+        value,
+        existingMatches,
+        existingMatchesLength: existingMatches?.length
+    });
 
     // Load existing matches for Wikidata items
     loadWikidataItemMatches(value, existingMatches);
@@ -132,17 +167,39 @@ export function initializeWikidataItemModal(modalElement) {
  * @param {Array} existingMatches - Pre-existing matches if available
  */
 export async function loadWikidataItemMatches(value, existingMatches = null) {
+    console.log('🟡 [loadWikidataItemMatches] Called with:', {
+        value,
+        existingMatches,
+        existingMatchesType: typeof existingMatches,
+        existingMatchesLength: existingMatches?.length,
+        isNull: existingMatches === null,
+        isUndefined: existingMatches === undefined
+    });
+
     const matchesContainer = document.getElementById('existing-matches');
-    if (!matchesContainer) return;
-    
+    if (!matchesContainer) {
+        console.log('🟡 [loadWikidataItemMatches] No matches container found');
+        return;
+    }
+
     try {
         let matches = existingMatches;
-        
+
         // If no existing matches provided, search for new ones
         if (!matches || matches.length === 0) {
+            console.log('🟡 [loadWikidataItemMatches] No existing matches, searching Wikidata for:', value);
             matches = await searchWikidataEntities(value);
+            console.log('🟡 [loadWikidataItemMatches] Search results:', {
+                matchesFound: matches?.length,
+                matches: matches?.slice(0, 3)
+            });
+        } else {
+            console.log('🟡 [loadWikidataItemMatches] Using existing matches:', {
+                count: matches.length,
+                matches: matches.slice(0, 3)
+            });
         }
-        
+
         if (matches && matches.length > 0) {
             const topMatches = matches.slice(0, 3); // Show top 3 matches
             
