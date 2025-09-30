@@ -168,7 +168,8 @@ export function openCustomReferenceModal(state, onSubmit, options = {}) {
     // Create input field for each item
     const itemInputs = [];
     items.forEach((item, index) => {
-        const itemId = `item-${index}`;
+        // Use same itemId format as detector: @id or id or fallback to item-${index}
+        const itemId = item['@id'] || item.id || `item-${index}`;
         const displayName = getItemDisplayName(item, index, reconciliationData);
 
         const itemRow = createElement('div', {

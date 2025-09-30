@@ -83,8 +83,13 @@ function handleStep4Entry(state, container) {
     if (container) {
         renderReferencesSection(detectionResults.summary, container, totalItems, state);
 
+        // Remove old event listener if it exists to prevent duplication
+        if (container._referenceClickHandler) {
+            container.removeEventListener('click', container._referenceClickHandler);
+        }
+
         // Set up event delegation for reference actions (add and edit)
-        container.addEventListener('click', (e) => {
+        const clickHandler = (e) => {
             // Handle add custom reference button
             const addButton = e.target.closest('[data-action="add-custom-reference"]');
             if (addButton) {
@@ -137,7 +142,11 @@ function handleStep4Entry(state, container) {
                     }
                 }
             }
-        });
+        };
+
+        // Store handler reference and attach listener
+        container._referenceClickHandler = clickHandler;
+        container.addEventListener('click', clickHandler);
     }
 
     // Log detection results for debugging
