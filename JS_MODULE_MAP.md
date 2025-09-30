@@ -11,6 +11,7 @@
 | Search Wikidata properties | `mapping/core/property-searcher.js` |
 | Transform field values | `transformations.js` |
 | Reconcile entities with Wikidata | `steps/reconciliation.js`, `reconciliation/` |
+| Detect and display reference links | `steps/step4.js`, `references/` |
 | Call Wikidata API | `api/wikidata.js` |
 | Create UI elements | `ui/components.js` |
 | Handle modals | `modals.js` |
@@ -72,10 +73,10 @@ The application follows a **modular, event-driven architecture**:
 - Key features: Batch processing, entity matching, progress tracking
 - Dependencies: reconciliation/*, api/wikidata.js
 
-### **designer.js**
-- Purpose: Step 4 - References (placeholder step - emptied)
-- Key features: Minimal placeholder setup, navigation handling
-- Dependencies: None (placeholder step)
+### **step4.js**
+- Purpose: Step 4 - Detect and display reference links
+- Key features: Automatic reference detection, display with counts and examples
+- Dependencies: references/core/detector.js, references/ui/display.js, events.js
 
 ### **export.js**
 - Purpose: Step 5 - Generate QuickStatements for Wikidata import
@@ -194,6 +195,23 @@ The application follows a **modular, event-driven architecture**:
 - Key exports: `createExternalIdModal()`, `initializeExternalIdModal()`
 - Features: Real-time regex validation, user override capability, property constraint display
 
+### References Module (`references/`)
+
+#### Core (`references/core/`)
+
+**detector.js**
+- Purpose: Detect reference links from Omeka S API data
+- Key exports: `detectReferences()`, `detectOmekaItemLink()`, `detectOCLCLinks()`, `detectARKIdentifiers()`
+- Reference types: Omeka Item API links, OCLC WorldCat links, ARK identifiers
+- Returns: Item-specific references with summary statistics
+
+#### UI (`references/ui/`)
+
+**display.js**
+- Purpose: Render reference detection results with counts and tooltips
+- Key exports: `renderReferencesSection()`, `createReferenceTypeCard()`, `createTooltip()`
+- Features: Reference type cards, item counts, example value tooltips
+
 ### Index Files
 - `mapping/index.js` - Re-exports all mapping module functions
 - `reconciliation/index.js` - Re-exports all reconciliation functions
@@ -299,7 +317,7 @@ app.js
     ├── input.js ←── utils/cors-proxy.js
     ├── mapping.js ←── mapping/* + transformations.js
     ├── reconciliation.js ←── reconciliation/*
-    ├── designer.js
+    ├── step4.js ←── references/*
     └── export.js
 
 api/wikidata.js ← used by mapping & reconciliation

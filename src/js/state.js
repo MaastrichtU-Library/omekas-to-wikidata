@@ -72,12 +72,12 @@ export function setupState() {
         },
         reconciliationData: [],
         
-        // Step 4: References (placeholder step - emptied)
-        references: [], // Deprecated - step 4 emptied
-        selectedExampleItem: '', // Deprecated - step 4 emptied
-        designerData: [], // Deprecated - step 4 emptied
-        globalReferences: [], // Deprecated - step 4 emptied
-        
+        // Step 4: References
+        references: {
+            itemReferences: {}, // Map of itemId -> array of reference objects
+            summary: {} // Map of referenceType -> {count, examples: [{itemId, value}]}
+        },
+
         // Step 5: Export
         quickStatements: '',
         exportTimestamp: null
@@ -171,8 +171,10 @@ export function setupState() {
             const reconciledCount = Object.keys(savedState.reconciliationData).length;
             summary.push(`• ${reconciledCount} item${reconciledCount > 1 ? 's' : ''} with reconciliation data`);
         }
-        if (savedState.references && savedState.references.length > 0) {
-            summary.push(`• ${savedState.references.length} reference${savedState.references.length > 1 ? 's' : ''} configured`);
+        if (savedState.references && savedState.references.itemReferences &&
+            Object.keys(savedState.references.itemReferences).length > 0) {
+            const refCount = Object.keys(savedState.references.itemReferences).length;
+            summary.push(`• ${refCount} item${refCount > 1 ? 's' : ''} with references`);
         }
         
         summaryEl.innerHTML = summary.length > 0 ? 
