@@ -206,12 +206,99 @@ export function setupMappingStep(state) {
                 totalItems: 0,
                 sampleValue: ''
             };
-            
+
             // Open the mapping modal with empty data
             openMappingModal(emptyKeyData);
         });
     }
-    
+
+    // Add Label functionality
+    const addLabelBtn = document.getElementById('add-label');
+    if (addLabelBtn) {
+        addLabelBtn.addEventListener('click', () => {
+            // Create empty key data for the modal
+            const emptyKeyData = {
+                key: '',
+                type: 'unknown',
+                frequency: 0,
+                totalItems: 0,
+                sampleValue: ''
+            };
+
+            // Open the mapping modal with empty data
+            openMappingModal(emptyKeyData);
+
+            // Wait 150ms for setupPropertySearch to finish (it runs at 100ms),
+            // then set the label property
+            setTimeout(() => {
+                const labelProperty = {
+                    id: 'label',
+                    label: 'Labels',
+                    description: 'Main name for entities',
+                    datatype: 'monolingualtext',
+                    datatypeLabel: 'Monolingual text',
+                    isMetadata: true,
+                    helpUrl: 'https://www.wikidata.org/wiki/Help:Label'
+                };
+
+                // Set the selected property
+                window.currentMappingSelectedProperty = labelProperty;
+
+                // Update UI to show selection
+                const selectedSection = document.getElementById('selected-property');
+                const selectedDetails = document.getElementById('selected-property-details');
+
+                if (selectedSection && selectedDetails) {
+                    selectedSection.style.display = 'block';
+                    selectedDetails.innerHTML = `
+                        <div class="property-info metadata-property-info">
+                            <h3>🏷️ ${labelProperty.label}</h3>
+                            <p class="property-id">Metadata Field</p>
+                            <p>${labelProperty.description}</p>
+                            <a href="${labelProperty.helpUrl}" target="_blank" rel="noopener">
+                                Learn more about ${labelProperty.label} →
+                            </a>
+                            <div class="metadata-notice" style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+                                <strong>Note:</strong> This is a metadata field for Wikidata entities.
+                                Values will be treated as language-specific text.
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Update datatype display
+                const datatypeDisplay = document.getElementById('detected-datatype');
+                if (datatypeDisplay) {
+                    datatypeDisplay.innerHTML = `
+                        <span class="datatype-label">Monolingual text</span>
+                    `;
+                }
+
+                // Show datatype section
+                const datatypeSection = document.getElementById('datatype-info-section');
+                if (datatypeSection) {
+                    datatypeSection.style.display = 'block';
+                }
+
+                // Highlight the Labels button if it exists
+                const labelsButton = Array.from(document.querySelectorAll('.metadata-select-button'))
+                    .find(btn => btn.textContent.includes('Labels'));
+                if (labelsButton) {
+                    // Remove selected class from all buttons
+                    document.querySelectorAll('.metadata-select-button').forEach(btn => {
+                        btn.classList.remove('selected');
+                        btn.style.borderColor = '#ddd';
+                        btn.style.background = 'white';
+                    });
+                    // Add selected class to Labels button
+                    labelsButton.classList.add('selected');
+                    labelsButton.style.borderColor = '#3366cc';
+                    labelsButton.style.background = '#e6f0ff';
+                }
+            }, 150);
+        });
+    }
+
     // Export functions globally for use by other modules
     window.openMappingModal = openMappingModal;
 }
