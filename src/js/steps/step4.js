@@ -16,6 +16,7 @@
 import { eventSystem } from '../events.js';
 import { detectReferences } from '../references/core/detector.js';
 import { renderReferencesSection } from '../references/ui/display.js';
+import { openCustomReferenceModal } from '../references/ui/custom-reference-modal.js';
 
 /**
  * Initializes Step 4: References
@@ -80,6 +81,20 @@ function handleStep4Entry(state, container) {
     // Render the references section
     if (container) {
         renderReferencesSection(detectionResults.summary, container, totalItems, state);
+
+        // Set up event delegation for "Add custom reference" button
+        container.addEventListener('click', (e) => {
+            const button = e.target.closest('[data-action="add-custom-reference"]');
+            if (button) {
+                openCustomReferenceModal(state, (customRef) => {
+                    // Add the custom reference to state
+                    state.addCustomReference(customRef);
+
+                    // Re-render the references section
+                    handleStep4Entry(state, container);
+                });
+            }
+        });
     }
 
     // Log detection results for debugging
