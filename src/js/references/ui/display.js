@@ -35,13 +35,22 @@ export function renderReferencesSection(summary, container, totalItems = 0) {
 
     // Create title
     const title = createElement('h3', {
-        className: 'references-title'
+        className: 'references-title',
+        style: {
+            textAlign: 'left',
+            marginBottom: '16px'
+        }
     }, 'Available References');
     container.appendChild(title);
 
     // Create list
     const list = createElement('ul', {
-        className: 'references-list'
+        className: 'references-list',
+        style: {
+            textAlign: 'left',
+            listStylePosition: 'inside',
+            paddingLeft: '0'
+        }
     });
 
     // Create reference type list items
@@ -74,7 +83,8 @@ export function createReferenceListItem(type, data, totalItems) {
         className: 'reference-list-item',
         style: {
             position: 'relative',
-            marginBottom: '8px'
+            marginBottom: '8px',
+            textAlign: 'left'
         }
     });
 
