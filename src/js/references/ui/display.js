@@ -6,6 +6,7 @@
 
 import { createElement } from '../../ui/components.js';
 import { getReferenceTypeLabel, getReferenceTypeDescription } from '../core/detector.js';
+import { getDisplayBaseUrl } from '../core/custom-references.js';
 
 /**
  * Renders the references section in the UI
@@ -124,6 +125,11 @@ export function createReferenceListItem(type, data, totalItems, state = null) {
 
     // Create list item (uses same classes as mapping lists)
     const listItem = createElement('li', {
+        dataset: {
+            action: 'edit-reference',
+            referenceType: 'auto-detected',
+            referenceId: type
+        },
         style: {
             opacity: isSelected ? '1' : '0.5',
             transition: 'opacity 0.2s ease'
@@ -137,7 +143,8 @@ export function createReferenceListItem(type, data, totalItems, state = null) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            width: '100%'
+            width: '100%',
+            cursor: 'pointer'
         }
     });
 
@@ -224,9 +231,15 @@ export function createReferenceListItem(type, data, totalItems, state = null) {
         tooltip.style.display = 'none';
     });
 
+    // Prevent info icon clicks from triggering edit
+    infoIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
     // Add click handler to toggle selection state
     if (state) {
-        status.addEventListener('click', () => {
+        status.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent edit modal from opening
             state.toggleReferenceType(type);
             const newIsSelected = state.isReferenceTypeSelected(type);
 
@@ -351,7 +364,7 @@ export function updateReferencesDisplay(summary, container, totalItems = 0, stat
  */
 export function createCustomReferenceListItem(customRef, data, totalItems, state = null) {
     const label = customRef.name;
-    const description = customRef.baseUrl;
+    const description = getDisplayBaseUrl(customRef.baseUrl); // Remove https://
     const type = customRef.id;
 
     // Check if this type is selected (default to selected if no state)
@@ -359,6 +372,11 @@ export function createCustomReferenceListItem(customRef, data, totalItems, state
 
     // Create list item (uses same classes as mapping lists)
     const listItem = createElement('li', {
+        dataset: {
+            action: 'edit-reference',
+            referenceType: 'custom',
+            referenceId: customRef.id
+        },
         style: {
             opacity: isSelected ? '1' : '0.5',
             transition: 'opacity 0.2s ease'
@@ -372,7 +390,8 @@ export function createCustomReferenceListItem(customRef, data, totalItems, state
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            width: '100%'
+            width: '100%',
+            cursor: 'pointer'
         }
     });
 
@@ -459,9 +478,15 @@ export function createCustomReferenceListItem(customRef, data, totalItems, state
         tooltip.style.display = 'none';
     });
 
+    // Prevent info icon clicks from triggering edit
+    infoIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
     // Add click handler to toggle selection state
     if (state) {
-        status.addEventListener('click', () => {
+        status.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent edit modal from opening
             state.toggleReferenceType(type);
             const newIsSelected = state.isReferenceTypeSelected(type);
 
@@ -506,9 +531,7 @@ export function createAddCustomReferenceButton(state) {
         className: 'add-custom-reference-button',
         style: {
             cursor: 'pointer',
-            padding: '8px 12px',
-            borderTop: '1px solid #eee',
-            marginTop: '8px'
+            padding: '8px 12px'
         }
     });
 
@@ -516,14 +539,12 @@ export function createAddCustomReferenceButton(state) {
         style: {
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            color: '#0066cc'
+            gap: '8px'
         }
     });
 
     const plusIcon = createElement('span', {
         style: {
-            fontSize: '1.2em',
             fontWeight: 'bold'
         }
     }, '+');

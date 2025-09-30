@@ -881,6 +881,55 @@ export function setupState() {
     }
 
     /**
+     * Updates an existing custom reference
+     * @param {string} id - ID of the custom reference to update
+     * @param {Object} updatedData - Updated reference data {name, items}
+     */
+    function updateCustomReference(id, updatedData) {
+        if (!state.references.customReferences) {
+            return;
+        }
+
+        const index = state.references.customReferences.findIndex(ref => ref.id === id);
+        if (index === -1) {
+            console.error(`Custom reference with id ${id} not found`);
+            return;
+        }
+
+        const oldValue = [...state.references.customReferences];
+
+        // Update the reference with new data while preserving id and metadata
+        const existingRef = state.references.customReferences[index];
+
+        // Filter out items with empty URLs
+        const validItems = updatedData.items.filter(item => item.url && item.url.trim() !== '');
+
+        // Import extractBaseUrl from custom-references module for consistency
+        const baseUrl = validItems.length > 0 ? updatedData.items[0].url.match(/^(https?:\/\/[^\/]+)/)?.[0] || updatedData.items[0].url : existingRef.baseUrl;
+
+        state.references.customReferences[index] = {
+            ...existingRef,
+            name: updatedData.name || existingRef.name,
+            items: validItems,
+            baseUrl,
+            count: validItems.length,
+            updatedAt: new Date().toISOString()
+        };
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.customReferences',
+            oldValue,
+            newValue: [...state.references.customReferences]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
      * Loads mock data for testing purposes
      * @param {Object} mockItems - Mock items data with items array
      * @param {Object} mockMapping - Mock mapping data with mappings object
@@ -1285,6 +1334,7 @@ export function setupState() {
         addCustomReference,
         removeCustomReference,
         getCustomReferences,
+        updateCustomReference,
         // Convenience methods for Entity Schema
         setSelectedEntitySchema,
         getSelectedEntitySchema,

@@ -40,9 +40,11 @@ function getItemDisplayName(item, index, reconciliationData) {
 /**
  * Creates and opens the custom reference modal
  * @param {Object} state - Application state management instance
- * @param {Function} onSubmit - Callback function when reference is added
+ * @param {Function} onSubmit - Callback function when reference is added/updated
+ * @param {Object} options - Modal options {isEdit: boolean, existingReference: object}
  */
-export function openCustomReferenceModal(state, onSubmit) {
+export function openCustomReferenceModal(state, onSubmit, options = {}) {
+    const { isEdit = false, existingReference = null } = options;
     const currentState = state.getState();
     const items = currentState.fetchedData || [];
     const reconciliationData = currentState.reconciliationData || {};
@@ -91,7 +93,7 @@ export function openCustomReferenceModal(state, onSubmit) {
 
     const title = createElement('h3', {
         style: { margin: '0' }
-    }, 'Custom Reference');
+    }, isEdit ? 'Edit Reference' : 'Custom Reference');
 
     const closeButton = createButton('×', {
         className: 'close-button',
@@ -128,6 +130,7 @@ export function openCustomReferenceModal(state, onSubmit) {
 
     const nameInput = createInput('text', {
         placeholder: 'custom reference',
+        value: isEdit && existingReference ? existingReference.name : '',
         style: {
             width: '100%',
             padding: '8px',
@@ -154,6 +157,14 @@ export function openCustomReferenceModal(state, onSubmit) {
         }
     });
 
+    // Create mapping of existing URLs for pre-filling in edit mode
+    const existingUrlsMap = new Map();
+    if (isEdit && existingReference && existingReference.items) {
+        existingReference.items.forEach(item => {
+            existingUrlsMap.set(item.itemId, item.url);
+        });
+    }
+
     // Create input field for each item
     const itemInputs = [];
     items.forEach((item, index) => {
@@ -178,8 +189,12 @@ export function openCustomReferenceModal(state, onSubmit) {
             }
         }, displayName);
 
+        // Pre-fill value from existing reference if in edit mode
+        const existingUrl = existingUrlsMap.get(itemId) || '';
+
         const itemInput = createInput('text', {
             placeholder: 'https://example.com/reference',
+            value: existingUrl,
             dataset: { itemId },
             style: {
                 flex: '1',
@@ -226,7 +241,7 @@ export function openCustomReferenceModal(state, onSubmit) {
         }
     });
 
-    const addButton = createButton('Add Reference', {
+    const addButton = createButton(isEdit ? 'Save Changes' : 'Add Reference', {
         className: 'button button--primary',
         onClick: () => {
             // Gather input values
@@ -235,10 +250,9 @@ export function openCustomReferenceModal(state, onSubmit) {
                 .map(({ itemId, input }) => ({
                     itemId,
                     url: input.value.trim()
-                }))
-                .filter(item => item.url !== ''); // Only include items with URLs
+                }));
 
-            // Validate
+            // Validate (allow empty URLs now - they'll be filtered)
             const validation = validateCustomReference(name, itemReferences);
             if (!validation.isValid) {
                 errorContainer.textContent = validation.errors.join('. ');
@@ -246,16 +260,34 @@ export function openCustomReferenceModal(state, onSubmit) {
                 return;
             }
 
-            // Create custom reference
+            // Create or update reference
             try {
-                const customRef = createCustomReference(name, itemReferences);
+                if (isEdit && existingReference) {
+                    // Return updated data with ID for state update
+                    const updatedData = {
+                        id: existingReference.id,
+                        name,
+                        items: itemReferences.filter(item => item.url !== '')
+                    };
 
-                // Close modal
-                document.body.removeChild(overlay);
+                    // Close modal
+                    document.body.removeChild(overlay);
 
-                // Call onSubmit callback
-                if (onSubmit) {
-                    onSubmit(customRef);
+                    // Call onSubmit callback with updated data
+                    if (onSubmit) {
+                        onSubmit(updatedData);
+                    }
+                } else {
+                    // Create new custom reference
+                    const customRef = createCustomReference(name, itemReferences);
+
+                    // Close modal
+                    document.body.removeChild(overlay);
+
+                    // Call onSubmit callback
+                    if (onSubmit) {
+                        onSubmit(customRef);
+                    }
                 }
             } catch (error) {
                 errorContainer.textContent = error.message;

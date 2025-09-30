@@ -138,3 +138,58 @@ export function mergeCustomReferencesIntoSummary(summary, customReferences) {
 
     return merged;
 }
+
+/**
+ * Gets a display-friendly base URL without protocol
+ * @param {string} baseUrl - Full base URL with protocol
+ * @returns {string} Base URL without https:// or http://
+ */
+export function getDisplayBaseUrl(baseUrl) {
+    if (!baseUrl) return '';
+
+    return baseUrl
+        .replace(/^https?:\/\//, '') // Remove protocol
+        .replace(/\/$/, ''); // Remove trailing slash
+}
+
+/**
+ * Converts auto-detected references to editable format
+ * @param {string} type - Reference type (e.g., 'omeka-item', 'oclc', 'ark')
+ * @param {Object} state - Application state management instance
+ * @returns {Object} Reference data in editable format {name, type, items: [{itemId, url}]}
+ */
+export function convertAutoDetectedToEditable(type, state) {
+    const currentState = state.getState();
+    const itemReferences = currentState.references?.itemReferences || {};
+
+    const items = [];
+
+    // Extract all references of this type from itemReferences
+    Object.entries(itemReferences).forEach(([itemId, refs]) => {
+        const matchingRef = refs.find(ref => ref.type === type);
+        if (matchingRef) {
+            items.push({
+                itemId,
+                url: matchingRef.url
+            });
+        }
+    });
+
+    // Get label for this type
+    const typeLabels = {
+        'omeka-item': 'Omeka item',
+        'oclc': 'OCLC WorldCat',
+        'ark': 'ARK identifier'
+    };
+
+    const name = typeLabels[type] || type;
+    const baseUrl = items.length > 0 ? extractBaseUrl(items[0].url) : '';
+
+    return {
+        type,
+        name,
+        items,
+        baseUrl,
+        isAutoDetected: true
+    };
+}

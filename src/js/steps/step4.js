@@ -17,6 +17,7 @@ import { eventSystem } from '../events.js';
 import { detectReferences } from '../references/core/detector.js';
 import { renderReferencesSection } from '../references/ui/display.js';
 import { openCustomReferenceModal } from '../references/ui/custom-reference-modal.js';
+import { convertAutoDetectedToEditable } from '../references/core/custom-references.js';
 
 /**
  * Initializes Step 4: References
@@ -82,10 +83,11 @@ function handleStep4Entry(state, container) {
     if (container) {
         renderReferencesSection(detectionResults.summary, container, totalItems, state);
 
-        // Set up event delegation for "Add custom reference" button
+        // Set up event delegation for reference actions (add and edit)
         container.addEventListener('click', (e) => {
-            const button = e.target.closest('[data-action="add-custom-reference"]');
-            if (button) {
+            // Handle add custom reference button
+            const addButton = e.target.closest('[data-action="add-custom-reference"]');
+            if (addButton) {
                 openCustomReferenceModal(state, (customRef) => {
                     // Add the custom reference to state
                     state.addCustomReference(customRef);
@@ -93,6 +95,47 @@ function handleStep4Entry(state, container) {
                     // Re-render the references section
                     handleStep4Entry(state, container);
                 });
+                return;
+            }
+
+            // Handle edit reference clicks
+            const editItem = e.target.closest('[data-action="edit-reference"]');
+            if (editItem) {
+                const referenceType = editItem.dataset.referenceType;
+                const referenceId = editItem.dataset.referenceId;
+
+                if (referenceType === 'auto-detected') {
+                    // Convert auto-detected reference to editable format
+                    const editableReference = convertAutoDetectedToEditable(referenceId, state);
+
+                    openCustomReferenceModal(state, (customRef) => {
+                        // Add as new custom reference (converted from auto-detected)
+                        state.addCustomReference(customRef);
+
+                        // Re-render the references section
+                        handleStep4Entry(state, container);
+                    }, {
+                        isEdit: true,
+                        existingReference: editableReference
+                    });
+                } else if (referenceType === 'custom') {
+                    // Get existing custom reference
+                    const customReferences = state.getCustomReferences();
+                    const existingReference = customReferences.find(ref => ref.id === referenceId);
+
+                    if (existingReference) {
+                        openCustomReferenceModal(state, (updatedData) => {
+                            // Update the existing custom reference
+                            state.updateCustomReference(updatedData.id, updatedData);
+
+                            // Re-render the references section
+                            handleStep4Entry(state, container);
+                        }, {
+                            isEdit: true,
+                            existingReference
+                        });
+                    }
+                }
             }
         });
     }
