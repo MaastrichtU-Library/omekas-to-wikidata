@@ -25,16 +25,12 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
     // Clear existing content
     container.innerHTML = '';
 
-    // Check if there are any references
-    const hasReferences = Object.values(summary).some(data => data.count > 0);
+    // Check if there are any auto-detected references
+    const hasAutoDetectedReferences = Object.values(summary).some(data => data.count > 0);
 
-    if (!hasReferences) {
-        const emptyMessage = createElement('p', {
-            className: 'placeholder'
-        }, 'No references detected in the API data.');
-        container.appendChild(emptyMessage);
-        return;
-    }
+    // Check if there are any custom references in state
+    const customReferences = state ? state.getCustomReferences() : [];
+    const hasCustomReferences = customReferences.length > 0;
 
     // Calculate total items with at least one reference
     const itemsWithReferences = new Set();
@@ -42,6 +38,11 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
         if (data.examples) {
             data.examples.forEach(example => itemsWithReferences.add(example.itemId));
         }
+    });
+
+    // Add custom reference items to the count
+    customReferences.forEach(customRef => {
+        customRef.items.forEach(item => itemsWithReferences.add(item.itemId));
     });
 
     // Create section (details element)
@@ -73,6 +74,19 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
     const list = createElement('ul', {
         className: 'key-list'
     });
+
+    // If no auto-detected or custom references, show helpful message
+    if (!hasAutoDetectedReferences && !hasCustomReferences) {
+        const emptyMessage = createElement('li', {
+            className: 'placeholder',
+            style: {
+                fontStyle: 'italic',
+                color: '#666',
+                padding: '8px 12px'
+            }
+        }, 'No references auto-detected. You can add custom references below.');
+        list.appendChild(emptyMessage);
+    }
 
     // Build a map of originalType -> custom reference for position preservation
     const customByOriginalType = new Map();
@@ -693,7 +707,27 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
 
     // Get current reference count for this property
     const assignedReferences = state ? state.getPropertyReferences(property.id) : [];
-    const referenceCount = assignedReferences.length;
+
+    // Calculate total count of reference URLs (not just types)
+    let referenceCount = 0;
+    if (state && assignedReferences.length > 0) {
+        const currentState = state.getState();
+        const summary = currentState.references?.summary || {};
+        const customReferences = currentState.references?.customReferences || [];
+
+        assignedReferences.forEach(refType => {
+            // Check if it's an auto-detected reference
+            if (summary[refType]) {
+                referenceCount += summary[refType].count || 0;
+            } else {
+                // Check if it's a custom reference
+                const customRef = customReferences.find(ref => ref.id === refType);
+                if (customRef) {
+                    referenceCount += customRef.count || 0;
+                }
+            }
+        });
+    }
 
     // Create list item
     const listItem = createElement('li', {
