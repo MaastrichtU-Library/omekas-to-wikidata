@@ -2,6 +2,18 @@
 
 This page serves as a hub for all technical and developer documentation. For general project information and usage instructions, see [README.md](README.md).
 
+## Project Overview
+
+The Omeka S to Wikidata tool is a web-based application that guides users through the process of importing linked data from Omeka S systems into Wikidata. It was developed as part of the 2025 "Open Topstukken" (Open Collection Highlights) project by Maastricht University Library and Radboud University Library.
+
+### Core Purpose
+This tool bridges the gap between cultural heritage collections managed in Omeka S and the global knowledge base of Wikidata, enabling institutions to contribute their collection data to the semantic web while maintaining proper attribution and data quality standards.
+
+### Target Users
+- **Primary Users**: Librarians, archivists, and collection managers at cultural heritage institutions
+- **Secondary Users**: Digital humanities researchers and data curators
+- **Technical Level**: Users with basic understanding of metadata and web interfaces, but no programming skills required
+
 ## Core Documentation
 
 ### [README.md](README.md)
@@ -41,19 +53,6 @@ QuickStatements export format reference:
 
 ## Additional Technical Documentation
 
-### [docs/SHEX_PARSING_GUIDE.md](docs/SHEX_PARSING_GUIDE.md)
-Guide for converting ShExC to ShExJ for Wikidata Entity Schemas:
-- ShEx parsing implementation details
-- Browser-based parsing approach
-- Wikidata-specific handling
-
-### [src/js/mapping/README.md](src/js/mapping/README.md)
-Mapping module architecture documentation:
-- Module structure (core/ and ui/ layers)
-- API reference and exports
-- State management and event integration
-- Architecture patterns and testing strategy
-
 ### [Entity-Schema-Guide.md](Entity-Schema-Guide.md)
 Practical guide to Wikidata Entity Schemas:
 - Understanding ShExC (Shape Expressions)
@@ -77,5 +76,4 @@ Key archived documents include:
 ---
 
 **Quick Links:**
-- [User Story](USER_STORY.md) - Complete user journey through the tool
 - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to this project
