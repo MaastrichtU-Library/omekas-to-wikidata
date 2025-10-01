@@ -6,13 +6,14 @@
 
 // Import dependencies (minimal for data analysis)
 import { detectIdentifier } from '../../utils/identifier-detection.js';
+import { fetchWithCorsProxy } from '../../utils/cors-proxy.js';
 
 // Context cache for JSON-LD definitions
 const contextCache = new Map();
 
 /**
  * Fetches and caches JSON-LD context definitions from remote URLs
- * Handles CORS errors gracefully by falling back to common vocabulary prefixes
+ * Uses CORS proxy fallback system for blocked URLs, same as main API calls
  *
  * @param {string} contextUrl - URL to fetch context from
  * @returns {Promise<Map>} Map of prefix->URI mappings
@@ -23,18 +24,19 @@ export async function fetchContextDefinitions(contextUrl) {
     }
 
     try {
-        const response = await fetch(contextUrl, {
-            mode: 'cors',
+        // Use the same CORS proxy system as main API calls
+        const result = await fetchWithCorsProxy(contextUrl, {
             headers: {
                 'Accept': 'application/ld+json, application/json'
             }
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        const contextData = result.data;
 
-        const contextData = await response.json();
+        // Log when proxy was used for transparency
+        if (result.method === 'proxy') {
+            console.log(`Context fetched via proxy (${result.proxyUsed}): ${contextUrl}`);
+        }
 
         const contextMap = new Map();
 
@@ -59,7 +61,7 @@ export async function fetchContextDefinitions(contextUrl) {
     } catch (error) {
         console.warn(`Context fetch failed (${contextUrl}): ${error.message}. Using fallback vocabularies.`);
 
-        // Return common fallback vocabularies when external context is unavailable
+        // Return common fallback vocabularies when all fetch methods fail
         const fallbackContext = new Map([
             ['schema', 'https://schema.org/'],
             ['dc', 'http://purl.org/dc/terms/'],
