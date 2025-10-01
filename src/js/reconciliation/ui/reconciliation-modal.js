@@ -895,7 +895,14 @@ export function createOpenReconciliationModalFactory(dependencies) {
 
         // Create modal content
         const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches, state);
-        
+
+        console.log('🔴🔴 [openReconciliationModal] THE PROBLEM:', {
+            modalElementHasDataset: !!modalElement.dataset,
+            datasetKeys: modalElement.dataset ? Object.keys(modalElement.dataset) : [],
+            innerHTML_LOSES_DATASET: 'Using .innerHTML strips all dataset attributes!',
+            proof: modalElement.innerHTML.includes('data-existing-matches') ? 'Dataset preserved' : 'Dataset LOST!'
+        });
+
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
             currentReconciliationCell = null;

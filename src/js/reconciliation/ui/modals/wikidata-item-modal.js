@@ -111,8 +111,16 @@ export function initializeWikidataItemModal(modalElement) {
     });
 
     const value = modalElement.dataset.value;
-    const existingMatches = modalElement.dataset.existingMatches ?
+    // Dataset attributes are lost when modal is created from innerHTML
+    // So we need to get existingMatches from window.currentModalContext instead
+    let existingMatches = modalElement.dataset.existingMatches ?
         JSON.parse(modalElement.dataset.existingMatches) : null;
+
+    // CRITICAL FIX: Fallback to window.currentModalContext which was set before modal opened
+    if (!existingMatches && window.currentModalContext?.existingMatches) {
+        existingMatches = window.currentModalContext.existingMatches;
+        console.log('🟢 [initializeWikidataItemModal] Retrieved existingMatches from window.currentModalContext');
+    }
 
     console.log('🟢 [initializeWikidataItemModal] Retrieved existingMatches:', {
         existingMatches,
@@ -132,7 +140,7 @@ export function initializeWikidataItemModal(modalElement) {
         propertyData: modalElement.dataset.propertyData ?
             JSON.parse(modalElement.dataset.propertyData) : null,
         dataType: 'wikibase-item',
-        existingMatches: existingMatches,
+        existingMatches: existingMatches,  // Now this has the correct value from the fallback above
         modalType: 'wikidata-item'
     };
 
