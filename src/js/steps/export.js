@@ -510,7 +510,12 @@ export function setupExportStep(state) {
 
                                         // For label/description/alias properties, format with language code
                                         // QuickStatements format: Len (label-en), Den (description-en), Aen (alias-en)
-                                        if (wikidataPropertyId === 'label' || wikidataPropertyId === 'description' || wikidataPropertyId === 'alias') {
+                                        // Handle both singular and plural forms (alias/aliases)
+                                        const isLabel = wikidataPropertyId === 'label' || wikidataPropertyId === 'labels';
+                                        const isDescription = wikidataPropertyId === 'description' || wikidataPropertyId === 'descriptions';
+                                        const isAlias = wikidataPropertyId === 'alias' || wikidataPropertyId === 'aliases';
+
+                                        if (isLabel || isDescription || isAlias) {
                                             const languageCode = match.language || 'en'; // Default to 'en' if no language specified
 
                                             // Warn if language code is missing
@@ -519,13 +524,15 @@ export function setupExportStep(state) {
                                             }
 
                                             // Map property type to QuickStatements prefix
-                                            const prefixMap = {
-                                                'label': 'L',
-                                                'description': 'D',
-                                                'alias': 'A'
-                                            };
+                                            let prefix;
+                                            if (isLabel) {
+                                                prefix = 'L';
+                                            } else if (isDescription) {
+                                                prefix = 'D';
+                                            } else if (isAlias) {
+                                                prefix = 'A';
+                                            }
 
-                                            const prefix = prefixMap[wikidataPropertyId];
                                             wikidataPropertyId = `${prefix}${languageCode}`;
                                         }
                                     } else {
