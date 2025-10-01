@@ -108,13 +108,24 @@ export async function populateLists(state) {
     if (identifierFields.length > 0) {
         try {
             const mappingPromises = identifierFields.map(async (keyObj) => {
+                // Skip identifiers without a known property ID
+                if (keyObj.identifierInfo.propertyId === null) {
+                    console.info(
+                        `Skipping identifier field '${keyObj.key}': ` +
+                        `Detected as ${keyObj.identifierInfo.type} (${keyObj.identifierInfo.label}) ` +
+                        `but no property mapping is available. ` +
+                        `Sample value: ${JSON.stringify(keyObj.sampleValue)}`
+                    );
+                    return null;
+                }
+
                 // Create an auto-mapping for this identifier field with API constraint fetching
                 const mappingObj = await createIdentifierMapping(
-                    keyObj.key, 
-                    keyObj.identifierInfo, 
+                    keyObj.key,
+                    keyObj.identifierInfo,
                     keyObj.sampleValue
                 );
-                
+
                 // Add the full key data with enhanced property mapping
                 return {
                     ...keyObj,
@@ -129,9 +140,9 @@ export async function populateLists(state) {
                     availableFields: mappingObj.availableFields
                 };
             });
-            
-            // Wait for all auto-mappings to complete
-            const completedMappings = await Promise.all(mappingPromises);
+
+            // Wait for all auto-mappings to complete and filter out null results
+            const completedMappings = (await Promise.all(mappingPromises)).filter(m => m !== null);
             autoMappedKeys.push(...completedMappings);
         } catch (error) {
             console.error('Error during auto-mapping process:', error);
