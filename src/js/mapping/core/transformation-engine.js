@@ -185,8 +185,8 @@ export function renderValueTransformationUI(keyData, state) {
     // Initial render of transformation blocks
     renderTransformationBlocks(mappingId, sampleValue, blocksContainer, state);
 
-    container.appendChild(blocksContainer);
     container.appendChild(addBlockSection);
+    container.appendChild(blocksContainer);
 
     return container;
 }
