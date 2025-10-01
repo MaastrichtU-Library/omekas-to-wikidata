@@ -658,10 +658,14 @@ export function createMappingModalContent(keyData) {
                 defaultField = fieldGroups[0].fields[0];
             }
             
-            // Store the default selection
-            if (defaultField) {
+            // Store the default selection, but preserve existing selection if already set
+            // This is critical for auto-mapped identifiers to maintain consistent mappingId
+            if (defaultField && !keyData.selectedAtField) {
                 keyData.selectedAtField = defaultField.key;
             }
+
+            // Ensure the dropdown shows the correct selection (either existing or default)
+            const fieldToSelect = keyData.selectedAtField || defaultField?.key;
             
             // Populate options with optgroups for each object structure
             fieldGroups.forEach((group, groupIndex) => {
@@ -676,7 +680,7 @@ export function createMappingModalContent(keyData) {
                 group.fields.forEach(field => {
                     const option = createElement('option', {
                         value: field.key,
-                        selected: defaultField && field.key === defaultField.key
+                        selected: field.key === fieldToSelect
                     }, `${field.key}: ${field.preview}`);
                     optGroup.appendChild(option);
                 });
