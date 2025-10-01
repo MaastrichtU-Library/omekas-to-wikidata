@@ -287,7 +287,8 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
     }
     // Priority 7: Enhanced pattern matching
     const itemPatterns = ['creator', 'author', 'publisher', 'place', 'person', 'organization', 'location', 'country', 'institution'];
-    const stringPatterns = ['identifier', 'id', 'number', 'code', 'url', 'uri', 'isbn', 'issn'];
+    const urlPatterns = ['url', 'uri', 'link', 'webpage', 'website'];
+    const stringPatterns = ['identifier', 'id', 'number', 'code', 'isbn', 'issn'];
     const monolingualPatterns = ['description', 'note', 'text', 'comment', 'caption'];
     if (itemPatterns.some(pattern => lowerProperty.includes(pattern))) {
         return {
@@ -295,14 +296,21 @@ function getDataTypeAndPropertyData(property, propertyData, state = null) {
             enhancedPropertyData: propertyData || { datatype: 'wikibase-item' }
         };
     }
-    
+
+    if (urlPatterns.some(pattern => lowerProperty.includes(pattern))) {
+        return {
+            datatype: 'url',
+            enhancedPropertyData: propertyData || { datatype: 'url' }
+        };
+    }
+
     if (monolingualPatterns.some(pattern => lowerProperty.includes(pattern))) {
         return {
             datatype: 'monolingualtext',
             enhancedPropertyData: propertyData || { datatype: 'monolingualtext' }
         };
     }
-    
+
     if (stringPatterns.some(pattern => lowerProperty.includes(pattern))) {
         return {
             datatype: 'string',

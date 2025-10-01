@@ -177,7 +177,7 @@ The application follows a **modular, event-driven architecture**:
 **modal-factory.js**
 - Purpose: Central factory for creating reconciliation modals by data type
 - Key exports: `createReconciliationModalByType()`, `initializeReconciliationModal()`, `isModalTypeSupported()`
-- Supported types: wikibase-item, string, time, monolingualtext, external-id
+- Supported types: wikibase-item, string, time, monolingualtext, external-id, url
 
 **wikidata-item-modal.js**
 - Purpose: Wikidata entity reconciliation modal interface
@@ -195,6 +195,11 @@ The application follows a **modular, event-driven architecture**:
 - Purpose: External identifier validation modal with regex constraints
 - Key exports: `createExternalIdModal()`, `initializeExternalIdModal()`
 - Features: Real-time regex validation, user override capability, property constraint display
+
+**url-modal.js**
+- Purpose: URL validation modal with testing functionality
+- Key exports: `createUrlModal()`, `initializeUrlModal()`
+- Features: Real-time URL validation, test URL button, user override capability, pattern constraint display
 
 **link-item-modal.js**
 - Purpose: Link items to existing Wikidata items instead of creating new ones

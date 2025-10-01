@@ -11,8 +11,9 @@
  * - string: Text string validation and editing
  * - time: Date/time reconciliation
  * - monolingualtext: Text with language specification
+ * - external-id: External identifier validation
+ * - url: URL validation and testing
  * - quantity: Number/quantity reconciliation (future)
- * - url: URL validation (future)
  */
 
 import { 
@@ -27,10 +28,14 @@ import {
     createTimeModal, 
     initializeTimeModal 
 } from './time-modal.js';
-import { 
-    createExternalIdModal, 
-    initializeExternalIdModal 
+import {
+    createExternalIdModal,
+    initializeExternalIdModal
 } from './external-id-modal.js';
+import {
+    createUrlModal,
+    initializeUrlModal
+} from './url-modal.js';
 
 /**
  * Registry of modal handlers by data type
@@ -60,10 +65,14 @@ const modalRegistry = {
         create: createExternalIdModal,
         initialize: initializeExternalIdModal,
         name: 'External Identifier'
+    },
+    'url': {
+        create: createUrlModal,
+        initialize: initializeUrlModal,
+        name: 'URL Validation'
     }
     // Future modal types will be registered here:
-    // 'quantity': { create: createQuantityModal, initialize: initializeQuantityModal, name: 'Number/Quantity Input' },
-    // 'url': { create: createUrlModal, initialize: initializeUrlModal, name: 'URL Validation' }
+    // 'quantity': { create: createQuantityModal, initialize: initializeQuantityModal, name: 'Number/Quantity Input' }
 };
 
 /**
