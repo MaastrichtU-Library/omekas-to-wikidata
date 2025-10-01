@@ -508,13 +508,20 @@ export function setupExportStep(state) {
         // Process each item
         Object.keys(reconciliationData).forEach(itemId => {
             const itemData = reconciliationData[itemId];
-            
+
             try {
                 // Only export items that have at least one reconciled property with selectedMatch
                 // Skip items where all properties were skipped during reconciliation
                 if (!hasValidReconciledProperties(itemData)) {
                     return; // Skip this item entirely
                 }
+
+                // Extract the original item ID from the source data
+                // References in Step 4 are keyed by the @id field (e.g., "https://...items/123")
+                // But reconciliation uses simplified IDs (e.g., "item-0")
+                // We need to get the @id from originalData for reference lookups
+                const originalItemId = itemData.originalData?.['@id'] || itemId;
+                console.log(`🔑 Item ID mapping: "${itemId}" → "${originalItemId}"`);
 
                 // Check if item is linked to an existing Wikidata item
                 const linkedQid = currentState.linkedItems ? currentState.linkedItems[itemId] : null;
@@ -620,9 +627,11 @@ export function setupExportStep(state) {
                                 }
 
                                 if (value) {
-                                    // Get property-specific references using ORIGINAL property ID (before transformation)
-                                    // This ensures references assigned to "label" are found, not looking for "Len"
-                                    const references = getReferencesForPropertyAndItem(originalPropertyId, itemId, currentState);
+                                    // Get property-specific references using:
+                                    // 1. ORIGINAL property ID (before QuickStatements transformation like "label" → "Len")
+                                    // 2. ORIGINAL item ID (the @id field from source data, not the simplified "item-0" ID)
+                                    // This ensures references are found correctly in both dimensions
+                                    const references = getReferencesForPropertyAndItem(originalPropertyId, originalItemId, currentState);
 
                                     // Format the statement using the transformed property ID for QuickStatements
                                     const statement = formatStatement(itemPrefix, currentPropertyId, value, references);
