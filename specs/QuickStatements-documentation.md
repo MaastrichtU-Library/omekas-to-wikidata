@@ -1,6 +1,6 @@
 # QuickStatements Documentation
 
-**[← Back to Technical Documentation](../DOCUMENTATION.md)**
+**[← Back to Technical Documentation](../docs/DOCUMENTATION.md)**
 
 Source: https://www.wikidata.org/wiki/Help:QuickStatements
 

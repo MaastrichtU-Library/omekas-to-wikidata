@@ -1,6 +1,6 @@
 # Technical Documentation
 
-This page serves as a hub for all technical and developer documentation. For general project information and usage instructions, see [README.md](README.md).
+This page serves as a hub for all technical and developer documentation. For general project information and usage instructions, see [README.md](../README.md).
 
 ## Project Overview
 
@@ -16,7 +16,7 @@ This tool bridges the gap between cultural heritage collections managed in Omeka
 
 ## Core Documentation
 
-### [README.md](README.md)
+### [README.md](../README.md)
 General project documentation including:
 - Project overview and purpose
 - How to use the tool (live demo links)
@@ -24,7 +24,7 @@ General project documentation including:
 - Load/save mapping functionality
 - CORS proxy system for Omeka S integration
 
-### [CLAUDE.md](CLAUDE.md)
+### [CLAUDE.md](../CLAUDE.md)
 Development conventions and workflow for contributors:
 - JavaScript module navigation
 - Workflow and git procedures
@@ -45,7 +45,7 @@ Complete reference map of all JavaScript modules:
 - Utilities and helpers
 - Common tasks and dependency graph
 
-### [specs/QuickStatements-documentation.md](specs/QuickStatements-documentation.md)
+### [specs/QuickStatements-documentation.md](../specs/QuickStatements-documentation.md)
 QuickStatements export format reference:
 - How the tool generates Wikidata import commands
 - QuickStatements syntax and structure
@@ -60,9 +60,16 @@ Practical guide to Wikidata Entity Schemas:
 - When to use which schema
 - Schema validation and discovery
 
+### [src/js/mapping/README.md](../src/js/mapping/README.md)
+Mapping module architecture documentation:
+- Module structure (core/ and ui/ layers)
+- API reference and exports
+- State management and event integration
+- Architecture patterns and testing strategy
+
 ## Archived Specifications
 
-The [archive/specs/](archive/specs/) directory contains historical project specifications and planning documents from the initial development phase. These documents provide context about original design decisions and requirements but may not reflect the current implementation.
+The [archive/specs/](../archive/specs/) directory contains historical project specifications and planning documents from the initial development phase. These documents provide context about original design decisions and requirements but may not reflect the current implementation.
 
 Key archived documents include:
 - Original project overview and architecture plans
@@ -77,3 +84,4 @@ Key archived documents include:
 
 **Quick Links:**
 - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to this project
+- [README.md](../README.md) - Back to main project page
