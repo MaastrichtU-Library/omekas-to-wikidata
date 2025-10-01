@@ -467,28 +467,31 @@ export function setupExportStep(state) {
                 // Process each property
                 Object.keys(itemData.properties).forEach(propertyKey => {
                     const propertyData = itemData.properties[propertyKey];
-                    
+
                     // Determine if this is a manual property or mapped property
                     let wikidataPropertyId;
                     let isManualProperty = false;
-                    
+                    let propertyMetadata = null;
+
                     // Check if this is a manual property first
                     const manualProperty = manualProperties.find(mp => mp.property.id === propertyKey);
                     if (manualProperty) {
                         wikidataPropertyId = manualProperty.property.id;
+                        propertyMetadata = manualProperty.property;
                         isManualProperty = true;
                     } else {
                         // Find the corresponding mapping to get the Wikidata property ID
                         const mapping = mappedKeys.find(m => m.key === propertyKey);
                         wikidataPropertyId = mapping?.property?.id || propertyKey;
+                        propertyMetadata = mapping?.property;
                     }
-                    
+
                     // Process each reconciled value
                     propertyData.reconciled.forEach(reconciledValue => {
                         if (reconciledValue.selectedMatch) {
                             const match = reconciledValue.selectedMatch;
                             let value = '';
-                            
+
                             try {
                                 if (match.type === 'wikidata') {
                                     value = match.id;
@@ -501,6 +504,30 @@ export function setupExportStep(state) {
                                             errors.push(`Invalid date format for ${propertyKey}: ${match.value}`);
                                             return;
                                         }
+                                    } else if (match.datatype === 'monolingualtext') {
+                                        // Handle monolingual text (labels, descriptions, aliases)
+                                        value = escapeQuickStatementsString(match.value);
+
+                                        // For label/description/alias properties, format with language code
+                                        // QuickStatements format: Len (label-en), Den (description-en), Aen (alias-en)
+                                        if (wikidataPropertyId === 'label' || wikidataPropertyId === 'description' || wikidataPropertyId === 'alias') {
+                                            const languageCode = match.language || 'en'; // Default to 'en' if no language specified
+
+                                            // Warn if language code is missing
+                                            if (!match.language) {
+                                                console.warn(`No language code specified for ${wikidataPropertyId} "${match.value}". Defaulting to "en". Please re-reconcile this value with a language selection.`);
+                                            }
+
+                                            // Map property type to QuickStatements prefix
+                                            const prefixMap = {
+                                                'label': 'L',
+                                                'description': 'D',
+                                                'alias': 'A'
+                                            };
+
+                                            const prefix = prefixMap[wikidataPropertyId];
+                                            wikidataPropertyId = `${prefix}${languageCode}`;
+                                        }
                                     } else {
                                         value = escapeQuickStatementsString(match.value);
                                     }
@@ -508,11 +535,11 @@ export function setupExportStep(state) {
                                     // Handle string type reconciliation (from "Accept as String" option)
                                     value = escapeQuickStatementsString(match.value);
                                 }
-                                
+
                                 if (value) {
                                     // Use property-specific references if available, otherwise use all global references
                                     let references = propertyData.references || allReferences;
-                                    
+
                                     // Format the statement
                                     const statement = formatStatement(itemPrefix, wikidataPropertyId, value, references);
                                     if (statement) {
