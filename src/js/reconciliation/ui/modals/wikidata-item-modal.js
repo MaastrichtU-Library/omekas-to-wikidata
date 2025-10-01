@@ -46,17 +46,13 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
     if (propertyData) {
         modalContent.dataset.propertyData = JSON.stringify(propertyData);
     }
-    // FIX: Store existingMatches in dataset so initialization can retrieve them
-    if (existingMatches) {
-        modalContent.dataset.existingMatches = JSON.stringify(existingMatches);
-    }
 
     console.log('🔵 [createWikidataItemModal] Dataset after setup:', {
         hasExistingMatchesInDataset: !!modalContent.dataset.existingMatches,
         datasetKeys: Object.keys(modalContent.dataset),
         existingMatchesParam: existingMatches,
         existingMatchesParamLength: existingMatches?.length,
-        FIXED: modalContent.dataset.existingMatches ? 'Yes! Stored in dataset' : 'Not stored (null/undefined)'
+        WHY_NOT_STORED: 'Because there is no code to store existingMatches in dataset!'
     });
     
     modalContent.innerHTML = `
