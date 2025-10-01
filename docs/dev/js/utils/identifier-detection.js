@@ -405,26 +405,39 @@ export async function createIdentifierMapping(fieldKey, detection, sampleValue) 
     let constraints = null;
     let constraintsFetched = false;
     let constraintsError = null;
-    
-    try {
-        // Fetch comprehensive property information
-        propertyInfo = await getPropertyInfo(detection.propertyId);
-        
-        // Fetch property constraints for validation and formatting
-        constraints = await getPropertyConstraints(detection.propertyId);
-        constraintsFetched = true;
-        
-    } catch (error) {
-        console.warn(`Auto-mapping: Failed to fetch constraints for ${detection.propertyId}:`, error);
-        constraintsError = error.message;
-        
-        // Use fallback property info from detection
+
+    // Only fetch property info if propertyId is not null
+    // Some identifier types (wikidata, iso639-1) map directly to items, not properties
+    if (detection.propertyId !== null) {
+        try {
+            // Fetch comprehensive property information
+            propertyInfo = await getPropertyInfo(detection.propertyId);
+
+            // Fetch property constraints for validation and formatting
+            constraints = await getPropertyConstraints(detection.propertyId);
+            constraintsFetched = true;
+
+        } catch (error) {
+            console.warn(`Auto-mapping: Failed to fetch constraints for ${detection.propertyId}:`, error);
+            constraintsError = error.message;
+
+            // Use fallback property info from detection
+            propertyInfo = {
+                id: detection.propertyId,
+                label: detection.label,
+                description: detection.description,
+                datatype: 'external-id',
+                datatypeLabel: 'External identifier'
+            };
+        }
+    } else {
+        // For identifier types without a property (direct item mapping)
         propertyInfo = {
-            id: detection.propertyId,
+            id: null,
             label: detection.label,
             description: detection.description,
-            datatype: 'external-id',
-            datatypeLabel: 'External identifier'
+            datatype: 'wikibase-item',
+            datatypeLabel: 'Wikidata item'
         };
     }
     
