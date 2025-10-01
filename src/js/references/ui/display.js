@@ -109,12 +109,9 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
             const listItem = createCustomReferenceListItem(customRef, customData, totalItems, state);
             list.appendChild(listItem);
         } else if (data && data.count > 0) {
-            // Only render auto-detected if it's not ignored and has no custom replacement
-            const isSelected = state ? state.isReferenceTypeSelected(type) : true;
-            if (isSelected) {
-                const listItem = createReferenceListItem(type, data, totalItems, state);
-                list.appendChild(listItem);
-            }
+            // Render auto-detected if it has no custom replacement
+            const listItem = createReferenceListItem(type, data, totalItems, state);
+            list.appendChild(listItem);
         }
     });
 
@@ -229,7 +226,7 @@ export function createReferenceListItem(type, data, totalItems, state = null) {
             cursor: 'pointer',
             userSelect: 'none'
         }
-    }, isSelected ? 'Selected' : 'Ignored');
+    }, isSelected ? 'Selected' : 'Unselected');
 
     // Create tooltip element
     const tooltip = createTooltip(data.examples, type);
@@ -280,7 +277,7 @@ export function createReferenceListItem(type, data, totalItems, state = null) {
             // Update visual state
             listItem.style.opacity = newIsSelected ? '1' : '0.5';
             keyName.style.textDecoration = newIsSelected ? 'none' : 'line-through';
-            status.textContent = newIsSelected ? 'Selected' : 'Ignored';
+            status.textContent = newIsSelected ? 'Selected' : 'Unselected';
             status.style.color = newIsSelected ? '#2ecc71' : '#95a5a6';
         });
 
@@ -476,7 +473,7 @@ export function createCustomReferenceListItem(customRef, data, totalItems, state
             cursor: 'pointer',
             userSelect: 'none'
         }
-    }, isSelected ? 'Selected' : 'Ignored');
+    }, isSelected ? 'Selected' : 'Unselected');
 
     // Create tooltip element
     const tooltip = createTooltip(data.examples, type);
@@ -527,7 +524,7 @@ export function createCustomReferenceListItem(customRef, data, totalItems, state
             // Update visual state
             listItem.style.opacity = newIsSelected ? '1' : '0.5';
             keyName.style.textDecoration = newIsSelected ? 'none' : 'line-through';
-            status.textContent = newIsSelected ? 'Selected' : 'Ignored';
+            status.textContent = newIsSelected ? 'Selected' : 'Unselected';
             status.style.color = newIsSelected ? '#2ecc71' : '#95a5a6';
         });
 
