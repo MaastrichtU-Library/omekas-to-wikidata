@@ -854,15 +854,16 @@ export function createOpenReconciliationModalFactory(dependencies) {
         let existingMatches = null;
         const currentState = state.getState();
         const reconciliationData = currentState.reconciliation?.data || {};
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property] && 
+
+        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property] &&
             reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
             existingMatches = reconciliationData[itemId].properties[property].reconciled[valueIndex].matches;
             window.currentModalContext.existingMatches = existingMatches;
         }
-        
+
         // Create modal content
         const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches, state);
-        
+
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
             currentReconciliationCell = null;
@@ -976,10 +977,11 @@ export function createOpenReconciliationModalFactory(dependencies) {
             } else {
             }
         }, 60); // Run after attributes are set
-        
+
         // Start automatic reconciliation for Wikidata items
+        // Only if we don't already have existing matches from reconciliation API
         // Note: dataType already declared above, reusing it
-        if (dataType === 'wikibase-item') {
+        if (dataType === 'wikibase-item' && (!existingMatches || existingMatches.length === 0)) {
             await performAutomaticReconciliation(value, property, itemId, valueIndex);
         }
     };
