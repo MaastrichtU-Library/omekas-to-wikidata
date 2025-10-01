@@ -46,7 +46,9 @@ function getItemDisplayName(item, index, reconciliationData) {
 export function openCustomReferenceModal(state, onSubmit, options = {}) {
     const { isEdit = false, existingReference = null } = options;
     const currentState = state.getState();
-    const items = currentState.fetchedData || [];
+    const fetchedData = currentState.fetchedData;
+    // Ensure items is always an array (handle both single item and array cases)
+    const items = !fetchedData ? [] : (Array.isArray(fetchedData) ? fetchedData : [fetchedData]);
     const reconciliationData = currentState.reconciliationData || {};
 
     // Create modal overlay
