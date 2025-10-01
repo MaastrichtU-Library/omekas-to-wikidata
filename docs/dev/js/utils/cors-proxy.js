@@ -4,6 +4,26 @@
  */
 
 /**
+ * Domain memory cache for tracking CORS-blocked domains
+ * Reduces console noise by skipping direct fetch for known blocked domains
+ */
+const corsBlockedDomains = new Set();
+
+/**
+ * Extracts domain from URL for CORS tracking
+ * @param {string} url - Full URL
+ * @returns {string} - Domain (e.g., "example.com")
+ */
+function extractDomain(url) {
+    try {
+        const urlObj = new URL(url);
+        return urlObj.hostname;
+    } catch {
+        return url; // Fallback if URL parsing fails
+    }
+}
+
+/**
  * Configuration for available CORS proxy services
  * Ordered by success rate: CORS Proxy (corsproxy.io) → AllOrigins (fixed) → Community Proxy → ThingProxy → YQL Proxy
  */
@@ -78,54 +98,67 @@ const CORS_PROXIES = [
 
 /**
  * Attempts to fetch data using direct request first, then CORS proxies as fallback
+ * Remembers CORS-blocked domains to skip direct fetch and reduce console noise
  * @param {string} url - The original API URL to fetch
  * @param {Object} options - Fetch options (optional)
  * @returns {Promise<{data: Object, method: string, proxyUsed: string|null}>}
  */
 export async function fetchWithCorsProxy(url, options = {}) {
     let lastError = null;
-    
-    // First attempt: Direct fetch (no proxy)
-    try {
-        const response = await fetch(url, options);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
+    const domain = extractDomain(url);
+    const isKnownCorsBlocked = corsBlockedDomains.has(domain);
+
+    // Skip direct fetch if we know this domain is CORS-blocked
+    if (isKnownCorsBlocked) {
+        console.log(`📡 Using proxy for known CORS-blocked domain: ${domain}`);
+    } else {
+        // First attempt: Direct fetch (no proxy)
+        try {
+            const response = await fetch(url, options);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Response is not valid JSON. Please check the API URL.');
+            }
+
+            const data = await response.json();
+
+            return {
+                data,
+                method: 'direct',
+                proxyUsed: null,
+                success: true
+            };
+
+        } catch (error) {
+            lastError = error;
+
+            // Check if it's a CORS error
+            if (!isCorsError(error)) {
+                // If it's not a CORS error, don't try proxies
+                throw error;
+            }
+
+            // Remember this domain for future requests
+            corsBlockedDomains.add(domain);
+            console.log(`🔄 CORS blocked - switching to proxy (future requests will skip direct fetch)`);
         }
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            throw new Error('Response is not valid JSON. Please check the API URL.');
-        }
-        
-        const data = await response.json();
-        
-        return {
-            data,
-            method: 'direct',
-            proxyUsed: null,
-            success: true
-        };
-        
-    } catch (error) {
-        lastError = error;
-        
-        // Check if it's a CORS error
-        if (!isCorsError(error)) {
-            // If it's not a CORS error, don't try proxies
-            throw error;
-        }
-        
-        console.log('Direct fetch failed with CORS error, trying proxy fallbacks...');
     }
     
     // Attempt each proxy in order
     for (let i = 0; i < CORS_PROXIES.length; i++) {
         const proxy = CORS_PROXIES[i];
-        
+
         try {
-            console.log(`Attempting ${proxy.name}...`);
-            
+            // Only show attempting message if previous proxies failed
+            if (i > 0) {
+                console.log(`  Trying ${proxy.name}...`);
+            }
+
             const proxyUrl = proxy.transform(url);
             const proxyOptions = {
                 ...options,
@@ -134,44 +167,45 @@ export async function fetchWithCorsProxy(url, options = {}) {
                     ...proxy.headers
                 }
             };
-            
+
             const response = await fetch(proxyUrl, proxyOptions);
-            
+
             if (!response.ok) {
                 throw new Error(`Proxy ${proxy.name} returned ${response.status}: ${response.statusText}`);
             }
-            
+
             // Check content type
             const contentType = response.headers.get('content-type');
-            console.log(`${proxy.name} content-type:`, contentType);
-            
+
             let rawData;
             if (contentType && contentType.includes('application/json')) {
                 rawData = await response.json();
             } else {
                 // If not JSON, try to parse as text first
                 const textData = await response.text();
-                console.log(`${proxy.name} raw response:`, textData.substring(0, 200) + '...');
                 try {
                     rawData = JSON.parse(textData);
                 } catch {
                     throw new Error(`${proxy.name} returned non-JSON content: ${contentType}`);
                 }
             }
-            
+
             const data = proxy.parseResponse(rawData);
-            
-            console.log(`Successfully fetched data using ${proxy.name}`);
-            
+
+            console.log(`✅ Fetched via ${proxy.name}`);
+
             return {
                 data,
                 method: 'proxy',
                 proxyUsed: proxy.name,
                 success: true
             };
-            
+
         } catch (error) {
-            console.log(`${proxy.name} failed:`, error.message);
+            // Only log failures if we're going to try another proxy
+            if (i < CORS_PROXIES.length - 1) {
+                console.log(`  ⚠️ ${proxy.name} failed, trying next...`);
+            }
             lastError = error;
             continue;
         }

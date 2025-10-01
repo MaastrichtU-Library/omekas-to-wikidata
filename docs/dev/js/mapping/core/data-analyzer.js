@@ -6,13 +6,15 @@
 
 // Import dependencies (minimal for data analysis)
 import { detectIdentifier } from '../../utils/identifier-detection.js';
+import { fetchWithCorsProxy } from '../../utils/cors-proxy.js';
 
 // Context cache for JSON-LD definitions
 const contextCache = new Map();
 
 /**
  * Fetches and caches JSON-LD context definitions from remote URLs
- * 
+ * Uses CORS proxy fallback system for blocked URLs, same as main API calls
+ *
  * @param {string} contextUrl - URL to fetch context from
  * @returns {Promise<Map>} Map of prefix->URI mappings
  */
@@ -20,19 +22,27 @@ export async function fetchContextDefinitions(contextUrl) {
     if (contextCache.has(contextUrl)) {
         return contextCache.get(contextUrl);
     }
-    
+
     try {
-        const response = await fetch(contextUrl);
-        const contextData = await response.json();
-        
+        // Use the same CORS proxy system as main API calls
+        const result = await fetchWithCorsProxy(contextUrl, {
+            headers: {
+                'Accept': 'application/ld+json, application/json'
+            }
+        });
+
+        const contextData = result.data;
+
+        // Note: fetchWithCorsProxy already logs proxy usage, no need to log again
+
         const contextMap = new Map();
-        
+
         // Handle nested @context structure
         let context = contextData;
         if (contextData['@context']) {
             context = contextData['@context'];
         }
-        
+
         if (typeof context === 'object') {
             for (const [prefix, definition] of Object.entries(context)) {
                 if (typeof definition === 'string') {
@@ -42,12 +52,26 @@ export async function fetchContextDefinitions(contextUrl) {
                 }
             }
         }
-        
+
         contextCache.set(contextUrl, contextMap);
         return contextMap;
     } catch (error) {
-        console.error(`Failed to fetch context from ${contextUrl}:`, error);
-        return new Map();
+        console.warn(`Context fetch failed (${contextUrl}): ${error.message}. Using fallback vocabularies.`);
+
+        // Return common fallback vocabularies when all fetch methods fail
+        const fallbackContext = new Map([
+            ['schema', 'https://schema.org/'],
+            ['dc', 'http://purl.org/dc/terms/'],
+            ['dcterms', 'http://purl.org/dc/terms/'],
+            ['foaf', 'http://xmlns.com/foaf/0.1/'],
+            ['skos', 'http://www.w3.org/2004/02/skos/core#'],
+            ['bibo', 'http://purl.org/ontology/bibo/'],
+            ['o', 'http://omeka.org/s/vocabs/o#']
+        ]);
+
+        // Cache the fallback to avoid repeated failed requests
+        contextCache.set(contextUrl, fallbackContext);
+        return fallbackContext;
     }
 }
 
