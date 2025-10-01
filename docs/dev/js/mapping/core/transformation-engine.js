@@ -29,20 +29,20 @@ export function renderValueTransformationUI(keyData, state) {
         id: 'value-transformation-section'
     });
 
-    // Property ID for transformation blocks - simple approach that works
+    // Property ID for transformation blocks - allow temporary IDs when no property selected
     let currentProperty = window.currentMappingSelectedProperty || keyData?.property;
     let propertyId = currentProperty?.id;
-    
-    // Simple validation (no complex retry logic)
-    if (!propertyId) {
-        container.appendChild(createElement('div', {
-            className: 'transformation-message'
-        }, 'Select a property first to configure value transformations'));
-        return container;
+
+    // Generate mapping-specific ID for transformation storage
+    // Use temporary ID when no property selected (same pattern as custom properties)
+    let mappingId;
+    if (propertyId) {
+        // Final mapping ID with property, including @ field if selected
+        mappingId = state.generateMappingId(keyData.key, propertyId, keyData.selectedAtField);
+    } else {
+        // Temporary mapping ID when no property selected yet
+        mappingId = `temp_${keyData.key}`;
     }
-    
-    // Generate mapping-specific ID for transformation storage, including @ field if selected
-    const mappingId = state.generateMappingId(keyData.key, propertyId, keyData.selectedAtField);
 
     // Field selector section
     let rawSampleValue = keyData.sampleValue;

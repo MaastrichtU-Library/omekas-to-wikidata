@@ -663,7 +663,30 @@ export async function selectProperty(property, state) {
     
     // Store selected property
     window.currentMappingSelectedProperty = property;
-    
+
+    // Transfer transformations from temporary mapping ID to final mapping ID
+    const keyData = window.currentMappingKeyData;
+    if (keyData && keyData.key && state) {
+        const tempMappingId = `temp_${keyData.key}`;
+        const finalMappingId = state.generateMappingId(keyData.key, property.id, keyData.selectedAtField);
+
+        // Check if there are transformations stored under the temporary ID
+        const currentState = state.getState();
+        const tempBlocks = currentState.mappings?.transformationBlocks?.[tempMappingId] || [];
+
+        if (tempBlocks.length > 0) {
+            // Transfer all transformation blocks from temporary to final mapping ID
+            tempBlocks.forEach(block => {
+                state.addTransformationBlock(finalMappingId, block);
+            });
+
+            // Clean up the temporary mapping ID
+            if (currentState.mappings?.transformationBlocks) {
+                delete currentState.mappings.transformationBlocks[tempMappingId];
+            }
+        }
+    }
+
     // Update search input with selected property label
     const searchInput = document.getElementById('property-search-input');
     if (searchInput) {

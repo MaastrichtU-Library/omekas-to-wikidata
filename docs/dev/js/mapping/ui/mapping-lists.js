@@ -460,27 +460,52 @@ export function moveKeyToCategory(keyData, category, state) {
  * Maps a key to a property
  */
 export function mapKeyToProperty(keyData, property, state) {
+    const currentState = state.getState();
+
     // Generate the mapping ID for this key-property combination, including @ field if selected
-    const mappingId = state.generateMappingId(keyData.key, property.id, keyData.selectedAtField);
-    
+    const newMappingId = state.generateMappingId(keyData.key, property.id, keyData.selectedAtField);
+
+    // Check if this is an edit of an existing mapping with a different mappingId
+    // This can happen when selectedAtField changes from null to a value (e.g., in auto-mapped identifiers)
+    const existingMapping = currentState.mappings.mappedKeys.find(k =>
+        k.key === keyData.key && k.property?.id === property.id
+    );
+
+    if (existingMapping && existingMapping.mappingId && existingMapping.mappingId !== newMappingId) {
+        // MappingId has changed - need to migrate transformation blocks
+        const oldMappingId = existingMapping.mappingId;
+        const transformationBlocks = state.getTransformationBlocks(oldMappingId);
+
+        if (transformationBlocks && transformationBlocks.length > 0) {
+            // Migrate each transformation block to the new mappingId
+            transformationBlocks.forEach(block => {
+                state.addTransformationBlock(newMappingId, block);
+            });
+
+            // Remove transformation blocks from old mappingId by clearing the array
+            // We can't delete the key directly, so we set it to empty array
+            currentState.mappings.transformationBlocks[oldMappingId] = [];
+        }
+    }
+
     // Create enhanced key data with property information and mapping ID
     const mappedKey = {
         ...keyData,
         property: property,
-        mappingId: mappingId,
+        mappingId: newMappingId,
         mappedAt: new Date().toISOString()
     };
-    
+
     // Use moveKeyToCategory to handle the movement properly
     moveKeyToCategory(mappedKey, 'mapped', state);
-    
+
     // Publish mapping updated event for reconciliation table updates
     eventSystem.publish(eventSystem.Events.MAPPING_UPDATED, {
         type: 'mapped',
         keyData: mappedKey,
         previousKeyData: keyData,
         property: property,
-        mappingId: mappingId
+        mappingId: newMappingId
     });
 }
 
