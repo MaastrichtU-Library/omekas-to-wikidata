@@ -24,16 +24,6 @@
  * @returns {HTMLElement} Modal content element
  */
 export function createWikidataItemModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
-    console.log('🔵 [createWikidataItemModal] Called with:', {
-        itemId,
-        property,
-        valueIndex,
-        value,
-        existingMatches,
-        existingMatchesType: typeof existingMatches,
-        existingMatchesLength: existingMatches?.length
-    });
-
     const modalContent = document.createElement('div');
     modalContent.className = 'wikidata-item-modal';
 
@@ -99,12 +89,6 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
  * @param {HTMLElement} modalElement - The modal element
  */
 export function initializeWikidataItemModal(modalElement) {
-    console.log('🟢 [initializeWikidataItemModal] Starting initialization');
-    console.log('🟢 [initializeWikidataItemModal] modalElement.dataset:', {
-        ...modalElement.dataset,
-        hasExistingMatches: !!modalElement.dataset.existingMatches
-    });
-
     const value = modalElement.dataset.value;
     // Dataset attributes are lost when modal is created from innerHTML
     // So we need to get existingMatches from window.currentModalContext instead
@@ -114,16 +98,7 @@ export function initializeWikidataItemModal(modalElement) {
     // CRITICAL FIX: Fallback to window.currentModalContext which was set before modal opened
     if (!existingMatches && window.currentModalContext?.existingMatches) {
         existingMatches = window.currentModalContext.existingMatches;
-        console.log('🟢 [initializeWikidataItemModal] Retrieved existingMatches from window.currentModalContext');
     }
-
-    console.log('🟢 [initializeWikidataItemModal] Retrieved existingMatches:', {
-        existingMatches,
-        existingMatchesType: typeof existingMatches,
-        existingMatchesLength: existingMatches?.length,
-        isNull: existingMatches === null,
-        windowContextMatches: window.currentModalContext?.existingMatches
-    });
 
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
@@ -138,12 +113,6 @@ export function initializeWikidataItemModal(modalElement) {
         existingMatches: existingMatches,  // Now this has the correct value from the fallback above
         modalType: 'wikidata-item'
     };
-
-    console.log('🟢 [initializeWikidataItemModal] Calling loadWikidataItemMatches with:', {
-        value,
-        existingMatches,
-        existingMatchesLength: existingMatches?.length
-    });
 
     // Load existing matches for Wikidata items
     loadWikidataItemMatches(value, existingMatches);
@@ -173,18 +142,8 @@ export function initializeWikidataItemModal(modalElement) {
  * @param {Array} existingMatches - Pre-existing matches if available
  */
 export async function loadWikidataItemMatches(value, existingMatches = null) {
-    console.log('🟡 [loadWikidataItemMatches] Called with:', {
-        value,
-        existingMatches,
-        existingMatchesType: typeof existingMatches,
-        existingMatchesLength: existingMatches?.length,
-        isNull: existingMatches === null,
-        isUndefined: existingMatches === undefined
-    });
-
     const matchesContainer = document.getElementById('existing-matches');
     if (!matchesContainer) {
-        console.log('🟡 [loadWikidataItemMatches] No matches container found');
         return;
     }
 
@@ -194,7 +153,6 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
     const hasLoadingIndicator = matchesContainer.innerHTML.includes('Finding matches...');
 
     if (hasExistingMatchList && !hasLoadingIndicator) {
-        console.log('🟡 [loadWikidataItemMatches] Container already has matches displayed, skipping reload');
         return;
     }
 
@@ -203,17 +161,7 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
 
         // If no existing matches provided, search for new ones
         if (!matches || matches.length === 0) {
-            console.log('🟡 [loadWikidataItemMatches] No existing matches, searching Wikidata for:', value);
             matches = await searchWikidataEntities(value);
-            console.log('🟡 [loadWikidataItemMatches] Search results:', {
-                matchesFound: matches?.length,
-                matches: matches?.slice(0, 3)
-            });
-        } else {
-            console.log('🟡 [loadWikidataItemMatches] Using existing matches:', {
-                count: matches.length,
-                matches: matches.slice(0, 3)
-            });
         }
 
         if (matches && matches.length > 0) {
@@ -480,15 +428,13 @@ window.showTopWikidataMatches = function() {
 
 window.confirmWikidataSelection = function() {
     if (!window.currentModalContext || !window.selectedMatch) {
-        console.error('No Wikidata match selected');
         return;
     }
-    
+
     // Call the global selectMatchAndAdvance function that should be set up by the reconciliation system
     if (typeof window.selectMatchAndAdvance === 'function') {
         window.selectMatchAndAdvance(window.selectedMatch.id);
     } else {
-        console.log('Confirm Wikidata selection:', window.selectedMatch);
         if (typeof window.closeReconciliationModal === 'function') {
             window.closeReconciliationModal();
         }
@@ -508,7 +454,6 @@ window.skipWikidataReconciliation = function() {
 };
 
 window.useAsLiteralString = function() {
-    console.log('Use as literal string instead of Wikidata item');
     if (typeof window.closeReconciliationModal === 'function') {
         window.closeReconciliationModal();
     }

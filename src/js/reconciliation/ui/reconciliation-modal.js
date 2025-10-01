@@ -22,16 +22,6 @@ import {
  * This is the main entry point that routes to appropriate specialized modals
  */
 export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, state = null) {
-    console.log('🟣 [createReconciliationModal] Called with:', {
-        itemId,
-        property,
-        valueIndex,
-        value,
-        existingMatches,
-        existingMatchesType: typeof existingMatches,
-        existingMatchesLength: existingMatches?.length
-    });
-
     // NEW: Get both datatype and enhanced property data from mappings
     const propertyLookupResult = getDataTypeAndPropertyData(property, propertyData, state);
     const dataType = propertyLookupResult.datatype;
@@ -865,43 +855,14 @@ export function createOpenReconciliationModalFactory(dependencies) {
         const currentState = state.getState();
         const reconciliationData = currentState.reconciliation?.data || {};
 
-        console.log('🔴 [openReconciliationModal] Checking for existing matches:', {
-            itemId,
-            property,
-            valueIndex,
-            hasReconciliationData: !!reconciliationData[itemId],
-            hasProperty: !!(reconciliationData[itemId]?.properties?.[property]),
-            hasReconciledValue: !!(reconciliationData[itemId]?.properties?.[property]?.reconciled?.[valueIndex])
-        });
-
         if (reconciliationData[itemId] && reconciliationData[itemId].properties[property] &&
             reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
             existingMatches = reconciliationData[itemId].properties[property].reconciled[valueIndex].matches;
             window.currentModalContext.existingMatches = existingMatches;
-
-            console.log('🔴 [openReconciliationModal] Found existing matches in state:', {
-                existingMatches,
-                matchCount: existingMatches?.length,
-                firstMatch: existingMatches?.[0]
-            });
-        } else {
-            console.log('🔴 [openReconciliationModal] No existing matches found in state');
         }
-
-        console.log('🔴 [openReconciliationModal] Creating modal with existingMatches:', {
-            existingMatches,
-            existingMatchesLength: existingMatches?.length
-        });
 
         // Create modal content
         const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches, state);
-
-        console.log('🔴🔴 [openReconciliationModal] THE PROBLEM:', {
-            modalElementHasDataset: !!modalElement.dataset,
-            datasetKeys: modalElement.dataset ? Object.keys(modalElement.dataset) : [],
-            innerHTML_LOSES_DATASET: 'Using .innerHTML strips all dataset attributes!',
-            proof: modalElement.innerHTML.includes('data-existing-matches') ? 'Dataset preserved' : 'Dataset LOST!'
-        });
 
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
