@@ -697,7 +697,8 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
     // Create list item
     const listItem = createElement('li', {
         style: {
-            opacity: '1'
+            opacity: '1',
+            cursor: 'pointer'
         }
     });
 
@@ -806,6 +807,37 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
     keyItemCompact.appendChild(referenceCountSpan);
 
     listItem.appendChild(keyItemCompact);
+
+    // Add click handler for quick-assign (clicking anywhere on list item)
+    if (state) {
+        listItem.addEventListener('click', () => {
+            // Get currently selected reference types
+            const selectedReferenceTypes = state.getSelectedReferenceTypes();
+
+            // Check if any references are selected
+            if (selectedReferenceTypes.length === 0) {
+                showMessage('Please select or add a reference first', 'error', 3000);
+                return;
+            }
+
+            // Assign references to this property
+            state.assignReferencesToProperty(property.id, selectedReferenceTypes);
+
+            // Trigger re-render
+            if (onReferenceAssignment) {
+                onReferenceAssignment();
+            }
+        });
+
+        // Add hover effect
+        listItem.addEventListener('mouseenter', () => {
+            listItem.style.backgroundColor = '#f5f5f5';
+        });
+
+        listItem.addEventListener('mouseleave', () => {
+            listItem.style.backgroundColor = 'transparent';
+        });
+    }
 
     return listItem;
 }

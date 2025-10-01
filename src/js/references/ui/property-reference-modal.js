@@ -196,7 +196,9 @@ function getAllAvailableReferences(state) {
 
     autoDetectedTypes.forEach(type => {
         const data = summary[type];
-        if (data && data.count > 0) {
+        const isSelected = state.isReferenceTypeSelected(type);
+        // Only include references that are selected (not ignored) and have data
+        if (data && data.count > 0 && isSelected) {
             references.push({
                 id: type,
                 name: getReferenceTypeLabel(type),
@@ -206,75 +208,68 @@ function getAllAvailableReferences(state) {
         }
     });
 
-    // Get custom references
+    // Get custom references (only selected ones)
     const customReferences = state.getCustomReferences() || [];
     customReferences.forEach(customRef => {
-        references.push({
-            id: customRef.id,
-            name: customRef.name,
-            baseUrl: getDisplayBaseUrl(customRef.baseUrl),
-            type: 'custom'
-        });
+        const isSelected = state.isReferenceTypeSelected(customRef.id);
+        if (isSelected) {
+            references.push({
+                id: customRef.id,
+                name: customRef.name,
+                baseUrl: getDisplayBaseUrl(customRef.baseUrl),
+                type: 'custom'
+            });
+        }
     });
 
     return references;
 }
 
 /**
- * Creates a list item for a reference with checkbox
+ * Creates a list item for a reference (colored block, no checkbox)
  * @param {Object} reference - Reference object with {id, name, baseUrl}
- * @param {boolean} isChecked - Whether the checkbox should be checked
- * @param {Function} onChange - Callback when checkbox changes
+ * @param {boolean} isActive - Whether the reference is assigned to the property
+ * @param {Function} onChange - Callback when block is toggled
  * @returns {HTMLElement} Reference list item
  */
-function createReferenceListItem(reference, isChecked, onChange) {
+function createReferenceListItem(reference, isActive, onChange) {
+    // Track current state for toggling
+    let active = isActive;
+
     const item = createElement('div', {
         className: 'reference-item',
         style: {
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px',
             padding: '12px',
-            border: '1px solid #e0e0e0',
             borderRadius: '4px',
-            backgroundColor: '#f9f9f9'
+            cursor: 'pointer',
+            backgroundColor: active ? '#d4edda' : '#f8f9fa',
+            border: `1px solid ${active ? '#c3e6cb' : '#e0e0e0'}`,
+            transition: 'all 0.2s ease',
+            position: 'relative'
         }
     });
 
-    // Create checkbox
-    const checkbox = createElement('input', {
-        type: 'checkbox',
-        checked: isChecked,
-        style: {
-            marginTop: '2px',
-            cursor: 'pointer'
-        }
-    });
-
-    // Handle checkbox change
-    checkbox.addEventListener('change', (e) => {
-        onChange(e.target.checked);
-    });
-
-    // Create content section
-    const content = createElement('div', {
-        style: {
-            flex: '1',
-            cursor: 'pointer'
-        }
-    });
-
-    // Make content clickable to toggle checkbox
-    content.addEventListener('click', () => {
-        checkbox.checked = !checkbox.checked;
-        onChange(checkbox.checked);
-    });
+    // Add visual indicator for active state (checkmark)
+    if (active) {
+        const checkmark = createElement('div', {
+            style: {
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                color: '#28a745',
+                fontWeight: 'bold',
+                fontSize: '16px'
+            }
+        }, '✓');
+        item.appendChild(checkmark);
+    }
 
     // Reference name
     const name = createElement('div', {
         style: {
             fontWeight: '500',
-            marginBottom: '4px'
+            marginBottom: '4px',
+            color: active ? '#155724' : '#212529'
         }
     }, reference.name);
 
@@ -282,15 +277,53 @@ function createReferenceListItem(reference, isChecked, onChange) {
     const baseUrl = createElement('div', {
         style: {
             fontSize: '12px',
-            color: '#666'
+            color: active ? '#155724' : '#6c757d'
         }
     }, reference.baseUrl);
 
-    content.appendChild(name);
-    content.appendChild(baseUrl);
+    item.appendChild(name);
+    item.appendChild(baseUrl);
 
-    item.appendChild(checkbox);
-    item.appendChild(content);
+    // Make entire block clickable to toggle
+    item.addEventListener('click', () => {
+        active = !active;
+
+        // Update visual state
+        item.style.backgroundColor = active ? '#d4edda' : '#f8f9fa';
+        item.style.border = `1px solid ${active ? '#c3e6cb' : '#e0e0e0'}`;
+        name.style.color = active ? '#155724' : '#212529';
+        baseUrl.style.color = active ? '#155724' : '#6c757d';
+
+        // Add/remove checkmark
+        const existingCheckmark = item.querySelector('div[style*="position: absolute"]');
+        if (active && !existingCheckmark) {
+            const checkmark = createElement('div', {
+                style: {
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    color: '#28a745',
+                    fontWeight: 'bold',
+                    fontSize: '16px'
+                }
+            }, '✓');
+            item.insertBefore(checkmark, item.firstChild);
+        } else if (!active && existingCheckmark) {
+            existingCheckmark.remove();
+        }
+
+        // Call onChange callback
+        onChange(active);
+    });
+
+    // Add hover effect
+    item.addEventListener('mouseenter', () => {
+        item.style.backgroundColor = active ? '#c3e6cb' : '#e9ecef';
+    });
+
+    item.addEventListener('mouseleave', () => {
+        item.style.backgroundColor = active ? '#d4edda' : '#f8f9fa';
+    });
 
     return item;
 }
