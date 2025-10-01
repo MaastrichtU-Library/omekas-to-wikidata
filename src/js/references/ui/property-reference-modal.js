@@ -196,9 +196,8 @@ function getAllAvailableReferences(state) {
 
     autoDetectedTypes.forEach(type => {
         const data = summary[type];
-        const isSelected = state.isReferenceTypeSelected(type);
-        // Only include references that are selected (not ignored) and have data
-        if (data && data.count > 0 && isSelected) {
+        // Include all references that have data, regardless of selection status
+        if (data && data.count > 0) {
             references.push({
                 id: type,
                 name: getReferenceTypeLabel(type),
@@ -208,18 +207,15 @@ function getAllAvailableReferences(state) {
         }
     });
 
-    // Get custom references (only selected ones)
+    // Get all custom references, regardless of selection status
     const customReferences = state.getCustomReferences() || [];
     customReferences.forEach(customRef => {
-        const isSelected = state.isReferenceTypeSelected(customRef.id);
-        if (isSelected) {
-            references.push({
-                id: customRef.id,
-                name: customRef.name,
-                baseUrl: getDisplayBaseUrl(customRef.baseUrl),
-                type: 'custom'
-            });
-        }
+        references.push({
+            id: customRef.id,
+            name: customRef.name,
+            baseUrl: getDisplayBaseUrl(customRef.baseUrl),
+            type: 'custom'
+        });
     });
 
     return references;
