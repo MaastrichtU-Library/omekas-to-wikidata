@@ -4,9 +4,10 @@
  * @module references/ui/display
  */
 
-import { createElement } from '../../ui/components.js';
+import { createElement, showMessage } from '../../ui/components.js';
 import { getReferenceTypeLabel, getReferenceTypeDescription } from '../core/detector.js';
 import { getDisplayBaseUrl } from '../core/custom-references.js';
+import { openPropertyReferenceModal } from './property-reference-modal.js';
 
 /**
  * Renders the references section in the UI
@@ -108,12 +109,9 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
             const listItem = createCustomReferenceListItem(customRef, customData, totalItems, state);
             list.appendChild(listItem);
         } else if (data && data.count > 0) {
-            // Only render auto-detected if it's not ignored and has no custom replacement
-            const isSelected = state ? state.isReferenceTypeSelected(type) : true;
-            if (isSelected) {
-                const listItem = createReferenceListItem(type, data, totalItems, state);
-                list.appendChild(listItem);
-            }
+            // Render auto-detected if it has no custom replacement
+            const listItem = createReferenceListItem(type, data, totalItems, state);
+            list.appendChild(listItem);
         }
     });
 
@@ -136,6 +134,9 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
 
     section.appendChild(list);
     container.appendChild(section);
+
+    // Render properties section after references
+    renderPropertiesSection(container, totalItems, state);
 }
 
 /**
@@ -225,7 +226,7 @@ export function createReferenceListItem(type, data, totalItems, state = null) {
             cursor: 'pointer',
             userSelect: 'none'
         }
-    }, isSelected ? 'Selected' : 'Ignored');
+    }, isSelected ? 'Selected' : 'Unselected');
 
     // Create tooltip element
     const tooltip = createTooltip(data.examples, type);
@@ -276,7 +277,7 @@ export function createReferenceListItem(type, data, totalItems, state = null) {
             // Update visual state
             listItem.style.opacity = newIsSelected ? '1' : '0.5';
             keyName.style.textDecoration = newIsSelected ? 'none' : 'line-through';
-            status.textContent = newIsSelected ? 'Selected' : 'Ignored';
+            status.textContent = newIsSelected ? 'Selected' : 'Unselected';
             status.style.color = newIsSelected ? '#2ecc71' : '#95a5a6';
         });
 
@@ -472,7 +473,7 @@ export function createCustomReferenceListItem(customRef, data, totalItems, state
             cursor: 'pointer',
             userSelect: 'none'
         }
-    }, isSelected ? 'Selected' : 'Ignored');
+    }, isSelected ? 'Selected' : 'Unselected');
 
     // Create tooltip element
     const tooltip = createTooltip(data.examples, type);
@@ -523,7 +524,7 @@ export function createCustomReferenceListItem(customRef, data, totalItems, state
             // Update visual state
             listItem.style.opacity = newIsSelected ? '1' : '0.5';
             keyName.style.textDecoration = newIsSelected ? 'none' : 'line-through';
-            status.textContent = newIsSelected ? 'Selected' : 'Ignored';
+            status.textContent = newIsSelected ? 'Selected' : 'Unselected';
             status.style.color = newIsSelected ? '#2ecc71' : '#95a5a6';
         });
 
@@ -596,6 +597,244 @@ export function createAddCustomReferenceButton(state) {
 
     // Store click handler data attribute for step4.js to attach handler
     listItem.dataset.action = 'add-custom-reference';
+
+    return listItem;
+}
+
+/**
+ * Renders the properties section showing mapped properties from step 2
+ * @param {HTMLElement} container - Container element to render into
+ * @param {number} totalItems - Total number of items in dataset
+ * @param {Object} state - Application state management instance
+ */
+export function renderPropertiesSection(container, totalItems, state) {
+    if (!state) {
+        return;
+    }
+
+    const currentState = state.getState();
+    const mappedKeys = currentState.mappings?.mappedKeys || [];
+
+    if (mappedKeys.length === 0) {
+        return;
+    }
+
+    // Create section (details element)
+    const section = createElement('details', {
+        className: 'section',
+        open: true
+    });
+
+    // Create summary (header)
+    const summaryElement = createElement('summary', {
+        style: {
+            textAlign: 'left'
+        }
+    });
+
+    const titleSpan = createElement('span', {
+        className: 'section-title'
+    }, 'Properties Available for References');
+
+    const countSpan = createElement('span', {
+        className: 'section-count'
+    }, `(${mappedKeys.length})`);
+
+    summaryElement.appendChild(titleSpan);
+    summaryElement.appendChild(countSpan);
+    section.appendChild(summaryElement);
+
+    // Create list
+    const list = createElement('ul', {
+        className: 'key-list'
+    });
+
+    // Create re-render callback
+    const onReferenceAssignment = () => {
+        // Re-render the entire properties section
+        // First, find and remove the existing section
+        const existingSections = container.querySelectorAll('details.section');
+        existingSections.forEach(section => {
+            // Check if this is the properties section by looking for the title
+            const titleElement = section.querySelector('.section-title');
+            if (titleElement && titleElement.textContent === 'Properties Available for References') {
+                section.remove();
+            }
+        });
+
+        // Re-render the section
+        renderPropertiesSection(container, totalItems, state);
+    };
+
+    // Render each mapped property
+    mappedKeys.forEach(mappedKey => {
+        const listItem = createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignment);
+        list.appendChild(listItem);
+    });
+
+    section.appendChild(list);
+    container.appendChild(section);
+}
+
+/**
+ * Creates a list item for a mapped property
+ * @param {Object} mappedKey - Mapped key object with property information
+ * @param {number} totalItems - Total number of items in dataset
+ * @param {Object} state - Application state management instance
+ * @param {Function} onReferenceAssignment - Callback to re-render the section
+ * @returns {HTMLElement} List item element
+ */
+function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignment) {
+    const property = mappedKey.property;
+
+    // Get current reference count for this property
+    const assignedReferences = state ? state.getPropertyReferences(property.id) : [];
+    const referenceCount = assignedReferences.length;
+
+    // Create list item
+    const listItem = createElement('li', {
+        style: {
+            opacity: '1',
+            cursor: 'pointer'
+        }
+    });
+
+    // Create compact key item wrapper
+    const keyItemCompact = createElement('div', {
+        className: 'key-item-compact',
+        style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%'
+        }
+    });
+
+    // Create left section
+    const leftSection = createElement('div', {
+        style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+        }
+    });
+
+    // Create property label text
+    const labelText = createElement('span', {
+        className: 'key-name-compact'
+    }, property.label);
+
+    // Create opening parenthesis
+    const openParen = createElement('span', {
+        className: 'key-name-compact'
+    }, ' (');
+
+    // Create clickable property ID link
+    const propertyLink = createElement('a', {
+        href: `https://www.wikidata.org/wiki/Property:${property.id}`,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        style: {
+            color: '#0066cc',
+            textDecoration: 'none'
+        }
+    }, property.id);
+
+    // Add hover effect to link
+    propertyLink.addEventListener('mouseenter', () => {
+        propertyLink.style.textDecoration = 'underline';
+    });
+    propertyLink.addEventListener('mouseleave', () => {
+        propertyLink.style.textDecoration = 'none';
+    });
+
+    // Prevent link clicks from triggering list item click
+    propertyLink.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    // Create closing parenthesis
+    const closeParen = createElement('span', {
+        className: 'key-name-compact'
+    }, ')');
+
+    // Append all elements to left section
+    leftSection.appendChild(labelText);
+    leftSection.appendChild(openParen);
+    leftSection.appendChild(propertyLink);
+    leftSection.appendChild(closeParen);
+
+    // Create reference count indicator on the right
+    const referenceCountText = referenceCount === 1 ? '1 reference' : `${referenceCount} references`;
+    const referenceCountSpan = createElement('span', {
+        className: 'reference-count',
+        style: {
+            fontSize: '0.85em',
+            fontWeight: '500',
+            color: referenceCount > 0 ? '#2ecc71' : '#95a5a6',
+            cursor: 'pointer',
+            userSelect: 'none'
+        }
+    }, referenceCount > 0 ? referenceCountText : 'No references');
+
+    // Add click handler to reference count to open modal
+    if (state) {
+        referenceCountSpan.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent list item click
+            openPropertyReferenceModal(
+                property.id,
+                property.label,
+                state,
+                onReferenceAssignment
+            );
+        });
+
+        // Add hover effect to reference count
+        referenceCountSpan.addEventListener('mouseenter', () => {
+            referenceCountSpan.style.textDecoration = 'underline';
+        });
+
+        referenceCountSpan.addEventListener('mouseleave', () => {
+            referenceCountSpan.style.textDecoration = 'none';
+        });
+    }
+
+    // Append left section and count to wrapper
+    keyItemCompact.appendChild(leftSection);
+    keyItemCompact.appendChild(referenceCountSpan);
+
+    listItem.appendChild(keyItemCompact);
+
+    // Add click handler for quick-assign (clicking anywhere on list item)
+    if (state) {
+        listItem.addEventListener('click', () => {
+            // Get currently selected reference types
+            const selectedReferenceTypes = state.getSelectedReferenceTypes();
+
+            // Check if any references are selected
+            if (selectedReferenceTypes.length === 0) {
+                showMessage('Please select or add a reference first', 'error', 3000);
+                return;
+            }
+
+            // Assign references to this property
+            state.assignReferencesToProperty(property.id, selectedReferenceTypes);
+
+            // Trigger re-render
+            if (onReferenceAssignment) {
+                onReferenceAssignment();
+            }
+        });
+
+        // Add hover effect
+        listItem.addEventListener('mouseenter', () => {
+            listItem.style.backgroundColor = '#f5f5f5';
+        });
+
+        listItem.addEventListener('mouseleave', () => {
+            listItem.style.backgroundColor = 'transparent';
+        });
+    }
 
     return listItem;
 }

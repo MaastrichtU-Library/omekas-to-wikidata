@@ -78,7 +78,8 @@ export function setupState() {
             itemReferences: {}, // Map of itemId -> array of reference objects
             summary: {}, // Map of referenceType -> {count, examples: [{itemId, value}]}
             selectedTypes: ['omeka-item', 'oclc', 'ark'], // List of selected reference types (default: all selected)
-            customReferences: [] // Array of custom reference objects added by user
+            customReferences: [], // Array of custom reference objects added by user
+            propertyReferences: {} // Map of propertyId -> array of reference type IDs
         },
 
         // Step 5: Export
@@ -918,6 +919,77 @@ export function setupState() {
     }
 
     /**
+     * Gets all currently selected reference types (both auto-detected and custom)
+     * @returns {Array<string>} Array of selected reference type IDs
+     */
+    function getSelectedReferenceTypes() {
+        const selectedTypes = [];
+
+        // Add auto-detected reference types
+        const autoDetectedTypes = ['omeka-item', 'oclc', 'ark'];
+        autoDetectedTypes.forEach(type => {
+            if (state.references.selectedTypes.includes(type)) {
+                selectedTypes.push(type);
+            }
+        });
+
+        // Add custom reference types that are selected
+        const customReferences = state.references.customReferences || [];
+        customReferences.forEach(customRef => {
+            if (state.references.selectedTypes.includes(customRef.id)) {
+                selectedTypes.push(customRef.id);
+            }
+        });
+
+        return selectedTypes;
+    }
+
+    /**
+     * Assigns reference types to a property
+     * @param {string} propertyId - Wikidata property ID (e.g., 'P1476')
+     * @param {Array<string>} referenceTypeIds - Array of reference type IDs to assign
+     */
+    function assignReferencesToProperty(propertyId, referenceTypeIds) {
+        if (!propertyId) {
+            console.error('Property ID is required');
+            return;
+        }
+
+        if (!state.references.propertyReferences) {
+            state.references.propertyReferences = {};
+        }
+
+        const oldValue = { ...state.references.propertyReferences };
+
+        // Assign the references to the property
+        state.references.propertyReferences[propertyId] = [...referenceTypeIds];
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.propertyReferences',
+            oldValue,
+            newValue: { ...state.references.propertyReferences }
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Gets reference types assigned to a property
+     * @param {string} propertyId - Wikidata property ID (e.g., 'P1476')
+     * @returns {Array<string>} Array of reference type IDs assigned to this property
+     */
+    function getPropertyReferences(propertyId) {
+        if (!state.references.propertyReferences) {
+            return [];
+        }
+        return state.references.propertyReferences[propertyId] || [];
+    }
+
+    /**
      * Links an item to an existing Wikidata item
      * @param {string} itemId - Item ID (e.g., 'item-0')
      * @param {string} qid - Wikidata QID (e.g., 'Q12345')
@@ -1396,6 +1468,9 @@ export function setupState() {
         removeCustomReference,
         getCustomReferences,
         updateCustomReference,
+        getSelectedReferenceTypes,
+        assignReferencesToProperty,
+        getPropertyReferences,
         // Convenience methods for linked items
         linkItemToWikidata,
         unlinkItem,
