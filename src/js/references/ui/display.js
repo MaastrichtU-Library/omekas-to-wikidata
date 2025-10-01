@@ -25,16 +25,12 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
     // Clear existing content
     container.innerHTML = '';
 
-    // Check if there are any references
-    const hasReferences = Object.values(summary).some(data => data.count > 0);
+    // Check if there are any auto-detected references
+    const hasAutoDetectedReferences = Object.values(summary).some(data => data.count > 0);
 
-    if (!hasReferences) {
-        const emptyMessage = createElement('p', {
-            className: 'placeholder'
-        }, 'No references detected in the API data.');
-        container.appendChild(emptyMessage);
-        return;
-    }
+    // Check if there are any custom references in state
+    const customReferences = state ? state.getCustomReferences() : [];
+    const hasCustomReferences = customReferences.length > 0;
 
     // Calculate total items with at least one reference
     const itemsWithReferences = new Set();
@@ -42,6 +38,11 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
         if (data.examples) {
             data.examples.forEach(example => itemsWithReferences.add(example.itemId));
         }
+    });
+
+    // Add custom reference items to the count
+    customReferences.forEach(customRef => {
+        customRef.items.forEach(item => itemsWithReferences.add(item.itemId));
     });
 
     // Create section (details element)
@@ -73,6 +74,19 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
     const list = createElement('ul', {
         className: 'key-list'
     });
+
+    // If no auto-detected or custom references, show helpful message
+    if (!hasAutoDetectedReferences && !hasCustomReferences) {
+        const emptyMessage = createElement('li', {
+            className: 'placeholder',
+            style: {
+                fontStyle: 'italic',
+                color: '#666',
+                padding: '8px 12px'
+            }
+        }, 'No references auto-detected. You can add custom references below.');
+        list.appendChild(emptyMessage);
+    }
 
     // Build a map of originalType -> custom reference for position preservation
     const customByOriginalType = new Map();
