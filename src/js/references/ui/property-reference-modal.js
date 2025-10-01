@@ -171,10 +171,20 @@ export function openPropertyReferenceModal(propertyId, propertyLabel, state, onU
     overlay.appendChild(modal);
 
     // Close on backdrop click
+    // Track mousedown to distinguish between clicks and drag-end events
+    let mouseDownOnOverlay = false;
+
+    overlay.addEventListener('mousedown', (e) => {
+        mouseDownOnOverlay = (e.target === overlay);
+    });
+
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
+        // Only close if both mousedown and mouseup (click) happened on the overlay
+        // This prevents text selection drags from closing the modal
+        if (e.target === overlay && mouseDownOnOverlay) {
             document.body.removeChild(overlay);
         }
+        mouseDownOnOverlay = false;
     });
 
     // Add to document
