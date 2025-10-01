@@ -5693,6 +5693,7 @@ pre.sample-value {
     padding: 12px;
     margin-bottom: 16px;
     width: 100%;
+    grid-column: 1 / -1; /* Span full width in grid layouts */
 }
 
 .duplicate-notice-content {
