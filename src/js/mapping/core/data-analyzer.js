@@ -33,10 +33,7 @@ export async function fetchContextDefinitions(contextUrl) {
 
         const contextData = result.data;
 
-        // Log when proxy was used for transparency
-        if (result.method === 'proxy') {
-            console.log(`Context fetched via proxy (${result.proxyUsed}): ${contextUrl}`);
-        }
+        // Note: fetchWithCorsProxy already logs proxy usage, no need to log again
 
         const contextMap = new Map();
 
