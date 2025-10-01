@@ -311,8 +311,14 @@ export function setupExportStep(state) {
         // Get property-specific reference assignments
         const assignedReferenceTypes = currentState.references?.propertyReferences?.[propertyId] || [];
 
+        // Debug logging
+        console.log(`🔍 Looking up references for property "${propertyId}" and item "${itemId}"`);
+        console.log(`📋 Assigned reference types:`, assignedReferenceTypes);
+        console.log(`📚 All property references in state:`, currentState.references?.propertyReferences);
+
         // If no references assigned to this property, return empty array
         if (assignedReferenceTypes.length === 0) {
+            console.log(`⚠️ No references assigned to property "${propertyId}"`);
             return references;
         }
 
@@ -322,6 +328,9 @@ export function setupExportStep(state) {
         // Get all custom references
         const customReferences = currentState.references?.customReferences || [];
 
+        console.log(`📦 Item references for this item:`, itemReferences);
+        console.log(`✨ Custom references:`, customReferences);
+
         // Collect references based on assigned types
         assignedReferenceTypes.forEach(refTypeId => {
             // Check if this is an auto-detected reference type
@@ -329,8 +338,10 @@ export function setupExportStep(state) {
             if (autoDetectedTypes.includes(refTypeId)) {
                 // Find matching auto-detected references for this item
                 const matchingRefs = itemReferences.filter(ref => ref.type === refTypeId);
+                console.log(`🔎 Found ${matchingRefs.length} auto-detected references of type "${refTypeId}"`);
                 matchingRefs.forEach(ref => {
                     if (ref.url) {
+                        console.log(`✅ Adding auto-detected reference: ${ref.url}`);
                         references.push({ url: ref.url });
                     }
                 });
@@ -341,12 +352,18 @@ export function setupExportStep(state) {
                     // Find this item's URL in the custom reference's items array
                     const itemRef = customRef.items.find(item => item.itemId === itemId);
                     if (itemRef && itemRef.url) {
+                        console.log(`✅ Adding custom reference: ${itemRef.url}`);
                         references.push({ url: itemRef.url });
+                    } else {
+                        console.log(`⚠️ Custom reference "${customRef.name}" has no URL for this item`);
                     }
+                } else {
+                    console.log(`⚠️ Custom reference with ID "${refTypeId}" not found or has no items`);
                 }
             }
         });
 
+        console.log(`📤 Returning ${references.length} references for property "${propertyId}"`);
         return references;
     }
 
@@ -355,24 +372,29 @@ export function setupExportStep(state) {
         if (!itemId || !propertyId || !value) {
             return null;
         }
-        
+
         let statement = `${itemId}\t${propertyId}\t${value}`;
-        
+
         // Add references
         if (references && references.length > 0) {
+            console.log(`📝 Formatting statement for ${propertyId} with ${references.length} reference(s)`);
             references.forEach(ref => {
                 if (ref.url) {
+                    console.log(`  ➕ Adding S854 reference: ${ref.url}`);
                     statement += `\tS854\t${escapeQuickStatementsString(ref.url)}`;
                 }
                 if (ref.retrievedDate) {
                     const formattedDate = formatDate(ref.retrievedDate);
                     if (formattedDate) {
+                        console.log(`  ➕ Adding S813 retrieved date: ${formattedDate}`);
                         statement += `\tS813\t${formattedDate}`;
                     }
                 }
             });
+        } else {
+            console.log(`📝 Formatting statement for ${propertyId} with NO references`);
         }
-        
+
         return statement;
     }
     
