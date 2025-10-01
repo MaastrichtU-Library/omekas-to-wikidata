@@ -46,14 +46,9 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
     if (propertyData) {
         modalContent.dataset.propertyData = JSON.stringify(propertyData);
     }
-
-    console.log('🔵 [createWikidataItemModal] Dataset after setup:', {
-        hasExistingMatchesInDataset: !!modalContent.dataset.existingMatches,
-        datasetKeys: Object.keys(modalContent.dataset),
-        existingMatchesParam: existingMatches,
-        existingMatchesParamLength: existingMatches?.length,
-        WHY_NOT_STORED: 'Because there is no code to store existingMatches in dataset!'
-    });
+    if (existingMatches) {
+        modalContent.dataset.existingMatches = JSON.stringify(existingMatches);
+    }
     
     modalContent.innerHTML = `
         <div class="data-type-indicator">
@@ -193,6 +188,16 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
         return;
     }
 
+    // CRITICAL FIX: Check if container already has valid match data displayed
+    // Don't replace reconciliation results that were already loaded
+    const hasExistingMatchList = matchesContainer.querySelector('.matches-list');
+    const hasLoadingIndicator = matchesContainer.innerHTML.includes('Finding matches...');
+
+    if (hasExistingMatchList && !hasLoadingIndicator) {
+        console.log('🟡 [loadWikidataItemMatches] Container already has matches displayed, skipping reload');
+        return;
+    }
+
     try {
         let matches = existingMatches;
 
@@ -213,7 +218,7 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
 
         if (matches && matches.length > 0) {
             const topMatches = matches.slice(0, 3); // Show top 3 matches
-            
+
             matchesContainer.innerHTML = `
                 <div class="section-title">Existing Matches</div>
                 <div class="matches-list">
@@ -223,7 +228,7 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
                     <button class="btn btn-link" onclick="showAllWikidataMatches()">Show all ${matches.length} matches</button>
                 ` : ''}
             `;
-            
+
             // Auto-select high-confidence matches (≥90%)
             const highConfidenceMatch = matches.find(match => match.score >= 90);
             if (highConfidenceMatch) {
@@ -231,19 +236,26 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
                     applyWikidataMatchDirectly(highConfidenceMatch.id);
                 }, 100);
             }
-            
+
         } else {
-            matchesContainer.innerHTML = `
-                <div class="section-title">Existing Matches</div>
-                <div class="no-matches">No automatic matches found</div>
-            `;
+            // Only show "no matches" if container is in loading state
+            // Don't replace existing valid match data
+            if (hasLoadingIndicator || !hasExistingMatchList) {
+                matchesContainer.innerHTML = `
+                    <div class="section-title">Existing Matches</div>
+                    <div class="no-matches">No automatic matches found</div>
+                `;
+            }
         }
     } catch (error) {
         console.error('Error loading Wikidata matches:', error);
-        matchesContainer.innerHTML = `
-            <div class="section-title">Existing Matches</div>
-            <div class="error-message">Error loading matches</div>
-        `;
+        // Only show error if container doesn't already have valid data
+        if (hasLoadingIndicator || !hasExistingMatchList) {
+            matchesContainer.innerHTML = `
+                <div class="section-title">Existing Matches</div>
+                <div class="error-message">Error loading matches</div>
+            `;
+        }
     }
 }
 

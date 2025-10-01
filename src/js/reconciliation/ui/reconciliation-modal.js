@@ -1016,10 +1016,11 @@ export function createOpenReconciliationModalFactory(dependencies) {
             } else {
             }
         }, 60); // Run after attributes are set
-        
+
         // Start automatic reconciliation for Wikidata items
+        // Only if we don't already have existing matches from reconciliation API
         // Note: dataType already declared above, reusing it
-        if (dataType === 'wikibase-item') {
+        if (dataType === 'wikibase-item' && (!existingMatches || existingMatches.length === 0)) {
             await performAutomaticReconciliation(value, property, itemId, valueIndex);
         }
     };
