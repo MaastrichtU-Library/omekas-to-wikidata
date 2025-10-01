@@ -534,11 +534,16 @@ export function setupExportStep(state) {
                         propertyMetadata = mapping?.property;
                     }
 
+                    // Store original property ID for reference lookup (before QuickStatements transformation)
+                    const originalPropertyId = wikidataPropertyId;
+
                     // Process each reconciled value
                     propertyData.reconciled.forEach(reconciledValue => {
                         if (reconciledValue.selectedMatch) {
                             const match = reconciledValue.selectedMatch;
                             let value = '';
+                            // Reset to original property ID for each value (in case it was transformed in previous iteration)
+                            let currentPropertyId = originalPropertyId;
 
                             try {
                                 if (match.type === 'wikidata') {
@@ -559,16 +564,16 @@ export function setupExportStep(state) {
                                         // For label/description/alias properties, format with language code
                                         // QuickStatements format: Len (label-en), Den (description-en), Aen (alias-en)
                                         // Handle both singular and plural forms (alias/aliases)
-                                        const isLabel = wikidataPropertyId === 'label' || wikidataPropertyId === 'labels';
-                                        const isDescription = wikidataPropertyId === 'description' || wikidataPropertyId === 'descriptions';
-                                        const isAlias = wikidataPropertyId === 'alias' || wikidataPropertyId === 'aliases';
+                                        const isLabel = currentPropertyId === 'label' || currentPropertyId === 'labels';
+                                        const isDescription = currentPropertyId === 'description' || currentPropertyId === 'descriptions';
+                                        const isAlias = currentPropertyId === 'alias' || currentPropertyId === 'aliases';
 
                                         if (isLabel || isDescription || isAlias) {
                                             const languageCode = match.language || 'en'; // Default to 'en' if no language specified
 
                                             // Warn if language code is missing
                                             if (!match.language) {
-                                                console.warn(`No language code specified for ${wikidataPropertyId} "${match.value}". Defaulting to "en". Please re-reconcile this value with a language selection.`);
+                                                console.warn(`No language code specified for ${currentPropertyId} "${match.value}". Defaulting to "en". Please re-reconcile this value with a language selection.`);
                                             }
 
                                             // Map property type to QuickStatements prefix
@@ -581,7 +586,8 @@ export function setupExportStep(state) {
                                                 prefix = 'A';
                                             }
 
-                                            wikidataPropertyId = `${prefix}${languageCode}`;
+                                            // Transform property ID to QuickStatements format
+                                            currentPropertyId = `${prefix}${languageCode}`;
                                         }
                                     } else {
                                         value = escapeQuickStatementsString(match.value);
@@ -592,11 +598,12 @@ export function setupExportStep(state) {
                                 }
 
                                 if (value) {
-                                    // Get property-specific references for this item
-                                    const references = getReferencesForPropertyAndItem(wikidataPropertyId, itemId, currentState);
+                                    // Get property-specific references using ORIGINAL property ID (before transformation)
+                                    // This ensures references assigned to "label" are found, not looking for "Len"
+                                    const references = getReferencesForPropertyAndItem(originalPropertyId, itemId, currentState);
 
-                                    // Format the statement
-                                    const statement = formatStatement(itemPrefix, wikidataPropertyId, value, references);
+                                    // Format the statement using the transformed property ID for QuickStatements
+                                    const statement = formatStatement(itemPrefix, currentPropertyId, value, references);
                                     if (statement) {
                                         quickStatementsText += statement + '\n';
                                     }
