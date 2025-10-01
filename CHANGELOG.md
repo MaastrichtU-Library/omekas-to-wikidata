@@ -1,1 +1,0 @@
-This should be a document that reflects all the changes through time for every version that comes out. There is no official version yet so for now no changelog contetn. only this palceholder.

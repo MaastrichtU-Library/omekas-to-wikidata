@@ -1,5 +1,7 @@
 # Mapping Module Architecture
 
+**[← Back to Technical Documentation](../../../docs/DOCUMENTATION.md)**
+
 ## Overview
 The mapping module handles the complex process of mapping Omeka S metadata fields to Wikidata properties. It's organized into core business logic and UI presentation layers for better maintainability and testability.
 

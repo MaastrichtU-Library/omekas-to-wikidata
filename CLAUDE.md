@@ -1,7 +1,9 @@
 # CLAUDE.md – Project Conventions
 
+**[← Back to Technical Documentation](docs/DOCUMENTATION.md)**
+
 ## JavaScript Module Navigation
-- **ALWAYS consult `JS_MODULE_MAP.md`** to find the right JavaScript module for any task
+- **ALWAYS consult `docs/JS_MODULE_MAP.md`** to find the right JavaScript module for any task
 - This file contains a complete map of all `.js` files, their purposes, and key exports
 - Use the Quick Reference table to instantly locate functionality
 
