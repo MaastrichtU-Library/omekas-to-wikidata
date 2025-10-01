@@ -117,7 +117,7 @@ function handleStep4Entry(state, container) {
                         // Add as new custom reference (converted from auto-detected)
                         state.addCustomReference(customRef);
 
-                        // Hide the original auto-detected reference by toggling it to "ignored"
+                        // Unselect the original auto-detected reference
                         if (customRef.originalType && state.isReferenceTypeSelected(customRef.originalType)) {
                             state.toggleReferenceType(customRef.originalType);
                         }
