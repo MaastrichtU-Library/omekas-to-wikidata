@@ -602,7 +602,7 @@ export function createAddCustomReferenceButton(state) {
 }
 
 /**
- * Renders the properties section showing mapped properties from step 2
+ * Renders the properties section showing mapped and manual properties from step 2
  * @param {HTMLElement} container - Container element to render into
  * @param {number} totalItems - Total number of items in dataset
  * @param {Object} state - Application state management instance
@@ -614,8 +614,12 @@ export function renderPropertiesSection(container, totalItems, state) {
 
     const currentState = state.getState();
     const mappedKeys = currentState.mappings?.mappedKeys || [];
+    const manualProperties = currentState.mappings?.manualProperties || [];
 
-    if (mappedKeys.length === 0) {
+    // Combine all properties
+    const allProperties = [...mappedKeys, ...manualProperties];
+
+    if (allProperties.length === 0) {
         return;
     }
 
@@ -638,7 +642,7 @@ export function renderPropertiesSection(container, totalItems, state) {
 
     const countSpan = createElement('span', {
         className: 'section-count'
-    }, `(${mappedKeys.length})`);
+    }, `(${allProperties.length})`);
 
     summaryElement.appendChild(titleSpan);
     summaryElement.appendChild(countSpan);
@@ -666,9 +670,9 @@ export function renderPropertiesSection(container, totalItems, state) {
         renderPropertiesSection(container, totalItems, state);
     };
 
-    // Render each mapped property
-    mappedKeys.forEach(mappedKey => {
-        const listItem = createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignment);
+    // Render each property (mapped and manual)
+    allProperties.forEach(propertyItem => {
+        const listItem = createPropertyListItem(propertyItem, totalItems, state, onReferenceAssignment);
         list.appendChild(listItem);
     });
 
@@ -729,29 +733,43 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
         className: 'key-name-compact'
     }, ' (');
 
-    // Create clickable property ID link
-    const propertyLink = createElement('a', {
-        href: `https://www.wikidata.org/wiki/Property:${property.id}`,
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        style: {
-            color: '#0066cc',
-            textDecoration: 'none'
-        }
-    }, property.id);
+    // Check if this is a real Wikidata property (starts with P) or a manual property (label, description, alias)
+    const isWikidataProperty = property.id.startsWith('P');
 
-    // Add hover effect to link
-    propertyLink.addEventListener('mouseenter', () => {
-        propertyLink.style.textDecoration = 'underline';
-    });
-    propertyLink.addEventListener('mouseleave', () => {
-        propertyLink.style.textDecoration = 'none';
-    });
+    let propertyIdElement;
+    if (isWikidataProperty) {
+        // Create clickable property ID link for Wikidata properties
+        propertyIdElement = createElement('a', {
+            href: `https://www.wikidata.org/wiki/Property:${property.id}`,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            style: {
+                color: '#0066cc',
+                textDecoration: 'none'
+            }
+        }, property.id);
 
-    // Prevent link clicks from triggering list item click
-    propertyLink.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
+        // Add hover effect to link
+        propertyIdElement.addEventListener('mouseenter', () => {
+            propertyIdElement.style.textDecoration = 'underline';
+        });
+        propertyIdElement.addEventListener('mouseleave', () => {
+            propertyIdElement.style.textDecoration = 'none';
+        });
+
+        // Prevent link clicks from triggering list item click
+        propertyIdElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    } else {
+        // For manual properties (label, description, alias), just show as plain text
+        propertyIdElement = createElement('span', {
+            className: 'key-name-compact',
+            style: {
+                color: '#666'
+            }
+        }, property.id);
+    }
 
     // Create closing parenthesis
     const closeParen = createElement('span', {
@@ -761,7 +779,7 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
     // Append all elements to left section
     leftSection.appendChild(labelText);
     leftSection.appendChild(openParen);
-    leftSection.appendChild(propertyLink);
+    leftSection.appendChild(propertyIdElement);
     leftSection.appendChild(closeParen);
 
     // Create reference count indicator on the right
