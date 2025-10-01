@@ -1,5 +1,7 @@
 # ShEx Parsing Guide: Converting ShExC to ShExJ
 
+**[← Back to Technical Documentation](../DOCUMENTATION.md)**
+
 **TL;DR**: Use @shexjs/parser in the browser to parse ShExC → ShExJ, passing a base IRI and (optionally) preloaded Wikidata prefixes. Wrap it in a Web Worker, validate/canonicalize with @shexjs/util, and (optionally) resolve IMPORT via @shexjs/loader. Add good DX: precise error surfaces (line/col), round-trip tests, caching by content hash, and TypeScript types. ShExJ is JSON-LD, so you can attach the official @context.
 
 ---

@@ -61,13 +61,6 @@ Practical guide to Wikidata Entity Schemas:
 - When to use which schema
 - Schema validation and discovery
 
-### [PLAYWRIGHT_MULTI_BRANCH_SETUP.md](PLAYWRIGHT_MULTI_BRANCH_SETUP.md)
-Multi-branch Playwright testing setup:
-- Global installation with symlinks
-- Concurrent branch development
-- Available test commands
-- Troubleshooting guide
-
 ## Archived Specifications
 
 The [archive/specs/](archive/specs/) directory contains historical project specifications and planning documents from the initial development phase. These documents provide context about original design decisions and requirements but may not reflect the current implementation.
@@ -86,4 +79,3 @@ Key archived documents include:
 **Quick Links:**
 - [User Story](USER_STORY.md) - Complete user journey through the tool
 - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to this project
-- [CHANGELOG.md](CHANGELOG.md) - Version history and changes

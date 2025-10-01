@@ -1,5 +1,7 @@
 # A Practical Guide to Wikidata Entity Schemas
 
+**[← Back to Technical Documentation](DOCUMENTATION.md)**
+
 **TL;DR:** Wikidata Entity Schemas are written in ShExC (Shape Expressions). Each schema defines a "start" shape and one or more helper shapes. Triples are constrained with `wdt:` (simple statements) or `p:/ps:/pq:` (full statement nodes with qualifiers/references). Cardinalities (`? * + {m,n}`) tell you what's required. IRI, rdf:langString, xsd:*, value sets like `[ wd:Q… ]`, and references to other shapes (`@<Name>`) specify what's allowed. Read a schema by (1) noting the prefixes, (2) finding `start = @<…>`, (3) scanning required vs optional constraints, (4) noticing whether the schema is CLOSED or uses EXTRA, and (5) understanding where qualifiers are modeled with separate shapes.
 
 **Compare:** E473/E487 specialize edition/translation models to items held in specific library collections (Maastricht / Radboud) using p:P195 and an inventory-number qualifier; E476 models manuscripts with similar collection/inventory patterns; E488 (incunable) is the same pattern but restricted to incunabula (15th-century prints), often with extra identifiers like ISTC. Use the "check entities" link on each schema to validate items; use the sample SPARQL shown on the schema page to discover candidates.

@@ -1,5 +1,7 @@
 # QuickStatements Documentation
 
+**[‚Üê Back to Technical Documentation](../DOCUMENTATION.md)**
+
 Source: https://www.wikidata.org/wiki/Help:QuickStatements
 
 _This is the documentation of QuickStatements V2. For QuickStatements 3.0, see [m:QuickStatements 3.0](https://meta.wikimedia.org/wiki/QuickStatements_3.0)._
@@ -61,7 +63,7 @@ Formatting of each part:
     * `lower`, `upper` are optional and _must_ be either both present or both absent. When present, they should be enclosed in square brackets and separated by `,`
     * `amount`, `lower` and `upper` _must_ use `.` as decimal separator, _must not_ use any thousands separator and _may_ be prefixed by "+" or "-".
     * `10`, `10U11573`, `-10[-12.5,-7.5]`, `0[-5,5]U11573` are all valid quantities (where U11573 indicates Q11573)
-  * Quantities with tolerance _may_ be entered as `1.2~0.3` in QuickStatements version 2, which is the same as `1.2[0.9,1.5]` in QuickStatements version 1 and means 1.2±0.3.
+  * Quantities with tolerance _may_ be entered as `1.2~0.3` in QuickStatements version 2, which is the same as `1.2[0.9,1.5]` in QuickStatements version 1 and means 1.2ÔøΩ0.3.
 * `somevalue` for unknown value
 * `novalue` for no value. Both `novalue` and `somevalue` should be used without double quotes around it. Both of those statements do work as part of item creation statements using CREATE and LAST keywords.
 
@@ -101,7 +103,7 @@ As with adding simple text statements, each command must consist of an item, a c
   * Example: `Q340122<TAB>Dde<TAB>"polnischer Dichter"`
   * Meaning: add German description "polnischer Dichter" to Q340122
 * To add a **sitelink** to a specific page on a site to an item, use "Sxxx" instead of a property, with "xxx" as the site (e.g. enwiki, commonswiki).
-  * Example: `Q340122<TAB>Szhwiki<TAB>"^fÔØ∑˛>≠y"`
+  * Example: `Q340122<TAB>Szhwiki<TAB>"^fÔØ∑ÔøΩ>ÔøΩy"`
   * Meaning: add sitelink to Chinese Wikipedia to Q340122
 
 If you want to remove a label/alias/description/sitelink, the value has to be an empty string and the rest of the command will be the same.
@@ -229,7 +231,7 @@ Adds to the sandbox item Q4115189 a P31 value of Q5 and then removes that same s
 
 **Labels, descriptions, aliases and sitelinks** do not need to be in double quotes unless they themselves contain commas (,) or double quotes (").
 
-In this case, replace all double quotes with two double quotes (e.g. Toys "R" Us í Toys ""R"" Us) and then wrap the string in a pair of double quotes (e.g. "Toys ""R"" Us").
+In this case, replace all double quotes with two double quotes (e.g. Toys "R" Us ÔøΩ Toys ""R"" Us) and then wrap the string in a pair of double quotes (e.g. "Toys ""R"" Us").
 
 Samples: Toys "R" Us and Patterns, Predictors, and Outcome
 
@@ -254,7 +256,7 @@ Samples for Q4115189#P370, notably `Toys "R" Us`
 
 | qid,Len,Den,Aen,P31,-P31,P21,P735,qal1545,S248,s214,S143,Senwiki |
 |-------------------------------------------------------------------|
-| Q4115189,Douglas Adams,author,Douglas NoÎl Adams,Q5,Q36180,Q6581097,Q463035,"""1""",Q54919,"""113230702""",Q328,Douglas Adams |
+| Q4115189,Douglas Adams,author,Douglas NoÔøΩl Adams,Q5,Q36180,Q6581097,Q463035,"""1""",Q54919,"""113230702""",Q328,Douglas Adams |
 | Q4115189,"Toys ""R"" Us",testin sample,Toys R Us,Q5,Q36180,Q6581097,Q463035,"""1""",Q54919,"""113230702""",Q328,"Toys ""R"" Us" |
 
 ### Samples by value type

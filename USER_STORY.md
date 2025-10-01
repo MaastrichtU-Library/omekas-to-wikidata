@@ -1,5 +1,7 @@
 # Omeka S to Wikidata Tool - Complete User Story
 
+**[← Back to Technical Documentation](DOCUMENTATION.md)**
+
 ## Overview
 The Omeka S to Wikidata tool is a web-based application that guides users through the process of importing linked data from Omeka S systems into Wikidata. It was developed as part of the 2025 "Open Topstukken" (Open Collection Highlights) project by Maastricht University Library and Radboud University Library.
 
