@@ -707,7 +707,27 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
 
     // Get current reference count for this property
     const assignedReferences = state ? state.getPropertyReferences(property.id) : [];
-    const referenceCount = assignedReferences.length;
+
+    // Calculate total count of reference URLs (not just types)
+    let referenceCount = 0;
+    if (state && assignedReferences.length > 0) {
+        const currentState = state.getState();
+        const summary = currentState.references?.summary || {};
+        const customReferences = currentState.references?.customReferences || [];
+
+        assignedReferences.forEach(refType => {
+            // Check if it's an auto-detected reference
+            if (summary[refType]) {
+                referenceCount += summary[refType].count || 0;
+            } else {
+                // Check if it's a custom reference
+                const customRef = customReferences.find(ref => ref.id === refType);
+                if (customRef) {
+                    referenceCount += customRef.count || 0;
+                }
+            }
+        });
+    }
 
     // Create list item
     const listItem = createElement('li', {
