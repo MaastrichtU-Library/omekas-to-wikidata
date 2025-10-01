@@ -421,9 +421,8 @@ export function setupExportStep(state) {
         const manualProperties = currentState.mappings?.manualProperties || [];
         
         // Get references for statements
-        const oldReferences = currentState.references || [];
-        const globalReferences = currentState.globalReferences || [];
-        const allReferences = [...oldReferences, ...globalReferences];
+        const customReferences = currentState.references?.customReferences || [];
+        const allReferences = [...customReferences];
 
         const entitySchema = currentState.entitySchema;
         
