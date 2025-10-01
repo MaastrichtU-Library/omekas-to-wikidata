@@ -297,7 +297,59 @@ export function setupExportStep(state) {
             return null;
         }
     }
-    
+
+    /**
+     * Collects references for a specific property and item
+     * @param {string} propertyId - Wikidata property ID (e.g., 'P1476')
+     * @param {string} itemId - Item ID (e.g., 'https://...items/123')
+     * @param {Object} currentState - Application state
+     * @returns {Array} Array of reference objects with url property
+     */
+    function getReferencesForPropertyAndItem(propertyId, itemId, currentState) {
+        const references = [];
+
+        // Get property-specific reference assignments
+        const assignedReferenceTypes = currentState.references?.propertyReferences?.[propertyId] || [];
+
+        // If no references assigned to this property, return empty array
+        if (assignedReferenceTypes.length === 0) {
+            return references;
+        }
+
+        // Get all item references (auto-detected)
+        const itemReferences = currentState.references?.itemReferences?.[itemId] || [];
+
+        // Get all custom references
+        const customReferences = currentState.references?.customReferences || [];
+
+        // Collect references based on assigned types
+        assignedReferenceTypes.forEach(refTypeId => {
+            // Check if this is an auto-detected reference type
+            const autoDetectedTypes = ['omeka-item', 'oclc', 'ark'];
+            if (autoDetectedTypes.includes(refTypeId)) {
+                // Find matching auto-detected references for this item
+                const matchingRefs = itemReferences.filter(ref => ref.type === refTypeId);
+                matchingRefs.forEach(ref => {
+                    if (ref.url) {
+                        references.push({ url: ref.url });
+                    }
+                });
+            } else {
+                // This is a custom reference - find it in customReferences
+                const customRef = customReferences.find(cr => cr.id === refTypeId);
+                if (customRef && customRef.items) {
+                    // Find this item's URL in the custom reference's items array
+                    const itemRef = customRef.items.find(item => item.itemId === itemId);
+                    if (itemRef && itemRef.url) {
+                        references.push({ url: itemRef.url });
+                    }
+                }
+            }
+        });
+
+        return references;
+    }
+
     // Format a single statement with references
     function formatStatement(itemId, propertyId, value, references = []) {
         if (!itemId || !propertyId || !value) {
@@ -419,11 +471,6 @@ export function setupExportStep(state) {
         const reconciliationData = currentState.reconciliationData;
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const manualProperties = currentState.mappings?.manualProperties || [];
-        
-        // Get references for statements
-        const oldReferences = currentState.references || [];
-        const globalReferences = currentState.globalReferences || [];
-        const allReferences = [...oldReferences, ...globalReferences];
 
         const entitySchema = currentState.entitySchema;
         
@@ -468,28 +515,31 @@ export function setupExportStep(state) {
                 // Process each property
                 Object.keys(itemData.properties).forEach(propertyKey => {
                     const propertyData = itemData.properties[propertyKey];
-                    
+
                     // Determine if this is a manual property or mapped property
                     let wikidataPropertyId;
                     let isManualProperty = false;
-                    
+                    let propertyMetadata = null;
+
                     // Check if this is a manual property first
                     const manualProperty = manualProperties.find(mp => mp.property.id === propertyKey);
                     if (manualProperty) {
                         wikidataPropertyId = manualProperty.property.id;
+                        propertyMetadata = manualProperty.property;
                         isManualProperty = true;
                     } else {
                         // Find the corresponding mapping to get the Wikidata property ID
                         const mapping = mappedKeys.find(m => m.key === propertyKey);
                         wikidataPropertyId = mapping?.property?.id || propertyKey;
+                        propertyMetadata = mapping?.property;
                     }
-                    
+
                     // Process each reconciled value
                     propertyData.reconciled.forEach(reconciledValue => {
                         if (reconciledValue.selectedMatch) {
                             const match = reconciledValue.selectedMatch;
                             let value = '';
-                            
+
                             try {
                                 if (match.type === 'wikidata') {
                                     value = match.id;
@@ -502,6 +552,37 @@ export function setupExportStep(state) {
                                             errors.push(`Invalid date format for ${propertyKey}: ${match.value}`);
                                             return;
                                         }
+                                    } else if (match.datatype === 'monolingualtext') {
+                                        // Handle monolingual text (labels, descriptions, aliases)
+                                        value = escapeQuickStatementsString(match.value);
+
+                                        // For label/description/alias properties, format with language code
+                                        // QuickStatements format: Len (label-en), Den (description-en), Aen (alias-en)
+                                        // Handle both singular and plural forms (alias/aliases)
+                                        const isLabel = wikidataPropertyId === 'label' || wikidataPropertyId === 'labels';
+                                        const isDescription = wikidataPropertyId === 'description' || wikidataPropertyId === 'descriptions';
+                                        const isAlias = wikidataPropertyId === 'alias' || wikidataPropertyId === 'aliases';
+
+                                        if (isLabel || isDescription || isAlias) {
+                                            const languageCode = match.language || 'en'; // Default to 'en' if no language specified
+
+                                            // Warn if language code is missing
+                                            if (!match.language) {
+                                                console.warn(`No language code specified for ${wikidataPropertyId} "${match.value}". Defaulting to "en". Please re-reconcile this value with a language selection.`);
+                                            }
+
+                                            // Map property type to QuickStatements prefix
+                                            let prefix;
+                                            if (isLabel) {
+                                                prefix = 'L';
+                                            } else if (isDescription) {
+                                                prefix = 'D';
+                                            } else if (isAlias) {
+                                                prefix = 'A';
+                                            }
+
+                                            wikidataPropertyId = `${prefix}${languageCode}`;
+                                        }
                                     } else {
                                         value = escapeQuickStatementsString(match.value);
                                     }
@@ -509,11 +590,11 @@ export function setupExportStep(state) {
                                     // Handle string type reconciliation (from "Accept as String" option)
                                     value = escapeQuickStatementsString(match.value);
                                 }
-                                
+
                                 if (value) {
-                                    // Use property-specific references if available, otherwise use all global references
-                                    let references = propertyData.references || allReferences;
-                                    
+                                    // Get property-specific references for this item
+                                    const references = getReferencesForPropertyAndItem(wikidataPropertyId, itemId, currentState);
+
                                     // Format the statement
                                     const statement = formatStatement(itemPrefix, wikidataPropertyId, value, references);
                                     if (statement) {
