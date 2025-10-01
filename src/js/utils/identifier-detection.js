@@ -298,6 +298,7 @@ export function detectAllIdentifiers(value, fieldKey) {
 
 /**
  * Extracts a string value from various Omeka S data formats
+ * Handles different API response formats including escaped HTML tags in field names
  * @param {any} value - The value to extract from
  * @returns {string|null} Extracted string or null
  */
@@ -305,20 +306,45 @@ function extractStringValue(value) {
     if (typeof value === 'string') {
         return value;
     }
-    
+
     if (value && typeof value === 'object') {
+        // Helper function to find field by name, ignoring HTML tags
+        const findField = (obj, targetName) => {
+            for (const key in obj) {
+                // Strip HTML tags from key name for comparison
+                const cleanKey = key.replace(/<[^>]*>/g, '');
+                if (cleanKey === targetName) {
+                    return obj[key];
+                }
+            }
+            return undefined;
+        };
+
         // Omeka S value object formats
+        // Try standard field names first
         if (value['@value']) return String(value['@value']);
         if (value['o:label']) return String(value['o:label']);
         if (value['@id']) return String(value['@id']);
         if (value.value) return String(value.value);
-        
+
+        // Try to find fields with HTML tags in their names (e.g., "<CHORUS_TAG>id</CHORUS_TAG>")
+        const idField = findField(value, '@id') || findField(value, 'id');
+        if (idField) return String(idField);
+
+        const valueField = findField(value, '@value') || findField(value, 'value');
+        if (valueField) return String(valueField);
+
+        const labelField = findField(value, 'o:label') || findField(value, 'label');
+        if (labelField) return String(labelField);
+
         // For URI type objects
-        if (value.type === 'uri' && value['@id']) {
-            return String(value['@id']);
+        if (value.type === 'uri') {
+            // Try @id again with HTML tag handling
+            const uriField = value['@id'] || findField(value, '@id') || findField(value, 'id');
+            if (uriField) return String(uriField);
         }
     }
-    
+
     return null;
 }
 
