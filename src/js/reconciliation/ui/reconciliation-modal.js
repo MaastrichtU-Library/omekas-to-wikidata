@@ -1040,17 +1040,29 @@ export function createModalInteractionHandlers(dependencies) {
 
         confirmCustomValue() {
             if (!window.currentModalContext) return;
-            
-            const currentValue = window.currentModalContext.currentValue || window.currentModalContext.transformedValue;
-            
-            markCellAsReconciled(window.currentModalContext, {
-                type: 'custom',
-                value: currentValue,
-                datatype: window.currentModalContext.dataType
-            });
-            
+
+            // Check if we have enhanced confirmation data from specialized modals (e.g., string-modal.js)
+            // This data includes language codes for monolingual text and other type-specific information
+            let reconciliationData;
+
+            if (window.currentModalContext.confirmationData) {
+                // Use the enhanced confirmation data that includes all type-specific fields
+                // (e.g., language, languageLabel for monolingualtext; precision for time; etc.)
+                reconciliationData = window.currentModalContext.confirmationData;
+            } else {
+                // Fallback to basic reconciliation data for backward compatibility
+                const currentValue = window.currentModalContext.currentValue || window.currentModalContext.transformedValue;
+                reconciliationData = {
+                    type: 'custom',
+                    value: currentValue,
+                    datatype: window.currentModalContext.dataType
+                };
+            }
+
+            markCellAsReconciled(window.currentModalContext, reconciliationData);
+
             modalUI.closeModal();
-            
+
             // Auto-advance if enabled
             if (getAutoAdvanceSetting()) {
                 setTimeout(() => {
