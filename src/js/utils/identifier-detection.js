@@ -299,6 +299,7 @@ export function detectAllIdentifiers(value, fieldKey) {
 /**
  * Extracts a string value from various Omeka S data formats
  * Handles different API response formats including escaped HTML tags in field names
+ * Prioritizes @id fields for URI-type objects (identifier detection)
  * @param {any} value - The value to extract from
  * @returns {string|null} Extracted string or null
  */
@@ -320,29 +321,38 @@ function extractStringValue(value) {
             return undefined;
         };
 
-        // Omeka S value object formats
-        // Try standard field names first
+        // SPECIAL HANDLING FOR URI TYPE OBJECTS
+        // For identifier detection, prioritize @id (the actual URI) over o:label (human-readable name)
+        if (value.type === 'uri') {
+            // Try @id with standard name
+            if (value['@id']) return String(value['@id']);
+
+            // Try @id with HTML tag handling (e.g., "<CHORUS_TAG>id</CHORUS_TAG>")
+            const idField = findField(value, '@id') || findField(value, 'id');
+            if (idField) return String(idField);
+
+            // Fallback to label if no @id found
+            if (value['o:label']) return String(value['o:label']);
+            const labelField = findField(value, 'o:label') || findField(value, 'label');
+            if (labelField) return String(labelField);
+        }
+
+        // STANDARD OMEKA S VALUE OBJECT FORMATS
+        // For non-URI types, prioritize @value and labels
         if (value['@value']) return String(value['@value']);
         if (value['o:label']) return String(value['o:label']);
         if (value['@id']) return String(value['@id']);
         if (value.value) return String(value.value);
 
-        // Try to find fields with HTML tags in their names (e.g., "<CHORUS_TAG>id</CHORUS_TAG>")
-        const idField = findField(value, '@id') || findField(value, 'id');
-        if (idField) return String(idField);
-
+        // Try to find fields with HTML tags in their names (e.g., "<CHORUS_TAG>value</CHORUS_TAG>")
         const valueField = findField(value, '@value') || findField(value, 'value');
         if (valueField) return String(valueField);
 
+        const idField = findField(value, '@id') || findField(value, 'id');
+        if (idField) return String(idField);
+
         const labelField = findField(value, 'o:label') || findField(value, 'label');
         if (labelField) return String(labelField);
-
-        // For URI type objects
-        if (value.type === 'uri') {
-            // Try @id again with HTML tag handling
-            const uriField = value['@id'] || findField(value, '@id') || findField(value, 'id');
-            if (uriField) return String(uriField);
-        }
     }
 
     return null;
