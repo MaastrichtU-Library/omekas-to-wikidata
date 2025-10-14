@@ -1015,7 +1015,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
         // Only if we don't already have existing matches from reconciliation API
         // Note: dataType already declared above, reusing it
         if (dataType === 'wikibase-item' && (!existingMatches || existingMatches.length === 0)) {
-            await performAutomaticReconciliation(value, property, itemId, valueIndex);
+            await performAutomaticReconciliation(value, property, itemId, valueIndex, mappingId);
         }
     };
 }
