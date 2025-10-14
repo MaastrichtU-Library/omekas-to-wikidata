@@ -428,23 +428,38 @@ export function validateReconciliationRequirements(currentState) {
  */
 export function initializeReconciliationDataStructure(data, mappedKeys, state = null) {
     const reconciliationData = {};
-    
+
     data.forEach((item, index) => {
         const itemId = `item-${index}`;
         reconciliationData[itemId] = {
             originalData: item,
             properties: {}
         };
-        
+
         // Initialize each mapped property
         mappedKeys.forEach(keyObj => {
             const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
             // Pass the full keyObj and state to apply transformations
             const values = extractPropertyValues(item, keyObj, state);
-            reconciliationData[itemId].properties[keyName] = {
+
+            // Generate mappingId for unique identification
+            let mappingId;
+            if (state && typeof keyObj === 'object' && keyObj.property) {
+                mappingId = state.generateMappingId(
+                    keyName,
+                    keyObj.property.id,
+                    keyObj.selectedAtField
+                );
+            } else {
+                mappingId = keyName; // Fallback for string keys
+            }
+
+            reconciliationData[itemId].properties[mappingId] = {
                 originalValues: values,
                 references: [], // References specific to this property
                 propertyMetadata: typeof keyObj === 'object' ? keyObj : null, // Store full property object with constraints
+                keyName: keyName,  // NEW: Store original key name for reference
+                mappingId: mappingId,  // NEW: Store mappingId explicitly
                 reconciled: values.map(() => ({
                     status: 'pending', // pending, reconciled, skipped, failed
                     matches: [],
@@ -455,9 +470,9 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
                 }))
             };
         });
-        
+
     });
-    
+
     return reconciliationData;
 }
 
@@ -472,36 +487,50 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
  * @returns {Object} Merged reconciliation data with preserved existing work and new properties
  */
 export function mergeReconciliationData(existingReconciliationData, data, currentMappedKeys, state = null) {
-    
+
     // Start with a copy of existing data
     const mergedData = JSON.parse(JSON.stringify(existingReconciliationData));
-    
-    // Track which properties are already in the existing data
-    const existingProperties = new Set();
+
+    // Track which mappingIds are already in the existing data
+    const existingMappingIds = new Set();
     Object.values(mergedData).forEach(itemData => {
         if (itemData.properties) {
-            Object.keys(itemData.properties).forEach(prop => existingProperties.add(prop));
+            Object.keys(itemData.properties).forEach(mappingId => {
+                existingMappingIds.add(mappingId);
+            });
         }
     });
-    
-    // Identify new properties that need to be added
+
+    // Identify new properties by mappingId that need to be added
     const newProperties = [];
     currentMappedKeys.forEach(keyObj => {
         const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-        if (!existingProperties.has(keyName)) {
-            newProperties.push(keyObj);
+
+        let mappingId;
+        if (state && typeof keyObj === 'object' && keyObj.property) {
+            mappingId = state.generateMappingId(
+                keyName,
+                keyObj.property.id,
+                keyObj.selectedAtField
+            );
+        } else {
+            mappingId = keyName;
+        }
+
+        if (!existingMappingIds.has(mappingId)) {
+            newProperties.push({ keyObj, mappingId });
         }
     });
-    
+
     // If no new properties, return existing data
     if (newProperties.length === 0) {
         return mergedData;
     }
-    
+
     // Add new properties to existing items
     data.forEach((item, index) => {
         const itemId = `item-${index}`;
-        
+
         // Ensure item exists in merged data
         if (!mergedData[itemId]) {
             mergedData[itemId] = {
@@ -509,19 +538,21 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
                 properties: {}
             };
         }
-        
+
         // Add new properties to this item
-        newProperties.forEach(keyObj => {
+        newProperties.forEach(({ keyObj, mappingId }) => {
             const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-            
+
             // Extract values for the new property
             const values = extractPropertyValues(item, keyObj, state);
-            
+
             // Initialize reconciliation structure for the new property
-            mergedData[itemId].properties[keyName] = {
+            mergedData[itemId].properties[mappingId] = {
                 originalValues: values,
                 references: [],
                 propertyMetadata: typeof keyObj === 'object' ? keyObj : null,
+                keyName: keyName,  // Store original key name
+                mappingId: mappingId,  // Store mappingId
                 reconciled: values.map(() => ({
                     status: 'pending',
                     matches: [],
@@ -531,9 +562,9 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
                     confidence: 0
                 }))
             };
-            
+
         });
     });
-    
+
     return mergedData;
 }
