@@ -647,7 +647,7 @@ export function setupReconciliationStep(state) {
         if (keyData.selectedAtField) {
             const atFieldIndicator = createElement('span', {
                 className: 'at-field-indicator',
-                title: `Using ${keyData.selectedAtField} field from ${keyName}`
+                title: `Using ${keyData.selectedAtField} field from ${keyData.key}`
             }, ` ${keyData.selectedAtField}`);
             headerContent.appendChild(atFieldIndicator);
         }
