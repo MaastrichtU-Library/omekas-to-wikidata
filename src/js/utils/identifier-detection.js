@@ -75,7 +75,7 @@ export const IDENTIFIER_PROPERTY_MAPPINGS = {
         propertyId: 'P243',
         label: 'OCLC control number',
         description: 'identifier for a unique bibliographic record in OCLC WorldCat',
-        pattern: /worldcat\.org\/oclc\/(\d+)|oclc[:\s]?(\d+)/i
+        pattern: /worldcat\.org\/oclc\/(\d+)(?:\/|$)/i
     },
     'wikidata': {
         propertyId: null, // Direct Q-number, no property mapping needed

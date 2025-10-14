@@ -2,10 +2,11 @@
  * Reference Detection Module
  * Detects reference links from Omeka S API data for future Wikidata statement creation
  *
- * This module handles three types of references:
- * 1. Omeka Item API Links - Direct item references
- * 2. OCLC WorldCat Links - Bibliographic references
- * 3. ARK Identifiers - Persistent identifiers
+ * This module handles four types of references:
+ * 1. Omeka Item API Links - Direct item references from @id field
+ * 2. OCLC WorldCat Links - Bibliographic references from schema:sameAs
+ * 3. ARK Identifiers - Persistent identifiers from dcterms:identifier
+ * 4. Generic sameAs Links - Other related resources from schema:sameAs
  *
  * Unlike identifiers in Step 2 (used for reconciliation), these references
  * are complete URLs that will be added as Wikidata statement values.
@@ -32,7 +33,8 @@ export function detectReferences(items) {
     const summary = {
         'omeka-item': { count: 0, examples: [] },
         'oclc': { count: 0, examples: [] },
-        'ark': { count: 0, examples: [] }
+        'ark': { count: 0, examples: [] },
+        'sameas': { count: 0, examples: [] }
     };
 
     items.forEach((item, index) => {
@@ -81,6 +83,21 @@ export function detectReferences(items) {
                 summary['ark'].examples.push({
                     itemId,
                     value: arkIdentifiers[0].url // Use first ARK as example
+                });
+            }
+        }
+
+        // Detect generic sameAs references (not covered by specific detectors)
+        const genericRefs = detectGenericSameAsReferences(item);
+        if (genericRefs.length > 0) {
+            genericRefs.forEach(ref => {
+                references.push({ ...ref, itemId });
+            });
+            summary['sameas'].count++;
+            if (summary['sameas'].examples.length < 10) {
+                summary['sameas'].examples.push({
+                    itemId,
+                    value: genericRefs[0].url // Use first generic ref as example
                 });
             }
         }
@@ -198,6 +215,49 @@ export function detectARKIdentifiers(item) {
 }
 
 /**
+ * Detects generic schema:sameAs references that aren't covered by specific detectors
+ * This catches any sameAs URLs that don't match OCLC WorldCat patterns
+ * @param {Object} item - Omeka S item object
+ * @returns {Array} Array of generic reference objects
+ */
+export function detectGenericSameAsReferences(item) {
+    const genericRefs = [];
+
+    if (!item || !item['schema:sameAs']) return genericRefs;
+
+    const sameAs = item['schema:sameAs'];
+    if (!Array.isArray(sameAs)) return genericRefs;
+
+    // Patterns for specific detectors to skip (avoid double-counting)
+    const oclcPattern = /worldcat\.org\/oclc\/(\d+)/i;
+
+    sameAs.forEach(reference => {
+        if (!reference || typeof reference !== 'object') return;
+
+        const idValue = reference['@id'];
+        if (!idValue || typeof idValue !== 'string') return;
+
+        // Skip if already detected by specific detector
+        if (oclcPattern.test(idValue)) return;
+
+        // Valid URL check
+        try {
+            new URL(idValue);
+            genericRefs.push({
+                type: 'sameas',
+                url: idValue,
+                displayName: 'Related Resource',
+                label: reference['o:label'] || null
+            });
+        } catch (e) {
+            // Invalid URL, skip
+        }
+    });
+
+    return genericRefs;
+}
+
+/**
  * Gets a human-readable label for a reference type
  * @param {string} type - Reference type
  * @returns {string} Display label
@@ -206,7 +266,8 @@ export function getReferenceTypeLabel(type) {
     const labels = {
         'omeka-item': 'Omeka API item',
         'oclc': 'OCLC WorldCat',
-        'ark': 'ARK identifier'
+        'ark': 'ARK identifier',
+        'sameas': 'Related resource (sameAs)'
     };
     return labels[type] || type;
 }
