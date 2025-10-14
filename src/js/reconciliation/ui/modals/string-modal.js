@@ -31,11 +31,11 @@ import {
 /**
  * Get confirmed value from application state
  * @param {string} itemId - Item ID
- * @param {string} property - Property name
+ * @param {string} mappingId - Mapping ID
  * @param {number} valueIndex - Value index
  * @returns {Object|null} Confirmed value data or null
  */
-function getConfirmedValue(itemId, property, valueIndex) {
+function getConfirmedValue(itemId, mappingId, valueIndex) {
     try {
         // Try multiple ways to access the state system
         const stateManager = window.debugState || window.currentState;
@@ -43,29 +43,29 @@ function getConfirmedValue(itemId, property, valueIndex) {
             console.warn('No state system available');
             return null;
         }
-        
+
         const state = stateManager.getState();
         const reconciliationData = state.reconciliationData || {};
-        
+
         const itemData = reconciliationData[itemId];
-        if (!itemData || !itemData.properties || !itemData.properties[property]) {
+        if (!itemData || !itemData.properties || !itemData.properties[mappingId]) {
             return null;
         }
-        
-        const propertyData = itemData.properties[property];
+
+        const propertyData = itemData.properties[mappingId];
         if (!propertyData.reconciled || !propertyData.reconciled[valueIndex]) {
             return null;
         }
-        
+
         const reconciledData = propertyData.reconciled[valueIndex];
-        
+
         // Only return data if it's a confirmed custom value
-        if (reconciledData.status === 'reconciled' && 
-            reconciledData.selectedMatch && 
+        if (reconciledData.status === 'reconciled' &&
+            reconciledData.selectedMatch &&
             reconciledData.selectedMatch.type === 'custom') {
             return reconciledData.selectedMatch;
         }
-        
+
         return null;
     } catch (error) {
         console.warn('Failed to retrieve confirmed value from state:', error);
@@ -132,32 +132,32 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
 /**
  * Find the source table cell that corresponds to this modal's data
  * @param {string} itemId - Item ID
- * @param {string} property - Property name  
+ * @param {string} mappingId - Mapping ID
  * @param {number} valueIndex - Value index
  * @returns {HTMLElement|null} The source table cell element or null
  */
-function findSourceTableCell(itemId, property, valueIndex) {
+function findSourceTableCell(itemId, mappingId, valueIndex) {
     try {
         // Look for manual property cells (no value index)
-        const manualSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"][data-is-manual="true"]`;
+        const manualSelector = `.property-cell[data-item-id="${itemId}"][data-mapping-id="${mappingId}"][data-is-manual="true"]`;
         const manualCell = document.querySelector(manualSelector);
         if (manualCell) {
             return manualCell;
         }
-        
+
         // Look for regular property cells with value index
-        const regularSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"][data-value-index="${valueIndex}"]`;
+        const regularSelector = `.property-cell[data-item-id="${itemId}"][data-mapping-id="${mappingId}"][data-value-index="${valueIndex}"]`;
         const regularCell = document.querySelector(regularSelector);
         if (regularCell) {
             return regularCell;
         }
-        
-        // Fallback: look for any cell with matching item and property
-        const fallbackSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"]`;
+
+        // Fallback: look for any cell with matching item and mapping
+        const fallbackSelector = `.property-cell[data-item-id="${itemId}"][data-mapping-id="${mappingId}"]`;
         const fallbackCell = document.querySelector(fallbackSelector);
         return fallbackCell;
     } catch (error) {
-        console.warn('Failed to find source table cell:', error, { itemId, property, valueIndex });
+        console.warn('Failed to find source table cell:', error, { itemId, mappingId, valueIndex });
         return null;
     }
 }
@@ -231,9 +231,11 @@ function updateSourceTableCell(sourceCell, confirmationData) {
 export function createStringModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
     const dataType = propertyData?.datatype || 'string';
     const isMonolingual = dataType === 'monolingualtext';
-    
+
+    const mappingId = window.currentModalContext?.mappingId || property;
+
     // Check for previously confirmed value
-    const confirmedData = getConfirmedValue(itemId, property, valueIndex);
+    const confirmedData = getConfirmedValue(itemId, mappingId, valueIndex);
     const displayValue = confirmedData ? confirmedData.value : value;
     const hasConfirmedValue = confirmedData !== null;
     
@@ -339,29 +341,32 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
  */
 export function initializeStringModal(modalElement) {
     console.log('🔧 initializeStringModal called with:', modalElement);
-    
+
     const originalValue = modalElement.dataset.originalValue;
     const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
     const isMonolingual = modalElement.dataset.isMonolingual === 'true';
     const hasConfirmedValue = modalElement.dataset.hasConfirmedValue === 'true';
-    const propertyData = modalElement.dataset.propertyData ? 
+    const propertyData = modalElement.dataset.propertyData ?
         JSON.parse(modalElement.dataset.propertyData) : null;
-    const confirmedData = modalElement.dataset.confirmedData ? 
+    const confirmedData = modalElement.dataset.confirmedData ?
         JSON.parse(modalElement.dataset.confirmedData) : null;
-    
+
+    const mappingId = window.currentModalContext?.mappingId || modalElement.dataset.mappingId || property;
+
     console.log('🔧 Modal initialization data:', {
-        originalValue, currentValue, property, isMonolingual, 
-        hasConfirmedValue, propertyData, confirmedData
+        originalValue, currentValue, property, isMonolingual,
+        hasConfirmedValue, propertyData, confirmedData, mappingId
     });
-    
+
     // Find the source table cell that opened this modal
-    const sourceCell = findSourceTableCell(modalElement.dataset.itemId, property, parseInt(modalElement.dataset.valueIndex));
-    
+    const sourceCell = findSourceTableCell(modalElement.dataset.itemId, mappingId, parseInt(modalElement.dataset.valueIndex));
+
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
         itemId: modalElement.dataset.itemId,
         property: property,
+        mappingId: mappingId, // NEW: Add mappingId to context
         valueIndex: parseInt(modalElement.dataset.valueIndex),
         originalValue: originalValue,
         currentValue: currentValue,
