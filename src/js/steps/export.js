@@ -568,23 +568,25 @@ export function setupExportStep(state) {
                                             return;
                                         }
                                     } else if (match.datatype === 'monolingualtext') {
-                                        // Handle monolingual text (labels, descriptions, aliases)
-                                        value = escapeQuickStatementsString(match.value);
+                                        // Handle monolingual text - two different formats:
+                                        // 1. Labels/descriptions/aliases: Len "value" (language in property ID)
+                                        // 2. Regular monolingual properties: P1476 en"value" (language prefix in value)
 
-                                        // For label/description/alias properties, format with language code
-                                        // QuickStatements format: Len (label-en), Den (description-en), Aen (alias-en)
+                                        const languageCode = match.language || 'en'; // Default to 'en' if no language specified
+
+                                        // Warn if language code is missing
+                                        if (!match.language) {
+                                            console.warn(`No language code specified for ${currentPropertyId} "${match.value}". Defaulting to "en". Please re-reconcile this value with a language selection.`);
+                                        }
+
                                         // Handle both singular and plural forms (alias/aliases)
                                         isLabel = currentPropertyId === 'label' || currentPropertyId === 'labels';
                                         const isDescription = currentPropertyId === 'description' || currentPropertyId === 'descriptions';
                                         const isAlias = currentPropertyId === 'alias' || currentPropertyId === 'aliases';
 
                                         if (isLabel || isDescription || isAlias) {
-                                            const languageCode = match.language || 'en'; // Default to 'en' if no language specified
-
-                                            // Warn if language code is missing
-                                            if (!match.language) {
-                                                console.warn(`No language code specified for ${currentPropertyId} "${match.value}". Defaulting to "en". Please re-reconcile this value with a language selection.`);
-                                            }
+                                            // Format: Len "value" - language code goes in property ID
+                                            value = escapeQuickStatementsString(match.value);
 
                                             // Map property type to QuickStatements prefix
                                             let prefix;
@@ -598,6 +600,11 @@ export function setupExportStep(state) {
 
                                             // Transform property ID to QuickStatements format
                                             currentPropertyId = `${prefix}${languageCode}`;
+                                        } else {
+                                            // Format: P1476 en"value" - language code prefixes the value
+                                            // Don't escape the value yet, add language prefix first
+                                            const escapedValue = match.value.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, ' ');
+                                            value = `${languageCode}"${escapedValue}"`;
                                         }
                                     } else {
                                         value = escapeQuickStatementsString(match.value);
