@@ -305,19 +305,23 @@ export function updateCellDisplay(itemId, property, valueIndex, status, reconcil
  * Create a factory function for creating property cells
  */
 export function createPropertyCellFactory(openReconciliationModal) {
-    return function createPropertyCell(itemId, property, valueIndex, value) {
+    return function createPropertyCell(itemId, property, valueIndex, value, keyObj) {
+        // Calculate mappingId from keyObj
+        const mappingId = keyObj?.mappingId || property; // Use mappingId if available, fallback for compatibility
+
         const td = createElement('td', {
             className: 'property-cell single-value-cell',
             dataset: {
                 itemId: itemId,
-                property: property,
+                property: property,  // Keep for reference
+                mappingId: mappingId,  // NEW: Unique identifier
                 valueIndex: valueIndex
             }
         });
-        
-        const valueDiv = createValueElement(itemId, property, valueIndex, value, openReconciliationModal);
+
+        const valueDiv = createValueElement(itemId, property, valueIndex, value, openReconciliationModal, keyObj);
         td.appendChild(valueDiv);
-        
+
         return td;
     };
 }
@@ -325,30 +329,35 @@ export function createPropertyCellFactory(openReconciliationModal) {
 /**
  * Create a value element within a property cell
  */
-function createValueElement(itemId, property, valueIndex, value, openReconciliationModal) {
+function createValueElement(itemId, property, valueIndex, value, openReconciliationModal, keyObj) {
+    const mappingId = keyObj?.mappingId || property;
+
     const valueDiv = createElement('div', {
         className: 'property-value',
-        dataset: { status: 'pending' }
+        dataset: {
+            status: 'pending',
+            mappingId: mappingId  // NEW: Store mappingId for reference
+        }
     });
-    
+
     const textSpan = createElement('span', {
         className: 'value-text'
     }, value || 'Empty value');
-    
+
     const statusSpan = createElement('span', {
         className: 'value-status'
     }, 'Click to reconcile');
-    
+
     valueDiv.appendChild(textSpan);
     valueDiv.appendChild(statusSpan);
-    
-    // Add click handler 
+
+    // Add click handler - pass keyObj to modal
     const clickHandler = () => {
-        openReconciliationModal(itemId, property, valueIndex, value);
+        openReconciliationModal(itemId, property, valueIndex, value, keyObj);
     };
-    
+
     valueDiv.addEventListener('click', clickHandler);
-    
+
     return valueDiv;
 }
 
@@ -357,41 +366,48 @@ function createValueElement(itemId, property, valueIndex, value, openReconciliat
  */
 export function createManualPropertyCellFactory(openReconciliationModal) {
     return function createManualPropertyCell(itemId, propertyId, defaultValue, manualProp) {
+        // For manual properties, use propertyId as mappingId
+        const mappingId = propertyId;
+
         const td = createElement('td', {
             className: 'property-cell manual-property-cell',
             dataset: {
                 itemId: itemId,
                 property: propertyId,
+                mappingId: mappingId,  // NEW: Add mappingId
                 isManual: 'true'
             }
         });
-        
+
         // Create a value element for the manual property
         const valueDiv = createElement('div', {
             className: 'property-value manual-property-value',
-            dataset: { status: 'pending' }
+            dataset: {
+                status: 'pending',
+                mappingId: mappingId  // NEW: Add mappingId
+            }
         });
-        
+
         const textSpan = createElement('span', {
             className: 'value-text'
         }, defaultValue || 'Click to set value');
-        
+
         const statusSpan = createElement('span', {
             className: 'value-status'
         }, manualProp.isRequired ? 'Required - click to set' : 'Click to reconcile');
-        
+
         valueDiv.appendChild(textSpan);
         valueDiv.appendChild(statusSpan);
-        
+
         // Add click handler for manual property reconciliation
         const clickHandler = () => {
             openReconciliationModal(itemId, propertyId, 0, defaultValue, manualProp);
         };
-        
+
         valueDiv.addEventListener('click', clickHandler);
-        
+
         td.appendChild(valueDiv);
-        
+
         return td;
     };
 }
@@ -525,14 +541,18 @@ export function createReconciliationTableFactory(dependencies) {
                         };
                     }
                     
+                    const mappingId = keyObj?.mappingId || keyName;
                     const th = createElement('th', {
                         className: 'property-header clickable-header',
-                        dataset: { property: keyName },
+                        dataset: {
+                            property: keyName,
+                            mappingId: mappingId  // NEW: Add mappingId to header
+                        },
                         onClick: clickHandler,
                         style: { cursor: 'pointer' },
                         title: 'Click to modify mapping'
                     }, headerContent);
-                    
+
                     propertyHeaders.appendChild(th);
                 } else if (propItem.type === 'manual') {
                     // Handle manual property
@@ -604,8 +624,9 @@ export function createReconciliationTableFactory(dependencies) {
                     
                     const th = createElement('th', {
                         className: 'property-header manual-property-header clickable-header',
-                        dataset: { 
+                        dataset: {
                             property: manualProp.property.id,
+                            mappingId: manualProp.property.id,  // NEW: For manual properties, use propertyId as mappingId
                             isManual: 'true'
                         },
                         title: `${manualProp.property.description}\nClick to modify property settings`,
@@ -653,15 +674,22 @@ export function createReconciliationTableFactory(dependencies) {
                         // Pass the full keyObj and state to apply transformations and preserve @ field information
                         const values = extractPropertyValues(item, keyObj, state);
                         
+                        const mappingId = keyObj?.mappingId || keyName;
+
                         if (values.length === 0) {
                             // Empty cell
                             const td = createElement('td', {
-                                className: 'property-cell empty-cell'
+                                className: 'property-cell empty-cell',
+                                dataset: {
+                                    itemId: itemId,
+                                    property: keyName,
+                                    mappingId: mappingId  // NEW: Add mappingId to empty cells
+                                }
                             }, '—');
                             tr.appendChild(td);
                         } else if (values.length === 1) {
-                            // Single value cell
-                            const td = createPropertyCell(itemId, keyName, 0, values[0]);
+                            // Single value cell - pass keyObj
+                            const td = createPropertyCell(itemId, keyName, 0, values[0], keyObj);
                             tr.appendChild(td);
                         } else {
                             // Multiple values cell
@@ -669,15 +697,16 @@ export function createReconciliationTableFactory(dependencies) {
                                 className: 'property-cell multi-value-cell',
                                 dataset: {
                                     itemId: itemId,
-                                    property: keyName
+                                    property: keyName,
+                                    mappingId: mappingId  // NEW: Add mappingId to multi-value cells
                                 }
                             });
-                            
+
                             values.forEach((value, valueIndex) => {
-                                const valueDiv = createValueElement(itemId, keyName, valueIndex, value, openReconciliationModal);
+                                const valueDiv = createValueElement(itemId, keyName, valueIndex, value, openReconciliationModal, keyObj);
                                 td.appendChild(valueDiv);
                             });
-                            
+
                             tr.appendChild(td);
                         }
                     } else if (propItem.type === 'manual') {
