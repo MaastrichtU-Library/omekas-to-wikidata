@@ -21,39 +21,44 @@ import {
  * Create reconciliation modal using factory system
  * This is the main entry point that routes to appropriate specialized modals
  */
-export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, state = null) {
+export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, state = null, mappingId = null) {
     // NEW: Get both datatype and enhanced property data from mappings
     const propertyLookupResult = getDataTypeAndPropertyData(property, propertyData, state);
     const dataType = propertyLookupResult.datatype;
     // Use enhanced property data from mapping lookup if available, otherwise use provided data
-    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData && 
+    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData &&
                                  Object.keys(propertyLookupResult.enhancedPropertyData).length > 1 ?
-        propertyLookupResult.enhancedPropertyData : 
-        (propertyData ? 
-            { ...propertyData, datatype: propertyData.datatype || dataType } : 
+        propertyLookupResult.enhancedPropertyData :
+        (propertyData ?
+            { ...propertyData, datatype: propertyData.datatype || dataType } :
             { datatype: dataType });
     const transformedValue = getTransformedValue(value, property);
     try {
         // Use factory to create type-specific modal
         if (isModalTypeSupported(dataType)) {
             const modalElement = createReconciliationModalByType(
-                dataType, 
-                itemId, 
-                property, 
-                valueIndex, 
-                transformedValue, 
-                enhancedPropertyData, 
-                existingMatches
+                dataType,
+                itemId,
+                property,
+                valueIndex,
+                transformedValue,
+                enhancedPropertyData,
+                existingMatches,
+                mappingId
             );
-            
+
             // Add compatibility wrapper class
             modalElement.classList.add('reconciliation-modal-redesign');
-            
+
             return modalElement;
         } else {
             // Use fallback modal for unsupported types
             const fallbackModal = createFallbackModal(dataType, transformedValue);
             fallbackModal.classList.add('reconciliation-modal-redesign');
+            // Add mappingId to fallback modal dataset
+            if (mappingId) {
+                fallbackModal.dataset.mappingId = mappingId;
+            }
             return fallbackModal;
         }
     } catch (error) {
@@ -894,7 +899,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
         }
 
         // Create modal content
-        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, keyObjOrManualProp?.property, existingMatches, state);
+        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, keyObjOrManualProp?.property, existingMatches, state, mappingId);
 
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {

@@ -226,30 +226,33 @@ function updateSourceTableCell(sourceCell, confirmationData) {
  * @param {string} value - The value to reconcile
  * @param {Object} propertyData - Property metadata and constraints
  * @param {Array} existingMatches - Not used for string values
+ * @param {string} mappingId - The mapping ID for this property
  * @returns {HTMLElement} Modal content element
  */
-export function createStringModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+export function createStringModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, mappingId = null) {
     const dataType = propertyData?.datatype || 'string';
     const isMonolingual = dataType === 'monolingualtext';
 
-    const mappingId = window.currentModalContext?.mappingId || property;
+    // Use provided mappingId or fall back to property
+    const effectiveMappingId = mappingId || property;
 
     // Check for previously confirmed value
-    const confirmedData = getConfirmedValue(itemId, mappingId, valueIndex);
+    const confirmedData = getConfirmedValue(itemId, effectiveMappingId, valueIndex);
     const displayValue = confirmedData ? confirmedData.value : value;
     const hasConfirmedValue = confirmedData !== null;
-    
+
     const regexConstraints = extractRegexConstraints(property, propertyData);
     const validationResult = validateStringValue(displayValue, regexConstraints);
     const propertyLink = generatePropertyLink(property, propertyData);
-    
+
     const modalContent = document.createElement('div');
     modalContent.className = isMonolingual ? 'monolingual-modal' : 'string-modal';
-    
+
     // Store context for modal interactions
     modalContent.dataset.modalType = dataType;
     modalContent.dataset.itemId = itemId;
     modalContent.dataset.property = property;
+    modalContent.dataset.mappingId = effectiveMappingId;
     modalContent.dataset.valueIndex = valueIndex;
     modalContent.dataset.originalValue = value; // Always keep the original Omeka value
     modalContent.dataset.currentValue = displayValue; // Use saved value if available

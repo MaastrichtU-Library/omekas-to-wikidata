@@ -207,28 +207,30 @@ function updateSourceTableCell(sourceCell, confirmationData) {
  * @param {string} value - The value to reconcile
  * @param {Object} propertyData - Property metadata and constraints
  * @param {Array} existingMatches - Not used for time values
+ * @param {string} mappingId - The mapping ID for this property
  * @returns {HTMLElement} Modal content element
  */
-export function createTimeModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
-    // Get mappingId from modal context or fallback to property
-    const mappingId = window.currentModalContext?.mappingId || property;
+export function createTimeModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, mappingId = null) {
+    // Use provided mappingId or fall back to property
+    const effectiveMappingId = mappingId || property;
 
     // Check for previously confirmed value
-    const confirmedData = getConfirmedValue(itemId, mappingId, valueIndex);
+    const confirmedData = getConfirmedValue(itemId, effectiveMappingId, valueIndex);
     const displayValue = confirmedData ? confirmedData.value : value;
     const hasConfirmedValue = confirmedData !== null;
-    
+
     // Detect precision and standardize the current value
     const detectedPrecision = detectDatePrecision(displayValue);
     const standardizedResult = standardizeDateInput(displayValue);
-    
+
     const modalContent = document.createElement('div');
     modalContent.className = 'time-modal';
-    
+
     // Store context for modal interactions
     modalContent.dataset.modalType = 'time';
     modalContent.dataset.itemId = itemId;
     modalContent.dataset.property = property;
+    modalContent.dataset.mappingId = effectiveMappingId;
     modalContent.dataset.valueIndex = valueIndex;
     modalContent.dataset.originalValue = value;
     modalContent.dataset.currentValue = displayValue;
