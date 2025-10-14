@@ -34,8 +34,8 @@ import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
 import {
     // Core data processing
-    calculateTotalReconciliableCells, 
-    extractPropertyValues, 
+    calculateTotalReconciliableCells,
+    extractPropertyValues,
     combineAndSortProperties,
     createMockDataLoader,
     createOriginalKeyInfoGetter,
@@ -44,6 +44,8 @@ import {
     validateReconciliationRequirements,
     initializeReconciliationDataStructure,
     mergeReconciliationData,
+    isOldFormatReconciliationData,
+    migrateReconciliationData,
     
     // Progress tracking
     createProgressCalculator,
@@ -490,14 +492,23 @@ export function setupReconciliationStep(state) {
         // Smart reconciliation data handling: preserve existing work when possible
         let isReturningToStep = false;
         let finalReconciliationData;
-        
+
         if (currentState.reconciliationData && Object.keys(currentState.reconciliationData).length > 0) {
-            
+            // Check if reconciliation data needs migration from old format
+            let existingData = currentState.reconciliationData;
+            if (isOldFormatReconciliationData(existingData)) {
+                console.log('[Migration] Detected old format reconciliation data, migrating to mappingId-based structure');
+                existingData = migrateReconciliationData(existingData, mappedKeys, state);
+                // Update state with migrated data immediately
+                state.updateState('reconciliationData', existingData);
+                console.log('[Migration] Migration complete');
+            }
+
             // Use intelligent merging to preserve existing reconciliation work while adding new properties
             finalReconciliationData = mergeReconciliationData(
-                currentState.reconciliationData, 
-                data, 
-                mappedKeys, 
+                existingData,
+                data,
+                mappedKeys,
                 state
             );
             isReturningToStep = true;
@@ -548,36 +559,36 @@ export function setupReconciliationStep(state) {
      * @param {string} mappingData.mappingId - The unique mapping ID
      */
     async function updateTableForMappingChange(mappingData) {
-        const { keyData, previousKeyData, property } = mappingData;
-        
+        const { keyData, previousKeyData, property, mappingId } = mappingData;
+
         if (!keyData || !keyData.key) {
             console.warn('Invalid mapping data for table update:', mappingData);
             return;
         }
-        
+
         const currentState = state.getState();
         if (!currentState.fetchedData) {
             return;
         }
-        
+
         const keyName = keyData.key;
         const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-        
+
         // Update property header
-        updatePropertyHeader(keyName, keyData, property);
-        
+        updatePropertyHeader(mappingId, keyData, property);
+
         // Update all data cells for this property column
-        await updatePropertyColumn(keyName, keyData, data);
-        
+        await updatePropertyColumn(mappingId, keyData, data);
+
         // Update state to reflect the new mapping
         const updatedState = state.getState();
         if (updatedState.reconciliationData) {
             // Clear existing reconciliation data for this property since the mapping changed
             Object.keys(updatedState.reconciliationData).forEach(itemId => {
                 const itemData = updatedState.reconciliationData[itemId];
-                if (itemData.properties && itemData.properties[keyName]) {
+                if (itemData.properties && itemData.properties[mappingId]) {
                     // Reset reconciliation status for this property
-                    itemData.properties[keyName].reconciled = itemData.properties[keyName].reconciled.map(reconciledItem => ({
+                    itemData.properties[mappingId].reconciled = itemData.properties[mappingId].reconciled.map(reconciledItem => ({
                         ...reconciledItem,
                         status: 'pending',
                         matches: [],
@@ -585,20 +596,20 @@ export function setupReconciliationStep(state) {
                     }));
                 }
             });
-            
+
             state.updateState('reconciliationData', updatedState.reconciliationData);
         }
-        
+
     }
     
     /**
      * Updates the property header for a changed mapping
      */
-    function updatePropertyHeader(keyName, keyData, property) {
+    function updatePropertyHeader(mappingId, keyData, property) {
         if (!propertyHeaders) return;
-        
-        // Find the existing header element
-        const headerElement = propertyHeaders.querySelector(`[data-property="${keyName}"]`);
+
+        // Find the existing header element using mappingId
+        const headerElement = propertyHeaders.querySelector(`[data-mapping-id="${mappingId}"]`);
         if (!headerElement) return;
         
         // Update header content with new property information
@@ -636,7 +647,7 @@ export function setupReconciliationStep(state) {
         if (keyData.selectedAtField) {
             const atFieldIndicator = createElement('span', {
                 className: 'at-field-indicator',
-                title: `Using ${keyData.selectedAtField} field from ${keyName}`
+                title: `Using ${keyData.selectedAtField} field from ${keyData.key}`
             }, ` ${keyData.selectedAtField}`);
             headerContent.appendChild(atFieldIndicator);
         }
@@ -656,19 +667,21 @@ export function setupReconciliationStep(state) {
     /**
      * Updates all data cells in a property column
      */
-    async function updatePropertyColumn(keyName, keyData, data) {
+    async function updatePropertyColumn(mappingId, keyData, data) {
         if (!reconciliationRows) return;
-        
+
+        const keyName = keyData.key;
+
         // Find all rows and update the cells for this property
         const rows = reconciliationRows.querySelectorAll('.reconciliation-row');
-        
+
         data.forEach((item, index) => {
             const itemId = `item-${index}`;
             const row = rows[index];
             if (!row) return;
-            
-            // Find the cell for this property
-            const cell = row.querySelector(`[data-property="${keyName}"]`);
+
+            // Find the cell for this property using mappingId
+            const cell = row.querySelector(`[data-mapping-id="${mappingId}"]`);
             if (!cell) return;
             
             // Re-extract values with updated @ field and transformations
@@ -687,18 +700,20 @@ export function setupReconciliationStep(state) {
                 cell.className += ' single-value-cell';
                 cell.dataset.itemId = itemId;
                 cell.dataset.property = keyName;
+                cell.dataset.mappingId = mappingId;  // NEW: Add mappingId
                 cell.dataset.valueIndex = '0';
-                
-                const valueDiv = createValueElement(itemId, keyName, 0, values[0]);
+
+                const valueDiv = createValueElement(itemId, keyName, mappingId, 0, values[0]);
                 cell.appendChild(valueDiv);
             } else {
                 // Multiple values cell
                 cell.className += ' multi-value-cell';
                 cell.dataset.itemId = itemId;
                 cell.dataset.property = keyName;
-                
+                cell.dataset.mappingId = mappingId;  // NEW: Add mappingId
+
                 values.forEach((value, valueIndex) => {
-                    const valueDiv = createValueElement(itemId, keyName, valueIndex, value);
+                    const valueDiv = createValueElement(itemId, keyName, mappingId, valueIndex, value);
                     cell.appendChild(valueDiv);
                 });
             }
@@ -708,10 +723,13 @@ export function setupReconciliationStep(state) {
     /**
      * Creates a value element for table cells
      */
-    function createValueElement(itemId, property, valueIndex, value) {
+    function createValueElement(itemId, property, mappingId, valueIndex, value) {
         const valueDiv = createElement('div', {
             className: 'property-value',
-            dataset: { status: 'pending' }
+            dataset: {
+                status: 'pending',
+                mappingId: mappingId  // NEW: Add mappingId to value element
+            }
         });
         
         const textSpan = createElement('span', {

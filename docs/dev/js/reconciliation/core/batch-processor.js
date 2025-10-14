@@ -36,23 +36,25 @@ function isRetryableError(error) {
  * @param {Object} reconciliationData - Main reconciliation data storage object
  */
 function storeReconciliationError(job, errorInfo, reconciliationData) {
-    
+
+    const mappingId = job.mappingId || job.property; // Use mappingId from job
+
     // Ensure data structure exists
     if (!reconciliationData[job.itemId]) {
         reconciliationData[job.itemId] = { properties: {} };
     }
-    if (!reconciliationData[job.itemId].properties[job.property]) {
-        reconciliationData[job.itemId].properties[job.property] = { 
+    if (!reconciliationData[job.itemId].properties[mappingId]) {
+        reconciliationData[job.itemId].properties[mappingId] = {
             reconciled: [],
             references: []
         };
     }
-    if (!reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex]) {
-        reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {};
+    if (!reconciliationData[job.itemId].properties[mappingId].reconciled[job.valueIndex]) {
+        reconciliationData[job.itemId].properties[mappingId].reconciled[job.valueIndex] = {};
     }
-    
+
     // Store enhanced error information
-    reconciliationData[job.itemId].properties[job.property].reconciled[job.valueIndex] = {
+    reconciliationData[job.itemId].properties[mappingId].reconciled[job.valueIndex] = {
         status: 'error',
         value: job.value,
         error: errorInfo.message,
@@ -70,8 +72,8 @@ function storeReconciliationError(job, errorInfo, reconciliationData) {
  * @param {number} valueIndex - Index of the specific value that errored
  * @param {Object} errorInfo - Error information object with message and retry status
  */
-function updateCellDisplayWithError(itemId, property, valueIndex, errorInfo) {
-    const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+function updateCellDisplayWithError(itemId, mappingId, valueIndex, errorInfo) {
+    const cellSelector = `[data-item-id="${itemId}"][data-mapping-id="${mappingId}"]`;
     const cell = document.querySelector(cellSelector);
     
     if (cell) {
@@ -135,13 +137,15 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
             const itemId = `item-${index}`;
             mappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+                const mappingId = keyObj?.mappingId || keyName;
                 // Pass the full keyObj and state to extractPropertyValues to apply transformations and handle @ field selection
                 const values = extractPropertyValues(item, keyObj, state);
-                
+
                 values.forEach((value, valueIndex) => {
                     batchJobs.push({
                         itemId,
                         property: keyName,
+                        mappingId,  // NEW: Add mappingId to job
                         valueIndex,
                         value
                     });
@@ -188,9 +192,9 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
         
         // Auto-accept all date values first
         dateValues.forEach(job => {
-            updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'processing');
+            updateCellQueueStatus(job.itemId, job.mappingId, job.valueIndex, 'processing');
             markCellAsReconciled(
-                { itemId: job.itemId, property: job.property, valueIndex: job.valueIndex },
+                { itemId: job.itemId, property: job.property, mappingId: job.mappingId, valueIndex: job.valueIndex },
                 job.autoAcceptResult
             );
             autoAcceptedCount++;
@@ -212,7 +216,7 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
             // Create batch promises for all jobs in this property
             const batchPromises = jobs.map(async (job) => {
                 try {
-                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'queued');
+                    updateCellQueueStatus(job.itemId, job.mappingId, job.valueIndex, 'queued');
                     
                     // Try reconciliation API with enhanced error recovery
                     let matches = await tryReconciliationApi(job.value, job.property, []);
@@ -278,30 +282,30 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
                 
                 // Mark current batch as processing
                 batchJobSlice.forEach(job => {
-                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'processing');
-                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
+                    updateCellQueueStatus(job.itemId, job.mappingId, job.valueIndex, 'processing');
+                    updateCellLoadingState(job.itemId, job.mappingId, job.valueIndex, true);
                 });
-                
+
                 const results = await Promise.all(batchPromiseSlice);
-                
+
                 // Process results with enhanced error handling
                 results.forEach((result, index) => {
                     const job = batchJobSlice[index];
-                    
+
                     // Always clear loading and queue state first
-                    updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
-                    updateCellQueueStatus(job.itemId, job.property, job.valueIndex, 'clear');
-                    
+                    updateCellLoadingState(job.itemId, job.mappingId, job.valueIndex, false);
+                    updateCellQueueStatus(job.itemId, job.mappingId, job.valueIndex, 'clear');
+
                     if (result.error) {
                         // Handle errors with improved state management
                         propertySuccessCount.error++;
                         storeReconciliationError(job, result.error, reconciliationData);
-                        updateCellDisplayWithError(job.itemId, job.property, job.valueIndex, result.error);
+                        updateCellDisplayWithError(job.itemId, job.mappingId, job.valueIndex, result.error);
                     } else if (result.autoAcceptResult) {
                         // Auto-accept 100% matches
                         propertySuccessCount.success++;
                         markCellAsReconciled(
-                            { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
+                            { itemId: result.itemId, property: result.property, mappingId: result.mappingId, valueIndex: result.valueIndex },
                             result.autoAcceptResult
                         );
                         autoAcceptedCount++;
@@ -309,15 +313,15 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
                         // Store all matches for display
                         propertySuccessCount.success++;
                         storeAllMatches(
-                            { itemId: result.itemId, property: result.property, valueIndex: result.valueIndex },
+                            { itemId: result.itemId, property: result.property, mappingId: result.mappingId, valueIndex: result.valueIndex },
                             result.allMatches,
                             result.bestMatch
                         );
                     } else {
                         // No matches found - store empty matches array and set to pending
                         propertySuccessCount.noMatches++;
-                        storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
-                        updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
+                        storeEmptyMatches({ itemId: job.itemId, property: job.property, mappingId: job.mappingId, valueIndex: job.valueIndex });
+                        updateCellDisplayAsNoMatches(job.itemId, job.mappingId, job.valueIndex);
                     }
                 });
                 
@@ -392,25 +396,27 @@ export function createColumnReconciliationProcessor(dependencies) {
     } = dependencies;
 
     return async function reconcileColumn(property, keyObj, data) {
-        const button = document.querySelector(`[data-property="${property}"] .reconcile-column-btn`);
-        
+        const mappingId = keyObj?.mappingId || property;
+        const button = document.querySelector(`[data-mapping-id="${mappingId}"] .reconcile-column-btn`);
+
         // Update button state to processing
         updateButtonState(button, 'processing');
-        
+
         try {
-            
+
             // Filter jobs for this column only
             const columnJobs = [];
             data.forEach((item, index) => {
                 const itemId = `item-${index}`;
                 // Pass the full keyObj and state to extractPropertyValues to handle transformations and @ field selection
                 const values = extractPropertyValues(item, keyObj, state);
-                
+
                 values.forEach((value, valueIndex) => {
                     if (value && value.trim()) {
                         columnJobs.push({
                             itemId,
                             property,
+                            mappingId,  // NEW: Add mappingId to job
                             valueIndex,
                             value,
                             keyObj
@@ -438,8 +444,8 @@ export function createColumnReconciliationProcessor(dependencies) {
                 const batchPromises = batch.map(async (job) => {
                     try {
                         // Set loading state
-                        updateCellLoadingState(job.itemId, job.property, job.valueIndex, true);
-                        
+                        updateCellLoadingState(job.itemId, job.mappingId, job.valueIndex, true);
+
                         // Try reconciliation API
                         let matches = await tryReconciliationApi(job.value, job.property, []);
                         
@@ -466,43 +472,43 @@ export function createColumnReconciliationProcessor(dependencies) {
                                 };
                                 
                                 markCellAsReconciled(
-                                    { itemId: job.itemId, property: job.property, valueIndex: job.valueIndex },
+                                    { itemId: job.itemId, property: job.property, mappingId: job.mappingId, valueIndex: job.valueIndex },
                                     autoAcceptResult
                                 );
                                 autoAcceptedCount++;
                             } else {
                                 // Store matches for manual review
                                 storeAllMatches(
-                                    { itemId: job.itemId, property: job.property, valueIndex: job.valueIndex },
+                                    { itemId: job.itemId, property: job.property, mappingId: job.mappingId, valueIndex: job.valueIndex },
                                     matches,
                                     bestMatch
                                 );
-                                updateCellDisplayWithMatch(job.itemId, job.property, job.valueIndex, bestMatch);
+                                updateCellDisplayWithMatch(job.itemId, job.mappingId, job.valueIndex, bestMatch);
                             }
                         } else {
                             // No matches found
-                            storeEmptyMatches({ itemId: job.itemId, property: job.property, valueIndex: job.valueIndex });
-                            updateCellDisplayAsNoMatches(job.itemId, job.property, job.valueIndex);
+                            storeEmptyMatches({ itemId: job.itemId, property: job.property, mappingId: job.mappingId, valueIndex: job.valueIndex });
+                            updateCellDisplayAsNoMatches(job.itemId, job.mappingId, job.valueIndex);
                         }
-                        
+
                         processedCount++;
-                        
+
                     } catch (error) {
                         console.error(`Error reconciling ${job.property} value "${job.value}":`, error);
-                        
+
                         // Store error information
                         const errorInfo = {
                             message: error.message,
                             timestamp: new Date().toISOString(),
                             retryable: isRetryableError(error)
                         };
-                        
+
                         storeReconciliationError(job, errorInfo, reconciliationData);
-                        updateCellDisplayWithError(job.itemId, job.property, job.valueIndex, errorInfo);
+                        updateCellDisplayWithError(job.itemId, job.mappingId, job.valueIndex, errorInfo);
                         errorCount++;
                     } finally {
                         // Remove loading state
-                        updateCellLoadingState(job.itemId, job.property, job.valueIndex, false);
+                        updateCellLoadingState(job.itemId, job.mappingId, job.valueIndex, false);
                     }
                 });
                 

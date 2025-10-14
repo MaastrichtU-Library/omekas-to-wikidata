@@ -525,22 +525,52 @@ export function setupExportStep(state) {
                 Object.keys(itemData.properties).forEach(propertyKey => {
                     const propertyData = itemData.properties[propertyKey];
 
-                    // Determine if this is a manual property or mapped property
+                    // Extract the Wikidata property ID from the mappingId
+                    // The mappingId format is: ${key}::${propertyId} or custom_${name}::${propertyId}
+                    // We need to extract the propertyId part (after the final ::)
                     let wikidataPropertyId;
-                    let isManualProperty = false;
                     let propertyMetadata = null;
+                    let isManualProperty = false;
 
-                    // Check if this is a manual property first
-                    const manualProperty = manualProperties.find(mp => mp.property.id === propertyKey);
-                    if (manualProperty) {
-                        wikidataPropertyId = manualProperty.property.id;
-                        propertyMetadata = manualProperty.property;
-                        isManualProperty = true;
+                    // Check if propertyKey contains :: separator (new mappingId format)
+                    if (propertyKey.includes('::')) {
+                        // Extract the property ID (last part after final ::)
+                        const parts = propertyKey.split('::');
+                        wikidataPropertyId = parts[parts.length - 1];
+
+                        // Determine if this is a manual or mapped property
+                        if (propertyKey.startsWith('custom_')) {
+                            isManualProperty = true;
+                            // Find the manual property by matching the property ID
+                            const manualProperty = manualProperties.find(mp => mp.property.id === wikidataPropertyId);
+                            if (manualProperty) {
+                                propertyMetadata = manualProperty.property;
+                            }
+                        } else {
+                            // It's a mapped property - extract the key part (before :: separator)
+                            const key = parts[0];
+                            const mapping = mappedKeys.find(m => m.key === key && m.property?.id === wikidataPropertyId);
+                            if (mapping) {
+                                propertyMetadata = mapping.property;
+                            }
+                        }
                     } else {
-                        // Find the corresponding mapping to get the Wikidata property ID
-                        const mapping = mappedKeys.find(m => m.key === propertyKey);
-                        wikidataPropertyId = mapping?.property?.id || propertyKey;
-                        propertyMetadata = mapping?.property;
+                        // Legacy format without :: separator (backward compatibility)
+                        wikidataPropertyId = propertyKey;
+
+                        // Try to find it as manual property first
+                        const manualProperty = manualProperties.find(mp => mp.property.id === propertyKey);
+                        if (manualProperty) {
+                            propertyMetadata = manualProperty.property;
+                            isManualProperty = true;
+                        } else {
+                            // Try to find as mapped property
+                            const mapping = mappedKeys.find(m => m.key === propertyKey);
+                            if (mapping) {
+                                wikidataPropertyId = mapping.property?.id || propertyKey;
+                                propertyMetadata = mapping.property;
+                            }
+                        }
                     }
 
                     // Store original property ID for reference lookup (before QuickStatements transformation)

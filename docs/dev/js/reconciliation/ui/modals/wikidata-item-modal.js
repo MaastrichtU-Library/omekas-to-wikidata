@@ -23,7 +23,7 @@
  * @param {Array} existingMatches - Pre-existing matches if available
  * @returns {HTMLElement} Modal content element
  */
-export function createWikidataItemModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+export function createWikidataItemModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, mappingId = null) {
     const modalContent = document.createElement('div');
     modalContent.className = 'wikidata-item-modal';
 
@@ -33,6 +33,9 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
     modalContent.dataset.property = property;
     modalContent.dataset.valueIndex = valueIndex;
     modalContent.dataset.value = value;
+    if (mappingId) {
+        modalContent.dataset.mappingId = mappingId;
+    }
     if (propertyData) {
         modalContent.dataset.propertyData = JSON.stringify(propertyData);
     }
@@ -104,6 +107,7 @@ export function initializeWikidataItemModal(modalElement) {
     window.currentModalContext = {
         itemId: modalElement.dataset.itemId,
         property: modalElement.dataset.property,
+        mappingId: modalElement.dataset.mappingId,
         valueIndex: parseInt(modalElement.dataset.valueIndex),
         originalValue: value,
         currentValue: value,
