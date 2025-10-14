@@ -80,13 +80,16 @@ export function createAutomaticReconciliation(dependencies) {
         reconcileNextUnprocessedCell
     } = dependencies;
 
-    return async function performAutomaticReconciliation(value, property, itemId, valueIndex) {
+    return async function performAutomaticReconciliation(value, property, itemId, valueIndex, mappingId = null) {
+        // Use mappingId if provided, otherwise fall back to property
+        const dataKey = mappingId || property;
+
         // Get property metadata from reconciliation data if available
         let propertyObj = null;
         let propData = null;
-        
-        if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            propData = reconciliationData[itemId].properties[property];
+
+        if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[dataKey]) {
+            propData = reconciliationData[itemId].properties[dataKey];
             
             // Get property object from stored metadata
             if (propData.propertyMetadata) {

@@ -84,23 +84,29 @@ const modalRegistry = {
  * @param {string} value - The value to reconcile
  * @param {Object} propertyData - Property metadata and constraints
  * @param {Array} existingMatches - Pre-existing matches if available
+ * @param {string} mappingId - The mapping ID for this property
  * @returns {HTMLElement} Modal content element
  * @throws {Error} If data type is not supported
  */
-export function createReconciliationModalByType(dataType, itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+export function createReconciliationModalByType(dataType, itemId, property, valueIndex, value, propertyData = null, existingMatches = null, mappingId = null) {
     const modalHandler = modalRegistry[dataType];
-    
+
     if (!modalHandler) {
         throw new Error(`Unsupported reconciliation modal type: ${dataType}. Supported types: ${Object.keys(modalRegistry).join(', ')}`);
     }
     try {
-        const modalElement = modalHandler.create(itemId, property, valueIndex, value, propertyData, existingMatches);
-        
+        const modalElement = modalHandler.create(itemId, property, valueIndex, value, propertyData, existingMatches, mappingId);
+
         // Add common modal metadata
         modalElement.dataset.modalFactory = 'reconciliation';
         modalElement.dataset.dataType = dataType;
         modalElement.dataset.modalName = modalHandler.name;
-        
+
+        // Add mappingId to modal dataset if provided
+        if (mappingId) {
+            modalElement.dataset.mappingId = mappingId;
+        }
+
         return modalElement;
     } catch (error) {
         throw new Error(`Failed to create reconciliation modal for type ${dataType}: ${error.message}`);
