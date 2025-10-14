@@ -66,11 +66,11 @@ function getConfirmedValue(itemId, mappingId, valueIndex) {
 /**
  * Save confirmed value to application state
  * @param {string} itemId - Item ID
- * @param {string} property - Property name
+ * @param {string} mappingId - Mapping ID
  * @param {number} valueIndex - Value index
  * @param {Object} confirmationData - Data to save
  */
-function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
+function saveConfirmedValue(itemId, mappingId, valueIndex, confirmationData) {
     try {
         const stateManager = window.debugState || window.currentState;
         if (!stateManager) {
@@ -84,15 +84,15 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
         if (!reconciliationData[itemId]) {
             reconciliationData[itemId] = { properties: {} };
         }
-        if (!reconciliationData[itemId].properties[property]) {
-            reconciliationData[itemId].properties[property] = { reconciled: [] };
+        if (!reconciliationData[itemId].properties[mappingId]) {
+            reconciliationData[itemId].properties[mappingId] = { reconciled: [] };
         }
-        if (!reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
-            reconciliationData[itemId].properties[property].reconciled[valueIndex] = {};
+        if (!reconciliationData[itemId].properties[mappingId].reconciled[valueIndex]) {
+            reconciliationData[itemId].properties[mappingId].reconciled[valueIndex] = {};
         }
 
         // Save the confirmed value with proper structure
-        reconciliationData[itemId].properties[property].reconciled[valueIndex] = {
+        reconciliationData[itemId].properties[mappingId].reconciled[valueIndex] = {
             status: 'reconciled',
             selectedMatch: {
                 type: 'custom',
@@ -660,7 +660,7 @@ window.confirmUrlValue = function() {
     // Save to application state
     const savedToState = saveConfirmedValue(
         window.currentModalContext.itemId,
-        window.currentModalContext.property,
+        window.currentModalContext.mappingId,
         window.currentModalContext.valueIndex,
         confirmationData
     );

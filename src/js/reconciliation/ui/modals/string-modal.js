@@ -76,11 +76,11 @@ function getConfirmedValue(itemId, mappingId, valueIndex) {
 /**
  * Save confirmed value to application state
  * @param {string} itemId - Item ID
- * @param {string} property - Property name
+ * @param {string} mappingId - Mapping ID
  * @param {number} valueIndex - Value index
  * @param {Object} confirmationData - Data to save
  */
-function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
+function saveConfirmedValue(itemId, mappingId, valueIndex, confirmationData) {
     try {
         // Try multiple ways to access the state system
         const stateManager = window.debugState || window.currentState;
@@ -88,23 +88,23 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
             console.warn('No state system available');
             return false;
         }
-        
+
         const state = stateManager.getState();
         const reconciliationData = { ...state.reconciliationData } || {};
-        
+
         // Ensure the structure exists
         if (!reconciliationData[itemId]) {
             reconciliationData[itemId] = { properties: {} };
         }
-        if (!reconciliationData[itemId].properties[property]) {
-            reconciliationData[itemId].properties[property] = { reconciled: [] };
+        if (!reconciliationData[itemId].properties[mappingId]) {
+            reconciliationData[itemId].properties[mappingId] = { reconciled: [] };
         }
-        if (!reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
-            reconciliationData[itemId].properties[property].reconciled[valueIndex] = {};
+        if (!reconciliationData[itemId].properties[mappingId].reconciled[valueIndex]) {
+            reconciliationData[itemId].properties[mappingId].reconciled[valueIndex] = {};
         }
-        
+
         // Save the confirmed value with proper structure
-        reconciliationData[itemId].properties[property].reconciled[valueIndex] = {
+        reconciliationData[itemId].properties[mappingId].reconciled[valueIndex] = {
             status: 'reconciled',
             selectedMatch: {
                 type: 'custom',
@@ -118,10 +118,10 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
             matches: [],
             confidence: 100
         };
-        
+
         // Update the state
         stateManager.updateState('reconciliationData', reconciliationData);
-        
+
         return true;
     } catch (error) {
         console.warn('Failed to save confirmed value to state:', error);
@@ -984,7 +984,7 @@ window.confirmStringValue = function() {
     // Save to application state system first
     const savedToState = saveConfirmedValue(
         window.currentModalContext.itemId,
-        window.currentModalContext.property,
+        window.currentModalContext.mappingId,
         window.currentModalContext.valueIndex,
         confirmationData
     );
