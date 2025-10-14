@@ -11,26 +11,16 @@ import { createCustomReference, validateCustomReference } from '../core/custom-r
  * Gets the display name for an item based on reconciliation status
  * @param {Object} item - The Omeka item
  * @param {number} index - Item index
- * @param {Object} reconciliationData - Reconciliation data from state
+ * @param {Object} linkedItems - Linked items mapping from state
  * @returns {string} Display name for the item
  */
-function getItemDisplayName(item, index, reconciliationData) {
+function getItemDisplayName(item, index, linkedItems) {
     const itemId = `item-${index}`;
-    const itemData = reconciliationData?.[itemId];
 
-    // Check if item has a linked Wikidata QID
-    if (itemData && itemData.properties) {
-        // Look through properties to find a reconciled Wikidata item
-        for (const propertyKey in itemData.properties) {
-            const propertyData = itemData.properties[propertyKey];
-            if (propertyData.reconciled && Array.isArray(propertyData.reconciled)) {
-                for (const reconciledItem of propertyData.reconciled) {
-                    if (reconciledItem.selectedMatch && reconciledItem.selectedMatch.type === 'wikidata') {
-                        return `Linked QID: ${reconciledItem.selectedMatch.id}`;
-                    }
-                }
-            }
-        }
+    // Check if item is linked to an existing Wikidata item
+    const qid = linkedItems?.[itemId];
+    if (qid) {
+        return qid;
     }
 
     // No linked QID found, show as new item
@@ -49,7 +39,7 @@ export function openCustomReferenceModal(state, onSubmit, options = {}) {
     const fetchedData = currentState.fetchedData;
     // Ensure items is always an array (handle both single item and array cases)
     const items = !fetchedData ? [] : (Array.isArray(fetchedData) ? fetchedData : [fetchedData]);
-    const reconciliationData = currentState.reconciliationData || {};
+    const linkedItems = currentState.linkedItems || {};
 
     // Create modal overlay
     const overlay = createElement('div', {
@@ -172,7 +162,7 @@ export function openCustomReferenceModal(state, onSubmit, options = {}) {
     items.forEach((item, index) => {
         // Use same itemId format as detector: @id or id or fallback to item-${index}
         const itemId = item['@id'] || item.id || `item-${index}`;
-        const displayName = getItemDisplayName(item, index, reconciliationData);
+        const displayName = getItemDisplayName(item, index, linkedItems);
 
         const itemRow = createElement('div', {
             className: 'item-row',
