@@ -21,39 +21,44 @@ import {
  * Create reconciliation modal using factory system
  * This is the main entry point that routes to appropriate specialized modals
  */
-export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, state = null) {
+export function createReconciliationModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, state = null, mappingId = null) {
     // NEW: Get both datatype and enhanced property data from mappings
     const propertyLookupResult = getDataTypeAndPropertyData(property, propertyData, state);
     const dataType = propertyLookupResult.datatype;
     // Use enhanced property data from mapping lookup if available, otherwise use provided data
-    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData && 
+    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData &&
                                  Object.keys(propertyLookupResult.enhancedPropertyData).length > 1 ?
-        propertyLookupResult.enhancedPropertyData : 
-        (propertyData ? 
-            { ...propertyData, datatype: propertyData.datatype || dataType } : 
+        propertyLookupResult.enhancedPropertyData :
+        (propertyData ?
+            { ...propertyData, datatype: propertyData.datatype || dataType } :
             { datatype: dataType });
     const transformedValue = getTransformedValue(value, property);
     try {
         // Use factory to create type-specific modal
         if (isModalTypeSupported(dataType)) {
             const modalElement = createReconciliationModalByType(
-                dataType, 
-                itemId, 
-                property, 
-                valueIndex, 
-                transformedValue, 
-                enhancedPropertyData, 
-                existingMatches
+                dataType,
+                itemId,
+                property,
+                valueIndex,
+                transformedValue,
+                enhancedPropertyData,
+                existingMatches,
+                mappingId
             );
-            
+
             // Add compatibility wrapper class
             modalElement.classList.add('reconciliation-modal-redesign');
-            
+
             return modalElement;
         } else {
             // Use fallback modal for unsupported types
             const fallbackModal = createFallbackModal(dataType, transformedValue);
             fallbackModal.classList.add('reconciliation-modal-redesign');
+            // Add mappingId to fallback modal dataset
+            if (mappingId) {
+                fallbackModal.dataset.mappingId = mappingId;
+            }
             return fallbackModal;
         }
     } catch (error) {
@@ -806,19 +811,29 @@ export function createReconciliationModalContentFactory(dependencies) {
         getConstraintSummary
     } = dependencies;
     
-    return async function createReconciliationModalContent(itemId, property, valueIndex, value, manualProp = null) {
+    return async function createReconciliationModalContent(itemId, property, valueIndex, value, keyObjOrManualProp = null) {
+        // Calculate mappingId
+        let mappingId;
+        if (keyObjOrManualProp?.mappingId) {
+            mappingId = keyObjOrManualProp.mappingId;
+        } else if (keyObjOrManualProp?.property?.id) {
+            mappingId = keyObjOrManualProp.property.id;
+        } else {
+            mappingId = property;
+        }
+
         // Extract property data from dependencies or manual prop
         let propertyData = null;
-        if (manualProp) {
-            propertyData = manualProp.property;
-        } else if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[property]) {
-            const propData = reconciliationData[itemId].properties[property];
+        if (keyObjOrManualProp) {
+            propertyData = keyObjOrManualProp.property;
+        } else if (itemId && reconciliationData[itemId] && reconciliationData[itemId].properties[mappingId]) {
+            const propData = reconciliationData[itemId].properties[mappingId];
             propertyData = propData.propertyMetadata || propData.manualPropertyData?.property;
         }
-        
+
         // Use the main createReconciliationModal function
         const modalElement = createReconciliationModal(itemId, property, valueIndex, value, propertyData, null, state);
-        
+
         // Return just the innerHTML content for compatibility
         return modalElement.innerHTML;
     };
@@ -841,36 +856,50 @@ export function createOpenReconciliationModalFactory(dependencies) {
 
     let currentReconciliationCell = null;
     
-    return async function openReconciliationModal(itemId, property, valueIndex, value, manualProp = null) {
-        currentReconciliationCell = { itemId, property, valueIndex, value, manualProp };
-        
+    return async function openReconciliationModal(itemId, property, valueIndex, value, keyObjOrManualProp = null) {
+        // Calculate mappingId from keyObj or use property as fallback
+        let mappingId;
+        if (keyObjOrManualProp?.mappingId) {
+            // It's a keyObj with mappingId
+            mappingId = keyObjOrManualProp.mappingId;
+        } else if (keyObjOrManualProp?.property?.id) {
+            // It's a manualProp, use property.id as mappingId
+            mappingId = keyObjOrManualProp.property.id;
+        } else {
+            // Fallback to property name
+            mappingId = property;
+        }
+
+        currentReconciliationCell = { itemId, property, mappingId, valueIndex, value, keyObj: keyObjOrManualProp };
+
         // Set up context immediately before any async operations
-        const dataType = getDataTypeFromProperty(property, manualProp?.property, state);
+        const dataType = getDataTypeFromProperty(property, keyObjOrManualProp?.property, state);
         window.currentModalContext = {
             itemId: itemId,
             property: property,
+            mappingId: mappingId,  // NEW: Add mappingId to context
             valueIndex: parseInt(valueIndex),
             originalValue: value,
             currentValue: value,
-            propertyData: manualProp?.property || null,
+            propertyData: keyObjOrManualProp?.property || null,
             dataType: dataType,
             modalType: dataType,
             existingMatches: null
         };
-        
+
         // Get existing matches from reconciliation data if available
         let existingMatches = null;
         const currentState = state.getState();
         const reconciliationData = currentState.reconciliation?.data || {};
 
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[property] &&
-            reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
-            existingMatches = reconciliationData[itemId].properties[property].reconciled[valueIndex].matches;
+        if (reconciliationData[itemId] && reconciliationData[itemId].properties[mappingId] &&
+            reconciliationData[itemId].properties[mappingId].reconciled[valueIndex]) {
+            existingMatches = reconciliationData[itemId].properties[mappingId].reconciled[valueIndex].matches;
             window.currentModalContext.existingMatches = existingMatches;
         }
 
         // Create modal content
-        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, manualProp?.property, existingMatches, state);
+        const modalElement = createReconciliationModal(itemId, property, valueIndex, value, keyObjOrManualProp?.property, existingMatches, state, mappingId);
 
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
@@ -882,10 +911,11 @@ export function createOpenReconciliationModalFactory(dependencies) {
         const backupContext = {
             itemId: itemId,
             property: property,
+            mappingId: mappingId,  // NEW: Add mappingId to backup context
             valueIndex: parseInt(valueIndex),
             originalValue: value,
             currentValue: value,
-            propertyData: manualProp?.property || null,
+            propertyData: keyObjOrManualProp?.property || null,
             dataType: dataType,
             modalType: dataType,
             existingMatches: existingMatches
@@ -990,7 +1020,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
         // Only if we don't already have existing matches from reconciliation API
         // Note: dataType already declared above, reusing it
         if (dataType === 'wikibase-item' && (!existingMatches || existingMatches.length === 0)) {
-            await performAutomaticReconciliation(value, property, itemId, valueIndex);
+            await performAutomaticReconciliation(value, property, itemId, valueIndex, mappingId);
         }
     };
 }

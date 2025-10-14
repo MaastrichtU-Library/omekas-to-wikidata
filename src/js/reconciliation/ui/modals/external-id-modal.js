@@ -23,40 +23,40 @@ import {
 /**
  * Get confirmed value from application state
  * @param {string} itemId - Item ID
- * @param {string} property - Property name
+ * @param {string} mappingId - Mapping ID (use property as fallback)
  * @param {number} valueIndex - Value index
  * @returns {Object|null} Confirmed value data or null
  */
-function getConfirmedValue(itemId, property, valueIndex) {
+function getConfirmedValue(itemId, mappingId, valueIndex) {
     try {
         // Try multiple ways to access the state system
         const stateManager = window.debugState || window.currentState;
         if (!stateManager) {
             return null;
         }
-        
+
         const state = stateManager.getState();
         const reconciliationData = state.reconciliationData || {};
-        
+
         const itemData = reconciliationData[itemId];
-        if (!itemData || !itemData.properties || !itemData.properties[property]) {
+        if (!itemData || !itemData.properties || !itemData.properties[mappingId]) {
             return null;
         }
-        
-        const propertyData = itemData.properties[property];
+
+        const propertyData = itemData.properties[mappingId];
         if (!propertyData.reconciled || !propertyData.reconciled[valueIndex]) {
             return null;
         }
-        
+
         const reconciledData = propertyData.reconciled[valueIndex];
-        
+
         // Only return data if it's a confirmed custom value
-        if (reconciledData.status === 'reconciled' && 
-            reconciledData.selectedMatch && 
+        if (reconciledData.status === 'reconciled' &&
+            reconciledData.selectedMatch &&
             reconciledData.selectedMatch.type === 'custom') {
             return reconciledData.selectedMatch;
         }
-        
+
         return null;
     } catch (error) {
         return null;
@@ -66,34 +66,34 @@ function getConfirmedValue(itemId, property, valueIndex) {
 /**
  * Save confirmed value to application state
  * @param {string} itemId - Item ID
- * @param {string} property - Property name
+ * @param {string} mappingId - Mapping ID
  * @param {number} valueIndex - Value index
  * @param {Object} confirmationData - Data to save
  */
-function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
+function saveConfirmedValue(itemId, mappingId, valueIndex, confirmationData) {
     try {
         // Try multiple ways to access the state system
         const stateManager = window.debugState || window.currentState;
         if (!stateManager) {
             return false;
         }
-        
+
         const state = stateManager.getState();
         const reconciliationData = { ...state.reconciliationData } || {};
-        
+
         // Ensure the structure exists
         if (!reconciliationData[itemId]) {
             reconciliationData[itemId] = { properties: {} };
         }
-        if (!reconciliationData[itemId].properties[property]) {
-            reconciliationData[itemId].properties[property] = { reconciled: [] };
+        if (!reconciliationData[itemId].properties[mappingId]) {
+            reconciliationData[itemId].properties[mappingId] = { reconciled: [] };
         }
-        if (!reconciliationData[itemId].properties[property].reconciled[valueIndex]) {
-            reconciliationData[itemId].properties[property].reconciled[valueIndex] = {};
+        if (!reconciliationData[itemId].properties[mappingId].reconciled[valueIndex]) {
+            reconciliationData[itemId].properties[mappingId].reconciled[valueIndex] = {};
         }
-        
+
         // Save the confirmed value with proper structure
-        reconciliationData[itemId].properties[property].reconciled[valueIndex] = {
+        reconciliationData[itemId].properties[mappingId].reconciled[valueIndex] = {
             status: 'reconciled',
             selectedMatch: {
                 type: 'custom',
@@ -105,10 +105,10 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
             matches: [],
             confidence: 100
         };
-        
+
         // Update the state
         stateManager.updateState('reconciliationData', reconciliationData);
-        
+
         return true;
     } catch (error) {
         return false;
@@ -118,28 +118,28 @@ function saveConfirmedValue(itemId, property, valueIndex, confirmationData) {
 /**
  * Find the source table cell that corresponds to this modal's data
  * @param {string} itemId - Item ID
- * @param {string} property - Property name  
+ * @param {string} mappingId - Mapping ID
  * @param {number} valueIndex - Value index
  * @returns {HTMLElement|null} The source table cell element or null
  */
-function findSourceTableCell(itemId, property, valueIndex) {
+function findSourceTableCell(itemId, mappingId, valueIndex) {
     try {
         // Look for manual property cells (no value index)
-        const manualSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"][data-is-manual="true"]`;
+        const manualSelector = `.property-cell[data-item-id="${itemId}"][data-mapping-id="${mappingId}"][data-is-manual="true"]`;
         const manualCell = document.querySelector(manualSelector);
         if (manualCell) {
             return manualCell;
         }
-        
+
         // Look for regular property cells with value index
-        const regularSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"][data-value-index="${valueIndex}"]`;
+        const regularSelector = `.property-cell[data-item-id="${itemId}"][data-mapping-id="${mappingId}"][data-value-index="${valueIndex}"]`;
         const regularCell = document.querySelector(regularSelector);
         if (regularCell) {
             return regularCell;
         }
-        
-        // Fallback: look for any cell with matching item and property
-        const fallbackSelector = `.property-cell[data-item-id="${itemId}"][data-property="${property}"]`;
+
+        // Fallback: look for any cell with matching item and mappingId
+        const fallbackSelector = `.property-cell[data-item-id="${itemId}"][data-mapping-id="${mappingId}"]`;
         const fallbackCell = document.querySelector(fallbackSelector);
         return fallbackCell;
     } catch (error) {
@@ -199,27 +199,32 @@ function updateSourceTableCell(sourceCell, confirmationData) {
  * @param {string} value - The value to reconcile
  * @param {Object} propertyData - Property metadata and constraints
  * @param {Array} existingMatches - Not used for external-id values
+ * @param {string} mappingId - The mapping ID for this property
  * @returns {HTMLElement} Modal content element
  */
-export function createExternalIdModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null) {
+export function createExternalIdModal(itemId, property, valueIndex, value, propertyData = null, existingMatches = null, mappingId = null) {
+    // Use provided mappingId or fall back to property
+    const effectiveMappingId = mappingId || property;
+
     // Check for previously confirmed value
-    const confirmedData = getConfirmedValue(itemId, property, valueIndex);
+    const confirmedData = getConfirmedValue(itemId, effectiveMappingId, valueIndex);
     const displayValue = confirmedData ? confirmedData.value : value;
     const hasConfirmedValue = confirmedData !== null;
-    
+
     // Add comprehensive debugging for constraint extraction
     const regexConstraints = extractRegexConstraints(property, propertyData);
     // Only validate if we have constraints
     const validationResult = regexConstraints ? validateStringValue(displayValue, regexConstraints) : null;
     const propertyLink = generatePropertyLink(property, propertyData);
-    
+
     const modalContent = document.createElement('div');
     modalContent.className = 'external-id-modal';
-    
+
     // Store context for modal interactions
     modalContent.dataset.modalType = 'external-id';
     modalContent.dataset.itemId = itemId;
     modalContent.dataset.property = property;
+    modalContent.dataset.mappingId = effectiveMappingId;
     modalContent.dataset.valueIndex = valueIndex;
     modalContent.dataset.originalValue = value; // Always keep the original Omeka value
     modalContent.dataset.currentValue = displayValue; // Use saved value if available
@@ -310,17 +315,19 @@ export function initializeExternalIdModal(modalElement) {
     const originalValue = modalElement.dataset.originalValue;
     const currentValue = modalElement.dataset.currentValue;
     const property = modalElement.dataset.property;
+    const mappingId = window.currentModalContext?.mappingId || modalElement.dataset.mappingId || property;
     const hasConfirmedValue = modalElement.dataset.hasConfirmedValue === 'true';
-    const propertyData = modalElement.dataset.propertyData ? 
+    const propertyData = modalElement.dataset.propertyData ?
         JSON.parse(modalElement.dataset.propertyData) : null;
-    const confirmedData = modalElement.dataset.confirmedData ? 
+    const confirmedData = modalElement.dataset.confirmedData ?
         JSON.parse(modalElement.dataset.confirmedData) : null;
     // Find the source table cell that opened this modal
-    const sourceCell = findSourceTableCell(modalElement.dataset.itemId, property, parseInt(modalElement.dataset.valueIndex));
+    const sourceCell = findSourceTableCell(modalElement.dataset.itemId, mappingId, parseInt(modalElement.dataset.valueIndex));
     // Store modal context globally for interaction handlers
     window.currentModalContext = {
         itemId: modalElement.dataset.itemId,
         property: property,
+        mappingId: mappingId,  // NEW: Add mappingId to context
         valueIndex: parseInt(modalElement.dataset.valueIndex),
         originalValue: originalValue,
         currentValue: currentValue,
@@ -626,7 +633,7 @@ window.confirmExternalIdValue = function() {
     // Save to application state system first
     const savedToState = saveConfirmedValue(
         window.currentModalContext.itemId,
-        window.currentModalContext.property,
+        window.currentModalContext.mappingId,
         window.currentModalContext.valueIndex,
         confirmationData
     );
