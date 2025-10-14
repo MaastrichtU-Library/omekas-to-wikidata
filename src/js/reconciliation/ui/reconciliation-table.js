@@ -91,8 +91,8 @@ export function updateItemCellDisplay(itemId, itemNumber, linkedQid = null) {
 /**
  * Update cell display to show error state (duplicated from batch-processor for UI access)
  */
-function updateCellDisplayWithError(itemId, property, valueIndex, errorInfo) {
-    const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+function updateCellDisplayWithError(itemId, mappingId, valueIndex, errorInfo) {
+    const cellSelector = `[data-item-id="${itemId}"][data-mapping-id="${mappingId}"]`;
     const cell = document.querySelector(cellSelector);
     
     if (cell) {
@@ -125,8 +125,8 @@ function updateCellDisplayWithError(itemId, property, valueIndex, errorInfo) {
 /**
  * Update cell loading state
  */
-export function updateCellLoadingState(itemId, property, valueIndex, isLoading) {
-    const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+export function updateCellLoadingState(itemId, mappingId, valueIndex, isLoading) {
+    const cellSelector = `[data-item-id="${itemId}"][data-mapping-id="${mappingId}"]`;
     const cell = document.querySelector(cellSelector);
     
     if (cell) {
@@ -147,8 +147,8 @@ export function updateCellLoadingState(itemId, property, valueIndex, isLoading) 
 /**
  * Update cell display when no matches are found
  */
-export function updateCellDisplayAsNoMatches(itemId, property, valueIndex) {
-    const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+export function updateCellDisplayAsNoMatches(itemId, mappingId, valueIndex) {
+    const cellSelector = `[data-item-id="${itemId}"][data-mapping-id="${mappingId}"]`;
     const cell = document.querySelector(cellSelector);
     
     if (cell) {
@@ -170,9 +170,9 @@ export function updateCellDisplayAsNoMatches(itemId, property, valueIndex) {
 /**
  * Update cell display to show best match percentage
  */
-export function updateCellDisplayWithMatch(itemId, property, valueIndex, bestMatch) {
+export function updateCellDisplayWithMatch(itemId, mappingId, valueIndex, bestMatch) {
     // Find the cell element
-    const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+    const cellSelector = `[data-item-id="${itemId}"][data-mapping-id="${mappingId}"]`;
     const cell = document.querySelector(cellSelector);
     
     if (cell) {
@@ -214,9 +214,9 @@ export function updateCellDisplayWithMatch(itemId, property, valueIndex, bestMat
 /**
  * Update cell display based on reconciliation status
  */
-export function updateCellDisplay(itemId, property, valueIndex, status, reconciliation = null) {
+export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconciliation = null) {
     // Find the cell element
-    const cellSelector = `[data-item-id="${itemId}"][data-property="${property}"]`;
+    const cellSelector = `[data-item-id="${itemId}"][data-mapping-id="${mappingId}"]`;
     const cell = document.querySelector(cellSelector);
     
     if (cell) {
@@ -743,36 +743,39 @@ export function createRestoreReconciliationDisplayFactory(reconciliationData) {
     return function restoreReconciliationDisplay(data, mappedKeys, manualProperties = []) {
         data.forEach((item, index) => {
             const itemId = `item-${index}`;
-            
+
             mappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                const propData = reconciliationData[itemId]?.properties[keyName];
-                
+                const mappingId = keyObj?.mappingId || keyName;
+
+                // Use mappingId to access data
+                const propData = reconciliationData[itemId]?.properties[mappingId];
+
                 if (propData && propData.reconciled) {
                     propData.reconciled.forEach((reconciledItem, valueIndex) => {
-                        const cellInfo = { itemId, property: keyName, valueIndex };
-                        
+                        const cellInfo = { itemId, property: keyName, mappingId: mappingId, valueIndex };
+
                         if (reconciledItem.status === 'reconciled' && reconciledItem.selectedMatch) {
-                            // Restore reconciled state
-                            updateCellDisplay(itemId, keyName, valueIndex, 'reconciled', reconciledItem.selectedMatch);
+                            // Restore reconciled state - use mappingId
+                            updateCellDisplay(itemId, mappingId, valueIndex, 'reconciled', reconciledItem.selectedMatch);
                         } else if (reconciledItem.status === 'skipped') {
-                            // Restore skipped state
-                            updateCellDisplay(itemId, keyName, valueIndex, 'skipped');
+                            // Restore skipped state - use mappingId
+                            updateCellDisplay(itemId, mappingId, valueIndex, 'skipped');
                         } else if (reconciledItem.status === 'no-item') {
-                            // Restore no-item state
-                            updateCellDisplay(itemId, keyName, valueIndex, 'no-item');
+                            // Restore no-item state - use mappingId
+                            updateCellDisplay(itemId, mappingId, valueIndex, 'no-item');
                         } else if (reconciledItem.status === 'error') {
-                            // Restore error state with enhanced error info
+                            // Restore error state with enhanced error info - use mappingId
                             const errorInfo = {
                                 message: reconciledItem.error || 'Unknown error',
                                 timestamp: reconciledItem.timestamp,
                                 retryable: reconciledItem.retryable !== false // Default to retryable
                             };
-                            updateCellDisplayWithError(itemId, keyName, valueIndex, errorInfo);
+                            updateCellDisplayWithError(itemId, mappingId, valueIndex, errorInfo);
                         } else if (reconciledItem.matches && reconciledItem.matches.length > 0) {
-                            // Restore match percentage display for non-reconciled items with matches
+                            // Restore match percentage display for non-reconciled items with matches - use mappingId
                             const bestMatch = reconciledItem.matches[0];
-                            updateCellDisplayWithMatch(itemId, keyName, valueIndex, bestMatch);
+                            updateCellDisplayWithMatch(itemId, mappingId, valueIndex, bestMatch);
                         }
                     });
                 }
