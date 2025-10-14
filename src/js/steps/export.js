@@ -642,8 +642,18 @@ export function setupExportStep(state) {
                     return 0;
                 });
 
+                // Deduplicate statements - keep only unique statements
+                const seenStatements = new Set();
+                const uniqueStatements = itemStatements.filter(({ statement }) => {
+                    if (seenStatements.has(statement)) {
+                        return false;
+                    }
+                    seenStatements.add(statement);
+                    return true;
+                });
+
                 // Output statements in sorted order
-                itemStatements.forEach(({ statement }) => {
+                uniqueStatements.forEach(({ statement }) => {
                     quickStatementsText += statement + '\n';
                 });
                 
