@@ -34,8 +34,8 @@ import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
 import { createElement } from '../ui/components.js';
 import {
     // Core data processing
-    calculateTotalReconciliableCells, 
-    extractPropertyValues, 
+    calculateTotalReconciliableCells,
+    extractPropertyValues,
     combineAndSortProperties,
     createMockDataLoader,
     createOriginalKeyInfoGetter,
@@ -44,6 +44,8 @@ import {
     validateReconciliationRequirements,
     initializeReconciliationDataStructure,
     mergeReconciliationData,
+    isOldFormatReconciliationData,
+    migrateReconciliationData,
     
     // Progress tracking
     createProgressCalculator,
@@ -490,14 +492,23 @@ export function setupReconciliationStep(state) {
         // Smart reconciliation data handling: preserve existing work when possible
         let isReturningToStep = false;
         let finalReconciliationData;
-        
+
         if (currentState.reconciliationData && Object.keys(currentState.reconciliationData).length > 0) {
-            
+            // Check if reconciliation data needs migration from old format
+            let existingData = currentState.reconciliationData;
+            if (isOldFormatReconciliationData(existingData)) {
+                console.log('[Migration] Detected old format reconciliation data, migrating to mappingId-based structure');
+                existingData = migrateReconciliationData(existingData, mappedKeys, state);
+                // Update state with migrated data immediately
+                state.updateState('reconciliationData', existingData);
+                console.log('[Migration] Migration complete');
+            }
+
             // Use intelligent merging to preserve existing reconciliation work while adding new properties
             finalReconciliationData = mergeReconciliationData(
-                currentState.reconciliationData, 
-                data, 
-                mappedKeys, 
+                existingData,
+                data,
+                mappedKeys,
                 state
             );
             isReturningToStep = true;

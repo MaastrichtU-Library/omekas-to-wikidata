@@ -568,3 +568,86 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
 
     return mergedData;
 }
+
+/**
+ * Detect if reconciliation data is in old format (using keyName as keys)
+ * @param {Object} reconciliationData - The reconciliation data to check
+ * @returns {boolean} True if data is in old format, false if already migrated
+ */
+export function isOldFormatReconciliationData(reconciliationData) {
+    if (!reconciliationData || Object.keys(reconciliationData).length === 0) {
+        return false; // Empty data is not old format
+    }
+
+    // Check if any property in the data structure doesn't have mappingId
+    for (const itemData of Object.values(reconciliationData)) {
+        if (itemData.properties) {
+            for (const propData of Object.values(itemData.properties)) {
+                // Old format: doesn't have mappingId field
+                // New format: has mappingId field
+                if (!propData.mappingId) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * Migrate reconciliation data from old format to new format
+ * Old format: properties keyed by keyName
+ * New format: properties keyed by mappingId
+ *
+ * @param {Object} oldReconciliationData - Reconciliation data in old format
+ * @param {Array} currentMappedKeys - Current mapped keys with property information
+ * @param {Object} state - State object with generateMappingId function
+ * @returns {Object} Migrated reconciliation data in new format
+ */
+export function migrateReconciliationData(oldReconciliationData, currentMappedKeys, state) {
+    const migratedData = {};
+
+    Object.keys(oldReconciliationData).forEach(itemId => {
+        const itemData = oldReconciliationData[itemId];
+        migratedData[itemId] = {
+            originalData: itemData.originalData,
+            properties: {}
+        };
+
+        // For each property in the old data (keyed by keyName)
+        Object.keys(itemData.properties).forEach(keyName => {
+            const propData = itemData.properties[keyName];
+
+            // Find the corresponding keyObj from currentMappedKeys
+            const keyObj = currentMappedKeys.find(k =>
+                (typeof k === 'string' ? k : k.key) === keyName
+            );
+
+            if (keyObj && typeof keyObj === 'object' && keyObj.property) {
+                // Generate the new mappingId
+                const mappingId = state.generateMappingId(
+                    keyName,
+                    keyObj.property.id,
+                    keyObj.selectedAtField
+                );
+
+                // Migrate the property data to use mappingId as key
+                migratedData[itemId].properties[mappingId] = {
+                    ...propData,
+                    keyName: keyName,  // Add keyName field if missing
+                    mappingId: mappingId  // Add mappingId field
+                };
+            } else {
+                // If we can't find the keyObj, keep using keyName as mappingId
+                // This handles edge cases where mappings have changed
+                migratedData[itemId].properties[keyName] = {
+                    ...propData,
+                    keyName: keyName,
+                    mappingId: keyName
+                };
+            }
+        });
+    });
+
+    return migratedData;
+}
