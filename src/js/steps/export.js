@@ -601,10 +601,10 @@ export function setupExportStep(state) {
                                             // Transform property ID to QuickStatements format
                                             currentPropertyId = `${prefix}${languageCode}`;
                                         } else {
-                                            // Format: P1476 en"value" - language code prefixes the value
+                                            // Format: P1476 en:"value" - language code with colon prefixes the value
                                             // Don't escape the value yet, add language prefix first
                                             const escapedValue = match.value.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, ' ');
-                                            value = `${languageCode}"${escapedValue}"`;
+                                            value = `${languageCode}:"${escapedValue}"`;
                                         }
                                     } else {
                                         value = escapeQuickStatementsString(match.value);
