@@ -497,6 +497,18 @@ export function mapKeyToProperty(keyData, property, state) {
             // We can't delete the key directly, so we set it to empty array
             currentState.mappings.transformationBlocks[oldMappingId] = [];
         }
+
+        // CRITICAL FIX: Remove the old mapping with the old mappingId to prevent duplicates
+        // This is necessary because moveKeyToCategory will use the NEW mappingId for comparison,
+        // which won't match the old mappingId, leaving the old mapping in place
+        const updatedMappedKeys = currentState.mappings.mappedKeys.filter(k =>
+            k.mappingId !== oldMappingId
+        );
+        state.updateMappings(
+            currentState.mappings.nonLinkedKeys,
+            updatedMappedKeys,
+            currentState.mappings.ignoredKeys
+        );
     }
 
     // Create enhanced key data with property information and mapping ID
