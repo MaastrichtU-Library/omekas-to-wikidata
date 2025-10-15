@@ -115,7 +115,7 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
     }
 
     // Render references in order, with custom replacements in place of auto-detected
-    const referenceTypes = ['omeka-item', 'oclc', 'ark'];
+    const referenceTypes = ['omeka-item', 'oclc', 'ark', 'sameas'];
 
     referenceTypes.forEach(type => {
         const data = summary[type];
