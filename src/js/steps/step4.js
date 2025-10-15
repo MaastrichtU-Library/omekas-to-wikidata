@@ -2,10 +2,11 @@
  * Step 4: References
  * Detects and displays reference links from API data
  *
- * This step automatically detects three types of references:
+ * This step automatically detects four types of references:
  * - Omeka Item API Links (from top-level @id field)
  * - OCLC WorldCat Links (from schema:sameAs field)
  * - ARK Identifiers (from dcterms:identifier field)
+ * - Generic sameAs Links (other URLs from schema:sameAs field)
  *
  * These references are different from identifiers in Step 2 (which are used for reconciliation).
  * References are complete URLs that will be added to Wikidata statements in the future.
