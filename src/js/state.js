@@ -77,7 +77,7 @@ export function setupState() {
         references: {
             itemReferences: {}, // Map of itemId -> array of reference objects
             summary: {}, // Map of referenceType -> {count, examples: [{itemId, value}]}
-            selectedTypes: ['omeka-item', 'oclc', 'ark'], // List of selected reference types (default: all selected)
+            selectedTypes: ['omeka-item', 'oclc', 'ark', 'sameas'], // List of selected reference types (default: all selected)
             customReferences: [], // Array of custom reference objects added by user
             propertyReferences: {} // Map of propertyId -> array of reference type IDs
         },
@@ -926,7 +926,7 @@ export function setupState() {
         const selectedTypes = [];
 
         // Add auto-detected reference types
-        const autoDetectedTypes = ['omeka-item', 'oclc', 'ark'];
+        const autoDetectedTypes = ['omeka-item', 'oclc', 'ark', 'sameas'];
         autoDetectedTypes.forEach(type => {
             if (state.references.selectedTypes.includes(type)) {
                 selectedTypes.push(type);

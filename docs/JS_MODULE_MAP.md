@@ -215,8 +215,8 @@ The application follows a **modular, event-driven architecture**:
 
 **detector.js**
 - Purpose: Detect reference links from Omeka S API data
-- Key exports: `detectReferences()`, `detectOmekaItemLink()`, `detectOCLCLinks()`, `detectARKIdentifiers()`, `getReferenceTypeLabel()`, `getReferenceTypeDescription()`
-- Reference types: Omeka API Item links, OCLC WorldCat links, ARK identifiers
+- Key exports: `detectReferences()`, `detectOmekaItemLink()`, `detectOCLCLinks()`, `detectARKIdentifiers()`, `detectGenericSameAsReferences()`, `getReferenceTypeLabel()`, `getReferenceTypeDescription()`
+- Reference types: Omeka API Item links, OCLC WorldCat links, ARK identifiers, Generic sameAs links
 - Returns: Item-specific references with summary statistics and base URLs
 
 **custom-references.js**
