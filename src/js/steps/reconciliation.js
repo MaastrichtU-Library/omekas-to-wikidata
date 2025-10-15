@@ -703,7 +703,7 @@ export function setupReconciliationStep(state) {
                 cell.dataset.mappingId = mappingId;  // NEW: Add mappingId
                 cell.dataset.valueIndex = '0';
 
-                const valueDiv = createValueElement(itemId, keyName, mappingId, 0, values[0]);
+                const valueDiv = createValueElement(itemId, keyName, mappingId, 0, values[0], keyData);
                 cell.appendChild(valueDiv);
             } else {
                 // Multiple values cell
@@ -713,7 +713,7 @@ export function setupReconciliationStep(state) {
                 cell.dataset.mappingId = mappingId;  // NEW: Add mappingId
 
                 values.forEach((value, valueIndex) => {
-                    const valueDiv = createValueElement(itemId, keyName, mappingId, valueIndex, value);
+                    const valueDiv = createValueElement(itemId, keyName, mappingId, valueIndex, value, keyData);
                     cell.appendChild(valueDiv);
                 });
             }
@@ -723,7 +723,7 @@ export function setupReconciliationStep(state) {
     /**
      * Creates a value element for table cells
      */
-    function createValueElement(itemId, property, mappingId, valueIndex, value) {
+    function createValueElement(itemId, property, mappingId, valueIndex, value, keyData) {
         const valueDiv = createElement('div', {
             className: 'property-value',
             dataset: {
@@ -731,25 +731,26 @@ export function setupReconciliationStep(state) {
                 mappingId: mappingId  // NEW: Add mappingId to value element
             }
         });
-        
+
         const textSpan = createElement('span', {
             className: 'value-text'
         }, value || 'Empty value');
-        
+
         const statusSpan = createElement('span', {
             className: 'value-status'
         }, 'Click to reconcile');
-        
+
         valueDiv.appendChild(textSpan);
         valueDiv.appendChild(statusSpan);
-        
+
         // Add click handler for reconciliation
         valueDiv.addEventListener('click', () => {
             if (modules.openReconciliationModal) {
-                modules.openReconciliationModal(itemId, property, valueIndex, value);
+                // CRITICAL FIX: Pass keyData as 5th parameter so modal can determine correct mappingId
+                modules.openReconciliationModal(itemId, property, valueIndex, value, keyData);
             }
         });
-        
+
         return valueDiv;
     }
     
