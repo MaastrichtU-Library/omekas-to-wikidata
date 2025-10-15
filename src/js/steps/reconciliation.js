@@ -578,11 +578,27 @@ export function setupReconciliationStep(state) {
         updatePropertyHeader(mappingId, keyData, property);
 
         // Update all data cells for this property column
-        // This also updates reconciliationData with new transformed values
         await updatePropertyColumn(mappingId, keyData, data);
 
-        // Update state to persist the changes made in updatePropertyColumn
-        state.updateState('reconciliationData', reconciliationData);
+        // Update state to reflect the new mapping
+        const updatedState = state.getState();
+        if (updatedState.reconciliationData) {
+            // Clear existing reconciliation data for this property since the mapping changed
+            Object.keys(updatedState.reconciliationData).forEach(itemId => {
+                const itemData = updatedState.reconciliationData[itemId];
+                if (itemData.properties && itemData.properties[mappingId]) {
+                    // Reset reconciliation status for this property
+                    itemData.properties[mappingId].reconciled = itemData.properties[mappingId].reconciled.map(reconciledItem => ({
+                        ...reconciledItem,
+                        status: 'pending',
+                        matches: [],
+                        selectedMatch: null
+                    }));
+                }
+            });
+
+            state.updateState('reconciliationData', updatedState.reconciliationData);
+        }
 
     }
     
@@ -667,30 +683,10 @@ export function setupReconciliationStep(state) {
             // Find the cell for this property using mappingId
             const cell = row.querySelector(`[data-mapping-id="${mappingId}"]`);
             if (!cell) return;
-
+            
             // Re-extract values with updated @ field and transformations
             const values = extractPropertyValues(item, keyData, state);
-
-            // CRITICAL FIX: Update reconciliationData with new transformed values
-            // This ensures the reconciliation system uses the current transformed values
-            if (reconciliationData[itemId] && reconciliationData[itemId].properties[mappingId]) {
-                const propData = reconciliationData[itemId].properties[mappingId];
-
-                // Update originalValues with new transformed values
-                propData.originalValues = values;
-
-                // Reset reconciled array to match new values length
-                // This ensures the array has the correct number of slots
-                propData.reconciled = values.map(() => ({
-                    status: 'pending',
-                    matches: [],
-                    selectedMatch: null,
-                    manualValue: null,
-                    qualifiers: {},
-                    confidence: 0
-                }));
-            }
-
+            
             // Clear existing cell content
             cell.innerHTML = '';
             cell.className = 'property-cell';
