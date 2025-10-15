@@ -16,6 +16,14 @@ This tool bridges the gap between cultural heritage collections managed in Omeka
 
 ## Core Documentation
 
+### [USER-MANUAL.md](USER-MANUAL.md)
+Comprehensive user guide for the tool:
+- Complete walkthrough of all five steps
+- Detailed explanations of features and options
+- Project and mapping file management
+- Best practices and troubleshooting
+- Tips for data quality and testing
+
 ### [README.md](../README.md)
 General project documentation including:
 - Project overview and purpose
