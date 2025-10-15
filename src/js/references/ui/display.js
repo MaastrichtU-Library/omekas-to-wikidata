@@ -728,7 +728,7 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
     const property = mappedKey.property;
 
     // Check if this is a manual property that cannot accept references
-    const cannotAcceptReferences = ['label', 'description', 'alias'].includes(property.id);
+    const cannotAcceptReferences = ['label', 'description', 'aliases'].includes(property.id);
 
     // Get current reference count for this property
     const assignedReferences = state ? state.getPropertyReferences(property.id) : [];
@@ -852,7 +852,7 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
             cursor: cannotAcceptReferences ? 'default' : 'pointer',
             userSelect: 'none'
         }
-    }, cannotAcceptReferences ? 'No references' : (referenceCount > 0 ? referenceCountText : 'No references'));
+    }, cannotAcceptReferences ? 'No reference accepted' : (referenceCount > 0 ? referenceCountText : 'No references'));
 
     // Add click handler to reference count to open modal (only if references are allowed)
     if (state && !cannotAcceptReferences) {
