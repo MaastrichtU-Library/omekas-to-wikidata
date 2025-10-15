@@ -193,6 +193,7 @@ export function openPropertyReferenceModal(propertyId, propertyLabel, state, onU
 
 /**
  * Gets all available references (auto-detected + custom)
+ * Ensures no duplicates when auto-detected references have been converted to custom
  * @param {Object} state - Application state management instance
  * @returns {Array} Array of reference objects with {id, name, baseUrl}
  */
@@ -200,12 +201,28 @@ function getAllAvailableReferences(state) {
     const currentState = state.getState();
     const references = [];
 
-    // Get auto-detected reference types
+    // Get all custom references first
+    const customReferences = state.getCustomReferences() || [];
+
+    // Build a set of originalTypes to exclude from auto-detected
+    // This prevents showing both the auto-detected and custom version when a reference has been edited
+    const convertedTypes = new Set();
+    customReferences.forEach(customRef => {
+        if (customRef.originalType) {
+            convertedTypes.add(customRef.originalType);
+        }
+    });
+
+    // Get auto-detected reference types (excluding converted ones)
     const summary = currentState.references?.summary || {};
     const autoDetectedTypes = ['omeka-item', 'oclc', 'ark'];
 
     autoDetectedTypes.forEach(type => {
         const data = summary[type];
+        // Skip if this type has been converted to custom
+        if (convertedTypes.has(type)) {
+            return;
+        }
         // Include all references that have data, regardless of selection status
         if (data && data.count > 0) {
             references.push({
@@ -217,8 +234,7 @@ function getAllAvailableReferences(state) {
         }
     });
 
-    // Get all custom references, regardless of selection status
-    const customReferences = state.getCustomReferences() || [];
+    // Add all custom references
     customReferences.forEach(customRef => {
         references.push({
             id: customRef.id,
