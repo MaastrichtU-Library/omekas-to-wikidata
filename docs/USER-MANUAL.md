@@ -14,6 +14,7 @@
 8. [Step 5: Export - QuickStatements Generation](#step-5-export---quickstatements-generation)
 9. [Project Management](#project-management)
 10. [Tips and Best Practices](#tips-and-best-practices)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -968,6 +969,127 @@ If you encounter issues:
 5. **Document Issues**
    - Note what you tried and what happened
    - Useful for support requests
+
+---
+
+## Troubleshooting
+
+### Quick Fixes You Can Try
+
+If you encounter problems while using the tool, try these solutions first:
+
+#### 1. Refresh the Page
+- Sometimes the tool just needs a fresh start
+- **⚠️ Warning**: Make sure to save your project first, or you'll lose your work!
+- Click "Save Project" before refreshing
+
+#### 2. Clear Your Browser Cache
+- Old cached files can sometimes cause issues
+- **How to clear cache:**
+  - **Chrome/Edge**: Press `Ctrl+Shift+Delete` (Windows) or `Cmd+Shift+Delete` (Mac)
+  - **Firefox**: Press `Ctrl+Shift+Delete` (Windows) or `Cmd+Shift+Delete` (Mac)
+  - **Safari**: Go to Safari menu → Clear History
+- Choose "Cached images and files" and clear
+- Reload the tool after clearing
+
+#### 3. Try a Different Browser
+- If the tool isn't working in your current browser, try:
+  - Chrome
+  - Firefox
+  - Edge
+  - Safari
+- Desktop browsers only (mobile browsers are not supported)
+
+#### 4. Check Your Internet Connection
+- The tool needs internet to:
+  - Fetch data from Omeka S
+  - Search Wikidata properties and items
+  - Export to QuickStatements
+- Try loading another website to verify your connection works
+
+#### 5. Save and Reload Your Project
+- If something seems stuck or broken:
+  1. Click "Save Project" to download your current work
+  2. Refresh the page
+  3. Click "Load Project" and select the file you just saved
+- This often resolves temporary issues
+
+### Still Having Problems?
+
+If none of the quick fixes above help, we'd like to know about it! Please report the issue so we can improve the tool.
+
+#### How to Report an Issue
+
+1. **Go to GitHub Issues**
+   - Visit: https://github.com/daanvr/omekas-to-wikidata/issues
+   - You'll need a free GitHub account (if you don't have one, you can create it in minutes)
+
+2. **Click "New Issue"**
+   - Look for the green "New issue" button
+   - Click it to start creating a bug report
+
+3. **Describe the Problem**
+   - Write a clear title (e.g., "Cannot save project after reconciliation")
+   - In the description, explain:
+     - What you were trying to do
+     - What happened instead
+     - What step you were on (Input, Mapping, Reconciliation, etc.)
+     - Any error messages you saw
+
+4. **Attach Helpful Files**
+
+   **Please include:**
+
+   a. **Screenshot**
+   - Take a screenshot showing the problem
+   - On Windows: Press `Windows Key + Shift + S`
+   - On Mac: Press `Cmd + Shift + 4`
+   - Drag and drop the image into the GitHub issue
+
+   b. **Your Project File** (if possible)
+   - Click "Save Project" to download your `.json` file
+   - Drag and drop it into the GitHub issue
+   - **Note**: This file contains your data. If your data is private or sensitive, you can:
+     - Skip this step, or
+     - Create a test project with dummy data that reproduces the problem
+
+   c. **Browser Information**
+   - Mention which browser you're using (Chrome, Firefox, Safari, Edge)
+   - Include the version if you know it
+
+5. **Submit the Issue**
+   - Click "Submit new issue"
+   - We'll review it and try to help or fix the problem
+
+#### Example Issue Report
+
+```
+Title: "Mapping dialog doesn't open when clicking on keys"
+
+Description:
+I'm on Step 2 (Mapping) and when I click on any key in the "Non-Linked Keys"
+section, nothing happens. The mapping dialog doesn't appear.
+
+I'm using Chrome on Windows 10. I tried refreshing the page and the problem
+still occurs.
+
+Screenshots attached showing where I'm clicking.
+
+Project file attached.
+```
+
+#### What Happens Next?
+
+- We'll review your issue as soon as possible
+- We may ask follow-up questions to better understand the problem
+- Once we identify the issue, we'll work on a fix
+- You'll receive notifications on GitHub when we respond or fix the issue
+
+#### Privacy Note
+
+- GitHub issues are public, so anyone can see them
+- Don't include sensitive personal information in your description
+- If your project data is confidential, describe the problem without sharing the file, or create a minimal test case with dummy data
 
 ---
 
