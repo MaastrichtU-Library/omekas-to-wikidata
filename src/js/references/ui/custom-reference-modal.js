@@ -182,8 +182,8 @@ export function openCustomReferenceModal(state, onSubmit, options = {}) {
             }
         }, displayName);
 
-        // Pre-fill value from existing reference if in edit mode
-        const existingUrl = existingUrlsMap.get(itemId) || '';
+        // Pre-fill value from existing reference if in edit mode, or with "https://" for new references
+        const existingUrl = existingUrlsMap.get(itemId) || (isEdit ? '' : 'https://');
 
         const itemInput = createInput('text', {
             placeholder: 'https://example.com/reference',
