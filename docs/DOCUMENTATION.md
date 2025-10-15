@@ -1,6 +1,8 @@
 # Technical Documentation
 
-This page serves as a hub for all technical and developer documentation. For general project information and usage instructions, see [README.md](../README.md).
+**[← Back to README](../README.md)**
+
+This page serves as a hub for all technical and developer documentation. For general project information and usage instructions, see the [README](../README.md).
 
 ## Project Overview
 
@@ -90,6 +92,4 @@ Key archived documents include:
 
 ---
 
-**Quick Links:**
-- [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to this project
-- [README.md](../README.md) - Back to main project page
+**[← Back to README](../README.md)**

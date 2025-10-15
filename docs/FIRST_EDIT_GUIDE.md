@@ -1,5 +1,7 @@
 # Making Your First Edit with Claude Code
 
+**[← Back to README](../README.md)** | **[← Back to Technical Documentation](DOCUMENTATION.md)** | **[← Back to Contributing](CONTRIBUTING.md)**
+
 This guide will walk you through making your first contribution to this repository using Claude Code, an AI-powered coding assistant from Anthropic. This is the AI tool used to build this tool.
 
 ## Table of Contents
@@ -292,3 +294,7 @@ Congratulations on making your first contribution using Claude Code!
 - [Project CLAUDE.md](../CLAUDE.md) – Project-specific conventions and guidelines
 - [JavaScript Module Map](JS_MODULE_MAP.md) – Understanding the codebase structure
 - [GitHub Flow Guide](https://guides.github.com/introduction/flow/) – Understanding Git workflows
+
+---
+
+**[← Back to README](../README.md)** | **[← Back to Technical Documentation](DOCUMENTATION.md)** | **[← Back to Contributing](CONTRIBUTING.md)**

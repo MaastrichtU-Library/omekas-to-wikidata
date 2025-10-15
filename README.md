@@ -1,86 +1,152 @@
-# Omeka S to Wikidata tool
-Software to guide users to import (linked) data from Omeka S systems into Wikidata.
+# Omeka S to Wikidata Tool
 
-Developed as part of the 2025 project "Open Topstukken" ("Open Collection Highlights") by Maastricht University Library and Radboud University Library.
+A web-based application that guides users through importing linked data from Omeka S collections into Wikidata. Transform your cultural heritage metadata into structured, linked open data that contributes to the global knowledge base.
 
-**📖 [User Manual](docs/USER-MANUAL.md)** - Complete guide for using the tool
-**📚 [Technical Documentation](docs/DOCUMENTATION.md)** - For developers and contributors
+**Developed by** [Maastricht University Library](https://library.maastrichtuniversity.nl/) and [Radboud University Library](https://www.ru.nl/library/) as part of the 2025 "Open Topstukken" (Open Collection Highlights) project.
 
-# Use the tool
-- [live demo](https://maastrichtu-library.github.io/omekas-to-wikidata/)
-- [test version](https://maastrichtu-library.github.io/omekas-to-wikidata/test)
-- [development version](https://maastrichtu-library.github.io/omekas-to-wikidata/dev)
-- old prototypes:
-    - [Original prototype](https://maastrichtu-library.github.io/omekas-to-wikidata/dev/prototypes/index.html)
-    - [Mapping](https://maastrichtu-library.github.io/omekas-to-wikidata/dev/prototypes/map.html)
-    - [Reconciliation](https://maastrichtu-library.github.io/omekas-to-wikidata/dev/prototypes/wikimedia-reconciliation.html)
+---
 
-# Links
-[Wikidata Project Page](https://www.wikidata.org/wiki/Wikidata:WikiProject_Open_Topstukken_Maastricht_University_and_Radboud_University)
+## 🚀 Try It Now
 
-# How it works
+**[▶ Launch Live Demo](https://maastrichtu-library.github.io/omekas-to-wikidata/)**
 
-The tool guides users through a 5-step process:
+Start using the tool immediately—no installation required. Process your Omeka S data through our guided 5-step workflow and generate Wikidata-ready QuickStatements.
 
-1. **Input**: Configure Omeka S API endpoint and import JSON data (with automatic CORS handling)
-2. **Mapping**: Map JSON keys to Wikidata properties with load/save functionality
-3. **Reconciliation**: Match data values to existing Wikidata entities
-4. **References**: Placeholder step for future reference configuration
-5. **Export**: Generate QuickStatements for bulk import to Wikidata
+### Other Versions
+- **[Test Version](https://maastrichtu-library.github.io/omekas-to-wikidata/test)** - Preview upcoming features
+- **[Development Version](https://maastrichtu-library.github.io/omekas-to-wikidata/dev)** - Latest experimental changes
 
-## Load/Save Mapping Functionality
+---
 
-In Step 2 (Mapping), you can save and load mapping configurations to reuse them across different datasets:
+## 📚 Documentation
 
-### Save Mapping
-- Click "Save Mapping" to download a JSON file containing all current mappings
-- File includes key-to-property mappings, property metadata, and ignored keys
-- Excludes dataset-specific information (sample values, frequencies)
+### For Everyone
+- **[User Manual](docs/USER-MANUAL.md)** - Complete step-by-step guide for using the tool
+  - Detailed walkthrough of all five steps
+  - Project and file management
+  - Tips, best practices, and troubleshooting
+  - Perfect for librarians, archivists, and collection managers
 
-### Load Mapping
-- Click "Load Mapping" to upload a previously saved mapping configuration
-- Restores all mapped and ignored keys with their Wikidata property assignments
-- Allows you to reuse mappings across similar datasets
+### For Developers & Contributors
+- **[Technical Documentation](docs/DOCUMENTATION.md)** - Developer hub and architecture overview
+- **[Making Your First Edit](docs/FIRST_EDIT_GUIDE.md)** - Get started contributing with Claude Code
+- **[Contributing Guidelines](docs/CONTRIBUTING.md)** - How to contribute to this project
+- **[JavaScript Module Map](docs/JS_MODULE_MAP.md)** - Complete codebase reference
+- **[Entity Schema Guide](docs/Entity-Schema-Guide.md)** - Understanding Wikidata schemas
 
-### JSON Structure Example
-```json
-{
-  "version": "1.0",
-  "createdAt": "2025-06-04T07:26:43.213Z",
-  "entitySchema": "E473",
-  "mappings": {
-    "mapped": [
-      {
-        "key": "dc:title",
-        "linkedDataUri": "http://purl.org/dc/terms/title",
-        "contextMap": {},
-        "property": {
-          "id": "P1476",
-          "label": "title",
-          "description": "published name of a work"
-        },
-        "mappedAt": "2025-06-04T07:26:41.537Z"
-      }
-    ],
-    "ignored": [...]
-  }
-}
-```
+---
 
-## CORS Proxy System
+## 🎯 What Does This Tool Do?
 
-The tool includes an automatic CORS (Cross-Origin Resource Sharing) proxy fallback system to handle Omeka S installations that don't have CORS headers configured.
+The Omeka S to Wikidata tool bridges cultural heritage collections with the semantic web. It helps you:
 
-### How it works
-1. **Direct Access**: First attempts to fetch data directly from the Omeka S API
-2. **Proxy Fallback**: If CORS blocks the request, automatically tries proxy services in order:
-   - CORS Anywhere (Heroku-based)
-   - AllOrigins (reliable public proxy)
-   - JSONProxy (backup option)
-3. **Manual Input**: If all proxies fail, provides manual JSON input option
-4. **Administrator Guidance**: Includes copy-paste email template for requesting CORS configuration
+1. **Import** data from Omeka S APIs (with automatic CORS handling)
+2. **Map** your metadata fields to Wikidata properties using Entity Schemas
+3. **Reconcile** values with existing Wikidata entities to avoid duplicates
+4. **Add references** to document your data sources
+5. **Export** QuickStatements code for bulk import into Wikidata
 
-### For Omeka S Administrators
+**Who is this for?**
+- Librarians and archivists managing digital collections
+- Collection managers at cultural heritage institutions
+- Digital humanities researchers working with linked data
+- Data curators contributing to Wikidata
+
+**No programming required** - the tool provides a visual, step-by-step interface for the entire process.
+
+---
+
+## ⚡ Key Features
+
+### 🔄 Automatic CORS Handling
+Access Omeka S APIs even when CORS headers aren't configured:
+- Tries direct connection first
+- Automatically falls back to proxy services
+- Provides manual JSON input as last resort
+- Includes administrator guidance for CORS configuration
+
+### 💾 Save & Reuse Mappings
+Create mapping templates once, use them many times:
+- Save mapping configurations as reusable templates
+- Load mappings for similar datasets
+- Share mappings with colleagues
+- Separate mappings from actual data
+
+### 🎯 Entity Schema Integration
+Leverage Wikidata's structured schemas:
+- Select appropriate schemas for your item types (paintings, books, etc.)
+- Get intelligent property suggestions
+- Ensure data quality and consistency
+- Follow Wikidata best practices automatically
+
+### 🔗 Smart Reconciliation
+Link to existing Wikidata items to avoid duplicates:
+- Search for matching items in Wikidata
+- Configure property-specific requirements (languages, units, etc.)
+- Edit and validate data before export
+- Track progress across large datasets
+
+### 📦 Project Management
+Never lose your work:
+- Save complete project state at any time
+- Resume work later from saved projects
+- Export mapping templates separately
+- Keep backups of your work
+
+---
+
+## 🛠️ How It Works
+
+The tool guides you through five clear steps:
+
+### 1️⃣ Input
+Configure your Omeka S API endpoint and import JSON data. The tool automatically handles CORS issues and validates your data structure.
+
+### 2️⃣ Mapping
+Map your Omeka S fields to Wikidata properties. Select an Entity Schema to get relevant suggestions, and save your mapping as a reusable template.
+
+### 3️⃣ Reconciliation
+Refine individual values, link items to existing Wikidata entities, and configure property-specific settings like language codes.
+
+### 4️⃣ References
+Add source attribution to your statements. Configure which properties receive which references for proper documentation.
+
+### 5️⃣ Export
+Generate QuickStatements code and import your data into Wikidata. Test in the Wikidata Sandbox before going live.
+
+**[Read the complete User Manual →](docs/USER-MANUAL.md)**
+
+---
+
+## 🔗 Related Links
+
+- **[Wikidata Project Page](https://www.wikidata.org/wiki/Wikidata:WikiProject_Open_Topstukken_Maastricht_University_and_Radboud_University)** - Learn about the Open Topstukken project
+- **[QuickStatements Documentation](specs/QuickStatements-documentation.md)** - Understanding the export format
+- **[GitHub Repository](https://github.com/MaastrichtU-Library/omekas-to-wikidata)** - Source code and issue tracking
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions from developers, documentarians, and users!
+
+**Getting Started:**
+1. Read the **[First Edit Guide](docs/FIRST_EDIT_GUIDE.md)** - Complete walkthrough for new contributors
+2. Check the **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Standards and expectations
+3. Review the **[Technical Documentation](docs/DOCUMENTATION.md)** - Architecture and patterns
+4. Explore the **[JavaScript Module Map](docs/JS_MODULE_MAP.md)** - Navigate the codebase
+
+**Ways to Contribute:**
+- 🐛 Report bugs and issues
+- 💡 Suggest new features
+- 📝 Improve documentation
+- 🔧 Submit code improvements
+- 🧪 Add or improve tests
+- 🌐 Translate the interface
+
+---
+
+## 💡 For Omeka S Administrators
 
 To enable direct API access without proxies, add this to your `.htaccess` file:
 
@@ -95,5 +161,24 @@ To enable direct API access without proxies, add this to your `.htaccess` file:
 
 For production environments, replace `"*"` with specific trusted domains.
 
-# Technical information
-[Tool description](specs/Tool%20description.md)
+---
+
+## 📄 License
+
+[Add license information here]
+
+---
+
+## 🙋 Support & Contact
+
+- **Issues & Bug Reports:** [GitHub Issues](https://github.com/MaastrichtU-Library/omekas-to-wikidata/issues)
+- **Questions:** Open a discussion or issue on GitHub
+- **Project Team:** Maastricht University Library & Radboud University Library
+
+---
+
+## 🌟 Project Status
+
+This tool is actively developed and maintained as part of the Open Topstukken project. We welcome feedback, bug reports, and contributions from the community.
+
+**Latest Updates:** Check the [development version](https://maastrichtu-library.github.io/omekas-to-wikidata/dev) for the newest features.

@@ -15,7 +15,7 @@
   ```
 - Use `git restore` (file) or `git revert` (commit) when the user says "undo"
 - When making changes make sure to keep the documentation up to date.
-- **When modifying any `.js` file:** Update `JS_MODULE_MAP.md` if you:
+- **When modifying any `.js` file:** Update `docs/JS_MODULE_MAP.md` if you:
   - Add/remove exported functions
   - Create new modules or files
   - Change module responsibilities
@@ -206,7 +206,7 @@ src/js/
 - Document APIs and complex functions
 - Keep README up to date
 - Add JSDoc comments to functions when appropriate
-- **Keep JS_MODULE_MAP.md synchronized** - Update whenever JavaScript module structure changes
+- **Keep docs/JS_MODULE_MAP.md synchronized** - Update whenever JavaScript module structure changes
 
 ## Code Replacement Policy
 - **ALWAYS fully replace code** - no fallbacks, no legacy methods, no side-by-side implementations
