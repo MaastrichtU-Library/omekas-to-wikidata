@@ -1,6 +1,6 @@
 # Omeka S to Wikidata Tool - User Manual
 
-**[← Back to Documentation](DOCUMENTATION.md)**
+**[← Back to README](../README.md)** | **[← Back to Technical Documentation](DOCUMENTATION.md)**
 
 ## Table of Contents
 
@@ -1023,4 +1023,4 @@ Q4115189|P854|"https://example.org"|P813|+2025-10-15T00:00:00Z/11
 
 ---
 
-**[← Back to Documentation](DOCUMENTATION.md)**
+**[← Back to README](../README.md)** | **[← Back to Technical Documentation](DOCUMENTATION.md)**
