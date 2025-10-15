@@ -727,6 +727,9 @@ export function renderPropertiesSection(container, totalItems, state) {
 function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignment) {
     const property = mappedKey.property;
 
+    // Check if this is a manual property that cannot accept references
+    const cannotAcceptReferences = ['label', 'description', 'alias'].includes(property.id);
+
     // Get current reference count for this property
     const assignedReferences = state ? state.getPropertyReferences(property.id) : [];
 
@@ -754,8 +757,8 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
     // Create list item
     const listItem = createElement('li', {
         style: {
-            opacity: '1',
-            cursor: 'pointer'
+            opacity: cannotAcceptReferences ? '0.6' : '1',
+            cursor: cannotAcceptReferences ? 'default' : 'pointer'
         }
     });
 
@@ -845,14 +848,14 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
         style: {
             fontSize: '0.85em',
             fontWeight: '500',
-            color: referenceCount > 0 ? '#2ecc71' : '#95a5a6',
-            cursor: 'pointer',
+            color: cannotAcceptReferences ? '#95a5a6' : (referenceCount > 0 ? '#2ecc71' : '#95a5a6'),
+            cursor: cannotAcceptReferences ? 'default' : 'pointer',
             userSelect: 'none'
         }
-    }, referenceCount > 0 ? referenceCountText : 'No references');
+    }, cannotAcceptReferences ? 'No references' : (referenceCount > 0 ? referenceCountText : 'No references'));
 
-    // Add click handler to reference count to open modal
-    if (state) {
+    // Add click handler to reference count to open modal (only if references are allowed)
+    if (state && !cannotAcceptReferences) {
         referenceCountSpan.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent list item click
             openPropertyReferenceModal(
@@ -879,8 +882,8 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
 
     listItem.appendChild(keyItemCompact);
 
-    // Add click handler for quick-assign (clicking anywhere on list item)
-    if (state) {
+    // Add click handler for quick-assign (clicking anywhere on list item) - only if references are allowed
+    if (state && !cannotAcceptReferences) {
         listItem.addEventListener('click', () => {
             // Get currently selected reference types
             const selectedReferenceTypes = state.getSelectedReferenceTypes();
