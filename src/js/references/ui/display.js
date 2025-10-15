@@ -70,6 +70,17 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
     summaryElement.appendChild(countSpan);
     section.appendChild(summaryElement);
 
+    // Add guide text
+    const guideText = createElement('p', {
+        style: {
+            fontSize: '13px',
+            color: '#666',
+            margin: '8px 0 12px 0',
+            padding: '0 12px'
+        }
+    }, 'References are detected automatically from your data. Click "Add custom reference" to add more by hand.');
+    section.appendChild(guideText);
+
     // Create list
     const list = createElement('ul', {
         className: 'key-list'
@@ -661,6 +672,17 @@ export function renderPropertiesSection(container, totalItems, state) {
     summaryElement.appendChild(titleSpan);
     summaryElement.appendChild(countSpan);
     section.appendChild(summaryElement);
+
+    // Add guide text
+    const guideText = createElement('p', {
+        style: {
+            fontSize: '13px',
+            color: '#666',
+            margin: '8px 0 12px 0',
+            padding: '0 12px'
+        }
+    }, 'Click a property to assign selected references. Click the reference count to customize which references are assigned.');
+    section.appendChild(guideText);
 
     // Create list
     const list = createElement('ul', {
