@@ -863,13 +863,8 @@ function createPropertyListItem(mappedKey, totalItems, state, onReferenceAssignm
             // Get currently selected reference types
             const selectedReferenceTypes = state.getSelectedReferenceTypes();
 
-            // Check if any references are selected
-            if (selectedReferenceTypes.length === 0) {
-                showMessage('Please select or add a reference first', 'error', 3000);
-                return;
-            }
-
-            // Assign references to this property
+            // If no references are selected, remove all references from this property
+            // Otherwise, assign the selected references
             state.assignReferencesToProperty(property.id, selectedReferenceTypes);
 
             // Trigger re-render
