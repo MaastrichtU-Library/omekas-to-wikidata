@@ -16,13 +16,27 @@
 
 /**
  * Detects all references across all items in the dataset
- * @param {Array} items - Array of Omeka S items
+ * @param {Array|Object} data - Array of Omeka S items or single item object
  * @returns {Object} Detection results with itemReferences and summary
  * @returns {Object} result.itemReferences - Map of itemId -> array of reference objects
  * @returns {Object} result.summary - Map of referenceType -> {count, examples}
  */
-export function detectReferences(items) {
-    if (!Array.isArray(items) || items.length === 0) {
+export function detectReferences(data) {
+    // Normalize data structure to handle both single item and array formats
+    // This matches the same normalization logic in data-analyzer.js
+    let items = [];
+
+    if (Array.isArray(data)) {
+        items = data;
+    } else if (data && data.items && Array.isArray(data.items)) {
+        // Handle wrapper object: { items: [...] }
+        items = data.items;
+    } else if (data && typeof data === 'object') {
+        // Handle single item object
+        items = [data];
+    }
+
+    if (items.length === 0) {
         return {
             itemReferences: {},
             summary: {}
