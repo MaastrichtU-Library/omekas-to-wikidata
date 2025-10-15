@@ -3,7 +3,8 @@ Software to guide users to import (linked) data from Omeka S systems into Wikida
 
 Developed as part of the 2025 project "Open Topstukken" ("Open Collection Highlights") by Maastricht University Library and Radboud University Library.
 
-**📚 For technical and developer documentation, see [DOCUMENTATION.md](docs/DOCUMENTATION.md)**
+**📖 [User Manual](docs/USER-MANUAL.md)** - Complete guide for using the tool
+**📚 [Technical Documentation](docs/DOCUMENTATION.md)** - For developers and contributors
 
 # Use the tool
 - [live demo](https://maastrichtu-library.github.io/omekas-to-wikidata/)
