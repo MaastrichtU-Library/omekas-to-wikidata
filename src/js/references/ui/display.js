@@ -78,7 +78,7 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
             margin: '8px 0 12px 0',
             padding: '0 12px'
         }
-    }, 'References are detected automatically from your data. Click "Add custom reference" to add more by hand.');
+    }, 'Some references are detected automatically from your data. Click "Add custom reference" to add more by hand.');
     section.appendChild(guideText);
 
     // Create list
@@ -681,7 +681,7 @@ export function renderPropertiesSection(container, totalItems, state) {
             margin: '8px 0 12px 0',
             padding: '0 12px'
         }
-    }, 'Click a property to assign selected references. Click the reference count to customize which references are assigned.');
+    }, 'Click a property to assign selected references. Click the reference counter of a property to customize which references are assigned.');
     section.appendChild(guideText);
 
     // Create list
