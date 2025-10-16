@@ -108,14 +108,16 @@ export async function populateLists(state) {
     if (identifierFields.length > 0) {
         try {
             const mappingPromises = identifierFields.map(async (keyObj) => {
-                // Skip identifiers without a known property ID
+                // Add identifiers without a known property ID to non-linked keys
+                // These include Wikidata entities and ISO language codes that need manual mapping
                 if (keyObj.identifierInfo.propertyId === null) {
                     console.info(
-                        `Skipping identifier field '${keyObj.key}': ` +
+                        `Adding identifier field '${keyObj.key}' to non-linked keys: ` +
                         `Detected as ${keyObj.identifierInfo.type} (${keyObj.identifierInfo.label}) ` +
-                        `but no property mapping is available. ` +
+                        `but no automatic property mapping is available. ` +
                         `Sample value: ${JSON.stringify(keyObj.sampleValue)}`
                     );
+                    keysToAddAsNonLinked.push(keyObj);
                     return null;
                 }
 
