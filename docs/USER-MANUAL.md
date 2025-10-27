@@ -1014,6 +1014,23 @@ If you encounter problems while using the tool, try these solutions first:
   3. Click "Load Project" and select the file you just saved
 - This often resolves temporary issues
 
+#### 6. Start Fresh (If Nothing Else Works)
+- Sometimes a saved project file can become corrupted
+- **Signs of a corrupted save file:**
+  - Tool crashes when loading your project
+  - Strange errors that don't make sense
+  - Data appears incomplete or mixed up
+  - Tool becomes unresponsive after loading
+- **If you suspect corruption:**
+  1. Try starting a completely new project from scratch
+  2. Re-import your original data from Step 1
+  3. If starting fresh works, your save file was likely corrupted
+- **We understand this is not optimal**, but corruption can sometimes happen
+- **To minimize risk of corruption:**
+  - Save regularly (don't wait too long between saves)
+  - Don't close the browser while saving
+  - Keep backup saves at different stages of your work
+
 ### Still Having Problems?
 
 If none of the quick fixes above help, we'd like to know about it! Please report the issue so we can improve the tool.
