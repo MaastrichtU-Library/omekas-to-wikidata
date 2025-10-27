@@ -55,7 +55,7 @@ Complete reference map of all JavaScript modules:
 - Utilities and helpers
 - Common tasks and dependency graph
 
-### [specs/QuickStatements-documentation.md](../specs/QuickStatements-documentation.md)
+### [QuickStatements-documentation.md](QuickStatements-documentation.md)
 QuickStatements export format reference:
 - How the tool generates Wikidata import commands
 - QuickStatements syntax and structure
