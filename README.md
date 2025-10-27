@@ -121,7 +121,7 @@ Generate QuickStatements code and import your data into Wikidata. Test in the Wi
 ## 🔗 Related Links
 
 - **[Wikidata Project Page](https://www.wikidata.org/wiki/Wikidata:WikiProject_Open_Topstukken_Maastricht_University_and_Radboud_University)** - Learn about the Open Topstukken project
-- **[QuickStatements Documentation](specs/QuickStatements-documentation.md)** - Understanding the export format
+- **[QuickStatements Documentation](docs/QuickStatements-documentation.md)** - Understanding the export format
 - **[GitHub Repository](https://github.com/MaastrichtU-Library/omekas-to-wikidata)** - Source code and issue tracking
 
 ---
