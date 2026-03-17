@@ -73,7 +73,7 @@
                 <div class="input-container">
                     <div class="form-group">
                         <label for="api-url">API URL:</label>
-                        <input type="text" id="api-url" value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&per_page=2" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
+                        <input type="text" id="api-url" value="https://radboudcollections.omeka.net/api/items?" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
                         <button id="fetch-data" class="button button--primary primary-button">Fetch Data</button>
                         <div class="input-alternatives">
                             <span class="alternative-text">or</span>
@@ -129,10 +129,25 @@
                 </div>
                 <div class="mapping-container">
                     
+                    <div class="mapping-actions">
+                        <div class="mapping-file-actions">
+                            <input type="file" id="load-mapping-file" accept=".json" style="display: none;">
+                            <button id="load-mapping" class="button button--secondary">Load Mapping</button>
+                            <button id="save-mapping" class="button button--secondary">Save Mapping</button>
+                        </div>
+                        <div class="mapping-property-actions">
+                            <label for="field-order-mode" class="inline-label">Field order:</label>
+                            <select id="field-order-mode" class="select">
+                                <option value="template" selected>Template order (default)</option>
+                                <option value="frequency">Sort by frequency</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="key-sections">
-                        
+
                         <details class="section" open>
-                            <summary>Non-linked Keys</summary>
+                            <summary>Non-linked Keys <span id="field-order-indicator" class="badge" style="display: none; margin-left: 8px;"></span></summary>
                             <ul id="non-linked-keys" class="key-list">
                                 <li class="placeholder">Keys will appear here after fetching data</li>
                             </ul>
@@ -151,16 +166,6 @@
                                 <li class="placeholder">Ignored keys will appear here</li>
                             </ul>
                         </details>
-                    </div>
-                    
-                    <div class="mapping-actions">
-                        <div class="mapping-file-actions">
-                            <input type="file" id="load-mapping-file" accept=".json" style="display: none;">
-                            <button id="load-mapping" class="button button--secondary">Load Mapping</button>
-                            <button id="save-mapping" class="button button--secondary">Save Mapping</button>
-                        </div>
-                        <div class="mapping-property-actions">
-                        </div>
                     </div>
                     
                     <!-- Entity Schema Overview Section -->

@@ -41,8 +41,11 @@ export function setupState() {
         apiUrl: '',
         apiKey: '',
         pagination: 10,
+        allFetchedData: null,
         fetchedData: null,
         selectedExample: null,
+        resourceTemplates: [],
+        selectedTemplates: [],
         
         // Step 2: Mapping
         entitySchema: '', // Deprecated - use selectedEntitySchema instead
@@ -52,6 +55,7 @@ export function setupState() {
             nonLinkedKeys: [],
             mappedKeys: [],
             ignoredKeys: [],
+            sortMode: 'template',
             transformationBlocks: {}, // mappingId -> array of transformation blocks
             selectedTransformationFields: {} // mappingId -> selected field key
         },

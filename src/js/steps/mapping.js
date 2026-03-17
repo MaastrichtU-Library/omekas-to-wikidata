@@ -109,6 +109,24 @@ export function setupMappingStep(state) {
     const saveMappingBtn = document.getElementById('save-mapping');
     const loadMappingFileInput = document.getElementById('load-mapping-file');
     
+    // Initialize field order mode control
+    const fieldOrderModeSelect = document.getElementById('field-order-mode');
+    if (fieldOrderModeSelect) {
+        try {
+            const current = state.getState();
+            const mode = (current && current.mappings && current.mappings.sortMode) ? current.mappings.sortMode : 'template';
+            fieldOrderModeSelect.value = mode;
+        } catch (_) {
+            fieldOrderModeSelect.value = 'template';
+        }
+        fieldOrderModeSelect.addEventListener('change', (e) => {
+            const newMode = e.target.value;
+            state.updateState('mappings.sortMode', newMode, false);
+            // Refresh lists to apply new ordering
+            populateLists(state);
+        });
+    }
+
     // Initialize Entity Schema selector
     const selectorContainer = document.getElementById('entity-schema-selector-container');
     if (selectorContainer) {

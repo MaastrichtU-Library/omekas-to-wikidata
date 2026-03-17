@@ -38,8 +38,8 @@ test.describe('Step 1 - Input Tests @input', () => {
 
     test('default API URL is populated', async ({ page }) => {
       const defaultUrl = await app.input.apiUrlInput.inputValue();
-      expect(defaultUrl).toContain('digitalcollections.library.maastrichtuniversity.nl');
       expect(defaultUrl).toContain('/api/items');
+      expect(defaultUrl.length).toBeGreaterThan(10);
     });
   });
 
@@ -120,6 +120,55 @@ test.describe('Step 1 - Input Tests @input', () => {
         const statusText = await app.getDataStatusText();
         expect(statusText).toContain('3'); // Should show 3 items
         await expect(app.input.proceedToMappingBtn).toBeEnabled();
+      });
+    });
+
+    test('template selection controls gate proceeding and filter the mapping dataset', async ({ page }) => {
+      const templatedData = `{
+        "metadata": {"total": 2, "source": "test-templates"},
+        "items": [
+          {
+            "id": 1,
+            "@type": ["o:Item", "schema:Book"],
+            "o:resource_template": {"o:id": 11, "o:label": "Books"},
+            "dcterms:title": [{"property_id": 1, "@value": "Book Title"}],
+            "dcterms:creator": [{"property_id": 2, "@value": "Author Name"}]
+          },
+          {
+            "id": 2,
+            "@type": ["o:Item", "schema:Person"],
+            "o:resource_template": {"o:id": 22, "o:label": "People"},
+            "dcterms:description": [{"property_id": 3, "@value": "Person description"}]
+          }
+        ]
+      }`;
+
+      await test.step('Load templated data', async () => {
+        await app.openManualJsonInput();
+        await app.enterManualJson(templatedData);
+        await app.processManualJson();
+      });
+
+      await test.step('Require at least one template selection before proceeding', async () => {
+        await expect(app.input.templateCheckboxes).toHaveCount(2);
+        await expect(app.input.proceedToMappingBtn).toBeDisabled();
+
+        await app.input.templateCheckboxes.nth(0).check();
+        await expect(app.input.proceedToMappingBtn).toBeEnabled();
+
+        await app.input.clearTemplateSelectionBtn.click();
+        await expect(app.input.proceedToMappingBtn).toBeDisabled();
+      });
+
+      await test.step('Proceed with one selected template and verify mapping keys are filtered', async () => {
+        await app.input.templateCheckboxes.nth(0).check();
+        await app.proceedToMapping();
+        await page.waitForTimeout(1000);
+
+        const nonLinkedTexts = await app.getNonLinkedKeyTexts();
+        expect(nonLinkedTexts.some(text => text.includes('dcterms:title'))).toBeTruthy();
+        expect(nonLinkedTexts.some(text => text.includes('dcterms:creator'))).toBeTruthy();
+        expect(nonLinkedTexts.some(text => text.includes('dcterms:description'))).toBeFalsy();
       });
     });
 

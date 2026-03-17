@@ -22,6 +22,65 @@
  */
 import { eventSystem } from '../events.js';
 import { fetchWithCorsProxy, getCorsExplanation, getAdminEmailTemplate } from '../utils/cors-proxy.js';
+import { createButton, createElement } from '../ui/components.js';
+
+function normalizeItems(data) {
+    if (Array.isArray(data)) {
+        return data;
+    }
+
+    if (data?.items && Array.isArray(data.items)) {
+        return data.items;
+    }
+
+    if (data && typeof data === 'object') {
+        return [data];
+    }
+
+    return [];
+}
+
+function getSelectedExampleFromData(data) {
+    const items = normalizeItems(data);
+    return items[0] || null;
+}
+
+function wrapItemsLikeOriginalData(originalData, filteredItems) {
+    if (Array.isArray(originalData)) {
+        return filteredItems;
+    }
+
+    if (originalData?.items && Array.isArray(originalData.items)) {
+        return {
+            ...originalData,
+            items: filteredItems
+        };
+    }
+
+    return filteredItems[0] || null;
+}
+
+function getResourceTemplateId(resourceTemplate) {
+    if (!resourceTemplate) {
+        return '';
+    }
+
+    const rawId = (
+        typeof resourceTemplate === 'object'
+            ? (resourceTemplate['o:id'] || resourceTemplate['@id'] || resourceTemplate.id)
+            : resourceTemplate
+    );
+
+    if (typeof rawId === 'number') {
+        return String(rawId);
+    }
+
+    if (typeof rawId === 'string') {
+        return rawId.includes('/') ? rawId.split('/').pop() : rawId;
+    }
+
+    return rawId ? JSON.stringify(rawId) : '';
+}
 
 /**
  * Initializes the input step interface with comprehensive data acquisition capabilities
@@ -66,6 +125,11 @@ export function setupInputStep(state) {
     const manualJsonTextarea = document.getElementById('manual-json-textarea');
     const processManualJsonButton = document.getElementById('process-manual-json-button');
     const cancelManualJsonButton = document.getElementById('cancel-manual-json');
+
+    function updateActiveInputData(data, markUnsaved = true) {
+        state.updateState('fetchedData', data, markUnsaved);
+        state.updateState('selectedExample', getSelectedExampleFromData(data), markUnsaved);
+    }
     
     // Set up raw JSON button to open complete API URL
     if (viewRawJsonBtn) {
@@ -103,33 +167,36 @@ export function setupInputStep(state) {
                 if (dataStatus) {
                     dataStatus.innerHTML = '<p>Attempting to fetch data...</p>';
                 }
+
+                // First, attempt to fetch resource templates to have proper names and order
+                let resourceTemplates = [];
+                state.updateState('resourceTemplates', resourceTemplates, false);
+                try {
+                    const baseUrl = apiUrl.split('/api/')[0];
+                    const templatesUrl = `${baseUrl}/api/resource_templates`;
+                    const templatesResult = await fetchWithCorsProxy(templatesUrl);
+                    if (templatesResult.success && Array.isArray(templatesResult.data)) {
+                        resourceTemplates = templatesResult.data;
+                        state.updateState('resourceTemplates', resourceTemplates, false);
+                        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
+                    }
+                } catch (templateError) {
+                    console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
+                }
                 
                 // Fetch data using CORS proxy fallback system
                 const result = await fetchWithCorsProxy(apiUrl);
                 const data = result.data;
-                
-                // Show success message with method used
-                if (dataStatus && result.method === 'proxy') {
-                    const proxyMessage = document.createElement('div');
-                    proxyMessage.className = 'proxy-success-message';
-                    proxyMessage.innerHTML = `
-                        <p><strong>ℹ️ CORS Proxy Used</strong></p>
-                        <p>Direct access was blocked by CORS policy. Successfully fetched data using <strong>${result.proxyUsed}</strong>.</p>
-                        <details>
-                            <summary>What does this mean?</summary>
-                            <p>The Omeka S server doesn't allow direct browser access. We used a proxy service to fetch your data safely. All data remains public and unmodified.</p>
-                        </details>
-                    `;
-                    dataStatus.appendChild(proxyMessage);
-                }
-                
+
                 // Validate JSON structure
                 if (!isValidOmekaResponse(data)) {
                     throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
                 }
                 
                 // Process the successful data
-                processSuccessfulData(data, result.method);
+                processSuccessfulData(data, result.method, {
+                    proxyUsed: result.proxyUsed || null
+                });
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -140,6 +207,9 @@ export function setupInputStep(state) {
                 }
                 
                 // Clear any partial data
+                state.updateState('allFetchedData', null, false);
+                state.updateState('resourceTemplates', [], false);
+                state.updateState('selectedTemplates', [], false);
                 state.updateState('fetchedData', null);
                 state.updateState('selectedExample', null);
                 if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'none';
@@ -212,9 +282,8 @@ export function setupInputStep(state) {
             // Restore data status if there was previous data
             const currentState = state.getState();
             if (currentState.fetchedData) {
-                displayData(currentState.fetchedData, 'restored');
+                displayData(currentState.allFetchedData || currentState.fetchedData, 'restored');
                 if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'inline-block';
-                if (proceedToMappingBtn) proceedToMappingBtn.disabled = false;
             } else {
                 if (dataStatus) {
                     dataStatus.innerHTML = '<p class="placeholder">Data status will appear here after fetching</p>';
@@ -240,6 +309,7 @@ export function setupInputStep(state) {
             }
             
             // Process the manually entered data
+            state.updateState('resourceTemplates', [], false);
             processSuccessfulData(data, 'manual');
             
             // Hide the manual input area
@@ -454,100 +524,253 @@ export function setupInputStep(state) {
      * @description
      * Processing steps:
      * 1. Stores validated data in application state
-     * 2. Selects representative example item for UI display
+     * 2. Prepares active data for optional template-based filtering
      * 3. Updates interface to show successful data acquisition
-     * 4. Enables navigation to mapping step
+     * 4. Enables navigation to mapping step when the active selection is valid
      * 5. Provides user feedback about data size and characteristics
      * 
      * The function serves as the gateway between data acquisition and the core
      * mapping workflow, ensuring all subsequent steps have access to properly
      * formatted and validated data.
      */
-    function processSuccessfulData(data, method = 'direct') {
-        // Store fetched data
-        state.updateState('fetchedData', data);
-        
-        // Automatically select first item as example
-        let selectedExample = null;
-        if (Array.isArray(data)) {
-            selectedExample = data[0];
-        } else if (data.items && Array.isArray(data.items)) {
-            selectedExample = data.items[0];
-        } else if (typeof data === 'object') {
-            selectedExample = data;
-        }
-        
-        if (selectedExample) {
-            state.updateState('selectedExample', selectedExample);
-            // Mark step 1 as completed
-            state.completeStep(1);
-        }
-        
+    function processSuccessfulData(data, method = 'direct', details = {}) {
+        // Preserve the original dataset while the active working dataset may be filtered by template
+        state.updateState('selectedTemplates', [], false);
+        state.updateState('allFetchedData', data, false);
+        state.updateState('fetchedData', data, false);
+        state.updateState('selectedExample', null, false);
+
         // Update UI
-        displayData(data, method);
-        
+        displayData(data, method, details);
+
         // Show raw JSON button
         if (viewRawJsonBtn) viewRawJsonBtn.style.display = 'inline-block';
-        
-        // Enable continue to mapping button
-        if (proceedToMappingBtn) proceedToMappingBtn.disabled = false;
+
+        // Note: proceed button will be enabled/disabled by template selection UI
     }
 
     // Helper function to display data
-    function displayData(data, method = 'direct') {
-        if (dataStatus) {
-            let itemCount = 0;
-            let propertyCount = 0;
-            let sampleItem = null;
-            
-            // Analyze data structure
-            if (Array.isArray(data)) {
-                itemCount = data.length;
-                sampleItem = data[0];
-            } else if (data.items && Array.isArray(data.items)) {
-                itemCount = data.items.length;
-                sampleItem = data.items[0];
-            } else if (typeof data === 'object') {
-                itemCount = 1;
-                sampleItem = data;
-            }
-            
-            // Count properties in sample item
-            if (sampleItem && typeof sampleItem === 'object') {
-                propertyCount = Object.keys(sampleItem).length;
-            }
-            
-            // Extract some sample properties for preview
-            let sampleProperties = [];
-            if (sampleItem) {
-                const keys = Object.keys(sampleItem);
-                sampleProperties = keys.slice(0, 5); // Show first 5 properties
-            }
-            
-            // Create method-specific success message
-            let methodMessage = '';
-            if (method === 'manual') {
-                methodMessage = '<p><strong>📋 Data processed from manual input</strong></p>';
-            } else if (method === 'direct') {
-                methodMessage = '<p><strong>✅ Data loaded successfully via direct connection</strong></p>';
-            } else if (method === 'proxy') {
-                methodMessage = '<p><strong>✅ Data loaded successfully via CORS proxy</strong></p>';
-            } else if (method === 'restored') {
-                methodMessage = '<p><strong>📂 Data restored from previous session</strong></p>';
-            }
-            
-            dataStatus.innerHTML = `
-                <div class="data-summary">
-                    ${methodMessage}
-                    <ul>
-                        <li>Items found: ${itemCount}</li>
-                        <li>Properties per item: ${propertyCount}</li>
-                        ${sampleProperties.length > 0 ? `<li>Sample properties: ${sampleProperties.join(', ')}${propertyCount > 5 ? '...' : ''}</li>` : ''}
-                    </ul>
-                    <p><em>Click "Continue to Mapping" to proceed, or "View Raw JSON" to see the full structure.</em></p>
-                </div>
-            `;
+    function displayData(data, method = 'direct', details = {}) {
+        if (!dataStatus) {
+            return;
         }
+
+        const itemsArray = normalizeItems(data);
+        const itemCount = itemsArray.length;
+        const sampleItem = itemsArray[0] || null;
+        const propertyCount = sampleItem && typeof sampleItem === 'object'
+            ? Object.keys(sampleItem).length
+            : 0;
+
+        let sampleProperties = [];
+        if (sampleItem) {
+            const keys = Object.keys(sampleItem);
+            sampleProperties = keys.slice(0, 5);
+        }
+
+        let methodMessage = '';
+        if (method === 'manual') {
+            methodMessage = 'Data processed from manual input';
+        } else if (method === 'direct') {
+            methodMessage = 'Data loaded successfully via direct connection';
+        } else if (method === 'proxy') {
+            methodMessage = 'Data loaded successfully via CORS proxy';
+        } else if (method === 'restored') {
+            methodMessage = 'Data restored from previous session';
+        }
+
+        const templateStats = new Map();
+        const allTemplates = state.getState().resourceTemplates || [];
+
+        itemsArray.forEach(item => {
+            const resourceTemplate = item?.['o:resource_template'];
+            if (!resourceTemplate) {
+                return;
+            }
+
+            const id = getResourceTemplateId(resourceTemplate);
+            let label = '';
+            const templateDefinition = allTemplates.find(template => String(template['o:id']) === id);
+
+            if (templateDefinition) {
+                label = templateDefinition['o:label'] || '';
+            }
+
+            if (!label && typeof resourceTemplate === 'object') {
+                label = resourceTemplate['o:label'] || resourceTemplate.label || '';
+            }
+
+            if (!label && Array.isArray(item?.['@type'])) {
+                const genericTypes = new Set(['o:Item', 'o:Resource', 'o:Media']);
+                const candidate = item['@type'].find(type => typeof type === 'string' && !genericTypes.has(type));
+                if (candidate) {
+                    label = candidate;
+                }
+            }
+
+            const key = id || 'unknown';
+            const entry = templateStats.get(key) || { count: 0, id, label };
+            entry.count += 1;
+            if (!entry.label && label) {
+                entry.label = label;
+            }
+            templateStats.set(key, entry);
+        });
+
+        const currentState = state.getState();
+        const selectedTemplateIds = new Set(currentState.selectedTemplates || []);
+        const templateEntries = Array.from(templateStats.values()).sort((a, b) => b.count - a.count);
+
+        const summaryContainer = createElement('div', { className: 'data-summary' });
+        summaryContainer.appendChild(
+            createElement('p', {}, [
+                createElement('strong', {}, methodMessage)
+            ])
+        );
+
+        if (method === 'proxy' && details.proxyUsed) {
+            summaryContainer.appendChild(
+                createElement('p', { className: 'proxy-success-message' }, `Proxy used: ${details.proxyUsed}`)
+            );
+        }
+
+        const summaryList = createElement('ul');
+        summaryList.appendChild(createElement('li', {}, `Items found: ${itemCount}`));
+        summaryList.appendChild(createElement('li', {}, `Properties per item: ${propertyCount}`));
+        if (sampleProperties.length > 0) {
+            const suffix = propertyCount > 5 ? '...' : '';
+            summaryList.appendChild(
+                createElement('li', {}, `Sample properties: ${sampleProperties.join(', ')}${suffix}`)
+            );
+        }
+        summaryContainer.appendChild(summaryList);
+
+        if (templateEntries.length > 0) {
+            const templateSection = createElement('div', { className: 'template-selection' });
+            templateSection.appendChild(createElement('h4', {}, 'Items by resource template'));
+
+            const templateChoices = createElement('div', { className: 'template-choices' });
+            const checkboxes = templateEntries.map(templateEntry => {
+                const checkbox = createElement('input', {
+                    type: 'checkbox',
+                    className: 'template-checkbox',
+                    dataset: {
+                        templateId: templateEntry.id
+                    }
+                });
+                checkbox.checked = selectedTemplateIds.has(templateEntry.id);
+
+                const templateName = templateEntry.label?.trim()
+                    ? `Resource Template ID=${templateEntry.id} (${templateEntry.label.trim()})`
+                    : `Resource Template ID=${templateEntry.id}`;
+
+                templateChoices.appendChild(
+                    createElement('label', { className: 'template-choice' }, [
+                        checkbox,
+                        ` ${templateName} `,
+                        createElement('span', { className: 'muted' }, `(${templateEntry.count} items)`)
+                    ])
+                );
+
+                return checkbox;
+            });
+            templateSection.appendChild(templateChoices);
+
+            const templateActions = createElement('div', {
+                className: 'template-actions',
+                style: {
+                    marginTop: '8px'
+                }
+            });
+            const selectAllButton = createButton('Select all', {
+                id: 'select-all-templates'
+            });
+            const clearButton = createButton('Clear', {
+                id: 'clear-template-selection'
+            });
+            templateActions.appendChild(selectAllButton);
+            templateActions.appendChild(clearButton);
+            templateSection.appendChild(templateActions);
+
+            templateSection.appendChild(
+                createElement('p', { className: 'hint' }, [
+                    createElement('em', {}, 'Select which template(s) to include. Proceeding will only use items from the selected template(s).')
+                ])
+            );
+            summaryContainer.appendChild(templateSection);
+
+            const recompute = () => {
+                const selectedIds = checkboxes
+                    .filter(checkbox => checkbox.checked)
+                    .map(checkbox => checkbox.dataset.templateId);
+
+                state.updateState('selectedTemplates', selectedIds, false);
+
+                if (selectedIds.length === 0) {
+                    state.updateState('fetchedData', state.getState().allFetchedData, false);
+                    state.updateState('selectedExample', null, false);
+                    if (proceedToMappingBtn) {
+                        proceedToMappingBtn.disabled = true;
+                    }
+                    return;
+                }
+
+                const filteredItems = itemsArray.filter(item => {
+                    const templateId = getResourceTemplateId(item?.['o:resource_template']);
+                    return selectedIds.includes(templateId);
+                });
+                const filteredData = wrapItemsLikeOriginalData(data, filteredItems);
+                updateActiveInputData(filteredData);
+                state.completeStep(1);
+
+                if (proceedToMappingBtn) {
+                    proceedToMappingBtn.disabled = filteredItems.length === 0;
+                }
+            };
+
+            checkboxes.forEach(checkbox => checkbox.addEventListener('change', recompute));
+            selectAllButton.addEventListener('click', () => {
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                recompute();
+            });
+            clearButton.addEventListener('click', () => {
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                recompute();
+            });
+
+            if (selectedTemplateIds.size > 0) {
+                recompute();
+            } else if (templateEntries.length === 1 && checkboxes[0]) {
+                checkboxes[0].checked = true;
+                recompute();
+            } else if (proceedToMappingBtn) {
+                proceedToMappingBtn.disabled = true;
+            }
+        } else {
+            summaryContainer.appendChild(
+                createElement('p', { className: 'hint' }, [
+                    createElement('em', {}, 'No resource template metadata detected. All items will be used.')
+                ])
+            );
+            updateActiveInputData(data, false);
+            state.completeStep(1);
+            if (proceedToMappingBtn) {
+                proceedToMappingBtn.disabled = false;
+            }
+        }
+
+        summaryContainer.appendChild(
+            createElement('p', {}, [
+                createElement('em', {}, 'Click "Continue to Mapping" to proceed, or "View Raw JSON" to see the full structure.')
+            ])
+        );
+
+        dataStatus.innerHTML = '';
+        dataStatus.appendChild(summaryContainer);
     }
     
     // Helper function to get dummy data
