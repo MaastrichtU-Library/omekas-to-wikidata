@@ -25,12 +25,18 @@ function extractDomain(url) {
 
 /**
  * Configuration for available CORS proxy services
- * Ordered by success rate: CORS Proxy (corsproxy.io) → AllOrigins (fixed) → Community Proxy → ThingProxy → YQL Proxy
+ * Ordered by currently verified availability for public Omeka endpoints.
  */
 const CORS_PROXIES = [
     {
-        name: 'CORS Proxy (corsproxy.io)',
-        transform: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        name: 'CodeTabs Proxy',
+        transform: (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
+        parseResponse: (response) => response,
+        headers: {}
+    },
+    {
+        name: 'Community CORS Proxy (CORS.lol)',
+        transform: (url) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
         parseResponse: (response) => response,
         headers: {}
     },
@@ -69,32 +75,33 @@ const CORS_PROXIES = [
             throw new Error('AllOrigins returned unexpected response format');
         },
         headers: {}
-    },
-    {
-        name: 'Community CORS Proxy (CORS.lol)',
-        transform: (url) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
-        parseResponse: (response) => response,
-        headers: {}
-    },
-    {
-        name: 'ThingProxy',
-        transform: (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
-        parseResponse: (response) => response,
-        headers: {}
-    },
-    {
-        name: 'YQL Proxy',
-        transform: (url) => `https://query.yahooapis.com/v1/public/yql?q=${encodeURIComponent(`select * from json where url="${url}"`)}&format=json&env=store://datatables.org/alltableswithkeys`,
-        parseResponse: (response) => {
-            // YQL wraps response in query.results
-            if (response && response.query && response.query.results && response.query.results.json) {
-                return response.query.results.json;
-            }
-            throw new Error('YQL returned unexpected response format');
-        },
-        headers: {}
     }
 ];
+
+function isJsonContentType(contentType) {
+    if (!contentType) {
+        return false;
+    }
+
+    const mediaType = contentType.split(';')[0].trim().toLowerCase();
+    return mediaType === 'application/json' || mediaType.endsWith('+json');
+}
+
+async function parseJsonResponse(response, sourceName) {
+    const contentType = response.headers.get('content-type');
+
+    if (isJsonContentType(contentType)) {
+        return response.json();
+    }
+
+    const textData = await response.text();
+
+    try {
+        return JSON.parse(textData);
+    } catch {
+        throw new Error(`${sourceName} returned non-JSON content: ${contentType || 'unknown content type'}`);
+    }
+}
 
 /**
  * Attempts to fetch data using direct request first, then CORS proxies as fallback
@@ -120,12 +127,7 @@ export async function fetchWithCorsProxy(url, options = {}) {
                 throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
             }
 
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Response is not valid JSON. Please check the API URL.');
-            }
-
-            const data = await response.json();
+            const data = await parseJsonResponse(response, 'Response');
 
             return {
                 data,
@@ -174,22 +176,7 @@ export async function fetchWithCorsProxy(url, options = {}) {
                 throw new Error(`Proxy ${proxy.name} returned ${response.status}: ${response.statusText}`);
             }
 
-            // Check content type
-            const contentType = response.headers.get('content-type');
-
-            let rawData;
-            if (contentType && contentType.includes('application/json')) {
-                rawData = await response.json();
-            } else {
-                // If not JSON, try to parse as text first
-                const textData = await response.text();
-                try {
-                    rawData = JSON.parse(textData);
-                } catch {
-                    throw new Error(`${proxy.name} returned non-JSON content: ${contentType}`);
-                }
-            }
-
+            const rawData = await parseJsonResponse(response, proxy.name);
             const data = proxy.parseResponse(rawData);
 
             console.log(`✅ Fetched via ${proxy.name}`);
