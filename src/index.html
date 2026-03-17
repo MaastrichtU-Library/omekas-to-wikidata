@@ -73,7 +73,13 @@
                 <div class="input-container">
                     <div class="form-group">
                         <label for="api-url">API URL:</label>
-                        <input type="text" id="api-url" value="https://radboudcollections.omeka.net/api/items?" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
+                        <input type="text" id="api-url" value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&amp;per_page=2" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
+                        <label for="api-url-preset">Sample API URLs:</label>
+                        <select id="api-url-preset" onchange="if (this.value) document.getElementById('api-url').value = this.value;">
+                            <option value="">Keep current API URL</option>
+                            <option value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&amp;per_page=2">Maastricht University demo</option>
+                            <option value="https://radboudcollections.omeka.net/api/items?page=5&amp;per_page=2">Radboud Collections demo</option>
+                        </select>
                         <button id="fetch-data" class="button button--primary primary-button">Fetch Data</button>
                         <div class="input-alternatives">
                             <span class="alternative-text">or</span>
