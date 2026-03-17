@@ -257,6 +257,7 @@ The application follows a **modular, event-driven architecture**:
 ### **utils/cors-proxy.js**
 - Purpose: Handle CORS issues with external APIs
 - Key exports: `fetchWithCorsProxy()`, `getCorsExplanation()`, `generateCorsConfig()`
+- Features: Accepts JSON-LD (`application/ld+json`) direct API responses and falls back to verified public proxies such as CodeTabs for CORS-blocked endpoints
 
 ### **utils/property-types.js**
 - Purpose: Property type detection and input handling
