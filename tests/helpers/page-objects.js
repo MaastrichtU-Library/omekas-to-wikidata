@@ -37,6 +37,9 @@ export class OmekaToWikidataPage {
       fetchDataBtn: page.locator('#fetch-data'),
       loadingIndicator: page.locator('#loading'),
       dataStatus: page.locator('#data-status'),
+      templateCheckboxes: page.locator('.template-checkbox'),
+      selectAllTemplatesBtn: page.locator('#select-all-templates'),
+      clearTemplateSelectionBtn: page.locator('#clear-template-selection'),
       viewRawJsonBtn: page.locator('#view-raw-json'),
       proceedToMappingBtn: page.locator('#proceed-to-mapping'),
       manualJsonButton: page.locator('#manual-json-button'),
@@ -58,6 +61,8 @@ export class OmekaToWikidataPage {
       loadMappingBtn: page.locator('#load-mapping'),
       saveMappingBtn: page.locator('#save-mapping'),
       loadMappingFileInput: page.locator('#load-mapping-file'),
+      fieldOrderModeSelect: page.locator('#field-order-mode'),
+      fieldOrderIndicator: page.locator('#field-order-indicator'),
       backToInputBtn: page.locator('#back-to-input'),
       proceedToReconciliationBtn: page.locator('#proceed-to-reconciliation'),
       testMappingModelBtn: page.locator('#test-mapping-model'),
@@ -91,7 +96,8 @@ export class OmekaToWikidataPage {
    * Navigate to the application homepage
    */
   async goto() {
-    await this.page.goto('/');
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:8080';
+    await this.page.goto(`${baseUrl}/src/`);
   }
 
   /**
@@ -300,6 +306,14 @@ export class OmekaToWikidataPage {
   async getNonLinkedKeysCount() {
     const items = this.mapping.nonLinkedKeys.locator('li:not(.placeholder)');
     return await items.count();
+  }
+
+  /**
+   * Get text content for non-linked key items
+   * @returns {Promise<string[]>} Visible non-linked key texts
+   */
+  async getNonLinkedKeyTexts() {
+    return await this.mapping.nonLinkedKeys.locator('li:not(.placeholder)').allTextContents();
   }
 
   /**

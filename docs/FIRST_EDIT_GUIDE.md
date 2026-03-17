@@ -188,25 +188,25 @@ This repository uses an automated deployment system that copies code from specif
 
 | Source Branch | Source Directory | Destination in `main` | URL Path | Purpose |
 |---------------|------------------|----------------------|----------|---------|
-| `dev` | `src/` | `src/dev/` | `[website-url]/dev` | Latest development version |
-| `test` | `src/` | `src/test/` | `[website-url]/test` | Staged testing version |
+| `dev` | `src/` | `docs/dev/` | `[website-url]/dev` | Latest development version |
+| `test` | `src/` | `docs/test/` | `[website-url]/test` | Staged testing version |
 
 **How it works:**
 
 1. **Development workflow:**
    - Make changes in your feature branch
    - Push to the `dev` branch
-   - Changes are automatically copied to `main/src/dev/`
+   - Changes are automatically copied to `main/docs/dev/`
    - Access at `[website-url]/dev` for testing
 
 2. **Testing workflow:**
    - Push stable changes to the `test` branch
-   - Changes are automatically copied to `main/src/test/`
+   - Changes are automatically copied to `main/docs/test/`
    - Share `[website-url]/test` with testers for feedback
 
 3. **Production workflow:**
    - Manually merge to `main` after thorough testing
-   - Production code lives in `main/src/`
+   - Production code is deployed from `main/src/` into the root of `main/docs/`
 
 ### Important Notes
 

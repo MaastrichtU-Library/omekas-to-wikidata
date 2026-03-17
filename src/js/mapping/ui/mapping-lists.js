@@ -23,21 +23,48 @@ const proceedToReconciliationBtn = document.getElementById('proceed-to-reconcili
  */
 export async function populateLists(state) {
     const currentState = state.getState();
-    
+
     if (!currentState.fetchedData) {
         return;
     }
-    
+
+    // Determine field ordering mode (default: template order)
+    const sortMode = (currentState.mappings && currentState.mappings.sortMode) ? currentState.mappings.sortMode : 'template';
+
+    // Update UI indicator for ordering mode
+    const indicator = document.getElementById('field-order-indicator');
+    if (indicator) {
+        if (sortMode === 'frequency') {
+            indicator.textContent = 'Sorted by frequency';
+            indicator.style.display = '';
+        } else if (sortMode === 'template') {
+            indicator.textContent = 'Sorted by template order';
+            indicator.style.display = '';
+        } else {
+            indicator.textContent = '';
+            indicator.style.display = 'none';
+        }
+    }
+
     // Process value-level identifiers in the fetched data
     const processedData = await processItemsForValueIdentifiers(currentState.fetchedData);
-    
+
     // Update state with processed data (maintains original fetchedData reference)
     if (processedData !== currentState.fetchedData) {
         state.updateState('fetchedData', processedData);
     }
-    
-    // Analyze all keys from the complete dataset
-    const keyAnalysis = await extractAndAnalyzeKeys(processedData);
+
+    // Analyze all keys from the complete dataset (respect ordering mode)
+    const analysisOptions = { sortMode };
+    if (sortMode === 'template') {
+        analysisOptions.resourceTemplates = currentState.resourceTemplates;
+        analysisOptions.selectedTemplateIds = currentState.selectedTemplates;
+    }
+    const keyAnalysis = await extractAndAnalyzeKeys(processedData, analysisOptions);
+
+    // Build a stable order index map based on analyzer output
+    const keyOrderIndex = new Map();
+    keyAnalysis.forEach((k, idx) => keyOrderIndex.set(k.key, idx));
     
     // Initialize arrays if they don't exist in state
     state.ensureMappingArrays();
@@ -153,8 +180,10 @@ export async function populateLists(state) {
         }
     }
     
-    // Add non-identifier fields to non-linked keys
-    keysToAddAsNonLinked.push(...nonIdentifierFields);
+    // Merge failed auto-mapped identifier fields with non-identifier fields
+    // and restore the analyzer's original order to avoid reordering by type
+    const mergedNonLinked = [...keysToAddAsNonLinked, ...nonIdentifierFields]
+        .sort((a, b) => (keyOrderIndex.get(a.key || a) ?? Number.MAX_SAFE_INTEGER) - (keyOrderIndex.get(b.key || b) ?? Number.MAX_SAFE_INTEGER));
     
     // Add ignored keys to ignored list
     const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...ignoredKeys];
@@ -163,7 +192,7 @@ export async function populateLists(state) {
     const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.filter(k => 
         !keyAnalysis.find(ka => ka.key === (k.key || k))
     );
-    const allNonLinkedKeys = [...currentNonLinkedKeys, ...keysToAddAsNonLinked];
+    const allNonLinkedKeys = [...currentNonLinkedKeys, ...mergedNonLinked];
     
     // Add auto-mapped keys to existing mapped keys
     const allMappedKeys = [...updatedState.mappings.mappedKeys, ...autoMappedKeys];
@@ -219,11 +248,18 @@ export async function populateLists(state) {
  */
 export function updateSectionCounts(mappings) {
     const totalKeys = mappings.nonLinkedKeys.length + mappings.mappedKeys.length + mappings.ignoredKeys.length;
+    const existingIndicator = document.getElementById('field-order-indicator');
+    const indicatorText = existingIndicator?.textContent || '';
+    const indicatorDisplay = existingIndicator?.style.display || 'none';
     
     // Update Non-linked Keys section (now first)
     const nonLinkedSection = document.querySelector('.key-sections .section:nth-child(1) summary');
     if (nonLinkedSection) {
-        nonLinkedSection.innerHTML = `<span class="section-title">Non-linked Keys</span><span class="section-count">(${mappings.nonLinkedKeys.length}/${totalKeys})</span>`;
+        nonLinkedSection.innerHTML = `
+            <span class="section-title">Non-linked Keys</span>
+            <span id="field-order-indicator" class="badge" style="display: ${indicatorDisplay}; margin-left: 8px;">${indicatorText}</span>
+            <span class="section-count">(${mappings.nonLinkedKeys.length}/${totalKeys})</span>
+        `;
     }
     
     // Update Mapped Keys section (now second)

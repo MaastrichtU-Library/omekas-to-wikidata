@@ -225,6 +225,26 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
         await page.waitForTimeout(500);
       });
     });
+
+    test('field order control switches the visible ordering mode indicator', async ({ page }) => {
+      await test.step('Verify the field order control is present on the mapping screen', async () => {
+        await expect(app.mapping.fieldOrderModeSelect).toBeVisible();
+        await expect(app.mapping.fieldOrderModeSelect).toHaveValue('template');
+        await expect(app.mapping.fieldOrderIndicator).toContainText('Sorted by template order');
+      });
+
+      await test.step('Switch to frequency order and keep mapping items visible', async () => {
+        const initialCount = await app.getNonLinkedKeysCount();
+        expect(initialCount).toBeGreaterThan(0);
+
+        await app.mapping.fieldOrderModeSelect.selectOption('frequency');
+        await page.waitForTimeout(1000);
+
+        await expect(app.mapping.fieldOrderModeSelect).toHaveValue('frequency');
+        await expect(app.mapping.fieldOrderIndicator).toContainText('Sorted by frequency');
+        expect(await app.getNonLinkedKeysCount()).toBeGreaterThan(0);
+      });
+    });
   });
 
   test.describe('Navigation @mapping-navigation', () => {

@@ -62,12 +62,12 @@ The application follows a **modular, event-driven architecture**:
 
 ### **input.js**
 - Purpose: Step 1 - Import data from Omeka S API
-- Key features: API authentication, data fetching, sample display
+- Key features: API authentication, data fetching, resource template selection/filtering, sample display
 - Dependencies: utils/cors-proxy.js, data/mock-data.js
 
 ### **mapping.js**
 - Purpose: Step 2 - Map Omeka fields to Wikidata properties
-- Key features: Field analysis, property search, transformation setup
+- Key features: Field analysis, template/frequency field ordering, property search, transformation setup
 - Dependencies: mapping/*, transformations.js, api/wikidata.js
 
 ### **reconciliation.js**
@@ -94,6 +94,7 @@ The application follows a **modular, event-driven architecture**:
 **data-analyzer.js**
 - Purpose: Analyze Omeka data structure and extract fields
 - Key exports: `extractAndAnalyzeKeys()`, `extractAvailableFields()`, `extractSampleValue()`
+- Features: Supports template-order and frequency-order field sorting
 
 **property-searcher.js**
 - Purpose: Search and suggest Wikidata properties
@@ -116,6 +117,7 @@ The application follows a **modular, event-driven architecture**:
 **mapping-lists.js**
 - Purpose: Manage mapping UI lists (non-linked, mapped, ignored)
 - Key exports: `populateLists()`, `moveKeyToCategory()`, `mapKeyToProperty()`
+- Features: Applies the active field ordering mode and preserves stable list ordering
 
 **transformation-ui.js**
 - Purpose: UI for transformation configuration
