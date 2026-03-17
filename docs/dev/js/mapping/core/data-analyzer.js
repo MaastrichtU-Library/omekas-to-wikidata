@@ -230,7 +230,7 @@ export function extractSampleValue(value) {
  * 
  * @throws {Error} When data structure is invalid or context fetching fails
  */
-export async function extractAndAnalyzeKeys(data) {
+export async function extractAndAnalyzeKeys(data, options = {}) {
     const keyFrequency = new Map();
     const contextMap = new Map();
     let items = [];
@@ -272,28 +272,76 @@ export async function extractAndAnalyzeKeys(data) {
         }
     }
     
-    // Analyze all items to get key frequency
-    // Frequency analysis reveals data patterns and helps prioritize mapping efforts:
-    // - Properties in every item are core metadata (title, type)
-    // - Properties in some items might be optional or specialized
-    // - Very rare properties might be data entry errors or edge cases
+    // Track first-seen order to preserve original API/template field order
+    const firstSeenOrder = new Map();
+    let nextOrderIndex = 0;
+
+    // Track template order if provided
+    const templatePropertyIdOrder = new Map(); // key: property_id, value: global index
+    const templateTermOrder = new Map();       // fallback key: term, value: global index
+
+    if (options && options.sortMode === 'template' && options.resourceTemplates && options.selectedTemplateIds) {
+        let globalPropIndex = 0;
+        options.selectedTemplateIds.forEach(templateId => {
+            const template = options.resourceTemplates.find(t => String(t['o:id']) === String(templateId));
+            if (template && template['o:resource_template_property']) {
+                template['o:resource_template_property'].forEach(rtp => {
+                    const property = rtp['o:property'];
+                    if (property) {
+                        const propId = property['o:id'];
+                        const term = property['o:term'];
+
+                        const pidStr = propId ? String(propId) : null;
+
+                        if (pidStr && !templatePropertyIdOrder.has(pidStr)) {
+                            templatePropertyIdOrder.set(pidStr, globalPropIndex);
+                        }
+                        if (term && !templateTermOrder.has(term)) {
+                            templateTermOrder.set(term, globalPropIndex);
+                        }
+                        globalPropIndex++;
+                    }
+                });
+            }
+        });
+    }
+
+    // Map to track which property ID belongs to which key in the dataset
+    const keyToPropertyId = new Map();
+
+    // Analyze all items to get key frequency and first-seen order
     items.forEach(item => {
         if (typeof item === 'object' && item !== null) {
             Object.keys(item).forEach(key => {
-                // Skip JSON-LD system keys (@context, @id, @type)
-                // These are structural metadata, not content properties
                 if (key.startsWith('@')) return;
+
+                // Record first appearance order
+                if (!firstSeenOrder.has(key)) {
+                    firstSeenOrder.set(key, nextOrderIndex++);
+                }
+
+                // Extract property_id from item data if available
+                if (!keyToPropertyId.has(key) && Array.isArray(item[key]) && item[key].length > 0) {
+                    const arr = item[key];
+                    for (let i = 0; i < arr.length; i++) {
+                        const val = arr[i];
+                        if (val && val.property_id != null) {
+                            keyToPropertyId.set(key, String(val.property_id));
+                            break;
+                        }
+                    }
+                }
                 
-                // Count all keys including o: keys - we'll categorize them later
-                // o: prefix typically indicates Omeka-specific properties
                 const count = keyFrequency.get(key) || 0;
                 keyFrequency.set(key, count + 1);
             });
         }
     });
     
-    // Convert to array and sort by frequency
-    // Higher frequency properties appear first, making core metadata more prominent
+    // Determine sorting mode (default: preserve template order)
+    const sortMode = (options && options.sortMode) ? options.sortMode : 'template';
+
+    // Convert to array and prepare metadata for sorting
     const keyAnalysis = Array.from(keyFrequency.entries())
         .map(([key, frequency]) => {
             // Get sample value from first item that has this key
@@ -356,7 +404,19 @@ export async function extractAndAnalyzeKeys(data) {
             
             // Check if this field contains an identifier
             const identifierDetection = detectIdentifier(sampleValue, key);
-            
+
+            // Determine template order index
+            let templateOrderIndex = Number.MAX_SAFE_INTEGER;
+            if (sortMode === 'template') {
+                const propId = keyToPropertyId.get(key);
+                if (propId && templatePropertyIdOrder.has(propId)) {
+                    templateOrderIndex = templatePropertyIdOrder.get(propId);
+                } else if (templateTermOrder.has(key)) {
+                    // Fallback to term matching if ID match failed
+                    templateOrderIndex = templateTermOrder.get(key);
+                }
+            }
+
             return {
                 key,
                 frequency,
@@ -366,10 +426,35 @@ export async function extractAndAnalyzeKeys(data) {
                 type: Array.isArray(sampleValue) ? 'array' : typeof sampleValue,
                 contextMap: contextMap,
                 hasIdentifier: identifierDetection !== null,
-                identifierInfo: identifierDetection
+                identifierInfo: identifierDetection,
+                orderIndex: firstSeenOrder.has(key) ? firstSeenOrder.get(key) : Number.MAX_SAFE_INTEGER,
+                templateOrderIndex: templateOrderIndex
             };
         })
-        .sort((a, b) => b.frequency - a.frequency); // Sort by frequency descending
+        .sort((a, b) => {
+            if (sortMode === 'template') {
+                // Primary: template order index (templated keys first)
+                if (a.templateOrderIndex !== b.templateOrderIndex) {
+                    return a.templateOrderIndex - b.templateOrderIndex;
+                }
+                // If both are not in template, order by frequency desc
+                if (a.templateOrderIndex === Number.MAX_SAFE_INTEGER && b.templateOrderIndex === Number.MAX_SAFE_INTEGER) {
+                    if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+                    // Tie-breaker: first-seen order for stability
+                    return a.orderIndex - b.orderIndex;
+                }
+                // If both are templated (same index), keep stable by first-seen
+                return a.orderIndex - b.orderIndex;
+            }
+            if (sortMode === 'frequency') {
+                // Primary: frequency desc; Secondary: API order asc for stability
+                if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+                return a.orderIndex - b.orderIndex;
+            }
+            // Default 'api' mode: preserve first-seen API order; Secondary: frequency desc
+            if (a.orderIndex !== b.orderIndex) return a.orderIndex - b.orderIndex;
+            return b.frequency - a.frequency;
+        });
     
     return keyAnalysis;
 }
