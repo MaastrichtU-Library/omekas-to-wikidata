@@ -8,6 +8,32 @@ import { getConstraintBasedTypes, buildContextualProperties, validateAgainstForm
 import { detectPropertyType, getInputFieldConfig } from '../../utils/property-types.js';
 import { createElement } from '../../ui/components.js';
 
+function getResolvedPropertyObject(propertyMetadata) {
+    if (!propertyMetadata || typeof propertyMetadata !== 'object') {
+        return null;
+    }
+
+    if (propertyMetadata.property && typeof propertyMetadata.property === 'object') {
+        return propertyMetadata.property;
+    }
+
+    return propertyMetadata;
+}
+
+function getResolvedPropertyType(propertyName, propertyMetadata) {
+    const resolvedProperty = getResolvedPropertyObject(propertyMetadata);
+
+    if (resolvedProperty?.datatype) {
+        return resolvedProperty.datatype;
+    }
+
+    if (propertyMetadata?.propertyType) {
+        return propertyMetadata.propertyType;
+    }
+
+    return detectPropertyType(propertyName);
+}
+
 /**
  * Check if a value appears to be a date
  */
@@ -85,6 +111,7 @@ export function createAutomaticReconciliation(dependencies) {
         const dataKey = mappingId || property;
 
         // Get property metadata from reconciliation data if available
+        let propertyMetadata = null;
         let propertyObj = null;
         let propData = null;
 
@@ -93,15 +120,17 @@ export function createAutomaticReconciliation(dependencies) {
             
             // Get property object from stored metadata
             if (propData.propertyMetadata) {
-                propertyObj = propData.propertyMetadata;
+                propertyMetadata = propData.propertyMetadata;
             } else if (propData.manualPropertyData) {
                 // For manual properties, use the property data
-                propertyObj = propData.manualPropertyData.property;
+                propertyMetadata = propData.manualPropertyData.property;
             }
         }
+
+        propertyObj = getResolvedPropertyObject(propertyMetadata);
         
         // Check if this property type requires reconciliation
-        const propertyType = detectPropertyType(property);
+        const propertyType = getResolvedPropertyType(property, propertyMetadata);
         const inputConfig = getInputFieldConfig(propertyType);
         
         // For date properties, skip reconciliation and show date input directly

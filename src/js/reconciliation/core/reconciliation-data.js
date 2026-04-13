@@ -152,13 +152,69 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     
     const value = item[key];
     if (!value) return [];
+
+    const convertExtractedValueToString = (rawValue) => {
+        if (rawValue === null || rawValue === undefined) {
+            return null;
+        }
+
+        if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean') {
+            return String(rawValue);
+        }
+
+        if (Array.isArray(rawValue)) {
+            for (const entry of rawValue) {
+                const convertedEntry = convertExtractedValueToString(entry);
+                if (convertedEntry !== null && convertedEntry.trim() !== '') {
+                    return convertedEntry;
+                }
+            }
+            return null;
+        }
+
+        if (typeof rawValue === 'object') {
+            const preferredFields = ['o:label', 'display_title', '@value', 'value', 'name', 'title', 'label'];
+
+            for (const field of preferredFields) {
+                if (rawValue[field] !== undefined && rawValue[field] !== null) {
+                    const convertedField = convertExtractedValueToString(rawValue[field]);
+                    if (convertedField !== null && convertedField.trim() !== '') {
+                        return convertedField;
+                    }
+                }
+            }
+
+            if (rawValue['@id']) {
+                return String(rawValue['@id']);
+            }
+
+            for (const [field, fieldValue] of Object.entries(rawValue)) {
+                if (field.startsWith('property_') || field === 'type') {
+                    continue;
+                }
+
+                const convertedField = convertExtractedValueToString(fieldValue);
+                if (convertedField !== null && convertedField.trim() !== '') {
+                    return convertedField;
+                }
+            }
+
+            try {
+                return JSON.stringify(rawValue);
+            } catch {
+                return '[Complex Object]';
+            }
+        }
+
+        return String(rawValue);
+    };
     
     // Helper function to extract value from a single object
     const extractFromObject = (v) => {
         // If a specific @ field is selected, ONLY return that field's value
         if (selectedAtField) {
             if (typeof v === 'object' && v[selectedAtField] !== undefined) {
-                return String(v[selectedAtField]);
+                return convertExtractedValueToString(v[selectedAtField]);
             } else {
                 // Don't fall back to default extraction when a specific @ field is requested
                 // Return null to indicate this object doesn't have the requested field
@@ -167,17 +223,11 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         }
         
         // Default extraction logic (only when no specific @ field is selected)
-        if (typeof v === 'object' && v['o:label']) {
-            return v['o:label'];
-        } else if (typeof v === 'object' && v['@value']) {
-            return v['@value'];
-        } else if (typeof v === 'object' && v['@id']) {
-            return v['@id'];
-        } else if (typeof v === 'string') {
-            return v;
-        } else {
-            return String(v);
+        if (typeof v === 'object') {
+            return convertExtractedValueToString(v);
         }
+
+        return convertExtractedValueToString(v);
     };
     
     // Handle different data structures
