@@ -123,6 +123,66 @@ test.describe('Step 1 - Input Tests @input', () => {
       });
     });
 
+    test('loading replacement data clears prior project state after confirmation', async ({ page }) => {
+      const firstDataset = `{
+        "metadata": {"total": 2, "source": "first-dataset"},
+        "items": [
+          {
+            "id": 1,
+            "dcterms:title": [{"@value": "First Title"}],
+            "dcterms:creator": [{"@value": "First Creator"}]
+          },
+          {
+            "id": 2,
+            "dcterms:title": [{"@value": "Second Title"}],
+            "dcterms:creator": [{"@value": "Second Creator"}]
+          }
+        ]
+      }`;
+
+      const secondDataset = `{
+        "metadata": {"total": 1, "source": "second-dataset"},
+        "items": [
+          {
+            "id": 10,
+            "dcterms:description": [{"@value": "Replacement description"}]
+          }
+        ]
+      }`;
+
+      await test.step('Load the first dataset and visit mapping', async () => {
+        await app.openManualJsonInput();
+        await app.enterManualJson(firstDataset);
+        await app.processManualJson();
+        await app.proceedToMapping();
+        await expect(app.mapping.step2Section).toBeVisible();
+      });
+
+      await test.step('Return to input and replace the project data', async () => {
+        await app.backToInput();
+        await app.openManualJsonInput();
+        await app.enterManualJson(secondDataset);
+
+        page.once('dialog', async (dialog) => {
+          expect(dialog.type()).toBe('confirm');
+          expect(dialog.message()).toMatch(/replace the current project/i);
+          await dialog.accept();
+        });
+
+        await app.processManualJson();
+      });
+
+      await test.step('Proceed to mapping and verify old keys are gone', async () => {
+        await app.proceedToMapping();
+        await page.waitForTimeout(1000);
+
+        const nonLinkedTexts = await app.getNonLinkedKeyTexts();
+        expect(nonLinkedTexts.some(text => text.includes('dcterms:description'))).toBeTruthy();
+        expect(nonLinkedTexts.some(text => text.includes('dcterms:title'))).toBeFalsy();
+        expect(nonLinkedTexts.some(text => text.includes('dcterms:creator'))).toBeFalsy();
+      });
+    });
+
     test('template selection controls gate proceeding and filter the mapping dataset', async ({ page }) => {
       const templatedData = `{
         "metadata": {"total": 2, "source": "test-templates"},

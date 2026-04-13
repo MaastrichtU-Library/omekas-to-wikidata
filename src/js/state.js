@@ -374,10 +374,22 @@ export function setupState() {
     
     /**
      * Resets the state to the initial default values
+     * @param {Object} [options] - Optional reset behavior overrides
+     * @param {boolean} [options.preserveTestMode=false] - Keep the current test mode setting
+     * @param {string} [options.apiUrl=''] - API URL value to keep after reset
      */
-    function resetState() {
+    function resetState(options = {}) {
         const oldState = JSON.parse(JSON.stringify(state));
+        const {
+            preserveTestMode = false,
+            apiUrl = ''
+        } = options;
+
         state = JSON.parse(JSON.stringify(initialState));
+        if (preserveTestMode) {
+            state.testMode = oldState.testMode;
+        }
+        state.apiUrl = apiUrl;
         state.hasUnsavedChanges = false;
         
         // Clear persisted state as well

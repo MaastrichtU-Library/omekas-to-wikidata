@@ -40,7 +40,7 @@ The application follows a **modular, event-driven architecture**:
 
 ### **state.js**
 - Purpose: Centralized state management with persistence
-- Key exports: `setupState()`, convenience methods like `updateMappings()`, `incrementReconciliationCompleted()`, `linkItemToWikidata()`, `unlinkItem()`, `getLinkedItem()`
+- Key exports: `setupState()`, `resetState()`, convenience methods like `updateMappings()`, `incrementReconciliationCompleted()`, `linkItemToWikidata()`, `unlinkItem()`, `getLinkedItem()`
 - Dependencies: events.js
 
 ### **events.js**
