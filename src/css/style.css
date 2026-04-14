@@ -2566,13 +2566,43 @@ pre.sample-value {
 
 .property-header-content {
     display: flex;
-    align-items: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
 }
 
 .property-label {
     font-weight: 600;
     color: #333;
+}
+
+.property-source-row,
+.property-mapped-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.property-source-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #52606d;
+}
+
+.property-mapped-prefix {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #4a6a8c;
+}
+
+.property-language-indicator {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #7a3e00;
+    background: #fff1dc;
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
 }
 
 .property-qid-link {

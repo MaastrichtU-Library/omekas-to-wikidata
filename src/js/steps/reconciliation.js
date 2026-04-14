@@ -103,6 +103,22 @@ import {
     displayReconciliationError
 } from '../reconciliation/index.js';
 
+function formatSourceFieldLabel(keyData) {
+    if (!keyData?.key) {
+        return 'Source field';
+    }
+
+    if (keyData.selectedAtField) {
+        if (Number.isInteger(keyData.selectedObjectIndex)) {
+            return `${keyData.key} → ${keyData.selectedAtField} (object ${keyData.selectedObjectIndex + 1})`;
+        }
+
+        return `${keyData.key} → ${keyData.selectedAtField}`;
+    }
+
+    return keyData.key;
+}
+
 /**
  * Initializes the reconciliation step interface and processing engine
  * 
@@ -680,16 +696,25 @@ export function setupReconciliationStep(state) {
         const headerContent = createElement('div', { 
             className: 'property-header-content' 
         });
-        
-        // Property label
+
+        const sourceRow = createElement('div', {
+            className: 'property-source-row'
+        });
+        const sourceLabel = createElement('span', {
+            className: 'property-source-label'
+        }, formatSourceFieldLabel(keyData));
+        sourceRow.appendChild(sourceLabel);
+
+        const mappedRow = createElement('div', {
+            className: 'property-mapped-row'
+        });
+        const mappedPrefix = createElement('span', {
+            className: 'property-mapped-prefix'
+        }, 'Wikidata: ');
         const labelSpan = createElement('span', {
             className: 'property-label'
         }, property.label);
-        headerContent.appendChild(labelSpan);
-        
-        // Space and opening bracket
-        headerContent.appendChild(document.createTextNode(' ('));
-        
+
         // Clickable QID link
         const getWikidataUrlForProperty = modules.getPropertyDisplayInfo ? 
             (prop) => `https://www.wikidata.org/wiki/Property:${prop.id}` :
@@ -702,24 +727,22 @@ export function setupReconciliationStep(state) {
             target: '_blank',
             onClick: (e) => e.stopPropagation()
         }, property.id);
-        headerContent.appendChild(qidLink);
-        
-        // Closing bracket
-        headerContent.appendChild(document.createTextNode(')'));
-        
-        // Add @ field indicator if present
-        if (keyData.selectedAtField) {
-            const indicatorText = Number.isInteger(keyData.selectedObjectIndex)
-                ? ` ${keyData.selectedAtField} (object ${keyData.selectedObjectIndex + 1})`
-                : ` ${keyData.selectedAtField}`;
-            const atFieldIndicator = createElement('span', {
-                className: 'at-field-indicator',
-                title: Number.isInteger(keyData.selectedObjectIndex)
-                    ? `Using ${keyData.selectedAtField} from object ${keyData.selectedObjectIndex + 1} in ${keyData.key}`
-                    : `Using ${keyData.selectedAtField} field from ${keyData.key}`
-            }, indicatorText);
-            headerContent.appendChild(atFieldIndicator);
+        mappedRow.appendChild(mappedPrefix);
+        mappedRow.appendChild(labelSpan);
+        mappedRow.appendChild(document.createTextNode(' ('));
+        mappedRow.appendChild(qidLink);
+        mappedRow.appendChild(document.createTextNode(')'));
+
+        if (property.datatype === 'monolingualtext') {
+            const languageIndicator = createElement('span', {
+                className: 'property-language-indicator',
+                title: 'This Wikidata property expects text with a language code.'
+            }, ' Language required');
+            mappedRow.appendChild(languageIndicator);
         }
+
+        headerContent.appendChild(sourceRow);
+        headerContent.appendChild(mappedRow);
         
         // Replace header content
         headerElement.innerHTML = '';

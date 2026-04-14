@@ -9,6 +9,24 @@
 import { createElement } from '../../ui/components.js';
 import { combineAndSortProperties, extractPropertyValues } from '../core/reconciliation-data.js';
 
+function formatSourceFieldLabel(keyObj, fallbackKey) {
+    const keyName = typeof keyObj === 'string' ? keyObj : fallbackKey;
+
+    if (!keyName) {
+        return 'Source field';
+    }
+
+    if (typeof keyObj === 'object' && keyObj.selectedAtField) {
+        if (Number.isInteger(keyObj.selectedObjectIndex)) {
+            return `${keyName} → ${keyObj.selectedAtField} (object ${keyObj.selectedObjectIndex + 1})`;
+        }
+
+        return `${keyName} → ${keyObj.selectedAtField}`;
+    }
+
+    return keyName;
+}
+
 /**
  * Create item cell content with link button
  * @param {string} itemId - Item ID (e.g., 'item-0')
@@ -475,46 +493,52 @@ export function createReconciliationTableFactory(dependencies) {
                     let clickHandler = null;
                     
                     if (keyObj.property && keyObj.property.label && keyObj.property.id) {
-                        // Create header with property label and clickable QID
-                        headerContent = createElement('div', { 
-                            className: 'property-header-content' 
+                        // Create header with both the Omeka source field and the mapped Wikidata property
+                        headerContent = createElement('div', {
+                            className: 'property-header-content'
                         });
-                        
-                        // Property label (clickable span - will be handled by header click)
+
+                        const sourceRow = createElement('div', {
+                            className: 'property-source-row'
+                        });
+                        const sourceLabel = createElement('span', {
+                            className: 'property-source-label'
+                        }, formatSourceFieldLabel(keyObj, keyName));
+                        sourceRow.appendChild(sourceLabel);
+
+                        const mappedRow = createElement('div', {
+                            className: 'property-mapped-row'
+                        });
+                        const mappedPrefix = createElement('span', {
+                            className: 'property-mapped-prefix'
+                        }, 'Wikidata: ');
                         const labelSpan = createElement('span', {
                             className: 'property-label'
                         }, keyObj.property.label);
-                        headerContent.appendChild(labelSpan);
-                        
-                        // Space and opening bracket
-                        headerContent.appendChild(document.createTextNode(' ('));
-                        
-                        // Clickable QID link - smart routing based on property type
                         const wikidataUrl = getWikidataUrlForProperty(keyObj.property);
                         const qidLink = createElement('a', {
                             className: 'property-qid-link',
                             href: wikidataUrl,
                             target: '_blank',
-                            onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
+                            onClick: (e) => e.stopPropagation()
                         }, keyObj.property.id);
-                        headerContent.appendChild(qidLink);
-                        
-                        // Closing bracket
-                        headerContent.appendChild(document.createTextNode(')'));
-                        
-                        // Add @ field indicator if present (for duplicate mappings)
-                        if (keyObj.selectedAtField) {
-                            const indicatorText = Number.isInteger(keyObj.selectedObjectIndex)
-                                ? ` ${keyObj.selectedAtField} (object ${keyObj.selectedObjectIndex + 1})`
-                                : ` ${keyObj.selectedAtField}`;
-                            const atFieldIndicator = createElement('span', {
-                                className: 'at-field-indicator',
-                                title: Number.isInteger(keyObj.selectedObjectIndex)
-                                    ? `Using ${keyObj.selectedAtField} from object ${keyObj.selectedObjectIndex + 1} in ${keyName}`
-                                    : `Using ${keyObj.selectedAtField} field from ${keyName}`
-                            }, indicatorText);
-                            headerContent.appendChild(atFieldIndicator);
+
+                        mappedRow.appendChild(mappedPrefix);
+                        mappedRow.appendChild(labelSpan);
+                        mappedRow.appendChild(document.createTextNode(' ('));
+                        mappedRow.appendChild(qidLink);
+                        mappedRow.appendChild(document.createTextNode(')'));
+
+                        if (keyObj.property.datatype === 'monolingualtext') {
+                            const languageIndicator = createElement('span', {
+                                className: 'property-language-indicator',
+                                title: 'This Wikidata property expects text with a language code.'
+                            }, ' Language required');
+                            mappedRow.appendChild(languageIndicator);
                         }
+
+                        headerContent.appendChild(sourceRow);
+                        headerContent.appendChild(mappedRow);
                         
                         // Add reconciliation button for wikibase-item properties
                         if (keyObj.property && keyObj.property.datatype === 'wikibase-item') {
@@ -577,21 +601,28 @@ export function createReconciliationTableFactory(dependencies) {
                     // Handle manual property
                     const manualProp = propItem.data;
                     
-                    // Create header content with property label and clickable QID
+                    // Create header content with source context and mapped Wikidata property
                     const headerContent = createElement('div', { 
                         className: 'property-header-content' 
                     });
-                    
-                    // Property label (clickable span - will be handled by header click)
+
+                    const sourceRow = createElement('div', {
+                        className: 'property-source-row'
+                    });
+                    const sourceLabel = createElement('span', {
+                        className: 'property-source-label'
+                    }, `Manual value (${manualProp.property.id})`);
+                    sourceRow.appendChild(sourceLabel);
+
+                    const mappedRow = createElement('div', {
+                        className: 'property-mapped-row'
+                    });
+                    const mappedPrefix = createElement('span', {
+                        className: 'property-mapped-prefix'
+                    }, 'Wikidata: ');
                     const labelSpan = createElement('span', {
                         className: 'property-label'
                     }, manualProp.property.label);
-                    headerContent.appendChild(labelSpan);
-                    
-                    // Space and opening bracket
-                    headerContent.appendChild(document.createTextNode(' ('));
-                    
-                    // Clickable QID link - smart routing based on property type
                     const wikidataUrl = getWikidataUrlForProperty(manualProp.property);
                     const qidLink = createElement('a', {
                         className: 'property-qid-link',
@@ -599,18 +630,31 @@ export function createReconciliationTableFactory(dependencies) {
                         target: '_blank',
                         onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
                     }, manualProp.property.id);
-                    headerContent.appendChild(qidLink);
-                    
-                    // Closing bracket
-                    headerContent.appendChild(document.createTextNode(')'));
+
+                    mappedRow.appendChild(mappedPrefix);
+                    mappedRow.appendChild(labelSpan);
+                    mappedRow.appendChild(document.createTextNode(' ('));
+                    mappedRow.appendChild(qidLink);
+                    mappedRow.appendChild(document.createTextNode(')'));
                     
                     // Add required indicator if applicable
                     if (manualProp.isRequired) {
                         const requiredIndicator = createElement('span', {
                             className: 'required-indicator-header'
                         }, ' *');
-                        headerContent.appendChild(requiredIndicator);
+                        mappedRow.appendChild(requiredIndicator);
                     }
+
+                    if (manualProp.property.datatype === 'monolingualtext') {
+                        const languageIndicator = createElement('span', {
+                            className: 'property-language-indicator',
+                            title: 'This Wikidata property expects text with a language code.'
+                        }, ' Language required');
+                        mappedRow.appendChild(languageIndicator);
+                    }
+
+                    headerContent.appendChild(sourceRow);
+                    headerContent.appendChild(mappedRow);
                     
                     // Add reconciliation button for wikibase-item manual properties
                     if (manualProp.property && manualProp.property.datatype === 'wikibase-item') {

@@ -311,7 +311,7 @@ export function createStringModal(itemId, property, valueIndex, value, propertyD
                 <div class="language-selection">
                     <div class="section-title">Language <span class="required">*</span></div>
                     <div class="language-help-text">
-                        Select the language for this text value. If no language is specified, the text will be treated as the default for all languages.
+                        Select the language for this text value. A language code is required before export, and any language present in the Omeka source data will be prefilled here.
                     </div>
                     <div class="language-container">
                         <input type="text" 
@@ -356,10 +356,11 @@ export function initializeStringModal(modalElement) {
         JSON.parse(modalElement.dataset.confirmedData) : null;
 
     const mappingId = window.currentModalContext?.mappingId || modalElement.dataset.mappingId || property;
+    const sourceLanguage = getSourceLanguageHint(modalElement.dataset.itemId, mappingId, parseInt(modalElement.dataset.valueIndex));
 
     console.log('🔧 Modal initialization data:', {
         originalValue, currentValue, property, isMonolingual,
-        hasConfirmedValue, propertyData, confirmedData, mappingId
+        hasConfirmedValue, propertyData, confirmedData, mappingId, sourceLanguage
     });
 
     // Find the source table cell that opened this modal
@@ -381,6 +382,7 @@ export function initializeStringModal(modalElement) {
         hasConfirmedValue: hasConfirmedValue,
         confirmedData: confirmedData,
         selectedLanguage: null,
+        sourceLanguage,
         sourceCell: sourceCell // Reference to the original table cell
     };
     
@@ -422,6 +424,27 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function getSourceLanguageHint(itemId, mappingId, valueIndex) {
+    try {
+        const stateManager = window.debugState || window.currentState;
+        if (!stateManager || typeof stateManager.getState !== 'function') {
+            return null;
+        }
+
+        const detail = stateManager.getState().reconciliationData?.[itemId]?.properties?.[mappingId]?.originalValueDetails?.[valueIndex];
+        if (detail?.language) {
+            return {
+                code: detail.language,
+                label: detail.language
+            };
+        }
+    } catch (error) {
+        console.warn('Failed to read source language hint from reconciliation data:', error);
+    }
+
+    return null;
 }
 
 /**
@@ -483,7 +506,8 @@ function setupLanguageSelection() {
     // Set default language from storage or confirmed data
     const storedLanguage = getStoredLanguage();
     const confirmedLanguage = window.currentModalContext.selectedLanguage;
-    const defaultLanguage = confirmedLanguage || storedLanguage;
+    const sourceLanguage = window.currentModalContext.sourceLanguage;
+    const defaultLanguage = confirmedLanguage || sourceLanguage || storedLanguage;
     
     if (defaultLanguage) {
         languageSearch.value = defaultLanguage.label;

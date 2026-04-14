@@ -75,6 +75,17 @@ export function calculateTotalReconciliableCells(data, mappedKeys) {
  * any configured transformations before returning the values.
  */
 export function extractPropertyValues(item, keyOrKeyObj, state = null) {
+    return extractPropertyValueDetails(item, keyOrKeyObj, state).map(detail => detail.value);
+}
+
+/**
+ * Extract value details from Omeka S items, preserving useful metadata like source language.
+ * @param {Object} item - Single Omeka S item object
+ * @param {string|Object} keyOrKeyObj - Property key or key object with selectedAtField
+ * @param {Object} [state] - Optional state object to apply transformations
+ * @returns {Array<Object>} Array of value detail objects
+ */
+export function extractPropertyValueDetails(item, keyOrKeyObj, state = null) {
     const inferPropertyDatatypeFromId = (propertyId) => {
         if (!propertyId) {
             return null;
@@ -245,12 +256,24 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         return String(rawValue);
     };
     
-    // Helper function to extract value from a single object
+    const extractLanguageFromValue = (rawValue) => {
+        if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
+            return null;
+        }
+
+        const languageValue = rawValue['@language'] ?? rawValue.language ?? null;
+        return typeof languageValue === 'string' && languageValue.trim() ? languageValue.trim() : null;
+    };
+
+    // Helper function to extract value details from a single object
     const extractFromObject = (v) => {
         // If a specific @ field is selected, ONLY return that field's value
         if (selectedAtField) {
             if (typeof v === 'object' && v[selectedAtField] !== undefined) {
-                return convertExtractedValueToString(v[selectedAtField]);
+                return {
+                    value: convertExtractedValueToString(v[selectedAtField]),
+                    language: selectedAtField === '@value' ? extractLanguageFromValue(v) : null
+                };
             } else {
                 // Don't fall back to default extraction when a specific @ field is requested
                 // Return null to indicate this object doesn't have the requested field
@@ -260,32 +283,43 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         
         // Default extraction logic (only when no specific @ field is selected)
         if (typeof v === 'object') {
-            return convertExtractedValueToString(v);
+            return {
+                value: convertExtractedValueToString(v),
+                language: extractLanguageFromValue(v)
+            };
         }
 
-        return convertExtractedValueToString(v);
+        return {
+            value: convertExtractedValueToString(v),
+            language: null
+        };
     };
     
     // Handle different data structures
-    let extractedValues;
+    let extractedDetails;
     if (Array.isArray(value)) {
         const valuesToExtract = Number.isInteger(selectedObjectIndex) && value[selectedObjectIndex] !== undefined
             ? [value[selectedObjectIndex]]
             : value;
 
         // Filter out null values to only include objects that have the requested field
-        extractedValues = valuesToExtract.map(v => extractFromObject(v)).filter(v => v !== null);
+        extractedDetails = valuesToExtract
+            .map(v => extractFromObject(v))
+            .filter(detail => detail && detail.value !== null);
     } else {
         const extracted = extractFromObject(value);
-        extractedValues = extracted !== null ? [extracted] : [];
+        extractedDetails = extracted !== null && extracted.value !== null ? [extracted] : [];
     }
 
     if (propertyDatatype === 'external-id') {
-        extractedValues = extractedValues.map(normalizeExternalIdentifier);
+        extractedDetails = extractedDetails.map(detail => ({
+            ...detail,
+            value: normalizeExternalIdentifier(detail.value)
+        }));
     }
     
     // Apply transformations if state is provided
-    if (state && extractedValues.length > 0) {
+    if (state && extractedDetails.length > 0) {
         try {
             // Get property information for generating mapping ID
             let propertyId;
@@ -300,10 +334,13 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                 
                 if (transformationBlocks && transformationBlocks.length > 0) {
                     // Apply transformations to each extracted value
-                    extractedValues = extractedValues.map(originalValue => {
-                        const transformationResult = applyTransformationChain(originalValue, transformationBlocks);
+                    extractedDetails = extractedDetails.map(detail => {
+                        const transformationResult = applyTransformationChain(detail.value, transformationBlocks);
                         // Get the final transformed value
-                        return transformationResult[transformationResult.length - 1]?.value || originalValue;
+                        return {
+                            ...detail,
+                            value: transformationResult[transformationResult.length - 1]?.value || detail.value
+                        };
                     });
                 }
             }
@@ -313,7 +350,7 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         }
     }
     
-    return extractedValues;
+    return extractedDetails;
 }
 
 /**
@@ -534,7 +571,8 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
         mappedKeys.forEach(keyObj => {
             const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
             // Pass the full keyObj and state to apply transformations
-            const values = extractPropertyValues(item, keyObj, state);
+            const valueDetails = extractPropertyValueDetails(item, keyObj, state);
+            const values = valueDetails.map(detail => detail.value);
 
             // Generate mappingId for unique identification
             let mappingId;
@@ -551,6 +589,7 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
 
             reconciliationData[itemId].properties[mappingId] = {
                 originalValues: values,
+                originalValueDetails: valueDetails,
                 references: [], // References specific to this property
                 propertyMetadata: typeof keyObj === 'object' ? keyObj : null, // Store full property object with constraints
                 keyName: keyName,  // NEW: Store original key name for reference
@@ -640,11 +679,13 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
             const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
 
             // Extract values for the new property
-            const values = extractPropertyValues(item, keyObj, state);
+            const valueDetails = extractPropertyValueDetails(item, keyObj, state);
+            const values = valueDetails.map(detail => detail.value);
 
             // Initialize reconciliation structure for the new property
             mergedData[itemId].properties[mappingId] = {
                 originalValues: values,
+                originalValueDetails: valueDetails,
                 references: [],
                 propertyMetadata: typeof keyObj === 'object' ? keyObj : null,
                 keyName: keyName,  // Store original key name
