@@ -188,35 +188,8 @@ export function createAutomaticReconciliation(dependencies) {
                 }
             }
             
-            // Check for 100% confidence auto-selection (Q&A requirement)
-            if (matches && matches.length > 0 && matches[0].score >= 100) {
-                
-                // Auto-select 100% confidence match
-                const perfectMatch = matches[0];
-                markCellAsReconciled(currentReconciliationCell, {
-                    type: 'wikidata',
-                    id: perfectMatch.id,
-                    label: perfectMatch.name,
-                    description: perfectMatch.description,
-                    qualifiers: {
-                        autoAccepted: true,
-                        reason: '100% confidence match',
-                        score: perfectMatch.score
-                    }
-                });
-                
-                modalUI.closeModal();
-                
-                // Auto-advance if enabled
-                if (getAutoAdvanceSetting()) {
-                    setTimeout(() => {
-                        reconcileNextUnprocessedCell();
-                    }, 300);
-                }
-                return;
-            }
-            
-            // Display results using new simplified display logic
+            // In the manual modal flow we always show matches, even for perfect scores,
+            // so the user can confirm, override, or correct the reconciliation choice.
             await displayReconciliationResults(matches, propertyType, value);
             
         } catch (error) {

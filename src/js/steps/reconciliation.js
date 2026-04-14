@@ -159,10 +159,26 @@ export function setupReconciliationStep(state) {
             }, 100); // Small delay to ensure state is updated
         }
     });
+
+    eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (change) => {
+        if (!change?.path?.startsWith('reconciliationProgress')) {
+            return;
+        }
+
+        const currentState = state.getState();
+        if (currentState.currentStep === 3) {
+            renderReconciliationProgress(currentState.reconciliationProgress);
+        }
+    });
     
     // Initialize DOM elements
     const propertyHeaders = document.getElementById('property-headers');
     const reconciliationRows = document.getElementById('reconciliation-rows');
+    const reconciliationProgressPanel = document.getElementById('reconciliation-progress-panel');
+    const reconciliationProgressSummary = document.getElementById('reconciliation-progress-summary');
+    const reconciliationProgressPercent = document.getElementById('reconciliation-progress-percent');
+    const reconciliationProgressFill = document.getElementById('reconciliation-progress-fill');
+    const reconciliationProgressDetails = document.getElementById('reconciliation-progress-details');
     const reconcileNextBtn = document.getElementById('reconcile-next');
     const proceedToDesignerBtn = document.getElementById('proceed-to-designer');
     const testReconciliationModelBtn = document.getElementById('test-reconciliation-model');
@@ -387,6 +403,45 @@ export function setupReconciliationStep(state) {
         });
     }
 
+    function renderReconciliationProgress(progress = state.getState().reconciliationProgress || {}) {
+        if (!reconciliationProgressPanel || !reconciliationProgressSummary || !reconciliationProgressPercent ||
+            !reconciliationProgressFill || !reconciliationProgressDetails) {
+            return;
+        }
+
+        const total = Number(progress.total) || 0;
+        const completed = Number(progress.completed) || 0;
+        const skipped = Number(progress.skipped) || 0;
+        const errors = Number(progress.errors) || 0;
+        const resolved = completed + skipped;
+        const percent = total > 0 ? Math.round((resolved / total) * 100) : 0;
+        const remaining = total > resolved ? total - resolved : 0;
+
+        if (total === 0) {
+            reconciliationProgressSummary.textContent = '0 of 0 values reviewed';
+            reconciliationProgressPercent.textContent = '0%';
+            reconciliationProgressFill.style.width = '0%';
+            reconciliationProgressDetails.textContent = 'Map properties in Step 2 to populate the reconciliation queue.';
+            return;
+        }
+
+        reconciliationProgressSummary.textContent = `${resolved} of ${total} values reviewed`;
+        reconciliationProgressPercent.textContent = `${percent}%`;
+        reconciliationProgressFill.style.width = `${percent}%`;
+
+        const details = [
+            `${completed} reconciled`,
+            `${skipped} skipped`,
+            `${remaining} remaining`
+        ];
+
+        if (errors > 0) {
+            details.push(`${errors} need attention`);
+        }
+
+        reconciliationProgressDetails.textContent = details.join(' • ');
+    }
+
     /**
      * Opens the link item modal for linking an item to an existing Wikidata item
      * @param {string} itemId - Item ID (e.g., 'item-0')
@@ -527,6 +582,10 @@ export function setupReconciliationStep(state) {
         const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
         const currentProgress = modules.calculateCurrentProgress();
         state.setReconciliationProgress(currentProgress.completed, totalCells);
+        renderReconciliationProgress({
+            ...currentProgress,
+            total: totalCells
+        });
         
         // Update proceed button
         modules.updateProceedButton();
@@ -541,6 +600,7 @@ export function setupReconciliationStep(state) {
         if (reconciliationData && Object.keys(reconciliationData).length > 0) {
             const progress = modules.calculateCurrentProgress();
             state.updateState('reconciliationProgress', progress);
+            renderReconciliationProgress(progress);
         }
         
         // Enable/disable proceed button
@@ -599,6 +659,9 @@ export function setupReconciliationStep(state) {
             });
 
             state.updateState('reconciliationData', updatedState.reconciliationData);
+            const refreshedProgress = modules.calculateCurrentProgress();
+            state.updateState('reconciliationProgress', refreshedProgress);
+            renderReconciliationProgress(refreshedProgress);
         }
 
     }
@@ -925,7 +988,7 @@ export function setupReconciliationStep(state) {
             domElements: {
                 propertyHeaders,
                 reconciliationRows,
-                reconciliationProgress,
+                reconciliationProgressPanel,
                 reconcileNextBtn,
                 proceedToDesignerBtn
             },

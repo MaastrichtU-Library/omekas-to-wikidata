@@ -589,14 +589,6 @@ export async function loadExistingMatches(value, existingMatches = null) {
                 ` : ''}
             `;
             
-            // Auto-select high-confidence matches (≥90%)
-            const highConfidenceMatch = matches.find(match => match.score >= 90);
-            if (highConfidenceMatch) {
-                setTimeout(() => {
-                    applyMatchDirectly(highConfidenceMatch.id);
-                }, 100);
-            }
-            
         } else {
             matchesContainer.innerHTML = `
                 <div class="section-title">Existing Matches</div>
@@ -874,7 +866,7 @@ window.applyMatchDirectly = function(matchId) {
     }
     
     // Try both class selectors for compatibility between existing matches and search results
-    const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-name');
+    const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-title') || matchElement.querySelector('.match-name');
     const matchDescriptionElement = matchElement.querySelector('.match-description');
     
     const matchLabel = matchLabelElement?.textContent || 'Unknown';
