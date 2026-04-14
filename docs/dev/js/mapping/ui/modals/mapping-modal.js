@@ -242,7 +242,12 @@ export function openMappingModal(keyData) {
                         
                         
                         // Transfer compose transformation data from current mappingId to final mappingId if needed
-                        const finalMappingId = window.mappingStepState.generateMappingId(customKeyData.key, selectedProperty.id);
+                        const finalMappingId = window.mappingStepState.generateMappingId(
+                            customKeyData.key,
+                            selectedProperty.id,
+                            customKeyData.selectedAtField,
+                            customKeyData.selectedObjectIndex
+                        );
                         const composeSection = document.querySelector('.compose-section');
                         const currentMappingId = composeSection?.dataset?.mappingId;
                         
@@ -327,6 +332,7 @@ export function openMappingModal(keyData) {
                             const duplicateKeyData = {
                                 ...keyData,
                                 selectedAtField: undefined,  // Reset @ field selection
+                                selectedObjectIndex: undefined,
                                 selectedTransformationField: undefined,  // Reset transformation
                                 isDuplicate: true  // Mark as duplicate
                             };
@@ -448,7 +454,12 @@ export function createMappingModalContent(keyData) {
             // Build list of possible mappingIds to check for existing patterns
             if (keyData.key && keyData.property) {
                 // Final mappingId for saved custom properties
-                const finalMappingId = window.mappingStepState.generateMappingId(keyData.key, keyData.property.id);
+                const finalMappingId = window.mappingStepState.generateMappingId(
+                    keyData.key,
+                    keyData.property.id,
+                    keyData.selectedAtField,
+                    keyData.selectedObjectIndex
+                );
                 possibleMappingIds.push(finalMappingId);
             }
             if (keyData.key) {
@@ -511,7 +522,12 @@ export function createMappingModalContent(keyData) {
         let mappingId;
         if (keyData.key && keyData.property) {
             // For existing custom properties with a selected property, use the real mappingId
-            mappingId = window.mappingStepState.generateMappingId(keyData.key, keyData.property.id);
+            mappingId = window.mappingStepState.generateMappingId(
+                keyData.key,
+                keyData.property.id,
+                keyData.selectedAtField,
+                keyData.selectedObjectIndex
+            );
         } else if (keyData.key) {
             // For existing custom properties without a property selected yet, use temp mappingId
             mappingId = `temp_${keyData.key}`;
@@ -626,8 +642,9 @@ export function createMappingModalContent(keyData) {
                 className: 'at-field-select',
                 id: `at-field-select-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`,
                 onChange: (e) => {
-                    // Store the selected field in the keyData for later use
-                    keyData.selectedAtField = e.target.value;
+                    const [selectedObjectIndex, ...fieldParts] = e.target.value.split('::');
+                    keyData.selectedObjectIndex = Number.parseInt(selectedObjectIndex, 10);
+                    keyData.selectedAtField = fieldParts.join('::');
                     
                     // Update sample values if they're already loaded
                     const samplesContent = document.querySelector('.samples-content');
@@ -646,41 +663,61 @@ export function createMappingModalContent(keyData) {
                 const valueField = group.fields.find(field => field.key === '@value');
                 
                 if (idField) {
-                    defaultField = idField;
+                    defaultField = { ...idField, objectIndex: group.objectIndex };
                     break;
                 } else if (valueField && !defaultField) {
-                    defaultField = valueField;
+                    defaultField = { ...valueField, objectIndex: group.objectIndex };
                 }
             }
             
             // If no @ fields found, use first field
             if (!defaultField && fieldGroups[0] && fieldGroups[0].fields.length > 0) {
-                defaultField = fieldGroups[0].fields[0];
+                defaultField = {
+                    ...fieldGroups[0].fields[0],
+                    objectIndex: fieldGroups[0].objectIndex
+                };
             }
             
             // Store the default selection, but preserve existing selection if already set
             // This is critical for auto-mapped identifiers to maintain consistent mappingId
             if (defaultField && !keyData.selectedAtField) {
                 keyData.selectedAtField = defaultField.key;
+                keyData.selectedObjectIndex = defaultField.objectIndex;
+            } else if (
+                defaultField &&
+                keyData.selectedAtField &&
+                !Number.isInteger(keyData.selectedObjectIndex)
+            ) {
+                const matchingGroup = fieldGroups.find(group =>
+                    group.fields.some(field => field.key === keyData.selectedAtField)
+                );
+                if (matchingGroup) {
+                    keyData.selectedObjectIndex = matchingGroup.objectIndex;
+                }
             }
 
             // Ensure the dropdown shows the correct selection (either existing or default)
+            const selectedObjectIndex = Number.isInteger(keyData.selectedObjectIndex)
+                ? keyData.selectedObjectIndex
+                : defaultField?.objectIndex;
             const fieldToSelect = keyData.selectedAtField || defaultField?.key;
+            const optionToSelect = fieldToSelect ? `${selectedObjectIndex}::${fieldToSelect}` : null;
             
             // Populate options with optgroups for each object structure
-            fieldGroups.forEach((group, groupIndex) => {
+            fieldGroups.forEach((group) => {
                 if (group.fields.length === 0) return;
                 
                 // Create optgroup for this object structure
                 const optGroup = createElement('optgroup', {
-                    label: fieldGroups.length > 1 ? `Object Type ${groupIndex + 1}` : 'Available Fields'
+                    label: fieldGroups.length > 1 ? `Object ${group.objectIndex + 1}` : 'Available Fields'
                 });
                 
                 // Add fields to optgroup
                 group.fields.forEach(field => {
+                    const optionValue = `${group.objectIndex}::${field.key}`;
                     const option = createElement('option', {
-                        value: field.key,
-                        selected: field.key === fieldToSelect
+                        value: optionValue,
+                        selected: optionValue === optionToSelect
                     }, `${field.key}: ${field.preview}`);
                     optGroup.appendChild(option);
                 });
@@ -1064,14 +1101,21 @@ function loadSampleValues(container, keyData, state) {
         if (samples.length >= maxSamples) break;
         if (item[keyData.key] !== undefined) {
             let valueToFormat = item[keyData.key];
-            
-            // If a specific @ field is selected, extract that field's value
+
+            const keyValue = item[keyData.key];
+            const valuesToProcess = Array.isArray(keyValue) ? keyValue : [keyValue];
+
+            if (Number.isInteger(keyData.selectedObjectIndex) && valuesToProcess[keyData.selectedObjectIndex] !== undefined) {
+                valueToFormat = valuesToProcess[keyData.selectedObjectIndex];
+            }
+
+            // If a specific field is selected, extract that field's value from the chosen object
             if (keyData.selectedAtField) {
-                const keyValue = item[keyData.key];
-                const valuesToProcess = Array.isArray(keyValue) ? keyValue : [keyValue];
-                
-                // Look for the selected @ field in the first available value
-                for (const value of valuesToProcess) {
+                const objectCandidates = Number.isInteger(keyData.selectedObjectIndex)
+                    ? [valuesToProcess[keyData.selectedObjectIndex]]
+                    : valuesToProcess;
+
+                for (const value of objectCandidates) {
                     if (value && typeof value === 'object' && value[keyData.selectedAtField] !== undefined) {
                         valueToFormat = value[keyData.selectedAtField];
                         break;

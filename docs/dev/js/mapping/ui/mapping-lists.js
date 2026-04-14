@@ -159,7 +159,12 @@ export async function populateLists(state) {
                 return {
                     ...keyObj,
                     property: mappingObj.property,
-                    mappingId: state.generateMappingId(keyObj.key, mappingObj.property.id, mappingObj.selectedAtField),
+                    mappingId: state.generateMappingId(
+                        keyObj.key,
+                        mappingObj.property.id,
+                        mappingObj.selectedAtField,
+                        mappingObj.selectedObjectIndex
+                    ),
                     mappedAt: mappingObj.mappedAt,
                     autoMapped: true,
                     identifierType: mappingObj.identifierType,
@@ -387,8 +392,15 @@ export function populateKeyList(listElement, keys, type) {
         });
         
         // Display key name with @ field if present
-        const keyDisplayText = keyData.selectedAtField 
-            ? `${keyData.key} (${keyData.selectedAtField})`
+        const fieldSuffixParts = [];
+        if (keyData.selectedAtField) {
+            fieldSuffixParts.push(keyData.selectedAtField);
+        }
+        if (Number.isInteger(keyData.selectedObjectIndex)) {
+            fieldSuffixParts.push(`object ${keyData.selectedObjectIndex + 1}`);
+        }
+        const keyDisplayText = fieldSuffixParts.length > 0
+            ? `${keyData.key} (${fieldSuffixParts.join(', ')})`
             : keyData.key;
         const keyName = createElement('span', {
             className: 'key-name-compact'
@@ -512,17 +524,19 @@ export function mapKeyToProperty(keyData, property, state) {
     const currentState = state.getState();
 
     // Generate the mapping ID for this key-property combination, including @ field if selected
-    const newMappingId = state.generateMappingId(keyData.key, property.id, keyData.selectedAtField);
-
-    // Check if this is an edit of an existing mapping with a different mappingId
-    // This can happen when selectedAtField changes from null to a value (e.g., in auto-mapped identifiers)
-    const existingMapping = currentState.mappings.mappedKeys.find(k =>
-        k.key === keyData.key && k.property?.id === property.id
+    const newMappingId = state.generateMappingId(
+        keyData.key,
+        property.id,
+        keyData.selectedAtField,
+        keyData.selectedObjectIndex
     );
 
-    if (existingMapping && existingMapping.mappingId && existingMapping.mappingId !== newMappingId) {
+    // When editing an existing mapping, preserve its transformation blocks and
+    // replace only that mapping by its current mappingId. This avoids collapsing
+    // deliberate duplicates that reuse the same source key.
+    if (keyData.mappingId && keyData.mappingId !== newMappingId) {
         // MappingId has changed - need to migrate transformation blocks
-        const oldMappingId = existingMapping.mappingId;
+        const oldMappingId = keyData.mappingId;
         const transformationBlocks = state.getTransformationBlocks(oldMappingId);
 
         if (transformationBlocks && transformationBlocks.length > 0) {

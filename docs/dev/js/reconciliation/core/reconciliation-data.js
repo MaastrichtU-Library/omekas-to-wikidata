@@ -6,6 +6,7 @@
 
 import { getMockItemsData, getMockMappingData } from '../../data/mock-data.js';
 import { applyTransformationChain } from '../../transformations.js';
+import { detectIdentifier } from '../../utils/identifier-detection.js';
 
 /**
  * Calculates total reconciliable cells for accurate progress tracking
@@ -74,12 +75,49 @@ export function calculateTotalReconciliableCells(data, mappedKeys) {
  * any configured transformations before returning the values.
  */
 export function extractPropertyValues(item, keyOrKeyObj, state = null) {
+    return extractPropertyValueDetails(item, keyOrKeyObj, state).map(detail => detail.value);
+}
+
+/**
+ * Extract value details from Omeka S items, preserving useful metadata like source language.
+ * @param {Object} item - Single Omeka S item object
+ * @param {string|Object} keyOrKeyObj - Property key or key object with selectedAtField
+ * @param {Object} [state] - Optional state object to apply transformations
+ * @returns {Array<Object>} Array of value detail objects
+ */
+export function extractPropertyValueDetails(item, keyOrKeyObj, state = null) {
+    const inferPropertyDatatypeFromId = (propertyId) => {
+        if (!propertyId) {
+            return null;
+        }
+
+        const monolingualPropertyIds = ['P1476', 'P1448', 'P1705', 'P2561', 'P1449', 'P1477', 'P1813', 'P1810', 'P1533'];
+        const externalIdPropertyIds = ['P243', 'P8091', 'P214', 'P213', 'P244', 'P227', 'P269', 'P396', 'P646', 'P345'];
+        const timePropertyIds = ['P571', 'P577', 'P569', 'P570', 'P580', 'P582', 'P585', 'P1619', 'P1249'];
+
+        if (monolingualPropertyIds.includes(propertyId)) {
+            return 'monolingualtext';
+        }
+
+        if (externalIdPropertyIds.includes(propertyId)) {
+            return 'external-id';
+        }
+
+        if (timePropertyIds.includes(propertyId)) {
+            return 'time';
+        }
+
+        return null;
+    };
+
     // Handle both string keys and key objects
-    let key, selectedAtField, isCustomProperty;
+    let key, selectedAtField, selectedObjectIndex, isCustomProperty, propertyDatatype;
     if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
         key = keyOrKeyObj.key;
         selectedAtField = keyOrKeyObj.selectedAtField;
+        selectedObjectIndex = keyOrKeyObj.selectedObjectIndex;
         isCustomProperty = keyOrKeyObj.isCustomProperty === true;
+        propertyDatatype = keyOrKeyObj.property?.datatype || inferPropertyDatatypeFromId(keyOrKeyObj.property?.id);
     } else {
         key = keyOrKeyObj;
     }
@@ -107,7 +145,7 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                 
                 // Generate mapping ID to look up transformations
                 if (propertyId) {
-                    const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
+                    const mappingId = state.generateMappingId(key, propertyId, selectedAtField, selectedObjectIndex);
                     const transformationBlocks = state.getTransformationBlocks(mappingId);
                     
                     
@@ -152,13 +190,90 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     
     const value = item[key];
     if (!value) return [];
+
+    const normalizeExternalIdentifier = (rawValue) => {
+        if (rawValue === null || rawValue === undefined) {
+            return rawValue;
+        }
+
+        const detectedIdentifier = detectIdentifier(rawValue, key);
+        return detectedIdentifier?.identifierValue || rawValue;
+    };
+
+    const convertExtractedValueToString = (rawValue) => {
+        if (rawValue === null || rawValue === undefined) {
+            return null;
+        }
+
+        if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean') {
+            return String(rawValue);
+        }
+
+        if (Array.isArray(rawValue)) {
+            for (const entry of rawValue) {
+                const convertedEntry = convertExtractedValueToString(entry);
+                if (convertedEntry !== null && convertedEntry.trim() !== '') {
+                    return convertedEntry;
+                }
+            }
+            return null;
+        }
+
+        if (typeof rawValue === 'object') {
+            const preferredFields = ['o:label', 'display_title', '@value', 'value', 'name', 'title', 'label'];
+
+            for (const field of preferredFields) {
+                if (rawValue[field] !== undefined && rawValue[field] !== null) {
+                    const convertedField = convertExtractedValueToString(rawValue[field]);
+                    if (convertedField !== null && convertedField.trim() !== '') {
+                        return convertedField;
+                    }
+                }
+            }
+
+            if (rawValue['@id']) {
+                return String(rawValue['@id']);
+            }
+
+            for (const [field, fieldValue] of Object.entries(rawValue)) {
+                if (field.startsWith('property_') || field === 'type') {
+                    continue;
+                }
+
+                const convertedField = convertExtractedValueToString(fieldValue);
+                if (convertedField !== null && convertedField.trim() !== '') {
+                    return convertedField;
+                }
+            }
+
+            try {
+                return JSON.stringify(rawValue);
+            } catch {
+                return '[Complex Object]';
+            }
+        }
+
+        return String(rawValue);
+    };
     
-    // Helper function to extract value from a single object
+    const extractLanguageFromValue = (rawValue) => {
+        if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
+            return null;
+        }
+
+        const languageValue = rawValue['@language'] ?? rawValue.language ?? null;
+        return typeof languageValue === 'string' && languageValue.trim() ? languageValue.trim() : null;
+    };
+
+    // Helper function to extract value details from a single object
     const extractFromObject = (v) => {
         // If a specific @ field is selected, ONLY return that field's value
         if (selectedAtField) {
             if (typeof v === 'object' && v[selectedAtField] !== undefined) {
-                return String(v[selectedAtField]);
+                return {
+                    value: convertExtractedValueToString(v[selectedAtField]),
+                    language: selectedAtField === '@value' ? extractLanguageFromValue(v) : null
+                };
             } else {
                 // Don't fall back to default extraction when a specific @ field is requested
                 // Return null to indicate this object doesn't have the requested field
@@ -167,31 +282,44 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         }
         
         // Default extraction logic (only when no specific @ field is selected)
-        if (typeof v === 'object' && v['o:label']) {
-            return v['o:label'];
-        } else if (typeof v === 'object' && v['@value']) {
-            return v['@value'];
-        } else if (typeof v === 'object' && v['@id']) {
-            return v['@id'];
-        } else if (typeof v === 'string') {
-            return v;
-        } else {
-            return String(v);
+        if (typeof v === 'object') {
+            return {
+                value: convertExtractedValueToString(v),
+                language: extractLanguageFromValue(v)
+            };
         }
+
+        return {
+            value: convertExtractedValueToString(v),
+            language: null
+        };
     };
     
     // Handle different data structures
-    let extractedValues;
+    let extractedDetails;
     if (Array.isArray(value)) {
-        // Filter out null values to only include objects that have the requested @ field
-        extractedValues = value.map(v => extractFromObject(v)).filter(v => v !== null);
+        const valuesToExtract = Number.isInteger(selectedObjectIndex) && value[selectedObjectIndex] !== undefined
+            ? [value[selectedObjectIndex]]
+            : value;
+
+        // Filter out null values to only include objects that have the requested field
+        extractedDetails = valuesToExtract
+            .map(v => extractFromObject(v))
+            .filter(detail => detail && detail.value !== null);
     } else {
         const extracted = extractFromObject(value);
-        extractedValues = extracted !== null ? [extracted] : [];
+        extractedDetails = extracted !== null && extracted.value !== null ? [extracted] : [];
+    }
+
+    if (propertyDatatype === 'external-id') {
+        extractedDetails = extractedDetails.map(detail => ({
+            ...detail,
+            value: normalizeExternalIdentifier(detail.value)
+        }));
     }
     
     // Apply transformations if state is provided
-    if (state && extractedValues.length > 0) {
+    if (state && extractedDetails.length > 0) {
         try {
             // Get property information for generating mapping ID
             let propertyId;
@@ -201,15 +329,18 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
             
             // Generate mapping ID to look up transformations
             if (propertyId) {
-                const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
+                const mappingId = state.generateMappingId(key, propertyId, selectedAtField, selectedObjectIndex);
                 const transformationBlocks = state.getTransformationBlocks(mappingId);
                 
                 if (transformationBlocks && transformationBlocks.length > 0) {
                     // Apply transformations to each extracted value
-                    extractedValues = extractedValues.map(originalValue => {
-                        const transformationResult = applyTransformationChain(originalValue, transformationBlocks);
+                    extractedDetails = extractedDetails.map(detail => {
+                        const transformationResult = applyTransformationChain(detail.value, transformationBlocks);
                         // Get the final transformed value
-                        return transformationResult[transformationResult.length - 1]?.value || originalValue;
+                        return {
+                            ...detail,
+                            value: transformationResult[transformationResult.length - 1]?.value || detail.value
+                        };
                     });
                 }
             }
@@ -219,7 +350,7 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         }
     }
     
-    return extractedValues;
+    return extractedDetails;
 }
 
 /**
@@ -440,7 +571,8 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
         mappedKeys.forEach(keyObj => {
             const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
             // Pass the full keyObj and state to apply transformations
-            const values = extractPropertyValues(item, keyObj, state);
+            const valueDetails = extractPropertyValueDetails(item, keyObj, state);
+            const values = valueDetails.map(detail => detail.value);
 
             // Generate mappingId for unique identification
             let mappingId;
@@ -448,7 +580,8 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
                 mappingId = state.generateMappingId(
                     keyName,
                     keyObj.property.id,
-                    keyObj.selectedAtField
+                    keyObj.selectedAtField,
+                    keyObj.selectedObjectIndex
                 );
             } else {
                 mappingId = keyName; // Fallback for string keys
@@ -456,6 +589,7 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
 
             reconciliationData[itemId].properties[mappingId] = {
                 originalValues: values,
+                originalValueDetails: valueDetails,
                 references: [], // References specific to this property
                 propertyMetadata: typeof keyObj === 'object' ? keyObj : null, // Store full property object with constraints
                 keyName: keyName,  // NEW: Store original key name for reference
@@ -511,7 +645,8 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
             mappingId = state.generateMappingId(
                 keyName,
                 keyObj.property.id,
-                keyObj.selectedAtField
+                keyObj.selectedAtField,
+                keyObj.selectedObjectIndex
             );
         } else {
             mappingId = keyName;
@@ -544,11 +679,13 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
             const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
 
             // Extract values for the new property
-            const values = extractPropertyValues(item, keyObj, state);
+            const valueDetails = extractPropertyValueDetails(item, keyObj, state);
+            const values = valueDetails.map(detail => detail.value);
 
             // Initialize reconciliation structure for the new property
             mergedData[itemId].properties[mappingId] = {
                 originalValues: values,
+                originalValueDetails: valueDetails,
                 references: [],
                 propertyMetadata: typeof keyObj === 'object' ? keyObj : null,
                 keyName: keyName,  // Store original key name
@@ -628,7 +765,8 @@ export function migrateReconciliationData(oldReconciliationData, currentMappedKe
                 const mappingId = state.generateMappingId(
                     keyName,
                     keyObj.property.id,
-                    keyObj.selectedAtField
+                    keyObj.selectedAtField,
+                    keyObj.selectedObjectIndex
                 );
 
                 // Migrate the property data to use mappingId as key

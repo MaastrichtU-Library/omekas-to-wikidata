@@ -80,6 +80,35 @@
                             <option value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&amp;per_page=2">Maastricht University demo</option>
                             <option value="https://radboudcollections.omeka.net/api/items?page=5&amp;per_page=2">Radboud Collections demo</option>
                         </select>
+                        <div class="api-parameter-controls">
+                            <div class="api-parameter-groups">
+                                <fieldset class="api-parameter-group">
+                                    <legend>Pagination</legend>
+                                    <label for="api-page">Page</label>
+                                    <input type="number" id="api-page" min="1" step="1" placeholder="1">
+                                    <label for="api-per-page">Items per page</label>
+                                    <input type="number" id="api-per-page" min="1" step="1" placeholder="25">
+                                </fieldset>
+                                <fieldset class="api-parameter-group">
+                                    <legend>Collection Scope</legend>
+                                    <label for="api-resource-template-id">Resource template ID</label>
+                                    <input type="number" id="api-resource-template-id" min="1" step="1" placeholder="e.g. 12">
+                                    <label for="api-item-set-id">Item set ID</label>
+                                    <input type="number" id="api-item-set-id" min="1" step="1" placeholder="e.g. 4">
+                                    <label for="api-site-id">Site ID</label>
+                                    <input type="number" id="api-site-id" min="1" step="1" placeholder="e.g. 2">
+                                </fieldset>
+                                <fieldset class="api-parameter-group">
+                                    <legend>Ownership</legend>
+                                    <label for="api-owner-id">Owner ID</label>
+                                    <input type="number" id="api-owner-id" min="1" step="1" placeholder="e.g. 7">
+                                </fieldset>
+                            </div>
+                            <div class="api-parameter-actions">
+                                <button id="apply-api-params" class="button button--secondary" type="button">Apply Parameters</button>
+                                <button id="reset-api-params" class="button button--secondary" type="button">Clear Parameters</button>
+                            </div>
+                        </div>
                         <button id="fetch-data" class="button button--primary primary-button">Fetch Data</button>
                         <div class="input-alternatives">
                             <span class="alternative-text">or</span>
@@ -189,6 +218,16 @@
             <section id="step3" class="step-content">
                 <h2>Step 3: Reconciliation</h2>
                 <div class="reconciliation-container">
+                    <div id="reconciliation-progress-panel" class="reconciliation-progress-panel">
+                        <div class="reconciliation-progress-header">
+                            <div id="reconciliation-progress-summary" class="reconciliation-progress-summary">0 of 0 values reviewed</div>
+                            <div id="reconciliation-progress-percent" class="reconciliation-progress-percent">0%</div>
+                        </div>
+                        <div class="reconciliation-progress-bar" aria-hidden="true">
+                            <div id="reconciliation-progress-fill" class="reconciliation-progress-fill" style="width: 0%;"></div>
+                        </div>
+                        <div id="reconciliation-progress-details" class="reconciliation-progress-details">Map properties in Step 2 to populate the reconciliation queue.</div>
+                    </div>
                     <div class="reconciliation-table-container">
                         <table class="reconciliation-table">
                             <thead>

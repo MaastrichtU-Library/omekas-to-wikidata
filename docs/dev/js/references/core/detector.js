@@ -21,7 +21,7 @@
  * @returns {Object} result.itemReferences - Map of itemId -> array of reference objects
  * @returns {Object} result.summary - Map of referenceType -> {count, examples}
  */
-export function detectReferences(data) {
+export function detectReferences(data, options = {}) {
     // Normalize data structure to handle both single item and array formats
     // This matches the same normalization logic in data-analyzer.js
     let items = [];
@@ -59,7 +59,7 @@ export function detectReferences(data) {
         const references = [];
 
         // Detect Omeka Item Link
-        const omekaItemLink = detectOmekaItemLink(item);
+        const omekaItemLink = detectOmekaItemLink(item, options);
         if (omekaItemLink) {
             references.push({ ...omekaItemLink, itemId });
             summary['omeka-item'].count++;
@@ -133,22 +133,53 @@ export function detectReferences(data) {
  * @param {Object} item - Omeka S item object
  * @returns {Object|null} Reference object or null if not found
  */
-export function detectOmekaItemLink(item) {
-    if (!item || !item['@id']) return null;
+export function detectOmekaItemLink(item, options = {}) {
+    if (!item || typeof item !== 'object') return null;
 
-    const id = item['@id'];
-    if (typeof id !== 'string') return null;
-
-    // Check if the @id contains "/items/" pattern
-    if (id.includes('/items/')) {
+    const explicitId = item['@id'];
+    if (typeof explicitId === 'string' && explicitId.includes('/items/')) {
         return {
             type: 'omeka-item',
-            url: id,
+            url: explicitId,
+            displayName: 'Omeka Item Link'
+        };
+    }
+
+    const fallbackItemId = item['o:id'] ?? item.id;
+    const fallbackUrl = buildOmekaItemApiUrl(options.apiUrl, fallbackItemId);
+    if (fallbackUrl) {
+        return {
+            type: 'omeka-item',
+            url: fallbackUrl,
             displayName: 'Omeka Item Link'
         };
     }
 
     return null;
+}
+
+function buildOmekaItemApiUrl(apiUrl, itemId) {
+    if (!apiUrl || itemId === null || itemId === undefined || itemId === '') {
+        return null;
+    }
+
+    try {
+        const parsedApiUrl = new URL(apiUrl);
+        let apiItemsPath = parsedApiUrl.pathname.replace(/\/+$/, '');
+
+        const itemsIndex = apiItemsPath.indexOf('/items');
+        if (itemsIndex !== -1) {
+            apiItemsPath = apiItemsPath.slice(0, itemsIndex + '/items'.length);
+        } else if (apiItemsPath.endsWith('/api')) {
+            apiItemsPath = `${apiItemsPath}/items`;
+        } else if (!apiItemsPath.endsWith('/api/items')) {
+            apiItemsPath = `${apiItemsPath}/items`;
+        }
+
+        return `${parsedApiUrl.origin}${apiItemsPath}/${itemId}`;
+    } catch (error) {
+        return null;
+    }
 }
 
 /**

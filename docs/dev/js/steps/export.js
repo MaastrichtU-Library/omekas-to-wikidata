@@ -28,6 +28,7 @@
  */
 import { createDownloadLink, createFileInput, createElement, createButton, showMessage } from '../ui/components.js';
 import { eventSystem } from '../events.js';
+import { detectIdentifier } from '../utils/identifier-detection.js';
 
 // Validation constants for Wikidata format compliance
 // These patterns ensure generated QuickStatements meet Wikidata requirements
@@ -375,6 +376,19 @@ export function setupExportStep(state) {
 
         return statement;
     }
+
+    function normalizeExternalIdentifierValue(rawValue) {
+        if (rawValue === null || rawValue === undefined) {
+            return rawValue;
+        }
+
+        const detectedIdentifier = detectIdentifier(rawValue, 'export');
+        if (detectedIdentifier?.identifierValue) {
+            return detectedIdentifier.identifierValue;
+        }
+
+        return String(rawValue).trim();
+    }
     
     // Validate QuickStatements syntax
     function validateQuickStatements(statements) {
@@ -636,12 +650,18 @@ export function setupExportStep(state) {
                                             const escapedValue = match.value.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, ' ');
                                             value = `${languageCode}:"${escapedValue}"`;
                                         }
+                                    } else if (match.datatype === 'external-id') {
+                                        value = escapeQuickStatementsString(normalizeExternalIdentifierValue(match.value));
                                     } else {
                                         value = escapeQuickStatementsString(match.value);
                                     }
                                 } else if (match.type === 'string') {
                                     // Handle string type reconciliation (from "Accept as String" option)
-                                    value = escapeQuickStatementsString(match.value);
+                                    if (propertyMetadata?.datatype === 'external-id') {
+                                        value = escapeQuickStatementsString(normalizeExternalIdentifierValue(match.value));
+                                    } else {
+                                        value = escapeQuickStatementsString(match.value);
+                                    }
                                 }
 
                                 if (value) {

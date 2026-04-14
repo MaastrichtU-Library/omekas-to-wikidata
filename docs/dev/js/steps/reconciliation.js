@@ -103,6 +103,22 @@ import {
     displayReconciliationError
 } from '../reconciliation/index.js';
 
+function formatSourceFieldLabel(keyData) {
+    if (!keyData?.key) {
+        return 'Source field';
+    }
+
+    if (keyData.selectedAtField) {
+        if (Number.isInteger(keyData.selectedObjectIndex)) {
+            return `${keyData.key} → ${keyData.selectedAtField} (object ${keyData.selectedObjectIndex + 1})`;
+        }
+
+        return `${keyData.key} → ${keyData.selectedAtField}`;
+    }
+
+    return keyData.key;
+}
+
 /**
  * Initializes the reconciliation step interface and processing engine
  * 
@@ -159,10 +175,26 @@ export function setupReconciliationStep(state) {
             }, 100); // Small delay to ensure state is updated
         }
     });
+
+    eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (change) => {
+        if (!change?.path?.startsWith('reconciliationProgress')) {
+            return;
+        }
+
+        const currentState = state.getState();
+        if (currentState.currentStep === 3) {
+            renderReconciliationProgress(currentState.reconciliationProgress);
+        }
+    });
     
     // Initialize DOM elements
     const propertyHeaders = document.getElementById('property-headers');
     const reconciliationRows = document.getElementById('reconciliation-rows');
+    const reconciliationProgressPanel = document.getElementById('reconciliation-progress-panel');
+    const reconciliationProgressSummary = document.getElementById('reconciliation-progress-summary');
+    const reconciliationProgressPercent = document.getElementById('reconciliation-progress-percent');
+    const reconciliationProgressFill = document.getElementById('reconciliation-progress-fill');
+    const reconciliationProgressDetails = document.getElementById('reconciliation-progress-details');
     const reconcileNextBtn = document.getElementById('reconcile-next');
     const proceedToDesignerBtn = document.getElementById('proceed-to-designer');
     const testReconciliationModelBtn = document.getElementById('test-reconciliation-model');
@@ -306,6 +338,7 @@ export function setupReconciliationStep(state) {
             markCellAsSkipped: cellMarkers.markCellAsSkipped,
             markCellAsNoItem: cellMarkers.markCellAsNoItem,
             markCellAsString: cellMarkers.markCellAsString,
+            markCellAsPending: cellMarkers.markCellAsPending,
             
             // Entity matching
             performAutomaticReconciliation,
@@ -384,6 +417,45 @@ export function setupReconciliationStep(state) {
         testReconciliationModelBtn.addEventListener('click', () => {
             modules.loadMockDataForTesting();
         });
+    }
+
+    function renderReconciliationProgress(progress = state.getState().reconciliationProgress || {}) {
+        if (!reconciliationProgressPanel || !reconciliationProgressSummary || !reconciliationProgressPercent ||
+            !reconciliationProgressFill || !reconciliationProgressDetails) {
+            return;
+        }
+
+        const total = Number(progress.total) || 0;
+        const completed = Number(progress.completed) || 0;
+        const skipped = Number(progress.skipped) || 0;
+        const errors = Number(progress.errors) || 0;
+        const resolved = completed + skipped;
+        const percent = total > 0 ? Math.round((resolved / total) * 100) : 0;
+        const remaining = total > resolved ? total - resolved : 0;
+
+        if (total === 0) {
+            reconciliationProgressSummary.textContent = '0 of 0 values reviewed';
+            reconciliationProgressPercent.textContent = '0%';
+            reconciliationProgressFill.style.width = '0%';
+            reconciliationProgressDetails.textContent = 'Map properties in Step 2 to populate the reconciliation queue.';
+            return;
+        }
+
+        reconciliationProgressSummary.textContent = `${resolved} of ${total} values reviewed`;
+        reconciliationProgressPercent.textContent = `${percent}%`;
+        reconciliationProgressFill.style.width = `${percent}%`;
+
+        const details = [
+            `${completed} reconciled`,
+            `${skipped} skipped`,
+            `${remaining} remaining`
+        ];
+
+        if (errors > 0) {
+            details.push(`${errors} need attention`);
+        }
+
+        reconciliationProgressDetails.textContent = details.join(' • ');
     }
 
     /**
@@ -526,6 +598,10 @@ export function setupReconciliationStep(state) {
         const totalCells = calculateTotalReconciliableCells(data, mappedKeys);
         const currentProgress = modules.calculateCurrentProgress();
         state.setReconciliationProgress(currentProgress.completed, totalCells);
+        renderReconciliationProgress({
+            ...currentProgress,
+            total: totalCells
+        });
         
         // Update proceed button
         modules.updateProceedButton();
@@ -540,6 +616,7 @@ export function setupReconciliationStep(state) {
         if (reconciliationData && Object.keys(reconciliationData).length > 0) {
             const progress = modules.calculateCurrentProgress();
             state.updateState('reconciliationProgress', progress);
+            renderReconciliationProgress(progress);
         }
         
         // Enable/disable proceed button
@@ -598,6 +675,9 @@ export function setupReconciliationStep(state) {
             });
 
             state.updateState('reconciliationData', updatedState.reconciliationData);
+            const refreshedProgress = modules.calculateCurrentProgress();
+            state.updateState('reconciliationProgress', refreshedProgress);
+            renderReconciliationProgress(refreshedProgress);
         }
 
     }
@@ -616,16 +696,25 @@ export function setupReconciliationStep(state) {
         const headerContent = createElement('div', { 
             className: 'property-header-content' 
         });
-        
-        // Property label
+
+        const sourceRow = createElement('div', {
+            className: 'property-source-row'
+        });
+        const sourceLabel = createElement('span', {
+            className: 'property-source-label'
+        }, formatSourceFieldLabel(keyData));
+        sourceRow.appendChild(sourceLabel);
+
+        const mappedRow = createElement('div', {
+            className: 'property-mapped-row'
+        });
+        const mappedPrefix = createElement('span', {
+            className: 'property-mapped-prefix'
+        }, 'Wikidata: ');
         const labelSpan = createElement('span', {
             className: 'property-label'
         }, property.label);
-        headerContent.appendChild(labelSpan);
-        
-        // Space and opening bracket
-        headerContent.appendChild(document.createTextNode(' ('));
-        
+
         // Clickable QID link
         const getWikidataUrlForProperty = modules.getPropertyDisplayInfo ? 
             (prop) => `https://www.wikidata.org/wiki/Property:${prop.id}` :
@@ -638,19 +727,22 @@ export function setupReconciliationStep(state) {
             target: '_blank',
             onClick: (e) => e.stopPropagation()
         }, property.id);
-        headerContent.appendChild(qidLink);
-        
-        // Closing bracket
-        headerContent.appendChild(document.createTextNode(')'));
-        
-        // Add @ field indicator if present
-        if (keyData.selectedAtField) {
-            const atFieldIndicator = createElement('span', {
-                className: 'at-field-indicator',
-                title: `Using ${keyData.selectedAtField} field from ${keyData.key}`
-            }, ` ${keyData.selectedAtField}`);
-            headerContent.appendChild(atFieldIndicator);
+        mappedRow.appendChild(mappedPrefix);
+        mappedRow.appendChild(labelSpan);
+        mappedRow.appendChild(document.createTextNode(' ('));
+        mappedRow.appendChild(qidLink);
+        mappedRow.appendChild(document.createTextNode(')'));
+
+        if (property.datatype === 'monolingualtext') {
+            const languageIndicator = createElement('span', {
+                className: 'property-language-indicator',
+                title: 'This Wikidata property expects text with a language code.'
+            }, ' Language required');
+            mappedRow.appendChild(languageIndicator);
         }
+
+        headerContent.appendChild(sourceRow);
+        headerContent.appendChild(mappedRow);
         
         // Replace header content
         headerElement.innerHTML = '';
@@ -841,6 +933,7 @@ export function setupReconciliationStep(state) {
         markCellAsSkipped: modules.markCellAsSkipped,
         markCellAsNoItem: modules.markCellAsNoItem,
         markCellAsString: modules.markCellAsString,
+        markCellAsPending: modules.markCellAsPending,
         getAutoAdvanceSetting: modules.getAutoAdvanceSetting,
         reconcileNextUnprocessedCell: modules.reconcileNextUnprocessedCell,
         setupExpandedSearch
@@ -855,6 +948,7 @@ export function setupReconciliationStep(state) {
     window.ignoreCurrentValue = modalInteractionHandlers.ignoreCurrentValue;
     window.useCurrentValueAsString = modalInteractionHandlers.useCurrentValueAsString;
     window.createNewWikidataItem = modalInteractionHandlers.createNewWikidataItem;
+    window.resetReconciliationDecision = modalInteractionHandlers.resetReconciliationDecision;
     // Note: selectMatch, showAllMatches, showTopMatches are defined in reconciliation-modal.js
     
     // Also expose modalUI to global scope for modal closing
@@ -862,6 +956,7 @@ export function setupReconciliationStep(state) {
     
     // Also expose markCellAsReconciled for direct access
     window.markCellAsReconciled = modules.markCellAsReconciled;
+    window.markCellAsPending = modules.markCellAsPending;
     
     window.applyTypeOverride = modalInteractionHandlers.applyTypeOverride;
     window.confirmReconciliation = modalInteractionHandlers.confirmReconciliation; // Legacy
@@ -916,7 +1011,7 @@ export function setupReconciliationStep(state) {
             domElements: {
                 propertyHeaders,
                 reconciliationRows,
-                reconciliationProgress,
+                reconciliationProgressPanel,
                 reconcileNextBtn,
                 proceedToDesignerBtn
             },

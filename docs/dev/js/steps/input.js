@@ -110,6 +110,10 @@ function getResourceTemplateId(resourceTemplate) {
  */
 export function setupInputStep(state) {
     const apiUrlInput = document.getElementById('api-url');
+    const apiUrlPreset = document.getElementById('api-url-preset');
+    const applyApiParamsBtn = document.getElementById('apply-api-params');
+    const resetApiParamsBtn = document.getElementById('reset-api-params');
+    const defaultApiUrl = apiUrlInput?.value || '';
     // Advanced parameters removed for MVP
     // const apiKeyInput = document.getElementById('api-key');
     // const paginationInput = document.getElementById('pagination');
@@ -126,9 +130,150 @@ export function setupInputStep(state) {
     const processManualJsonButton = document.getElementById('process-manual-json-button');
     const cancelManualJsonButton = document.getElementById('cancel-manual-json');
 
+    const apiParameterFields = [
+        { input: document.getElementById('api-page'), param: 'page' },
+        { input: document.getElementById('api-per-page'), param: 'per_page' },
+        { input: document.getElementById('api-owner-id'), param: 'owner_id' },
+        { input: document.getElementById('api-resource-template-id'), param: 'resource_template_id' },
+        { input: document.getElementById('api-item-set-id'), param: 'item_set_id' },
+        { input: document.getElementById('api-site-id'), param: 'site_id' }
+    ];
+
+    function parseApiUrl(url) {
+        try {
+            return new URL(url);
+        } catch {
+            return null;
+        }
+    }
+
+    function syncApiParameterControls(url) {
+        const parsedUrl = parseApiUrl(url);
+        if (!parsedUrl) {
+            return;
+        }
+
+        apiParameterFields.forEach(({ input, param }) => {
+            if (input) {
+                input.value = parsedUrl.searchParams.get(param) || '';
+            }
+        });
+    }
+
+    function updateApiUrlFromParameterControls({ clear = false } = {}) {
+        const parsedUrl = parseApiUrl(apiUrlInput?.value?.trim());
+        if (!parsedUrl) {
+            alert('Please enter a valid API URL before applying parameters.');
+            return false;
+        }
+
+        if (clear) {
+            apiParameterFields.forEach(({ input, param }) => {
+                parsedUrl.searchParams.delete(param);
+                if (input) {
+                    input.value = '';
+                }
+            });
+        } else {
+            apiParameterFields.forEach(({ input, param }) => {
+                const value = input?.value?.trim() || '';
+                if (value) {
+                    parsedUrl.searchParams.set(param, value);
+                } else {
+                    parsedUrl.searchParams.delete(param);
+                }
+            });
+        }
+
+        apiUrlInput.value = parsedUrl.toString();
+        syncApiParameterControls(apiUrlInput.value);
+        return true;
+    }
+
+    syncApiParameterControls(defaultApiUrl);
+
+    if (apiUrlInput) {
+        apiUrlInput.addEventListener('change', () => {
+            syncApiParameterControls(apiUrlInput.value.trim());
+        });
+
+        apiUrlInput.addEventListener('blur', () => {
+            syncApiParameterControls(apiUrlInput.value.trim());
+        });
+    }
+
+    if (apiUrlPreset) {
+        apiUrlPreset.addEventListener('change', () => {
+            syncApiParameterControls(apiUrlInput.value.trim());
+        });
+    }
+
+    if (applyApiParamsBtn) {
+        applyApiParamsBtn.addEventListener('click', () => {
+            updateApiUrlFromParameterControls();
+        });
+    }
+
+    if (resetApiParamsBtn) {
+        resetApiParamsBtn.addEventListener('click', () => {
+            updateApiUrlFromParameterControls({ clear: true });
+        });
+    }
+
     function updateActiveInputData(data, markUnsaved = true) {
         state.updateState('fetchedData', data, markUnsaved);
         state.updateState('selectedExample', getSelectedExampleFromData(data), markUnsaved);
+    }
+
+    function hasExistingProjectData() {
+        const currentState = state.getState();
+        const mappings = currentState.mappings || {};
+        const references = currentState.references || {};
+
+        const hasMappings =
+            (mappings.nonLinkedKeys?.length || 0) > 0 ||
+            (mappings.mappedKeys?.length || 0) > 0 ||
+            (mappings.ignoredKeys?.length || 0) > 0;
+        const hasReconciliation = Object.keys(currentState.reconciliationData || {}).length > 0;
+        const hasReferences =
+            Object.keys(references.itemReferences || {}).length > 0 ||
+            Object.keys(references.propertyReferences || {}).length > 0 ||
+            (references.customReferences?.length || 0) > 0;
+        const hasLinkedItems = Object.keys(currentState.linkedItems || {}).length > 0;
+
+        return Boolean(
+            currentState.fetchedData ||
+            hasMappings ||
+            hasReconciliation ||
+            hasReferences ||
+            hasLinkedItems ||
+            currentState.quickStatements
+        );
+    }
+
+    function confirmProjectReplacement(preservedApiUrl = '') {
+        if (!hasExistingProjectData()) {
+            return true;
+        }
+
+        const confirmed = window.confirm(
+            'Loading new data will replace the current project and clear existing mappings, reconciliation, references, and export data. Do you want to continue?'
+        );
+
+        if (!confirmed) {
+            return false;
+        }
+
+        state.resetState({
+            preserveTestMode: true,
+            apiUrl: preservedApiUrl
+        });
+
+        if (apiUrlInput) {
+            apiUrlInput.value = preservedApiUrl || defaultApiUrl;
+        }
+
+        return true;
     }
     
     // Set up raw JSON button to open complete API URL
@@ -154,6 +299,10 @@ export function setupInputStep(state) {
                 // Validate URL
                 if (!isValidApiUrl(apiUrl)) {
                     alert('Please enter a valid Omeka S API URL (e.g., https://example.com/api/items)');
+                    return;
+                }
+
+                if (!confirmProjectReplacement(apiUrl)) {
                     return;
                 }
                 
@@ -294,6 +443,7 @@ export function setupInputStep(state) {
     
     function processManualJsonInput() {
         const jsonText = manualJsonTextarea.value.trim();
+        const preservedApiUrl = apiUrlInput?.value.trim() || '';
         
         if (!jsonText) {
             alert('Please paste JSON data first');
@@ -306,6 +456,10 @@ export function setupInputStep(state) {
             // Validate the data
             if (!isValidOmekaResponse(data)) {
                 throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
+            }
+
+            if (!confirmProjectReplacement(preservedApiUrl)) {
+                return;
             }
             
             // Process the manually entered data
@@ -821,7 +975,7 @@ export function setupInputStep(state) {
         const currentState = state.getState();
         
         // Update API URL input if it exists in state
-        if (currentState.apiUrl && apiUrlInput) {
+        if (apiUrlInput && currentState.apiUrl) {
             apiUrlInput.value = currentState.apiUrl;
         }
         
@@ -837,6 +991,19 @@ export function setupInputStep(state) {
             // Enable proceed button if data is valid
             if (proceedToMappingBtn) {
                 proceedToMappingBtn.disabled = false;
+            }
+        } else {
+            if (apiUrlInput && !currentState.apiUrl) {
+                apiUrlInput.value = defaultApiUrl;
+            }
+            if (dataStatus) {
+                dataStatus.innerHTML = '<p class="placeholder">Data status will appear here after fetching</p>';
+            }
+            if (viewRawJsonBtn) {
+                viewRawJsonBtn.style.display = 'none';
+            }
+            if (proceedToMappingBtn) {
+                proceedToMappingBtn.disabled = true;
             }
         }
     }

@@ -25,13 +25,16 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
     // NEW: Get both datatype and enhanced property data from mappings
     const propertyLookupResult = getDataTypeAndPropertyData(property, propertyData, state);
     const dataType = propertyLookupResult.datatype;
-    // Use enhanced property data from mapping lookup if available, otherwise use provided data
-    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData &&
-                                 Object.keys(propertyLookupResult.enhancedPropertyData).length > 1 ?
-        propertyLookupResult.enhancedPropertyData :
-        (propertyData ?
-            { ...propertyData, datatype: propertyData.datatype || dataType } :
-            { datatype: dataType });
+    // Always carry the resolved datatype into the modal-specific property data,
+    // even when the lookup returned a rich object without an explicit datatype field.
+    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData
+        ? {
+            ...propertyLookupResult.enhancedPropertyData,
+            datatype: propertyLookupResult.enhancedPropertyData.datatype || dataType
+        }
+        : (propertyData
+            ? { ...propertyData, datatype: propertyData.datatype || dataType }
+            : { datatype: dataType });
     const transformedValue = getTransformedValue(value, property);
     try {
         // Use factory to create type-specific modal
@@ -360,8 +363,8 @@ function getPropertyTypeByWikidataId(propertyId) {
         'P1476', 'P1448', 'P1705', 'P2561', 'P1449', 'P1477', 'P1813', 'P1810', 'P1533'
     ];
     
-    // Known string properties
-    const stringPropertyIds = [
+    // Known external-id properties
+    const externalIdPropertyIds = [
         'P243', 'P8091', 'P214', 'P213', 'P244', 'P227', 'P269', 'P396', 'P646', 'P345'
     ];
     
@@ -378,8 +381,8 @@ function getPropertyTypeByWikidataId(propertyId) {
         return 'monolingualtext';
     }
     
-    if (stringPropertyIds.includes(propertyId)) {
-        return 'string';
+    if (externalIdPropertyIds.includes(propertyId)) {
+        return 'external-id';
     }
     
     if (timePropertyIds.includes(propertyId)) {
@@ -455,6 +458,109 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function normalizeComparableValue(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    return String(value).trim();
+}
+
+function countIdenticalValuesInMapping(currentState, context) {
+    if (!currentState?.reconciliationData || !context?.itemId || !context?.mappingId) {
+        return 0;
+    }
+
+    const referenceValue = normalizeComparableValue(
+        currentState.reconciliationData?.[context.itemId]?.properties?.[context.mappingId]?.originalValues?.[context.valueIndex]
+        ?? context.originalValue
+    );
+
+    if (!referenceValue) {
+        return 0;
+    }
+
+    let count = 0;
+
+    Object.values(currentState.reconciliationData).forEach(itemData => {
+        const propData = itemData.properties?.[context.mappingId];
+        if (!propData || !Array.isArray(propData.originalValues)) {
+            return;
+        }
+
+        propData.originalValues.forEach(originalValue => {
+            if (normalizeComparableValue(originalValue) === referenceValue) {
+                count++;
+            }
+        });
+    });
+
+    return count;
+}
+
+function setupSharedReconciliationModalControls(modalContainer, state) {
+    if (!modalContainer || !state || !window.currentModalContext) {
+        return;
+    }
+
+    const actions = modalContainer.querySelector('.modal-actions');
+    if (!actions) {
+        return;
+    }
+
+    const currentState = typeof state.getState === 'function' ? state.getState() : state;
+    const existingCellData = currentState.reconciliationData?.[window.currentModalContext.itemId]
+        ?.properties?.[window.currentModalContext.mappingId]
+        ?.reconciled?.[window.currentModalContext.valueIndex];
+
+    if (existingCellData) {
+        window.currentModalContext.currentStatus = existingCellData.status || window.currentModalContext.currentStatus || 'pending';
+        window.currentModalContext.currentSelection = existingCellData.selectedMatch || window.currentModalContext.currentSelection || null;
+    }
+
+    const duplicateCount = countIdenticalValuesInMapping(currentState, window.currentModalContext);
+
+    if (duplicateCount > 1 && !modalContainer.querySelector('.apply-identical-controls')) {
+        const applyToAllLabel = createElement('label', {
+            className: 'apply-identical-controls'
+        });
+        const applyToAllCheckbox = createElement('input', {
+            id: 'apply-identical-values',
+            type: 'checkbox',
+            onChange: (event) => {
+                if (window.currentModalContext) {
+                    window.currentModalContext.applyToIdenticalValues = event.target.checked;
+                }
+            }
+        });
+        const applyToAllText = createElement(
+            'span',
+            {},
+            `Apply this choice to ${duplicateCount} identical value${duplicateCount === 1 ? '' : 's'} in this column`
+        );
+
+        applyToAllCheckbox.checked = Boolean(window.currentModalContext.applyToIdenticalValues);
+        applyToAllLabel.appendChild(applyToAllCheckbox);
+        applyToAllLabel.appendChild(applyToAllText);
+        actions.parentNode.insertBefore(applyToAllLabel, actions);
+    }
+
+    if (window.currentModalContext.currentStatus && window.currentModalContext.currentStatus !== 'pending' &&
+        !actions.querySelector('.reset-decision-btn')) {
+        const resetDecisionButton = createElement('button', {
+            className: 'btn btn-outline reset-decision-btn',
+            type: 'button',
+            onClick: () => {
+                if (typeof window.resetReconciliationDecision === 'function') {
+                    window.resetReconciliationDecision();
+                }
+            }
+        }, 'Undo decision');
+
+        actions.insertBefore(resetDecisionButton, actions.firstChild);
+    }
+}
+
 /**
  * Load existing matches for Wikidata items
  */
@@ -482,14 +588,6 @@ export async function loadExistingMatches(value, existingMatches = null) {
                     <button class="btn btn-link" onclick="showAllMatches()">Show all ${matches.length} matches</button>
                 ` : ''}
             `;
-            
-            // Auto-select high-confidence matches (≥90%)
-            const highConfidenceMatch = matches.find(match => match.score >= 90);
-            if (highConfidenceMatch) {
-                setTimeout(() => {
-                    applyMatchDirectly(highConfidenceMatch.id);
-                }, 100);
-            }
             
         } else {
             matchesContainer.innerHTML = `
@@ -768,7 +866,7 @@ window.applyMatchDirectly = function(matchId) {
     }
     
     // Try both class selectors for compatibility between existing matches and search results
-    const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-name');
+    const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-title') || matchElement.querySelector('.match-name');
     const matchDescriptionElement = matchElement.querySelector('.match-description');
     
     const matchLabel = matchLabelElement?.textContent || 'Unknown';
@@ -884,18 +982,25 @@ export function createOpenReconciliationModalFactory(dependencies) {
             propertyData: keyObjOrManualProp?.property || null,
             dataType: dataType,
             modalType: dataType,
-            existingMatches: null
+            existingMatches: null,
+            currentStatus: 'pending',
+            currentSelection: null,
+            applyToIdenticalValues: false
         };
 
         // Get existing matches from reconciliation data if available
         let existingMatches = null;
+        let existingCellData = null;
         const currentState = state.getState();
-        const reconciliationData = currentState.reconciliation?.data || {};
+        const reconciliationData = currentState.reconciliationData || currentState.reconciliation?.data || {};
 
         if (reconciliationData[itemId] && reconciliationData[itemId].properties[mappingId] &&
             reconciliationData[itemId].properties[mappingId].reconciled[valueIndex]) {
-            existingMatches = reconciliationData[itemId].properties[mappingId].reconciled[valueIndex].matches;
+            existingCellData = reconciliationData[itemId].properties[mappingId].reconciled[valueIndex];
+            existingMatches = existingCellData.matches;
             window.currentModalContext.existingMatches = existingMatches;
+            window.currentModalContext.currentStatus = existingCellData.status || 'pending';
+            window.currentModalContext.currentSelection = existingCellData.selectedMatch || null;
         }
 
         // Create modal content
@@ -918,7 +1023,10 @@ export function createOpenReconciliationModalFactory(dependencies) {
             propertyData: keyObjOrManualProp?.property || null,
             dataType: dataType,
             modalType: dataType,
-            existingMatches: existingMatches
+            existingMatches: existingMatches,
+            currentStatus: existingCellData?.status || 'pending',
+            currentSelection: existingCellData?.selectedMatch || null,
+            applyToIdenticalValues: false
         };
         
         // Ensure context is available after modal opens
@@ -1016,6 +1124,18 @@ export function createOpenReconciliationModalFactory(dependencies) {
             }
         }, 60); // Run after attributes are set
 
+        [90, 180, 320, 500].forEach(delay => {
+            setTimeout(() => {
+                const modalContainer = document.querySelector('.reconciliation-modal-redesign') ||
+                    document.querySelector('.wikidata-item-modal') ||
+                    document.querySelector('[data-modal-type]') ||
+                    document.querySelector('#modal-content') ||
+                    document.querySelector('.modal-content');
+
+                setupSharedReconciliationModalControls(modalContainer, state);
+            }, delay);
+        });
+
         // Start automatic reconciliation for Wikidata items
         // Only if we don't already have existing matches from reconciliation API
         // Note: dataType already declared above, reusing it
@@ -1038,6 +1158,7 @@ export function createModalInteractionHandlers(dependencies) {
         markCellAsSkipped,
         markCellAsNoItem,
         markCellAsString,
+        markCellAsPending,
         getAutoAdvanceSetting,
         reconcileNextUnprocessedCell,
         setupExpandedSearch
@@ -1166,6 +1287,13 @@ export function createModalInteractionHandlers(dependencies) {
             if (value) {
                 const url = `https://www.wikidata.org/wiki/Special:NewItem?label=${encodeURIComponent(value)}`;
                 window.open(url, '_blank');
+            }
+        },
+
+        resetReconciliationDecision() {
+            if (window.currentModalContext) {
+                markCellAsPending(window.currentModalContext);
+                modalUI.closeModal();
             }
         }
     };

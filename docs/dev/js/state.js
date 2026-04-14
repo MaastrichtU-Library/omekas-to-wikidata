@@ -374,10 +374,22 @@ export function setupState() {
     
     /**
      * Resets the state to the initial default values
+     * @param {Object} [options] - Optional reset behavior overrides
+     * @param {boolean} [options.preserveTestMode=false] - Keep the current test mode setting
+     * @param {string} [options.apiUrl=''] - API URL value to keep after reset
      */
-    function resetState() {
+    function resetState(options = {}) {
         const oldState = JSON.parse(JSON.stringify(state));
+        const {
+            preserveTestMode = false,
+            apiUrl = ''
+        } = options;
+
         state = JSON.parse(JSON.stringify(initialState));
+        if (preserveTestMode) {
+            state.testMode = oldState.testMode;
+        }
+        state.apiUrl = apiUrl;
         state.hasUnsavedChanges = false;
         
         // Clear persisted state as well
@@ -1104,13 +1116,22 @@ export function setupState() {
      * @param {string} key - The source data key
      * @param {string} propertyId - The Wikidata property ID
      * @param {string} atField - Optional @ field selector (e.g., '@id', '@value')
+     * @param {number|null} objectIndex - Optional source object index for mixed JSON value arrays
      * @returns {string} The mapping ID
      */
-    function generateMappingId(key, propertyId, atField) {
+    function generateMappingId(key, propertyId, atField, objectIndex = null) {
         if (!key || !propertyId) return propertyId || key || 'unknown';
-        // Include @ field in the ID if specified to support duplicate mappings
+
+        const selectorParts = [];
         if (atField) {
-            return `${key}::${atField}::${propertyId}`;
+            selectorParts.push(atField);
+        }
+        if (Number.isInteger(objectIndex)) {
+            selectorParts.push(`obj${objectIndex}`);
+        }
+
+        if (selectorParts.length > 0) {
+            return `${key}::${selectorParts.join('::')}::${propertyId}`;
         }
         return `${key}::${propertyId}`;
     }
