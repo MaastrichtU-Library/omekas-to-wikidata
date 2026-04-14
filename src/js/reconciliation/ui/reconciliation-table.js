@@ -229,7 +229,11 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
             
             const statusSpan = valueElement.querySelector('.value-status');
             if (statusSpan) {
-                if (status === 'reconciled' && reconciliation) {
+                if (status === 'pending') {
+                    statusSpan.textContent = 'Click to reconcile';
+                    statusSpan.className = 'value-status';
+                    statusSpan.removeAttribute('title');
+                } else if (status === 'reconciled' && reconciliation) {
                     if (reconciliation.type === 'wikidata') {
                         const autoAcceptedText = reconciliation.qualifiers?.autoAccepted ? ' (auto)' : '';
                         statusSpan.innerHTML = `✓ <a href="https://www.wikidata.org/wiki/${reconciliation.id}" target="_blank">${reconciliation.id}</a>${autoAcceptedText}`;
@@ -281,7 +285,15 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
             }
             
             // Remove all status classes and add the current one
-            valueElement.classList.remove('high-confidence-match', 'partial-match', 'low-confidence-match', 'checking');
+            valueElement.classList.remove(
+                'high-confidence-match',
+                'partial-match',
+                'low-confidence-match',
+                'checking',
+                'reconciled',
+                'no-item',
+                'reconciliation-error'
+            );
             
             if (status === 'reconciled') {
                 // Turn green when reconciled manually or automatically
@@ -296,6 +308,8 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
             if (status === 'no-item') {
                 valueElement.style.cursor = 'default';
                 valueElement.onclick = null;
+            } else {
+                valueElement.style.cursor = 'pointer';
             }
         }
     }

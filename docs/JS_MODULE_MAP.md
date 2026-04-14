@@ -157,6 +157,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-progress.js**
 - Purpose: Track reconciliation progress
 - Key exports: `updateProgress()`, `calculateCompletion()`, `getProgressStats()`
+- Features: Recalculates progress from actual cell states, supports bulk application to identical values, and allows decision reset without corrupting completion counts
 
 #### UI (`reconciliation/ui/`)
 
@@ -168,6 +169,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-modal.js**
 - Purpose: Reconciliation configuration and details modal
 - Key exports: `openReconciliationModal()`, `displayMatchDetails()`
+- Features: Adds shared modal controls for applying a decision to identical values in the same column and undoing an existing decision
 
 **reconciliation-display.js**
 - Purpose: Format and display reconciliation information

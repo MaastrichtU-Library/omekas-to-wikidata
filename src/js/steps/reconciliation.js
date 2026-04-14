@@ -306,6 +306,7 @@ export function setupReconciliationStep(state) {
             markCellAsSkipped: cellMarkers.markCellAsSkipped,
             markCellAsNoItem: cellMarkers.markCellAsNoItem,
             markCellAsString: cellMarkers.markCellAsString,
+            markCellAsPending: cellMarkers.markCellAsPending,
             
             // Entity matching
             performAutomaticReconciliation,
@@ -841,6 +842,7 @@ export function setupReconciliationStep(state) {
         markCellAsSkipped: modules.markCellAsSkipped,
         markCellAsNoItem: modules.markCellAsNoItem,
         markCellAsString: modules.markCellAsString,
+        markCellAsPending: modules.markCellAsPending,
         getAutoAdvanceSetting: modules.getAutoAdvanceSetting,
         reconcileNextUnprocessedCell: modules.reconcileNextUnprocessedCell,
         setupExpandedSearch
@@ -855,6 +857,7 @@ export function setupReconciliationStep(state) {
     window.ignoreCurrentValue = modalInteractionHandlers.ignoreCurrentValue;
     window.useCurrentValueAsString = modalInteractionHandlers.useCurrentValueAsString;
     window.createNewWikidataItem = modalInteractionHandlers.createNewWikidataItem;
+    window.resetReconciliationDecision = modalInteractionHandlers.resetReconciliationDecision;
     // Note: selectMatch, showAllMatches, showTopMatches are defined in reconciliation-modal.js
     
     // Also expose modalUI to global scope for modal closing
@@ -862,6 +865,7 @@ export function setupReconciliationStep(state) {
     
     // Also expose markCellAsReconciled for direct access
     window.markCellAsReconciled = modules.markCellAsReconciled;
+    window.markCellAsPending = modules.markCellAsPending;
     
     window.applyTypeOverride = modalInteractionHandlers.applyTypeOverride;
     window.confirmReconciliation = modalInteractionHandlers.confirmReconciliation; // Legacy
