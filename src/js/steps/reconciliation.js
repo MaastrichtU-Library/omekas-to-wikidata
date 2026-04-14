@@ -646,10 +646,15 @@ export function setupReconciliationStep(state) {
         
         // Add @ field indicator if present
         if (keyData.selectedAtField) {
+            const indicatorText = Number.isInteger(keyData.selectedObjectIndex)
+                ? ` ${keyData.selectedAtField} (object ${keyData.selectedObjectIndex + 1})`
+                : ` ${keyData.selectedAtField}`;
             const atFieldIndicator = createElement('span', {
                 className: 'at-field-indicator',
-                title: `Using ${keyData.selectedAtField} field from ${keyData.key}`
-            }, ` ${keyData.selectedAtField}`);
+                title: Number.isInteger(keyData.selectedObjectIndex)
+                    ? `Using ${keyData.selectedAtField} from object ${keyData.selectedObjectIndex + 1} in ${keyData.key}`
+                    : `Using ${keyData.selectedAtField} field from ${keyData.key}`
+            }, indicatorText);
             headerContent.appendChild(atFieldIndicator);
         }
         

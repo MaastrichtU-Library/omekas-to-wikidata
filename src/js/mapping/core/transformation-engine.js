@@ -38,7 +38,12 @@ export function renderValueTransformationUI(keyData, state) {
     let mappingId;
     if (propertyId) {
         // Final mapping ID with property, including @ field if selected
-        mappingId = state.generateMappingId(keyData.key, propertyId, keyData.selectedAtField);
+        mappingId = state.generateMappingId(
+            keyData.key,
+            propertyId,
+            keyData.selectedAtField,
+            keyData.selectedObjectIndex
+        );
     } else {
         // Temporary mapping ID when no property selected yet
         mappingId = `temp_${keyData.key}`;

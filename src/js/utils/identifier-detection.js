@@ -379,6 +379,7 @@ export async function createIdentifierMapping(fieldKey, detection, sampleValue) 
     // Determine the best default field using the same logic as manual mappings
     // Priority: @id > @value > other @ fields > first available (but ignore @type)
     let selectedAtField = null;
+    let selectedObjectIndex = null;
     
     if (availableFields.length > 1) {
         // Find the most logical default field
@@ -398,6 +399,7 @@ export async function createIdentifierMapping(fieldKey, detection, sampleValue) 
         }
         
         selectedAtField = defaultField?.key || null;
+        selectedObjectIndex = Array.isArray(sampleValue) ? 0 : null;
     }
     
     // Fetch property information and constraints via API
@@ -460,6 +462,7 @@ export async function createIdentifierMapping(fieldKey, detection, sampleValue) 
         displayName: `${fieldKey} (${truncatedValue || detection.identifierValue})`,
         sampleValue: sampleValue,  // Store sample value for field analysis
         selectedAtField: selectedAtField,  // Store selected field for value extraction
+        selectedObjectIndex: selectedObjectIndex,
         availableFields: availableFields  // Store available fields for UI
     };
 }

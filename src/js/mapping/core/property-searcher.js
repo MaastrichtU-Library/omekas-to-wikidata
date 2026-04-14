@@ -668,7 +668,12 @@ export async function selectProperty(property, state) {
     const keyData = window.currentMappingKeyData;
     if (keyData && keyData.key && state) {
         const tempMappingId = `temp_${keyData.key}`;
-        const finalMappingId = state.generateMappingId(keyData.key, property.id, keyData.selectedAtField);
+        const finalMappingId = state.generateMappingId(
+            keyData.key,
+            property.id,
+            keyData.selectedAtField,
+            keyData.selectedObjectIndex
+        );
 
         // Check if there are transformations stored under the temporary ID
         const currentState = state.getState();

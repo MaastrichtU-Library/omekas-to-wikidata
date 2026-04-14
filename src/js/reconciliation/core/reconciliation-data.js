@@ -6,6 +6,7 @@
 
 import { getMockItemsData, getMockMappingData } from '../../data/mock-data.js';
 import { applyTransformationChain } from '../../transformations.js';
+import { detectIdentifier } from '../../utils/identifier-detection.js';
 
 /**
  * Calculates total reconciliable cells for accurate progress tracking
@@ -75,11 +76,13 @@ export function calculateTotalReconciliableCells(data, mappedKeys) {
  */
 export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     // Handle both string keys and key objects
-    let key, selectedAtField, isCustomProperty;
+    let key, selectedAtField, selectedObjectIndex, isCustomProperty, propertyDatatype;
     if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
         key = keyOrKeyObj.key;
         selectedAtField = keyOrKeyObj.selectedAtField;
+        selectedObjectIndex = keyOrKeyObj.selectedObjectIndex;
         isCustomProperty = keyOrKeyObj.isCustomProperty === true;
+        propertyDatatype = keyOrKeyObj.property?.datatype;
     } else {
         key = keyOrKeyObj;
     }
@@ -107,7 +110,7 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                 
                 // Generate mapping ID to look up transformations
                 if (propertyId) {
-                    const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
+                    const mappingId = state.generateMappingId(key, propertyId, selectedAtField, selectedObjectIndex);
                     const transformationBlocks = state.getTransformationBlocks(mappingId);
                     
                     
@@ -152,6 +155,15 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     
     const value = item[key];
     if (!value) return [];
+
+    const normalizeExternalIdentifier = (rawValue) => {
+        if (rawValue === null || rawValue === undefined) {
+            return rawValue;
+        }
+
+        const detectedIdentifier = detectIdentifier(rawValue, key);
+        return detectedIdentifier?.identifierValue || rawValue;
+    };
 
     const convertExtractedValueToString = (rawValue) => {
         if (rawValue === null || rawValue === undefined) {
@@ -233,11 +245,19 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
     // Handle different data structures
     let extractedValues;
     if (Array.isArray(value)) {
-        // Filter out null values to only include objects that have the requested @ field
-        extractedValues = value.map(v => extractFromObject(v)).filter(v => v !== null);
+        const valuesToExtract = Number.isInteger(selectedObjectIndex) && value[selectedObjectIndex] !== undefined
+            ? [value[selectedObjectIndex]]
+            : value;
+
+        // Filter out null values to only include objects that have the requested field
+        extractedValues = valuesToExtract.map(v => extractFromObject(v)).filter(v => v !== null);
     } else {
         const extracted = extractFromObject(value);
         extractedValues = extracted !== null ? [extracted] : [];
+    }
+
+    if (propertyDatatype === 'external-id') {
+        extractedValues = extractedValues.map(normalizeExternalIdentifier);
     }
     
     // Apply transformations if state is provided
@@ -251,7 +271,7 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
             
             // Generate mapping ID to look up transformations
             if (propertyId) {
-                const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
+                const mappingId = state.generateMappingId(key, propertyId, selectedAtField, selectedObjectIndex);
                 const transformationBlocks = state.getTransformationBlocks(mappingId);
                 
                 if (transformationBlocks && transformationBlocks.length > 0) {
@@ -498,7 +518,8 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
                 mappingId = state.generateMappingId(
                     keyName,
                     keyObj.property.id,
-                    keyObj.selectedAtField
+                    keyObj.selectedAtField,
+                    keyObj.selectedObjectIndex
                 );
             } else {
                 mappingId = keyName; // Fallback for string keys
@@ -561,7 +582,8 @@ export function mergeReconciliationData(existingReconciliationData, data, curren
             mappingId = state.generateMappingId(
                 keyName,
                 keyObj.property.id,
-                keyObj.selectedAtField
+                keyObj.selectedAtField,
+                keyObj.selectedObjectIndex
             );
         } else {
             mappingId = keyName;
@@ -678,7 +700,8 @@ export function migrateReconciliationData(oldReconciliationData, currentMappedKe
                 const mappingId = state.generateMappingId(
                     keyName,
                     keyObj.property.id,
-                    keyObj.selectedAtField
+                    keyObj.selectedAtField,
+                    keyObj.selectedObjectIndex
                 );
 
                 // Migrate the property data to use mappingId as key

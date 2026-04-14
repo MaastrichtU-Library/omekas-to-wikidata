@@ -1116,13 +1116,22 @@ export function setupState() {
      * @param {string} key - The source data key
      * @param {string} propertyId - The Wikidata property ID
      * @param {string} atField - Optional @ field selector (e.g., '@id', '@value')
+     * @param {number|null} objectIndex - Optional source object index for mixed JSON value arrays
      * @returns {string} The mapping ID
      */
-    function generateMappingId(key, propertyId, atField) {
+    function generateMappingId(key, propertyId, atField, objectIndex = null) {
         if (!key || !propertyId) return propertyId || key || 'unknown';
-        // Include @ field in the ID if specified to support duplicate mappings
+
+        const selectorParts = [];
         if (atField) {
-            return `${key}::${atField}::${propertyId}`;
+            selectorParts.push(atField);
+        }
+        if (Number.isInteger(objectIndex)) {
+            selectorParts.push(`obj${objectIndex}`);
+        }
+
+        if (selectorParts.length > 0) {
+            return `${key}::${selectorParts.join('::')}::${propertyId}`;
         }
         return `${key}::${propertyId}`;
     }

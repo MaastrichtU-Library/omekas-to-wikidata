@@ -504,10 +504,15 @@ export function createReconciliationTableFactory(dependencies) {
                         
                         // Add @ field indicator if present (for duplicate mappings)
                         if (keyObj.selectedAtField) {
+                            const indicatorText = Number.isInteger(keyObj.selectedObjectIndex)
+                                ? ` ${keyObj.selectedAtField} (object ${keyObj.selectedObjectIndex + 1})`
+                                : ` ${keyObj.selectedAtField}`;
                             const atFieldIndicator = createElement('span', {
                                 className: 'at-field-indicator',
-                                title: `Using ${keyObj.selectedAtField} field from ${keyName}`
-                            }, ` ${keyObj.selectedAtField}`);
+                                title: Number.isInteger(keyObj.selectedObjectIndex)
+                                    ? `Using ${keyObj.selectedAtField} from object ${keyObj.selectedObjectIndex + 1} in ${keyName}`
+                                    : `Using ${keyObj.selectedAtField} field from ${keyName}`
+                            }, indicatorText);
                             headerContent.appendChild(atFieldIndicator);
                         }
                         

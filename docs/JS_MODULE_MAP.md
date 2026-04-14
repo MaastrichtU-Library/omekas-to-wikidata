@@ -94,7 +94,7 @@ The application follows a **modular, event-driven architecture**:
 **data-analyzer.js**
 - Purpose: Analyze Omeka data structure and extract fields
 - Key exports: `extractAndAnalyzeKeys()`, `extractAvailableFields()`, `extractSampleValue()`
-- Features: Supports template-order and frequency-order field sorting
+- Features: Supports template-order and frequency-order field sorting, and preserves per-object field groups for mixed JSON value arrays
 
 **property-searcher.js**
 - Purpose: Search and suggest Wikidata properties
@@ -153,6 +153,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-data.js**
 - Purpose: Manage reconciliation data and results
 - Key exports: `storeReconciliationResult()`, `getReconciliationStatus()`
+- Features: Extracts object-specific field selections and normalizes recognized external identifier URLs to bare identifier values
 
 **reconciliation-progress.js**
 - Purpose: Track reconciliation progress

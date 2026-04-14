@@ -740,7 +740,6 @@ export function extractAtFieldsFromAllItems(keyName, items) {
  */
 export function extractAllFieldsFromItems(keyName, items) {
     const fieldGroups = [];
-    const maxSamples = 3;
     const excludedFields = ['is_public']; // Fields to exclude from the dropdown
     
     if (!Array.isArray(items) || items.length === 0) {
@@ -770,7 +769,7 @@ export function extractAllFieldsFromItems(keyName, items) {
             const fieldKeys = Object.keys(value)
                 .filter(key => !excludedFields.includes(key))
                 .sort();
-            const signature = fieldKeys.join('|');
+            const signature = `${index}::${fieldKeys.join('|')}`;
             
             // Check if we've already seen this object structure
             if (!uniqueObjectSignatures.has(signature)) {
@@ -822,12 +821,14 @@ export function extractAllFieldsFromItems(keyName, items) {
                 // Add this group to our results
                 uniqueObjectSignatures.set(signature, fields);
                 fieldGroups.push({
-                    objectIndex: fieldGroups.length,
+                    objectIndex: index,
                     fields: fields
                 });
             }
         });
     }
-    
+
+    fieldGroups.sort((a, b) => a.objectIndex - b.objectIndex);
+
     return fieldGroups;
 }
