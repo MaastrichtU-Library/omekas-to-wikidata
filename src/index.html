@@ -83,7 +83,12 @@
                         <div class="api-parameter-controls">
                             <div class="api-parameter-groups">
                                 <fieldset class="api-parameter-group">
-                                    <legend>Pagination</legend>
+                                    <legend>Pagination (optional)</legend>
+                                    <label class="api-checkbox-option" for="api-fetch-all-pages">
+                                        <input type="checkbox" id="api-fetch-all-pages" checked>
+                                        Fetch all matching items
+                                    </label>
+                                    <p class="api-parameter-hint">Recommended when you filter by item set, site, owner, or resource template.</p>
                                     <label for="api-page">Page</label>
                                     <input type="number" id="api-page" min="1" step="1" placeholder="1">
                                     <label for="api-per-page">Items per page</label>
@@ -156,11 +161,15 @@
                     </div>
                 </div>
                 <div class="add-metadata-section">
-                    <button id="add-label" class="button button--secondary">Add Label</button>
+                    <div class="mapping-guidance">
+                        <strong>Add required Wikidata values only when they are missing from the imported fields.</strong>
+                        Use Label for the main title or name, use Instance of for the class of item, and use Add extra Wikidata property only when you genuinely need to create a value in the tool.
+                    </div>
+                    <button id="add-label" class="button button--secondary">Set Label</button>
                     <button id="add-description" class="button button--secondary">Add Description</button>
                     <button id="add-aliases" class="button button--secondary">Add Aliases</button>
-                    <button id="add-instance-of" class="button button--secondary">Add Instance of</button>
-                    <button id="add-wikidata-property" class="button button--secondary">Add Other Wikidata Property</button>
+                    <button id="add-instance-of" class="button button--secondary">Set Instance of</button>
+                    <button id="add-wikidata-property" class="button button--secondary">Add Extra Wikidata Property</button>
                 </div>
                 <div class="mapping-container">
                     
@@ -249,7 +258,7 @@
                     <div class="navigation-buttons">
                         <button id="back-to-mapping" class="button button--secondary secondary-button">Back to Mapping</button>
                         <button id="test-reconciliation-model" class="button button--test test-button test-mode-only">Test Modal</button>
-                        <button id="proceed-to-designer" class="button button--primary primary-button" disabled>Continue to Wikidata Designer</button>
+                        <button id="proceed-to-designer" class="button button--primary primary-button" disabled>Continue to References</button>
                     </div>
                 </div>
             </section>
@@ -303,7 +312,7 @@
                     <!-- JSON export/import removed for MVP simplicity -->
                     
                     <div class="navigation-buttons">
-                        <button id="back-to-designer" class="button button--secondary secondary-button">Back to Wikidata Designer</button>
+                        <button id="back-to-designer" class="button button--secondary secondary-button">Back to References</button>
                         <button id="start-new-project" class="button button--primary primary-button">Start New Project</button>
                     </div>
                 </div>

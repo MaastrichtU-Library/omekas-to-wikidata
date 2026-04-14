@@ -88,4 +88,53 @@ test.describe('Reconciliation headers and source language hints @reconciliation'
     await expect(page.locator('#selected-language-code')).toHaveValue('nl');
     await expect(page.locator('#confirm-btn')).toBeEnabled();
   });
+
+  test('updates the table text after confirming an edited monolingual value', async ({ page }) => {
+    const app = new OmekaToWikidataPage(page);
+
+    await page.addInitScript(() => {
+      localStorage.clear();
+    });
+
+    await app.goto();
+    await app.verifyPageTitle();
+    await app.enableTestMode();
+
+    await page.evaluate(() => {
+      window.debugState.updateState('selectedExample', 'language-update-test');
+      window.debugState.updateState('fetchedData', [
+        {
+          id: 1,
+          'dcterms:title': [
+            {
+              '@value': 'Voorbeeldtitel',
+              '@language': 'nl'
+            }
+          ]
+        }
+      ]);
+      window.debugState.updateState('mappings.mappedKeys', [
+        {
+          key: 'dcterms:title',
+          mappingId: 'dcterms:title::P1476',
+          property: {
+            id: 'P1476',
+            label: 'title',
+            datatype: 'monolingualtext'
+          }
+        }
+      ]);
+    });
+
+    await app.navigateToStep(3);
+
+    const titleValue = page.locator('.property-cell .value-text').first();
+    await titleValue.click();
+
+    await page.locator('#string-editor').fill('Aangepaste titel');
+    await page.locator('#confirm-btn').click();
+
+    await expect(page.locator('.property-cell .value-text').first()).toHaveText('Aangepaste titel (nl)');
+    await expect(page.locator('.property-cell .value-status').first()).toContainText('Custom value');
+  });
 });

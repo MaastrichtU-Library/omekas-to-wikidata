@@ -282,8 +282,7 @@ export function setupMappingStep(state) {
                             Learn more about ${labelProperty.label} →
                         </a>
                         <div class="metadata-notice" style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px;">
-                            <strong>Note:</strong> This is a metadata field for Wikidata entities.
-                            Values will be treated as language-specific text.
+                            <strong>Guidance:</strong> Pick the source field that contains the main title or name you want to use on Wikidata. Keep a single Label mapping and edit that mapping if you need to change it.
                         </div>
                     </div>
                 `;
@@ -559,6 +558,9 @@ export function setupMappingStep(state) {
                         <a href="${instanceOfProperty.url}" target="_blank" rel="noopener">
                             View on Wikidata →
                         </a>
+                        <div class="metadata-notice" style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+                            <strong>Guidance:</strong> Pick the source field that tells us what each item is, for example book, coin, or manuscript. Keep a single Instance of mapping and edit that mapping if you need to change it.
+                        </div>
                     </div>
                 `;
             }

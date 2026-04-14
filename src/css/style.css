@@ -121,6 +121,21 @@ button {
     flex-wrap: wrap;
 }
 
+.mapping-guidance {
+    flex-basis: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid #d7e4f3;
+    border-radius: 6px;
+    background: #f5f9fd;
+    color: #22313f;
+    line-height: 1.45;
+}
+
+.button[disabled] {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
 /* Custom Entity Schema Selector */
 .entity-schema-selector-custom {
     position: relative;
@@ -1210,6 +1225,24 @@ main {
     width: auto;
     margin: 0;
     font-size: 0.9rem;
+}
+
+#step1 .api-checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.1rem;
+}
+
+#step1 .api-checkbox-option input {
+    margin: 0;
+}
+
+#step1 .api-parameter-hint {
+    margin: 0 0 0.35rem;
+    font-size: 0.85rem;
+    color: #52606d;
 }
 
 #step1 .api-parameter-group input {

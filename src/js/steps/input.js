@@ -113,6 +113,7 @@ export function setupInputStep(state) {
     const apiUrlPreset = document.getElementById('api-url-preset');
     const applyApiParamsBtn = document.getElementById('apply-api-params');
     const resetApiParamsBtn = document.getElementById('reset-api-params');
+    const fetchAllPagesCheckbox = document.getElementById('api-fetch-all-pages');
     const defaultApiUrl = apiUrlInput?.value || '';
     // Advanced parameters removed for MVP
     // const apiKeyInput = document.getElementById('api-key');
@@ -160,6 +161,34 @@ export function setupInputStep(state) {
         });
     }
 
+    function syncFetchAllPagesControl(url) {
+        if (!fetchAllPagesCheckbox) {
+            return;
+        }
+
+        const parsedUrl = parseApiUrl(url);
+        const explicitPageSelection = Boolean(
+            parsedUrl?.searchParams.get('page') || parsedUrl?.searchParams.get('per_page')
+        );
+
+        fetchAllPagesCheckbox.checked = !explicitPageSelection;
+        updatePaginationControlState();
+    }
+
+    function updatePaginationControlState() {
+        const shouldFetchAllPages = fetchAllPagesCheckbox?.checked;
+        const pageInput = document.getElementById('api-page');
+
+        if (!pageInput) {
+            return;
+        }
+
+        pageInput.disabled = Boolean(shouldFetchAllPages);
+        pageInput.title = shouldFetchAllPages
+            ? 'Page selection is disabled while "Fetch all matching items" is enabled.'
+            : '';
+    }
+
     function updateApiUrlFromParameterControls({ clear = false } = {}) {
         const parsedUrl = parseApiUrl(apiUrlInput?.value?.trim());
         if (!parsedUrl) {
@@ -187,24 +216,35 @@ export function setupInputStep(state) {
 
         apiUrlInput.value = parsedUrl.toString();
         syncApiParameterControls(apiUrlInput.value);
+        syncFetchAllPagesControl(apiUrlInput.value);
         return true;
     }
 
     syncApiParameterControls(defaultApiUrl);
+    syncFetchAllPagesControl(defaultApiUrl);
 
     if (apiUrlInput) {
         apiUrlInput.addEventListener('change', () => {
             syncApiParameterControls(apiUrlInput.value.trim());
+            syncFetchAllPagesControl(apiUrlInput.value.trim());
         });
 
         apiUrlInput.addEventListener('blur', () => {
             syncApiParameterControls(apiUrlInput.value.trim());
+            syncFetchAllPagesControl(apiUrlInput.value.trim());
         });
     }
 
     if (apiUrlPreset) {
         apiUrlPreset.addEventListener('change', () => {
             syncApiParameterControls(apiUrlInput.value.trim());
+            syncFetchAllPagesControl(apiUrlInput.value.trim());
+        });
+    }
+
+    if (fetchAllPagesCheckbox) {
+        fetchAllPagesCheckbox.addEventListener('change', () => {
+            updatePaginationControlState();
         });
     }
 
@@ -223,6 +263,79 @@ export function setupInputStep(state) {
     function updateActiveInputData(data, markUnsaved = true) {
         state.updateState('fetchedData', data, markUnsaved);
         state.updateState('selectedExample', getSelectedExampleFromData(data), markUnsaved);
+    }
+
+    function buildPagedApiUrl(apiUrl, pageNumber, pageSize) {
+        const parsedUrl = parseApiUrl(apiUrl);
+        if (!parsedUrl) {
+            return null;
+        }
+
+        parsedUrl.searchParams.set('page', String(pageNumber));
+        parsedUrl.searchParams.set('per_page', String(pageSize));
+        return parsedUrl.toString();
+    }
+
+    function supportsPagedItemFetching(apiUrl) {
+        const parsedUrl = parseApiUrl(apiUrl);
+        if (!parsedUrl) {
+            return false;
+        }
+
+        const pathname = parsedUrl.pathname.replace(/\/+$/, '');
+        return /\/api\/items$/.test(pathname);
+    }
+
+    async function fetchAllMatchingItems(apiUrl) {
+        const parsedUrl = parseApiUrl(apiUrl);
+        if (!parsedUrl) {
+            throw new Error('Please enter a valid API URL before fetching data.');
+        }
+
+        const startingPage = Math.max(1, Number(parsedUrl.searchParams.get('page')) || 1);
+        const configuredPageSize = Math.max(1, Number(parsedUrl.searchParams.get('per_page')) || 100);
+        const allItems = [];
+        let currentPage = startingPage;
+        let fetchedPages = 0;
+        let fetchMethod = 'direct';
+        let proxyUsed = null;
+        let finalPageData = null;
+
+        while (true) {
+            const pagedUrl = buildPagedApiUrl(apiUrl, currentPage, configuredPageSize);
+            const pageResult = await fetchWithCorsProxy(pagedUrl);
+            const pageItems = normalizeItems(pageResult.data);
+
+            fetchMethod = pageResult.method;
+            proxyUsed = pageResult.proxyUsed || proxyUsed;
+            fetchedPages += 1;
+            finalPageData = pageResult.data;
+
+            if (!isValidOmekaResponse(pageResult.data)) {
+                throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
+            }
+
+            if (pageItems.length === 0) {
+                break;
+            }
+
+            allItems.push(...pageItems);
+
+            if (pageItems.length < configuredPageSize) {
+                break;
+            }
+
+            currentPage += 1;
+        }
+
+        const wrappedData = wrapItemsLikeOriginalData(finalPageData, allItems);
+        return {
+            data: wrappedData,
+            method: fetchMethod,
+            proxyUsed,
+            fetchedPages,
+            itemCount: allItems.length
+        };
     }
 
     function hasExistingProjectData() {
@@ -333,8 +446,13 @@ export function setupInputStep(state) {
                     console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
                 }
                 
-                // Fetch data using CORS proxy fallback system
-                const result = await fetchWithCorsProxy(apiUrl);
+                const shouldFetchAllPages =
+                    Boolean(fetchAllPagesCheckbox?.checked) &&
+                    supportsPagedItemFetching(apiUrl);
+
+                const result = shouldFetchAllPages
+                    ? await fetchAllMatchingItems(apiUrl)
+                    : await fetchWithCorsProxy(apiUrl);
                 const data = result.data;
 
                 // Validate JSON structure
@@ -344,7 +462,10 @@ export function setupInputStep(state) {
                 
                 // Process the successful data
                 processSuccessfulData(data, result.method, {
-                    proxyUsed: result.proxyUsed || null
+                    proxyUsed: result.proxyUsed || null,
+                    fetchedPages: result.fetchedPages || 1,
+                    fetchedAllPages: shouldFetchAllPages,
+                    itemCount: result.itemCount || normalizeItems(data).length
                 });
                 
             } catch (error) {
@@ -788,6 +909,18 @@ export function setupInputStep(state) {
             );
         }
 
+        if (details.fetchedAllPages) {
+            const pageSummary = details.fetchedPages > 1
+                ? `Fetched ${details.itemCount} matching items across ${details.fetchedPages} pages.`
+                : `Fetched ${details.itemCount} matching item${details.itemCount === 1 ? '' : 's'} from a single page.`;
+
+            summaryContainer.appendChild(
+                createElement('p', { className: 'hint' }, [
+                    createElement('em', {}, pageSummary)
+                ])
+            );
+        }
+
         const summaryList = createElement('ul');
         summaryList.appendChild(createElement('li', {}, `Items found: ${itemCount}`));
         summaryList.appendChild(createElement('li', {}, `Properties per item: ${propertyCount}`));
@@ -977,6 +1110,8 @@ export function setupInputStep(state) {
         // Update API URL input if it exists in state
         if (apiUrlInput && currentState.apiUrl) {
             apiUrlInput.value = currentState.apiUrl;
+            syncApiParameterControls(currentState.apiUrl);
+            syncFetchAllPagesControl(currentState.apiUrl);
         }
         
         // Update data status if there's fetched data
@@ -995,6 +1130,8 @@ export function setupInputStep(state) {
         } else {
             if (apiUrlInput && !currentState.apiUrl) {
                 apiUrlInput.value = defaultApiUrl;
+                syncApiParameterControls(defaultApiUrl);
+                syncFetchAllPagesControl(defaultApiUrl);
             }
             if (dataStatus) {
                 dataStatus.innerHTML = '<p class="placeholder">Data status will appear here after fetching</p>';

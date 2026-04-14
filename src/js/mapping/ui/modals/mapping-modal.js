@@ -269,7 +269,10 @@ export function openMappingModal(keyData) {
                         }
                         
                         
-                        mapKeyToProperty(customKeyData, selectedProperty, window.mappingStepState);
+                        const mappingSucceeded = mapKeyToProperty(customKeyData, selectedProperty, window.mappingStepState);
+                        if (!mappingSucceeded) {
+                            return;
+                        }
                         
                         // Check final state
                         const finalState = window.mappingStepState.getState();
@@ -308,7 +311,10 @@ export function openMappingModal(keyData) {
                 callback: () => {
                     const selectedProperty = getSelectedPropertyFromModal();
                     if (selectedProperty) {
-                        mapKeyToProperty(keyData, selectedProperty, window.mappingStepState);
+                        const mappingSucceeded = mapKeyToProperty(keyData, selectedProperty, window.mappingStepState);
+                        if (!mappingSucceeded) {
+                            return;
+                        }
                         modalUI.closeModal();
                     } else {
                         showMessage('Please select a Wikidata property first.', 'warning', 3000);
@@ -323,7 +329,10 @@ export function openMappingModal(keyData) {
                     const selectedProperty = getSelectedPropertyFromModal();
                     if (selectedProperty) {
                         // Save the current mapping
-                        mapKeyToProperty(keyData, selectedProperty, window.mappingStepState);
+                        const mappingSucceeded = mapKeyToProperty(keyData, selectedProperty, window.mappingStepState);
+                        if (!mappingSucceeded) {
+                            return;
+                        }
                         modalUI.closeModal();
                         
                         // Open a new modal for the same key with reset configuration
@@ -350,7 +359,10 @@ export function openMappingModal(keyData) {
                 callback: () => {
                     const selectedProperty = getSelectedPropertyFromModal();
                     if (selectedProperty) {
-                        mapKeyToProperty(keyData, selectedProperty, window.mappingStepState);
+                        const mappingSucceeded = mapKeyToProperty(keyData, selectedProperty, window.mappingStepState);
+                        if (!mappingSucceeded) {
+                            return;
+                        }
                         modalUI.closeModal();
                         moveToNextUnmappedKey(window.mappingStepState);
                     } else {
@@ -872,7 +884,7 @@ export function createMappingModalContent(keyData) {
                 <p>${description}</p>
                 <p><a href="${helpUrl}" target="_blank" rel="noopener">Learn more about ${helpText} on Wikidata →</a></p>
                 <div class="metadata-notice">
-                    <strong>Note:</strong> ${helpText} are language-specific monolingual text values. You can map your Omeka S data to provide ${metadataType} values for Wikidata entities.
+                    <strong>Note:</strong> ${helpText} are language-specific monolingual text values. Pick the source field that best represents this Wikidata value. ${metadataType === 'label' ? 'Use one Label mapping for the project and edit that mapping if you need to change it.' : 'Use this only when the value is genuinely needed for export.'}
                 </div>
             </div>
         `;
@@ -891,7 +903,7 @@ export function createMappingModalContent(keyData) {
             
             const metadataDescription = createElement('p', {
                 style: 'margin-bottom: 15px; font-size: 0.9em; color: #666;'
-            }, 'Select one of these to map your data to Wikidata entity metadata:');
+            }, 'Use these only when the imported fields do not already provide the Wikidata value you need. Label should be mapped once per project.');
             
             const buttonsContainer = createElement('div', {
                 className: 'metadata-buttons-grid',

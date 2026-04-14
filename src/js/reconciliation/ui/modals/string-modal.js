@@ -23,7 +23,6 @@ import {
     createValidationUI,
     setupLiveValidation,
     searchWikidataLanguages,
-    getStoredLanguage,
     setStoredLanguage,
     generatePropertyLink
 } from '../validation-engine.js';
@@ -504,10 +503,9 @@ function setupLanguageSelection() {
     }
     
     // Set default language from storage or confirmed data
-    const storedLanguage = getStoredLanguage();
     const confirmedLanguage = window.currentModalContext.selectedLanguage;
     const sourceLanguage = window.currentModalContext.sourceLanguage;
-    const defaultLanguage = confirmedLanguage || sourceLanguage || storedLanguage;
+    const defaultLanguage = confirmedLanguage || sourceLanguage;
     
     if (defaultLanguage) {
         languageSearch.value = defaultLanguage.label;

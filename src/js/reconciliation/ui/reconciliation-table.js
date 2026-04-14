@@ -246,6 +246,7 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
             valueElement.dataset.status = status;
             
             const statusSpan = valueElement.querySelector('.value-status');
+            const valueTextSpan = valueElement.querySelector('.value-text');
             if (statusSpan) {
                 if (status === 'pending') {
                     statusSpan.textContent = 'Click to reconcile';
@@ -258,9 +259,13 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
                     } else if (reconciliation.type === 'string') {
                         statusSpan.textContent = '✓ String value';
                         statusSpan.title = `Using original value as string: "${reconciliation.value}"`;
+                        if (valueTextSpan && reconciliation.value) {
+                            valueTextSpan.textContent = reconciliation.value;
+                        }
                     } else {
                         const autoAcceptedText = reconciliation.qualifiers?.autoAccepted ? ' (auto)' : '';
                         let customText = `✓ Custom value${autoAcceptedText}`;
+                        let customTooltip = reconciliation.value || '';
                         
                         // Show date precision for date values
                         if (reconciliation.datatype === 'time' && reconciliation.qualifiers?.precision) {
@@ -274,9 +279,20 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
                             };
                             const precisionLabel = precisionLabels[reconciliation.qualifiers.precision] || reconciliation.qualifiers.precision;
                             customText = `✓ Date (${precisionLabel})${autoAcceptedText}`;
+                            customTooltip = `${reconciliation.value || ''}${customTooltip ? ` (${precisionLabel})` : precisionLabel}`;
                         }
                         
                         statusSpan.textContent = customText;
+                        if (customTooltip) {
+                            statusSpan.title = customTooltip;
+                        }
+
+                        if (valueTextSpan && reconciliation.value) {
+                            const languageSuffix = reconciliation.languageLabel || reconciliation.language;
+                            valueTextSpan.textContent = languageSuffix
+                                ? `${reconciliation.value} (${languageSuffix})`
+                                : reconciliation.value;
+                        }
                     }
                     statusSpan.className = 'value-status reconciled';
                     

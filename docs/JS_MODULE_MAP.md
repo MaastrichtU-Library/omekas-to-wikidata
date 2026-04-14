@@ -62,7 +62,7 @@ The application follows a **modular, event-driven architecture**:
 
 ### **input.js**
 - Purpose: Step 1 - Import data from Omeka S API
-- Key features: API authentication, data fetching, resource template selection/filtering, sample display
+- Key features: grouped Omeka API filters, fetch-all page aggregation for filtered item endpoints, resource template selection/filtering, sample display
 - Dependencies: utils/cors-proxy.js, data/mock-data.js
 
 ### **mapping.js**
@@ -117,7 +117,7 @@ The application follows a **modular, event-driven architecture**:
 **mapping-lists.js**
 - Purpose: Manage mapping UI lists (non-linked, mapped, ignored)
 - Key exports: `populateLists()`, `moveKeyToCategory()`, `mapKeyToProperty()`
-- Features: Applies the active field ordering mode and preserves stable list ordering
+- Features: Applies the active field ordering mode, preserves stable list ordering, and pins required Label/Instance of mappings while preventing duplicates
 
 **transformation-ui.js**
 - Purpose: UI for transformation configuration
@@ -153,7 +153,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-data.js**
 - Purpose: Manage reconciliation data and results
 - Key exports: `storeReconciliationResult()`, `getReconciliationStatus()`
-- Features: Extracts object-specific field selections and normalizes recognized external identifier URLs to bare identifier values
+- Features: Extracts object-specific field selections, normalizes recognized external identifier URLs to bare identifier values, and respects mapping order with Label/Instance of priority in Step 3
 
 **reconciliation-progress.js**
 - Purpose: Track reconciliation progress
@@ -165,7 +165,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-table.js**
 - Purpose: Display reconciliation results in table
 - Key exports: `renderReconciliationTable()`, `updateTableRow()`, `updateItemCellDisplay()`
-- Features: Item cell with link button to link items to existing Wikidata items
+- Features: Item cell with link button to link items to existing Wikidata items, plus live table updates when custom reconciled values are edited
 
 **reconciliation-modal.js**
 - Purpose: Reconciliation configuration and details modal

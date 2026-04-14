@@ -34,6 +34,7 @@ export class OmekaToWikidataPage {
     // Step 1 - Input elements
     this.input = {
       apiUrlInput: page.locator('#api-url'),
+      fetchAllPagesCheckbox: page.locator('#api-fetch-all-pages'),
       apiPageInput: page.locator('#api-page'),
       apiPerPageInput: page.locator('#api-per-page'),
       apiOwnerIdInput: page.locator('#api-owner-id'),

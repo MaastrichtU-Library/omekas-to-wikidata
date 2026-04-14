@@ -357,6 +357,28 @@ export function extractPropertyValueDetails(item, keyOrKeyObj, state = null) {
  * Combine and sort all properties (mapped and manual) to prioritize label, description, aliases, and instance of
  */
 export function combineAndSortProperties(mappedKeys, manualProperties = []) {
+    const getMappedPropertyPriority = (item) => {
+        if (item.type !== 'mapped') {
+            return 10;
+        }
+
+        const propertyId = item.data?.property?.id;
+        if (propertyId === 'label') {
+            return 0;
+        }
+        if (propertyId === 'P31') {
+            return 1;
+        }
+        return 5;
+    };
+
+    const getSortIndex = (item) => {
+        if (item.type === 'mapped') {
+            return item.data?.sortIndex ?? Number.MAX_SAFE_INTEGER;
+        }
+        return Number.MAX_SAFE_INTEGER;
+    };
+
     // Create array with mapped and manual properties
     const allProperties = [];
     
@@ -380,21 +402,16 @@ export function combineAndSortProperties(mappedKeys, manualProperties = []) {
     
     // Sort the array
     return allProperties.sort((a, b) => {
-        const getPriority = (item) => {
-            if (item.type === 'mapped') {
-                const property = typeof item.data === 'string' ? null : item.data.property;
-                if (!property) return 100;
-            }
-            
-            // All properties maintain their original relative order
-            return 1;
-        };
-        
-        const aPriority = getPriority(a);
-        const bPriority = getPriority(b);
-        
+        const aPriority = getMappedPropertyPriority(a);
+        const bPriority = getMappedPropertyPriority(b);
         if (aPriority !== bPriority) {
             return aPriority - bPriority;
+        }
+
+        const aSortIndex = getSortIndex(a);
+        const bSortIndex = getSortIndex(b);
+        if (aSortIndex !== bSortIndex) {
+            return aSortIndex - bSortIndex;
         }
         
         // If same priority, maintain original order

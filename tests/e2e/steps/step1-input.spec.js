@@ -45,7 +45,8 @@ test.describe('Step 1 - Input Tests @input', () => {
     test('API parameter controls stay in sync with the URL field', async ({ page }) => {
       await expect(app.input.apiPageInput).toHaveValue('5');
       await expect(app.input.apiPerPageInput).toHaveValue('2');
-      await expect(app.page.locator('legend')).toContainText(['Pagination', 'Collection Scope', 'Ownership']);
+      await expect(app.input.fetchAllPagesCheckbox).not.toBeChecked();
+      await expect(app.page.locator('legend')).toContainText(['Pagination (optional)', 'Collection Scope', 'Ownership']);
 
       await app.input.apiPageInput.fill('3');
       await app.input.apiPerPageInput.fill('25');
@@ -65,6 +66,7 @@ test.describe('Step 1 - Input Tests @input', () => {
       await app.enterApiUrl('https://example.org/api/items?page=7&per_page=11&owner_id=5&resource_template_id=99&item_set_id=88&site_id=77');
       await app.input.apiUrlInput.blur();
 
+      await expect(app.input.fetchAllPagesCheckbox).not.toBeChecked();
       await expect(app.input.apiPageInput).toHaveValue('7');
       await expect(app.input.apiPerPageInput).toHaveValue('11');
       await expect(app.input.apiOwnerIdInput).toHaveValue('5');
@@ -85,6 +87,51 @@ test.describe('Step 1 - Input Tests @input', () => {
       await expect(app.input.apiResourceTemplateIdInput).toHaveValue('');
       await expect(app.input.apiItemSetIdInput).toHaveValue('');
       await expect(app.input.apiSiteIdInput).toHaveValue('');
+    });
+
+    test('fetch all matching items collects every page for filtered item endpoints', async ({ page }) => {
+      await page.route('https://example.org/api/resource_templates', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([])
+        });
+      });
+
+      await page.route('https://example.org/api/items**', async (route) => {
+        const url = new URL(route.request().url());
+        const pageNumber = Number(url.searchParams.get('page') || '1');
+
+        const payloads = {
+          1: [
+            { id: 1, 'dcterms:title': [{ '@value': 'Item 1' }] },
+            { id: 2, 'dcterms:title': [{ '@value': 'Item 2' }] }
+          ],
+          2: [
+            { id: 3, 'dcterms:title': [{ '@value': 'Item 3' }] }
+          ]
+        };
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(payloads[pageNumber] || [])
+        });
+      });
+
+      await app.enterApiUrl('https://example.org/api/items?item_set_id=11&per_page=2');
+      await app.input.apiUrlInput.blur();
+
+      await expect(app.input.fetchAllPagesCheckbox).not.toBeChecked();
+      await app.input.fetchAllPagesCheckbox.check();
+      await expect(app.input.apiPageInput).toBeDisabled();
+
+      await app.fetchData();
+
+      const statusText = await app.getDataStatusText();
+      expect(statusText).toContain('Fetched 3 matching items across 2 pages.');
+      expect(statusText).toContain('Items found: 3');
+      await expect(app.input.proceedToMappingBtn).toBeEnabled();
     });
   });
 
