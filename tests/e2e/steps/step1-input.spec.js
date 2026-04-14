@@ -41,6 +41,51 @@ test.describe('Step 1 - Input Tests @input', () => {
       expect(defaultUrl).toContain('/api/items');
       expect(defaultUrl.length).toBeGreaterThan(10);
     });
+
+    test('API parameter controls stay in sync with the URL field', async ({ page }) => {
+      await expect(app.input.apiPageInput).toHaveValue('5');
+      await expect(app.input.apiPerPageInput).toHaveValue('2');
+      await expect(app.page.locator('legend')).toContainText(['Pagination', 'Collection Scope', 'Ownership']);
+
+      await app.input.apiPageInput.fill('3');
+      await app.input.apiPerPageInput.fill('25');
+      await app.input.apiOwnerIdInput.fill('9');
+      await app.input.apiResourceTemplateIdInput.fill('12');
+      await app.input.apiItemSetIdInput.fill('4');
+      await app.input.apiSiteIdInput.fill('2');
+      await app.input.applyApiParamsBtn.click();
+
+      await expect(app.input.apiUrlInput).toHaveValue(/page=3/);
+      await expect(app.input.apiUrlInput).toHaveValue(/per_page=25/);
+      await expect(app.input.apiUrlInput).toHaveValue(/owner_id=9/);
+      await expect(app.input.apiUrlInput).toHaveValue(/resource_template_id=12/);
+      await expect(app.input.apiUrlInput).toHaveValue(/item_set_id=4/);
+      await expect(app.input.apiUrlInput).toHaveValue(/site_id=2/);
+
+      await app.enterApiUrl('https://example.org/api/items?page=7&per_page=11&owner_id=5&resource_template_id=99&item_set_id=88&site_id=77');
+      await app.input.apiUrlInput.blur();
+
+      await expect(app.input.apiPageInput).toHaveValue('7');
+      await expect(app.input.apiPerPageInput).toHaveValue('11');
+      await expect(app.input.apiOwnerIdInput).toHaveValue('5');
+      await expect(app.input.apiResourceTemplateIdInput).toHaveValue('99');
+      await expect(app.input.apiItemSetIdInput).toHaveValue('88');
+      await expect(app.input.apiSiteIdInput).toHaveValue('77');
+
+      await app.input.resetApiParamsBtn.click();
+      await expect(app.input.apiUrlInput).not.toHaveValue(/page=/);
+      await expect(app.input.apiUrlInput).not.toHaveValue(/per_page=/);
+      await expect(app.input.apiUrlInput).not.toHaveValue(/owner_id=/);
+      await expect(app.input.apiUrlInput).not.toHaveValue(/resource_template_id=/);
+      await expect(app.input.apiUrlInput).not.toHaveValue(/item_set_id=/);
+      await expect(app.input.apiUrlInput).not.toHaveValue(/site_id=/);
+      await expect(app.input.apiPageInput).toHaveValue('');
+      await expect(app.input.apiPerPageInput).toHaveValue('');
+      await expect(app.input.apiOwnerIdInput).toHaveValue('');
+      await expect(app.input.apiResourceTemplateIdInput).toHaveValue('');
+      await expect(app.input.apiItemSetIdInput).toHaveValue('');
+      await expect(app.input.apiSiteIdInput).toHaveValue('');
+    });
   });
 
   test.describe('Manual JSON Input @input-manual', () => {

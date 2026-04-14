@@ -34,6 +34,14 @@ export class OmekaToWikidataPage {
     // Step 1 - Input elements
     this.input = {
       apiUrlInput: page.locator('#api-url'),
+      apiPageInput: page.locator('#api-page'),
+      apiPerPageInput: page.locator('#api-per-page'),
+      apiOwnerIdInput: page.locator('#api-owner-id'),
+      apiResourceTemplateIdInput: page.locator('#api-resource-template-id'),
+      apiItemSetIdInput: page.locator('#api-item-set-id'),
+      apiSiteIdInput: page.locator('#api-site-id'),
+      applyApiParamsBtn: page.locator('#apply-api-params'),
+      resetApiParamsBtn: page.locator('#reset-api-params'),
       fetchDataBtn: page.locator('#fetch-data'),
       loadingIndicator: page.locator('#loading'),
       dataStatus: page.locator('#data-status'),

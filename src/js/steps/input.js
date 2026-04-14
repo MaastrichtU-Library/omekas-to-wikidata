@@ -110,6 +110,9 @@ function getResourceTemplateId(resourceTemplate) {
  */
 export function setupInputStep(state) {
     const apiUrlInput = document.getElementById('api-url');
+    const apiUrlPreset = document.getElementById('api-url-preset');
+    const applyApiParamsBtn = document.getElementById('apply-api-params');
+    const resetApiParamsBtn = document.getElementById('reset-api-params');
     const defaultApiUrl = apiUrlInput?.value || '';
     // Advanced parameters removed for MVP
     // const apiKeyInput = document.getElementById('api-key');
@@ -126,6 +129,96 @@ export function setupInputStep(state) {
     const manualJsonTextarea = document.getElementById('manual-json-textarea');
     const processManualJsonButton = document.getElementById('process-manual-json-button');
     const cancelManualJsonButton = document.getElementById('cancel-manual-json');
+
+    const apiParameterFields = [
+        { input: document.getElementById('api-page'), param: 'page' },
+        { input: document.getElementById('api-per-page'), param: 'per_page' },
+        { input: document.getElementById('api-owner-id'), param: 'owner_id' },
+        { input: document.getElementById('api-resource-template-id'), param: 'resource_template_id' },
+        { input: document.getElementById('api-item-set-id'), param: 'item_set_id' },
+        { input: document.getElementById('api-site-id'), param: 'site_id' }
+    ];
+
+    function parseApiUrl(url) {
+        try {
+            return new URL(url);
+        } catch {
+            return null;
+        }
+    }
+
+    function syncApiParameterControls(url) {
+        const parsedUrl = parseApiUrl(url);
+        if (!parsedUrl) {
+            return;
+        }
+
+        apiParameterFields.forEach(({ input, param }) => {
+            if (input) {
+                input.value = parsedUrl.searchParams.get(param) || '';
+            }
+        });
+    }
+
+    function updateApiUrlFromParameterControls({ clear = false } = {}) {
+        const parsedUrl = parseApiUrl(apiUrlInput?.value?.trim());
+        if (!parsedUrl) {
+            alert('Please enter a valid API URL before applying parameters.');
+            return false;
+        }
+
+        if (clear) {
+            apiParameterFields.forEach(({ input, param }) => {
+                parsedUrl.searchParams.delete(param);
+                if (input) {
+                    input.value = '';
+                }
+            });
+        } else {
+            apiParameterFields.forEach(({ input, param }) => {
+                const value = input?.value?.trim() || '';
+                if (value) {
+                    parsedUrl.searchParams.set(param, value);
+                } else {
+                    parsedUrl.searchParams.delete(param);
+                }
+            });
+        }
+
+        apiUrlInput.value = parsedUrl.toString();
+        syncApiParameterControls(apiUrlInput.value);
+        return true;
+    }
+
+    syncApiParameterControls(defaultApiUrl);
+
+    if (apiUrlInput) {
+        apiUrlInput.addEventListener('change', () => {
+            syncApiParameterControls(apiUrlInput.value.trim());
+        });
+
+        apiUrlInput.addEventListener('blur', () => {
+            syncApiParameterControls(apiUrlInput.value.trim());
+        });
+    }
+
+    if (apiUrlPreset) {
+        apiUrlPreset.addEventListener('change', () => {
+            syncApiParameterControls(apiUrlInput.value.trim());
+        });
+    }
+
+    if (applyApiParamsBtn) {
+        applyApiParamsBtn.addEventListener('click', () => {
+            updateApiUrlFromParameterControls();
+        });
+    }
+
+    if (resetApiParamsBtn) {
+        resetApiParamsBtn.addEventListener('click', () => {
+            updateApiUrlFromParameterControls({ clear: true });
+        });
+    }
 
     function updateActiveInputData(data, markUnsaved = true) {
         state.updateState('fetchedData', data, markUnsaved);
