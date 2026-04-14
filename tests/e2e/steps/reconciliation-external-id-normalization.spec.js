@@ -37,8 +37,7 @@ test.describe('Reconciliation external-id normalization @reconciliation', () => 
           selectedObjectIndex: 0,
           property: {
             id: 'P243',
-            label: 'OCLC control number',
-            datatype: 'external-id'
+            label: 'OCLC control number'
           }
         }
       ]);

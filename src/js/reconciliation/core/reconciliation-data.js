@@ -75,6 +75,30 @@ export function calculateTotalReconciliableCells(data, mappedKeys) {
  * any configured transformations before returning the values.
  */
 export function extractPropertyValues(item, keyOrKeyObj, state = null) {
+    const inferPropertyDatatypeFromId = (propertyId) => {
+        if (!propertyId) {
+            return null;
+        }
+
+        const monolingualPropertyIds = ['P1476', 'P1448', 'P1705', 'P2561', 'P1449', 'P1477', 'P1813', 'P1810', 'P1533'];
+        const externalIdPropertyIds = ['P243', 'P8091', 'P214', 'P213', 'P244', 'P227', 'P269', 'P396', 'P646', 'P345'];
+        const timePropertyIds = ['P571', 'P577', 'P569', 'P570', 'P580', 'P582', 'P585', 'P1619', 'P1249'];
+
+        if (monolingualPropertyIds.includes(propertyId)) {
+            return 'monolingualtext';
+        }
+
+        if (externalIdPropertyIds.includes(propertyId)) {
+            return 'external-id';
+        }
+
+        if (timePropertyIds.includes(propertyId)) {
+            return 'time';
+        }
+
+        return null;
+    };
+
     // Handle both string keys and key objects
     let key, selectedAtField, selectedObjectIndex, isCustomProperty, propertyDatatype;
     if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
@@ -82,7 +106,7 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         selectedAtField = keyOrKeyObj.selectedAtField;
         selectedObjectIndex = keyOrKeyObj.selectedObjectIndex;
         isCustomProperty = keyOrKeyObj.isCustomProperty === true;
-        propertyDatatype = keyOrKeyObj.property?.datatype;
+        propertyDatatype = keyOrKeyObj.property?.datatype || inferPropertyDatatypeFromId(keyOrKeyObj.property?.id);
     } else {
         key = keyOrKeyObj;
     }

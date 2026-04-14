@@ -25,13 +25,16 @@ export function createReconciliationModal(itemId, property, valueIndex, value, p
     // NEW: Get both datatype and enhanced property data from mappings
     const propertyLookupResult = getDataTypeAndPropertyData(property, propertyData, state);
     const dataType = propertyLookupResult.datatype;
-    // Use enhanced property data from mapping lookup if available, otherwise use provided data
-    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData &&
-                                 Object.keys(propertyLookupResult.enhancedPropertyData).length > 1 ?
-        propertyLookupResult.enhancedPropertyData :
-        (propertyData ?
-            { ...propertyData, datatype: propertyData.datatype || dataType } :
-            { datatype: dataType });
+    // Always carry the resolved datatype into the modal-specific property data,
+    // even when the lookup returned a rich object without an explicit datatype field.
+    const enhancedPropertyData = propertyLookupResult.enhancedPropertyData
+        ? {
+            ...propertyLookupResult.enhancedPropertyData,
+            datatype: propertyLookupResult.enhancedPropertyData.datatype || dataType
+        }
+        : (propertyData
+            ? { ...propertyData, datatype: propertyData.datatype || dataType }
+            : { datatype: dataType });
     const transformedValue = getTransformedValue(value, property);
     try {
         // Use factory to create type-specific modal
@@ -360,8 +363,8 @@ function getPropertyTypeByWikidataId(propertyId) {
         'P1476', 'P1448', 'P1705', 'P2561', 'P1449', 'P1477', 'P1813', 'P1810', 'P1533'
     ];
     
-    // Known string properties
-    const stringPropertyIds = [
+    // Known external-id properties
+    const externalIdPropertyIds = [
         'P243', 'P8091', 'P214', 'P213', 'P244', 'P227', 'P269', 'P396', 'P646', 'P345'
     ];
     
@@ -378,8 +381,8 @@ function getPropertyTypeByWikidataId(propertyId) {
         return 'monolingualtext';
     }
     
-    if (stringPropertyIds.includes(propertyId)) {
-        return 'string';
+    if (externalIdPropertyIds.includes(propertyId)) {
+        return 'external-id';
     }
     
     if (timePropertyIds.includes(propertyId)) {
