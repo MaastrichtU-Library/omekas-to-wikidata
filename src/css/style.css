@@ -1818,6 +1818,34 @@ main {
     padding-top: 8px;
 }
 
+.field-profile-section {
+    margin-top: 12px;
+}
+
+.field-profile-summary {
+    padding: 10px 12px;
+    border: 1px solid #d9e2f2;
+    border-radius: 6px;
+    background: #f7f9fd;
+    color: #31435f;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.extraction-section {
+    margin-top: 14px;
+}
+
+.field-override-section {
+    margin-top: 12px;
+}
+
+.field-override-help {
+    margin-top: 6px;
+    color: #5f6f82;
+    font-size: 12px;
+}
+
 .key-info h4 {
     margin-bottom: 0.5rem;
     color: var(--primary-color);

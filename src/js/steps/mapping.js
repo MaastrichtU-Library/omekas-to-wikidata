@@ -266,6 +266,7 @@ export function setupMappingStep(state) {
 
             // Set the selected property
             window.currentMappingSelectedProperty = labelProperty;
+            window.updateMappingExtractionUI?.(labelProperty);
 
             // Update UI to show selection
             const selectedSection = document.getElementById('selected-property');
@@ -361,6 +362,7 @@ export function setupMappingStep(state) {
 
                 // Set the selected property
                 window.currentMappingSelectedProperty = descriptionProperty;
+                window.updateMappingExtractionUI?.(descriptionProperty);
 
                 // Update UI to show selection
                 const selectedSection = document.getElementById('selected-property');
@@ -452,6 +454,7 @@ export function setupMappingStep(state) {
 
                 // Set the selected property
                 window.currentMappingSelectedProperty = aliasesProperty;
+                window.updateMappingExtractionUI?.(aliasesProperty);
 
                 // Update UI to show selection
                 const selectedSection = document.getElementById('selected-property');
@@ -543,6 +546,7 @@ export function setupMappingStep(state) {
 
             // Set the selected property
             window.currentMappingSelectedProperty = instanceOfProperty;
+            window.updateMappingExtractionUI?.(instanceOfProperty);
 
             // Update UI to show selection
             const selectedSection = document.getElementById('selected-property');

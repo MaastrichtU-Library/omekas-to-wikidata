@@ -88,4 +88,64 @@ describe('reconciliation-data.extractPropertyValues', () => {
     expect(inventoryValues).toEqual(['INV-602']);
     expect(collectionValues).toEqual(['Special Collections']);
   });
+
+  test('uses display text automatically for Wikidata item mappings with mixed literal and authority values', () => {
+    const item = {
+      'schema:author': [
+        {
+          type: 'literal',
+          '@value': 'Anne Author'
+        },
+        {
+          type: 'valuesuggest:oclc:viaf',
+          '@id': 'https://viaf.org/viaf/12345',
+          'o:label': 'Author, Anne'
+        }
+      ]
+    };
+
+    const values = extractPropertyValues(item, {
+      key: 'schema:author',
+      extractionMode: 'auto',
+      fieldProfile: {
+        hasLiterals: true,
+        hasAuthorityLabels: true,
+        hasUris: true
+      },
+      property: {
+        id: 'P50',
+        datatype: 'wikibase-item'
+      }
+    });
+
+    expect(values).toEqual(['Anne Author', 'Author, Anne']);
+  });
+
+  test('uses URI-backed identifiers automatically for external-id mappings', () => {
+    const item = {
+      'schema:sameAs': [
+        {
+          type: 'uri',
+          '@id': 'https://www.worldcat.org/oclc/1453617041',
+          'o:label': 'WorldCat'
+        }
+      ]
+    };
+
+    const values = extractPropertyValues(item, {
+      key: 'schema:sameAs',
+      extractionMode: 'auto',
+      fieldProfile: {
+        hasLiterals: false,
+        hasAuthorityLabels: true,
+        hasUris: true
+      },
+      property: {
+        id: 'P243',
+        datatype: 'external-id'
+      }
+    });
+
+    expect(values).toEqual(['1453617041']);
+  });
 });

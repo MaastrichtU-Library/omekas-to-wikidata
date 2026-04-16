@@ -23,6 +23,9 @@ export function generateMappingData(state) {
                 key: key.key,
                 linkedDataUri: key.linkedDataUri,
                 contextMap: key.contextMap && key.contextMap instanceof Map ? Object.fromEntries(key.contextMap) : {},
+                selectedAtField: key.selectedAtField ?? null,
+                selectedObjectIndex: Number.isInteger(key.selectedObjectIndex) ? key.selectedObjectIndex : null,
+                extractionMode: key.extractionMode || null,
                 property: key.property ? {
                     id: key.property.id,
                     label: key.property.label,
@@ -38,7 +41,10 @@ export function generateMappingData(state) {
             ignored: currentState.mappings.ignoredKeys.map(key => ({
                 key: key.key,
                 linkedDataUri: key.linkedDataUri,
-                contextMap: key.contextMap && key.contextMap instanceof Map ? Object.fromEntries(key.contextMap) : {}
+                contextMap: key.contextMap && key.contextMap instanceof Map ? Object.fromEntries(key.contextMap) : {},
+                selectedAtField: key.selectedAtField ?? null,
+                selectedObjectIndex: Number.isInteger(key.selectedObjectIndex) ? key.selectedObjectIndex : null,
+                extractionMode: key.extractionMode || null
             })),
             manualProperties: (currentState.mappings.manualProperties || []).map(prop => ({
                 property: {
@@ -132,6 +138,9 @@ export async function loadMappingFromData(mappingData, state) {
             return {
                 ...key,
                 contextMap: key.contextMap ? new Map(Object.entries(key.contextMap)) : new Map(),
+                selectedAtField: key.selectedAtField ?? undefined,
+                selectedObjectIndex: Number.isInteger(key.selectedObjectIndex) ? key.selectedObjectIndex : undefined,
+                extractionMode: key.extractionMode || undefined,
                 // Skip dataset validation for custom mappings
                 notInCurrentDataset: isCustomMapping ? false : !currentDataKeys.has(key.key)
             };

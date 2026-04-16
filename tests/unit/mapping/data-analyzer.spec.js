@@ -1,4 +1,4 @@
-import { extractAndAnalyzeKeys } from '../../../src/js/mapping/core/data-analyzer.js';
+import { extractAndAnalyzeKeys, getDefaultExtractionMode } from '../../../src/js/mapping/core/data-analyzer.js';
 
 describe('mapping/core/data-analyzer', () => {
     test('preserves resource template order when sortMode is template', async () => {
@@ -82,5 +82,64 @@ describe('mapping/core/data-analyzer', () => {
             'dcterms:title',
             'dcterms:date'
         ]);
+    });
+
+    test('captures template datatype rules and observed mixed value shapes', async () => {
+        const data = {
+            items: [
+                {
+                    '@context': {
+                        schema: 'https://schema.org/'
+                    },
+                    'schema:author': [
+                        {
+                            property_id: 8,
+                            type: 'literal',
+                            '@value': 'Anne Author'
+                        },
+                        {
+                            property_id: 8,
+                            type: 'valuesuggest:oclc:viaf',
+                            '@id': 'https://viaf.org/viaf/12345',
+                            'o:label': 'Author, Anne'
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const resourceTemplates = [
+            {
+                'o:id': 7,
+                'o:resource_template_property': [
+                    {
+                        'o:property': { 'o:id': 8, 'o:term': 'schema:author' },
+                        'o:data_type': ['literal', 'uri', 'valuesuggest:oclc:viaf']
+                    }
+                ]
+            }
+        ];
+
+        const result = await extractAndAnalyzeKeys(data, {
+            sortMode: 'template',
+            resourceTemplates,
+            selectedTemplateIds: ['7']
+        });
+
+        const authorField = result.find(entry => entry.key === 'schema:author');
+
+        expect(authorField.fieldProfile.templateAllowedTypes).toEqual([
+            'literal',
+            'uri',
+            'valuesuggest:oclc:viaf'
+        ]);
+        expect(authorField.fieldProfile.observedTypes).toEqual([
+            'literal',
+            'valuesuggest:oclc:viaf'
+        ]);
+        expect(authorField.fieldProfile.hasLiterals).toBe(true);
+        expect(authorField.fieldProfile.hasAuthorityLabels).toBe(true);
+        expect(authorField.fieldProfile.hasUris).toBe(true);
+        expect(getDefaultExtractionMode(authorField.fieldProfile, 'wikibase-item')).toBe('display_text');
     });
 });

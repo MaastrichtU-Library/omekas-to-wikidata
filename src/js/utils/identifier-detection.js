@@ -463,6 +463,7 @@ export async function createIdentifierMapping(fieldKey, detection, sampleValue) 
         sampleValue: sampleValue,  // Store sample value for field analysis
         selectedAtField: selectedAtField,  // Store selected field for value extraction
         selectedObjectIndex: selectedObjectIndex,
+        extractionMode: 'auto',
         availableFields: availableFields  // Store available fields for UI
     };
 }

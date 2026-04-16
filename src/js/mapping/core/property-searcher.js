@@ -663,6 +663,7 @@ export async function selectProperty(property, state) {
     
     // Store selected property
     window.currentMappingSelectedProperty = property;
+    window.updateMappingExtractionUI?.(property);
 
     // Transfer transformations from temporary mapping ID to final mapping ID
     const keyData = window.currentMappingKeyData;

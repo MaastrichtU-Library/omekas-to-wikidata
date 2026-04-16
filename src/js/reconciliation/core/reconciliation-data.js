@@ -7,6 +7,7 @@
 import { getMockItemsData, getMockMappingData } from '../../data/mock-data.js';
 import { applyTransformationChain } from '../../transformations.js';
 import { detectIdentifier } from '../../utils/identifier-detection.js';
+import { resolveOmekaValue } from '../../mapping/core/data-analyzer.js';
 
 /**
  * Calculates total reconciliable cells for accurate progress tracking
@@ -111,13 +112,15 @@ export function extractPropertyValueDetails(item, keyOrKeyObj, state = null) {
     };
 
     // Handle both string keys and key objects
-    let key, selectedAtField, selectedObjectIndex, isCustomProperty, propertyDatatype;
+    let key, selectedAtField, selectedObjectIndex, isCustomProperty, propertyDatatype, extractionMode, fieldProfile;
     if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
         key = keyOrKeyObj.key;
         selectedAtField = keyOrKeyObj.selectedAtField;
         selectedObjectIndex = keyOrKeyObj.selectedObjectIndex;
         isCustomProperty = keyOrKeyObj.isCustomProperty === true;
         propertyDatatype = keyOrKeyObj.property?.datatype || inferPropertyDatatypeFromId(keyOrKeyObj.property?.id);
+        extractionMode = keyOrKeyObj.extractionMode;
+        fieldProfile = keyOrKeyObj.fieldProfile || null;
     } else {
         key = keyOrKeyObj;
     }
@@ -185,7 +188,12 @@ export function extractPropertyValueDetails(item, keyOrKeyObj, state = null) {
         } else {
         }
         
-        return extractedValues;
+        return extractedValues.map(value => ({
+            value,
+            language: null,
+            matchedPart: 'generated',
+            resolvedMode: 'generated'
+        }));
     }
     
     const value = item[key];
@@ -200,98 +208,24 @@ export function extractPropertyValueDetails(item, keyOrKeyObj, state = null) {
         return detectedIdentifier?.identifierValue || rawValue;
     };
 
-    const convertExtractedValueToString = (rawValue) => {
-        if (rawValue === null || rawValue === undefined) {
-            return null;
-        }
-
-        if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean') {
-            return String(rawValue);
-        }
-
-        if (Array.isArray(rawValue)) {
-            for (const entry of rawValue) {
-                const convertedEntry = convertExtractedValueToString(entry);
-                if (convertedEntry !== null && convertedEntry.trim() !== '') {
-                    return convertedEntry;
-                }
-            }
-            return null;
-        }
-
-        if (typeof rawValue === 'object') {
-            const preferredFields = ['o:label', 'display_title', '@value', 'value', 'name', 'title', 'label'];
-
-            for (const field of preferredFields) {
-                if (rawValue[field] !== undefined && rawValue[field] !== null) {
-                    const convertedField = convertExtractedValueToString(rawValue[field]);
-                    if (convertedField !== null && convertedField.trim() !== '') {
-                        return convertedField;
-                    }
-                }
-            }
-
-            if (rawValue['@id']) {
-                return String(rawValue['@id']);
-            }
-
-            for (const [field, fieldValue] of Object.entries(rawValue)) {
-                if (field.startsWith('property_') || field === 'type') {
-                    continue;
-                }
-
-                const convertedField = convertExtractedValueToString(fieldValue);
-                if (convertedField !== null && convertedField.trim() !== '') {
-                    return convertedField;
-                }
-            }
-
-            try {
-                return JSON.stringify(rawValue);
-            } catch {
-                return '[Complex Object]';
-            }
-        }
-
-        return String(rawValue);
-    };
-    
-    const extractLanguageFromValue = (rawValue) => {
-        if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
-            return null;
-        }
-
-        const languageValue = rawValue['@language'] ?? rawValue.language ?? null;
-        return typeof languageValue === 'string' && languageValue.trim() ? languageValue.trim() : null;
-    };
-
     // Helper function to extract value details from a single object
     const extractFromObject = (v) => {
-        // If a specific @ field is selected, ONLY return that field's value
-        if (selectedAtField) {
-            if (typeof v === 'object' && v[selectedAtField] !== undefined) {
-                return {
-                    value: convertExtractedValueToString(v[selectedAtField]),
-                    language: selectedAtField === '@value' ? extractLanguageFromValue(v) : null
-                };
-            } else {
-                // Don't fall back to default extraction when a specific @ field is requested
-                // Return null to indicate this object doesn't have the requested field
-                return null;
-            }
-        }
-        
-        // Default extraction logic (only when no specific @ field is selected)
-        if (typeof v === 'object') {
-            return {
-                value: convertExtractedValueToString(v),
-                language: extractLanguageFromValue(v)
-            };
+        const resolvedValue = resolveOmekaValue(v, {
+            extractionMode,
+            propertyDatatype,
+            fieldProfile,
+            selectedAtField
+        });
+
+        if (!resolvedValue || resolvedValue.value === null || resolvedValue.value === undefined || String(resolvedValue.value).trim() === '') {
+            return null;
         }
 
         return {
-            value: convertExtractedValueToString(v),
-            language: null
+            value: resolvedValue.value,
+            language: resolvedValue.language ?? null,
+            matchedPart: resolvedValue.matchedPart ?? null,
+            resolvedMode: resolvedValue.resolvedMode ?? extractionMode ?? 'auto'
         };
     };
     

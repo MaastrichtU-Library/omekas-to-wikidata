@@ -7,6 +7,24 @@
 // Import dependencies (minimal for data analysis)
 import { detectIdentifier } from '../../utils/identifier-detection.js';
 import { fetchWithCorsProxy } from '../../utils/cors-proxy.js';
+import {
+    EXTRACTION_MODES,
+    createFieldProfileStats,
+    finalizeFieldProfileStats,
+    mergeObservedValueIntoProfileStats,
+    buildObservedFieldProfile,
+    resolveOmekaValue
+} from './value-resolution.js';
+
+export {
+    EXTRACTION_MODES,
+    buildObservedFieldProfile,
+    getExtractionModeLabel,
+    getDefaultExtractionMode,
+    getAvailableExtractionModes,
+    describeFieldProfile,
+    resolveOmekaValue
+} from './value-resolution.js';
 
 // Context cache for JSON-LD definitions
 const contextCache = new Map();
@@ -138,6 +156,7 @@ export function extractSampleValue(value) {
     return value;
 }
 
+
 /**
  * Extracts and analyzes all property keys from Omeka S data with semantic context resolution
  * 
@@ -233,6 +252,7 @@ export function extractSampleValue(value) {
 export async function extractAndAnalyzeKeys(data, options = {}) {
     const keyFrequency = new Map();
     const contextMap = new Map();
+    const fieldProfileStats = new Map();
     let items = [];
     
     // Normalize data structure to get array of items
@@ -280,13 +300,17 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
     const templatePropertyIdOrder = new Map(); // key: property_id, value: global index
     const templateTermOrder = new Map();       // fallback key: term, value: global index
 
-    if (options && options.sortMode === 'template' && options.resourceTemplates && options.selectedTemplateIds) {
+    const templateAllowedTypesByPropertyId = new Map();
+    const templateAllowedTypesByTerm = new Map();
+
+    if (options && options.resourceTemplates && options.selectedTemplateIds) {
         let globalPropIndex = 0;
         options.selectedTemplateIds.forEach(templateId => {
             const template = options.resourceTemplates.find(t => String(t['o:id']) === String(templateId));
             if (template && template['o:resource_template_property']) {
                 template['o:resource_template_property'].forEach(rtp => {
                     const property = rtp['o:property'];
+                    const dataTypes = Array.isArray(rtp['o:data_type']) ? rtp['o:data_type'] : [];
                     if (property) {
                         const propId = property['o:id'];
                         const term = property['o:term'];
@@ -298,6 +322,18 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                         }
                         if (term && !templateTermOrder.has(term)) {
                             templateTermOrder.set(term, globalPropIndex);
+                        }
+                        if (pidStr) {
+                            if (!templateAllowedTypesByPropertyId.has(pidStr)) {
+                                templateAllowedTypesByPropertyId.set(pidStr, new Set());
+                            }
+                            dataTypes.forEach(type => templateAllowedTypesByPropertyId.get(pidStr).add(type));
+                        }
+                        if (term) {
+                            if (!templateAllowedTypesByTerm.has(term)) {
+                                templateAllowedTypesByTerm.set(term, new Set());
+                            }
+                            dataTypes.forEach(type => templateAllowedTypesByTerm.get(term).add(type));
                         }
                         globalPropIndex++;
                     }
@@ -334,6 +370,17 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                 
                 const count = keyFrequency.get(key) || 0;
                 keyFrequency.set(key, count + 1);
+
+                if (!fieldProfileStats.has(key)) {
+                    const propId = keyToPropertyId.get(key);
+                    const templateTypes = propId && templateAllowedTypesByPropertyId.has(propId)
+                        ? Array.from(templateAllowedTypesByPropertyId.get(propId))
+                        : templateAllowedTypesByTerm.has(key)
+                            ? Array.from(templateAllowedTypesByTerm.get(key))
+                            : [];
+                    fieldProfileStats.set(key, createFieldProfileStats(templateTypes));
+                }
+                mergeObservedValueIntoProfileStats(item[key], fieldProfileStats.get(key));
             });
         }
     });
@@ -417,6 +464,10 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                 }
             }
 
+            const fieldProfile = fieldProfileStats.has(key)
+                ? finalizeFieldProfileStats(fieldProfileStats.get(key))
+                : buildObservedFieldProfile(sampleValue);
+
             return {
                 key,
                 frequency,
@@ -428,7 +479,9 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                 hasIdentifier: identifierDetection !== null,
                 identifierInfo: identifierDetection,
                 orderIndex: firstSeenOrder.has(key) ? firstSeenOrder.get(key) : Number.MAX_SAFE_INTEGER,
-                templateOrderIndex: templateOrderIndex
+                templateOrderIndex: templateOrderIndex,
+                fieldProfile,
+                extractionMode: EXTRACTION_MODES.AUTO
             };
         })
         .sort((a, b) => {
@@ -552,58 +605,11 @@ export function convertSampleValueToString(value) {
 
     // Handle Omeka S objects with type-aware extraction
     if (value && typeof value === 'object') {
-        // Type-aware value extraction for Omeka S
-        if (value.type && typeof value.type === 'string') {
-            switch (true) {
-                // Literal values - use @value
-                case value.type === 'literal':
-                case value.type === 'numeric:timestamp':
-                    if ('@value' in value && value['@value'] !== null && value['@value'] !== undefined) {
-                        return String(value['@value']);
-                    }
-                    break;
-                
-                // Value suggest types - use o:label (human-readable label)
-                case value.type.startsWith('valuesuggest:'):
-                    if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
-                        return String(value['o:label']);
-                    }
-                    break;
-                
-                // URI types - prefer o:label, fallback to @id
-                case value.type === 'uri':
-                    if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
-                        return String(value['o:label']);
-                    }
-                    if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
-                        return String(value['@id']);
-                    }
-                    break;
-            }
+        const resolvedValue = resolveOmekaValue(value);
+        if (resolvedValue?.value) {
+            return resolvedValue.value;
         }
-        
-        // Fallback to standard property extraction for non-typed objects
-        const valueProps = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
-        for (const prop of valueProps) {
-            if (prop in value && value[prop] !== null && value[prop] !== undefined) {
-                return convertSampleValueToString(value[prop]);
-            }
-        }
-        
-        // Look for @id as last resort for URIs
-        if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
-            return String(value['@id']);
-        }
-        
-        // If no known property found, look for any string values
-        const entries = Object.entries(value);
-        for (const [key, val] of entries) {
-            if (typeof val === 'string' && val.trim() !== '' && !key.startsWith('property_') && key !== 'type') {
-                return val;
-            }
-        }
-        
-        // As a last resort, stringify the object in a readable way
+
         try {
             return JSON.stringify(value);
         } catch (e) {

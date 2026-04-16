@@ -11,7 +11,15 @@ import { renderValueTransformationUI } from '../../core/transformation-engine.js
 import { moveKeyToCategory, mapKeyToProperty, moveToNextUnmappedKey } from '../mapping-lists.js';
 import { formatSampleValue } from './modal-helpers.js';
 import { showMessage } from '../../../ui/components.js';
-import { extractAtFieldsFromAllItems, extractAllFieldsFromItems } from '../../core/data-analyzer.js';
+import {
+    extractAtFieldsFromAllItems,
+    extractAllFieldsFromItems,
+    getAvailableExtractionModes,
+    getDefaultExtractionMode,
+    getExtractionModeLabel,
+    describeFieldProfile,
+    resolveOmekaValue
+} from '../../core/data-analyzer.js';
 import { extractAllFields } from '../../../transformations.js';
 
 /**
@@ -172,6 +180,8 @@ function selectMetadataField(metadataOption) {
     if (datatypeSection) {
         datatypeSection.style.display = 'block';
     }
+
+    window.updateMappingExtractionUI?.(metadataProperty);
 }
 
 /**
@@ -180,6 +190,7 @@ function selectMetadataField(metadataOption) {
 export function openMappingModal(keyData) {
     // Store keyData globally for modal title updates
     window.currentMappingKeyData = keyData;
+    window.currentMappingSelectedProperty = keyData.property || null;
     
     // Extract fields once for the entire modal session to optimize performance
     if (keyData && keyData.sampleValue && window.mappingStepState) {
@@ -384,6 +395,8 @@ export function openMappingModal(keyData) {
                 if (modal) {
                     modal.classList.remove('mapping-modal-wide');
                 }
+                window.updateMappingExtractionUI = null;
+                window.currentMappingSelectedProperty = null;
             }
         );
         
@@ -634,114 +647,137 @@ export function createMappingModalContent(keyData) {
     `;
     keyInfo.appendChild(basicInfo);
     
-    // Field selector section (for JSON-LD fields - both @ fields and regular fields)
-    const atFieldSection = createElement('div', {
-        className: 'at-field-section'
-    });
-    
-    // Check if this key has fields across all items
     const currentState = window.mappingStepState.getState();
-    if (currentState.fetchedData) {
-        const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-        const fieldGroups = extractAllFieldsFromItems(keyData.key, items);
-        
-        if (fieldGroups.length > 0) {
-            const atFieldLabel = createElement('label', {
-                className: 'at-field-label'
-            }, 'Original Key Field:');
-            
-            const atFieldSelect = createElement('select', {
-                className: 'at-field-select',
-                id: `at-field-select-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`,
-                onChange: (e) => {
-                    const [selectedObjectIndex, ...fieldParts] = e.target.value.split('::');
-                    keyData.selectedObjectIndex = Number.parseInt(selectedObjectIndex, 10);
-                    keyData.selectedAtField = fieldParts.join('::');
-                    
-                    // Update sample values if they're already loaded
-                    const samplesContent = document.querySelector('.samples-content');
-                    if (samplesContent && samplesContent.hasChildNodes()) {
-                        loadSampleValues(samplesContent, keyData, window.mappingStepState);
-                    }
-                }
-            });
-            
-            // Set default selection to @id if available, then @value, then first option
-            let defaultField = null;
-            
-            // Find default field from all groups
-            for (const group of fieldGroups) {
-                const idField = group.fields.find(field => field.key === '@id');
-                const valueField = group.fields.find(field => field.key === '@value');
-                
-                if (idField) {
-                    defaultField = { ...idField, objectIndex: group.objectIndex };
-                    break;
-                } else if (valueField && !defaultField) {
-                    defaultField = { ...valueField, objectIndex: group.objectIndex };
-                }
+    const items = currentState.fetchedData
+        ? (Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData])
+        : [];
+    const fieldGroups = items.length > 0 ? extractAllFieldsFromItems(keyData.key, items) : [];
+    const propertyDatatype = () => window.currentMappingSelectedProperty?.datatype || keyData.property?.datatype || null;
+
+    const fieldProfileSection = createElement('div', {
+        className: 'field-profile-section'
+    });
+    const fieldProfileSummary = createElement('div', {
+        className: 'field-profile-summary',
+        id: `field-profile-summary-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`
+    });
+    fieldProfileSection.appendChild(fieldProfileSummary);
+    keyInfo.appendChild(fieldProfileSection);
+
+    const extractionSection = createElement('div', {
+        className: 'at-field-section extraction-section'
+    });
+    const extractionLabel = createElement('label', {
+        className: 'at-field-label'
+    }, 'Value extraction:');
+    const extractionSelect = createElement('select', {
+        className: 'at-field-select extraction-mode-select',
+        id: `extraction-mode-select-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`,
+        onChange: (e) => {
+            keyData.extractionMode = e.target.value;
+            const samplesContent = document.querySelector('.samples-content');
+            if (samplesContent && samplesContent.hasChildNodes()) {
+                loadSampleValues(samplesContent, keyData, window.mappingStepState);
             }
-            
-            // If no @ fields found, use first field
-            if (!defaultField && fieldGroups[0] && fieldGroups[0].fields.length > 0) {
-                defaultField = {
-                    ...fieldGroups[0].fields[0],
-                    objectIndex: fieldGroups[0].objectIndex
-                };
-            }
-            
-            // Store the default selection, but preserve existing selection if already set
-            // This is critical for auto-mapped identifiers to maintain consistent mappingId
-            if (defaultField && !keyData.selectedAtField) {
-                keyData.selectedAtField = defaultField.key;
-                keyData.selectedObjectIndex = defaultField.objectIndex;
-            } else if (
-                defaultField &&
-                keyData.selectedAtField &&
-                !Number.isInteger(keyData.selectedObjectIndex)
-            ) {
-                const matchingGroup = fieldGroups.find(group =>
-                    group.fields.some(field => field.key === keyData.selectedAtField)
-                );
-                if (matchingGroup) {
-                    keyData.selectedObjectIndex = matchingGroup.objectIndex;
-                }
+        }
+    });
+    extractionSection.appendChild(extractionLabel);
+    extractionSection.appendChild(extractionSelect);
+
+    const fieldOverrideSection = createElement('div', {
+        className: 'field-override-section'
+    });
+    const fieldOverrideLabel = createElement('label', {
+        className: 'at-field-label'
+    }, 'Specific source field override (advanced):');
+    const fieldOverrideSelect = createElement('select', {
+        className: 'at-field-select',
+        id: `at-field-select-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`,
+        onChange: (e) => {
+            if (e.target.value === '__auto__') {
+                keyData.selectedAtField = undefined;
+                keyData.selectedObjectIndex = undefined;
+            } else {
+                const [selectedObjectIndex, ...fieldParts] = e.target.value.split('::');
+                keyData.selectedObjectIndex = Number.parseInt(selectedObjectIndex, 10);
+                keyData.selectedAtField = fieldParts.join('::');
             }
 
-            // Ensure the dropdown shows the correct selection (either existing or default)
-            const selectedObjectIndex = Number.isInteger(keyData.selectedObjectIndex)
-                ? keyData.selectedObjectIndex
-                : defaultField?.objectIndex;
-            const fieldToSelect = keyData.selectedAtField || defaultField?.key;
-            const optionToSelect = fieldToSelect ? `${selectedObjectIndex}::${fieldToSelect}` : null;
-            
-            // Populate options with optgroups for each object structure
-            fieldGroups.forEach((group) => {
-                if (group.fields.length === 0) return;
-                
-                // Create optgroup for this object structure
-                const optGroup = createElement('optgroup', {
-                    label: fieldGroups.length > 1 ? `Object ${group.objectIndex + 1}` : 'Available Fields'
-                });
-                
-                // Add fields to optgroup
-                group.fields.forEach(field => {
-                    const optionValue = `${group.objectIndex}::${field.key}`;
-                    const option = createElement('option', {
-                        value: optionValue,
-                        selected: optionValue === optionToSelect
-                    }, `${field.key}: ${field.preview}`);
-                    optGroup.appendChild(option);
-                });
-                
-                atFieldSelect.appendChild(optGroup);
-            });
-            
-            atFieldSection.appendChild(atFieldLabel);
-            atFieldSection.appendChild(atFieldSelect);
-            keyInfo.appendChild(atFieldSection);
+            const samplesContent = document.querySelector('.samples-content');
+            if (samplesContent && samplesContent.hasChildNodes()) {
+                loadSampleValues(samplesContent, keyData, window.mappingStepState);
+            }
         }
+    });
+    fieldOverrideSection.appendChild(fieldOverrideLabel);
+    fieldOverrideSection.appendChild(fieldOverrideSelect);
+
+    const fieldOverrideHelp = createElement('div', {
+        className: 'field-override-help'
+    }, 'Leave this on Automatic unless you need to force one exact Omeka subfield.');
+    fieldOverrideSection.appendChild(fieldOverrideHelp);
+
+    const refreshExtractionUI = () => {
+        const profileDescription = describeFieldProfile(keyData.fieldProfile, propertyDatatype());
+        fieldProfileSummary.textContent = profileDescription.summary;
+
+        const recommendedMode = getDefaultExtractionMode(keyData.fieldProfile, propertyDatatype());
+        const selectedMode = keyData.extractionMode || 'auto';
+        extractionSelect.innerHTML = '';
+
+        getAvailableExtractionModes(keyData.fieldProfile, propertyDatatype()).forEach(mode => {
+            const label = mode === 'auto'
+                ? `Automatic (recommended: ${getExtractionModeLabel(recommendedMode)})`
+                : getExtractionModeLabel(mode);
+            const option = createElement('option', {
+                value: mode,
+                selected: mode === selectedMode
+            }, label);
+            extractionSelect.appendChild(option);
+        });
+
+        if (![...extractionSelect.options].some(option => option.value === selectedMode)) {
+            extractionSelect.value = 'auto';
+            keyData.extractionMode = 'auto';
+        } else {
+            extractionSelect.value = selectedMode;
+        }
+
+        fieldOverrideSelect.innerHTML = '';
+        const autoOption = createElement('option', {
+            value: '__auto__',
+            selected: !keyData.selectedAtField
+        }, 'Use the extraction strategy above');
+        fieldOverrideSelect.appendChild(autoOption);
+
+        fieldGroups.forEach((group) => {
+            if (group.fields.length === 0) return;
+
+            const optGroup = createElement('optgroup', {
+                label: fieldGroups.length > 1 ? `Object ${group.objectIndex + 1}` : 'Available Fields'
+            });
+
+            group.fields.forEach(field => {
+                const optionValue = `${group.objectIndex}::${field.key}`;
+                const option = createElement('option', {
+                    value: optionValue,
+                    selected: keyData.selectedAtField === field.key && keyData.selectedObjectIndex === group.objectIndex
+                }, `${field.key}: ${field.preview}`);
+                optGroup.appendChild(option);
+            });
+
+            fieldOverrideSelect.appendChild(optGroup);
+        });
+
+        fieldOverrideSection.style.display = fieldGroups.length > 0 ? '' : 'none';
+    };
+
+    keyInfo.appendChild(extractionSection);
+    if (fieldGroups.length > 0) {
+        keyInfo.appendChild(fieldOverrideSection);
     }
+    refreshExtractionUI();
+    window.updateMappingExtractionUI = refreshExtractionUI;
     
     // Sample values section (collapsible)
     const samplesSection = createElement('div', {
@@ -1121,17 +1157,16 @@ function loadSampleValues(container, keyData, state) {
                 valueToFormat = valuesToProcess[keyData.selectedObjectIndex];
             }
 
-            // If a specific field is selected, extract that field's value from the chosen object
-            if (keyData.selectedAtField) {
-                const objectCandidates = Number.isInteger(keyData.selectedObjectIndex)
-                    ? [valuesToProcess[keyData.selectedObjectIndex]]
-                    : valuesToProcess;
+            if (typeof valueToFormat === 'object') {
+                const resolvedSample = resolveOmekaValue(valueToFormat, {
+                    extractionMode: keyData.extractionMode,
+                    propertyDatatype: keyData.property?.datatype || window.currentMappingSelectedProperty?.datatype || null,
+                    fieldProfile: keyData.fieldProfile,
+                    selectedAtField: keyData.selectedAtField
+                });
 
-                for (const value of objectCandidates) {
-                    if (value && typeof value === 'object' && value[keyData.selectedAtField] !== undefined) {
-                        valueToFormat = value[keyData.selectedAtField];
-                        break;
-                    }
+                if (resolvedSample?.value) {
+                    valueToFormat = resolvedSample.value;
                 }
             }
             

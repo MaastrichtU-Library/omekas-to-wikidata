@@ -11,7 +11,8 @@ import { BLOCK_TYPES, BLOCK_METADATA, createTransformationBlock, getTransformati
 import { 
     extractAvailableFields,
     getFieldValueFromSample,
-    convertSampleValueToString 
+    convertSampleValueToString,
+    resolveOmekaValue
 } from './data-analyzer.js';
 
 // Global variable to track currently dragged element 
@@ -62,6 +63,16 @@ export function renderValueTransformationUI(keyData, state) {
                 rawSampleValue = value[keyData.selectedAtField];
                 break;
             }
+        }
+    } else if (rawSampleValue && typeof rawSampleValue === 'object') {
+        const resolvedSample = resolveOmekaValue(rawSampleValue, {
+            extractionMode: keyData.extractionMode,
+            propertyDatatype: currentProperty?.datatype || null,
+            fieldProfile: keyData.fieldProfile
+        });
+
+        if (resolvedSample?.value) {
+            rawSampleValue = resolvedSample.value;
         }
     }
     

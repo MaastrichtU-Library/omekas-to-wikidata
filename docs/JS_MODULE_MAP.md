@@ -93,8 +93,13 @@ The application follows a **modular, event-driven architecture**:
 
 **data-analyzer.js**
 - Purpose: Analyze Omeka data structure and extract fields
-- Key exports: `extractAndAnalyzeKeys()`, `extractAvailableFields()`, `extractSampleValue()`
-- Features: Supports template-order and frequency-order field sorting, and preserves per-object field groups for mixed JSON value arrays
+- Key exports: `extractAndAnalyzeKeys()`, `extractAvailableFields()`, `extractSampleValue()`, `resolveOmekaValue()`
+- Features: Supports template-order and frequency-order field sorting, preserves per-object field groups for mixed JSON value arrays, and builds field datatype profiles from resource templates plus observed values
+
+**value-resolution.js**
+- Purpose: Shared Omeka value profiling and extraction strategy logic
+- Key exports: `buildObservedFieldProfile()`, `resolveOmekaValue()`, `getDefaultExtractionMode()`, `describeFieldProfile()`
+- Features: Defines extraction modes, summarizes mixed Omeka value shapes, and provides one resolver used by Mapping previews and Reconciliation
 
 **property-searcher.js**
 - Purpose: Search and suggest Wikidata properties
@@ -111,13 +116,14 @@ The application follows a **modular, event-driven architecture**:
 **mapping-persistence.js**
 - Purpose: Save/load mapping configurations
 - Key exports: `generateMappingData()`, `downloadMappingAsJson()`, `loadMappingFromData()`
+- Features: Persists extraction strategy and field-override selections alongside mapped keys
 
 #### UI (`mapping/ui/`)
 
 **mapping-lists.js**
 - Purpose: Manage mapping UI lists (non-linked, mapped, ignored)
 - Key exports: `populateLists()`, `moveKeyToCategory()`, `mapKeyToProperty()`
-- Features: Applies the active field ordering mode, preserves stable list ordering, and pins required Label/Instance of mappings while preventing duplicates
+- Features: Applies the active field ordering mode, refreshes mapped-key analyzer metadata from the current dataset, and pins required Label/Instance of mappings while preventing duplicates
 
 **transformation-ui.js**
 - Purpose: UI for transformation configuration
@@ -133,6 +139,7 @@ The application follows a **modular, event-driven architecture**:
 
 #### Modals (`mapping/ui/modals/`)
 - `mapping-modal.js` - Main mapping configuration modal
+- `mapping-modal.js` - Main mapping configuration modal with datatype-aware extraction guidance and advanced source-field override
 - `add-property-modal.js` - Add manual properties
 - `manual-property-modal.js` - Configure manual property values
 - `json-modal.js` - Import/export JSON configurations
@@ -153,7 +160,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-data.js**
 - Purpose: Manage reconciliation data and results
 - Key exports: `storeReconciliationResult()`, `getReconciliationStatus()`
-- Features: Extracts object-specific field selections, normalizes recognized external identifier URLs to bare identifier values, and respects mapping order with Label/Instance of priority in Step 3
+- Features: Resolves Omeka values through shared extraction modes, extracts object-specific field overrides, normalizes recognized external identifier URLs to bare identifier values, and respects mapping order with Label/Instance of priority in Step 3
 
 **reconciliation-progress.js**
 - Purpose: Track reconciliation progress

@@ -40,6 +40,18 @@ function applySortIndex(keyObj, keyOrderIndex) {
     };
 }
 
+function mergeAnalyzerMetadata(keyObj, analyzedKey) {
+    if (!keyObj || typeof keyObj !== 'object' || !analyzedKey) {
+        return keyObj;
+    }
+
+    return {
+        ...analyzedKey,
+        ...keyObj,
+        fieldProfile: keyObj.fieldProfile || analyzedKey.fieldProfile
+    };
+}
+
 function sortKeysForDisplay(keys, type) {
     return [...keys].sort((a, b) => {
         if (type === 'mapped') {
@@ -128,6 +140,7 @@ export async function populateLists(state) {
         analysisOptions.selectedTemplateIds = currentState.selectedTemplates;
     }
     const keyAnalysis = await extractAndAnalyzeKeys(processedData, analysisOptions);
+    const keyAnalysisByKey = new Map(keyAnalysis.map(entry => [entry.key, entry]));
 
     // Build a stable order index map based on analyzer output
     const keyOrderIndex = new Map();
@@ -259,17 +272,22 @@ export async function populateLists(state) {
         .sort((a, b) => (a.sortIndex ?? Number.MAX_SAFE_INTEGER) - (b.sortIndex ?? Number.MAX_SAFE_INTEGER));
     
     // Add ignored keys to ignored list
-    const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...ignoredKeys]
-        .map(keyObj => applySortIndex(keyObj, keyOrderIndex));
+    const currentIgnoredKeys = [
+        ...updatedState.mappings.ignoredKeys.map(keyObj => mergeAnalyzerMetadata(keyObj, keyAnalysisByKey.get(keyObj.key || keyObj))),
+        ...ignoredKeys
+    ].map(keyObj => applySortIndex(keyObj, keyOrderIndex));
     
     // Add regular keys (without identifiers) and failed auto-mappings to non-linked keys
-    const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.filter(k => 
-        !keyAnalysis.find(ka => ka.key === (k.key || k))
-    ).map(keyObj => applySortIndex(keyObj, keyOrderIndex));
+    const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys
+        .filter(k => !keyAnalysis.find(ka => ka.key === (k.key || k)))
+        .map(keyObj => applySortIndex(keyObj, keyOrderIndex));
     const allNonLinkedKeys = [...currentNonLinkedKeys, ...mergedNonLinked];
     
     // Add auto-mapped keys to existing mapped keys
-    const allMappedKeys = [...updatedState.mappings.mappedKeys, ...autoMappedKeys]
+    const hydratedMappedKeys = updatedState.mappings.mappedKeys.map(keyObj =>
+        mergeAnalyzerMetadata(keyObj, keyAnalysisByKey.get(keyObj.key || keyObj))
+    );
+    const allMappedKeys = [...hydratedMappedKeys, ...autoMappedKeys]
         .map(keyObj => applySortIndex(keyObj, keyOrderIndex));
     
     // Update all mappings atomically
@@ -656,6 +674,7 @@ export function mapKeyToProperty(keyData, property, state) {
     const mappedKey = {
         ...keyData,
         property: property,
+        extractionMode: keyData.extractionMode || 'auto',
         mappingId: newMappingId,
         mappedAt: new Date().toISOString()
     };
