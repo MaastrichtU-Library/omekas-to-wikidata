@@ -290,7 +290,40 @@ export function extractPropertyValueDetails(item, keyOrKeyObj, state = null) {
 /**
  * Combine and sort all properties (mapped and manual) to prioritize label, description, aliases, and instance of
  */
-export function combineAndSortProperties(mappedKeys, manualProperties = []) {
+function buildTemplateDisplayLabelMap(resourceTemplates = [], selectedTemplateIds = []) {
+    const selectedIdSet = new Set((selectedTemplateIds || []).map(id => String(id)));
+    const displayLabelByTerm = new Map();
+
+    (resourceTemplates || []).forEach(template => {
+        if (!selectedIdSet.has(String(template['o:id']))) {
+            return;
+        }
+
+        const templateProperties = Array.isArray(template['o:resource_template_property'])
+            ? template['o:resource_template_property']
+            : [];
+
+        templateProperties.forEach(templateProperty => {
+            const term = templateProperty?.['o:property']?.['o:term'];
+            const alternateLabel = typeof templateProperty?.['o:alternate_label'] === 'string'
+                ? templateProperty['o:alternate_label'].trim()
+                : '';
+            const propertyLabel = typeof templateProperty?.['o:property']?.['o:label'] === 'string'
+                ? templateProperty['o:property']['o:label'].trim()
+                : '';
+
+            if (!term || displayLabelByTerm.has(term)) {
+                return;
+            }
+
+            displayLabelByTerm.set(term, alternateLabel || propertyLabel || null);
+        });
+    });
+
+    return displayLabelByTerm;
+}
+
+export function combineAndSortProperties(mappedKeys, manualProperties = [], options = {}) {
     const getMappedPropertyPriority = (item) => {
         if (item.type !== 'mapped') {
             return 10;
@@ -315,12 +348,22 @@ export function combineAndSortProperties(mappedKeys, manualProperties = []) {
 
     // Create array with mapped and manual properties
     const allProperties = [];
+    const templateDisplayLabelByTerm = buildTemplateDisplayLabelMap(
+        options.resourceTemplates,
+        options.selectedTemplateIds
+    );
     
     // Add mapped properties with a type indicator
     mappedKeys.forEach((keyObj, index) => {
+        const enrichedKeyObj = keyObj?.templateDisplayLabel || keyObj?.templateAlternateLabel
+            ? keyObj
+            : {
+                ...keyObj,
+                templateDisplayLabel: templateDisplayLabelByTerm.get(keyObj?.key) || keyObj?.templateDisplayLabel || null
+            };
         allProperties.push({
             type: 'mapped',
-            data: keyObj,
+            data: enrichedKeyObj,
             originalIndex: index
         });
     });

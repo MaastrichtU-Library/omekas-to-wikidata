@@ -93,8 +93,8 @@ The application follows a **modular, event-driven architecture**:
 
 **data-analyzer.js**
 - Purpose: Analyze Omeka data structure and extract fields
-- Key exports: `extractAndAnalyzeKeys()`, `extractAvailableFields()`, `extractSampleValue()`, `resolveOmekaValue()`
-- Features: Supports template-order and frequency-order field sorting, preserves per-object field groups for mixed JSON value arrays, and builds field datatype profiles from resource templates plus observed values
+- Key exports: `extractAndAnalyzeKeys()`, `extractAvailableFields()`, `extractSampleValue()`, `getOmekaFieldFriendlyName()`, `resolveOmekaValue()`
+- Features: Supports template-order and frequency-order field sorting, preserves per-object field groups for mixed JSON value arrays, builds field datatype profiles from resource templates plus observed values, and carries Omeka template display labels into Mapping/Reconciliation
 
 **value-resolution.js**
 - Purpose: Shared Omeka value profiling and extraction strategy logic
@@ -123,7 +123,7 @@ The application follows a **modular, event-driven architecture**:
 **mapping-lists.js**
 - Purpose: Manage mapping UI lists (non-linked, mapped, ignored)
 - Key exports: `populateLists()`, `moveKeyToCategory()`, `mapKeyToProperty()`
-- Features: Applies the active field ordering mode, refreshes mapped-key analyzer metadata from the current dataset, and pins required Label/Instance of mappings while preventing duplicates
+- Features: Applies the active field ordering mode, refreshes mapped-key analyzer metadata from the current dataset, displays Omeka template labels next to technical keys, and pins required Label/Instance of mappings while preventing duplicates
 
 **transformation-ui.js**
 - Purpose: UI for transformation configuration
@@ -160,7 +160,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-data.js**
 - Purpose: Manage reconciliation data and results
 - Key exports: `storeReconciliationResult()`, `getReconciliationStatus()`
-- Features: Resolves Omeka values through shared extraction modes, extracts object-specific field overrides, normalizes recognized external identifier URLs to bare identifier values, and respects mapping order with Label/Instance of priority in Step 3
+- Features: Resolves Omeka values through shared extraction modes, extracts object-specific field overrides, normalizes recognized external identifier URLs to bare identifier values, backfills template display labels when needed, and respects mapping order with Label/Instance of priority in Step 3
 
 **reconciliation-progress.js**
 - Purpose: Track reconciliation progress
@@ -172,7 +172,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-table.js**
 - Purpose: Display reconciliation results in table
 - Key exports: `renderReconciliationTable()`, `updateTableRow()`, `updateItemCellDisplay()`
-- Features: Item cell with link button to link items to existing Wikidata items, plus live table updates when custom reconciled values are edited
+- Features: Item cell with link button to link items to existing Wikidata items, header rows that show both technical Omeka keys and template labels, plus live table updates when custom reconciled values are edited
 
 **reconciliation-modal.js**
 - Purpose: Reconciliation configuration and details modal

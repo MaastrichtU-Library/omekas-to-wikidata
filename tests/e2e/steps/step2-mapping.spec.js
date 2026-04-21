@@ -119,6 +119,48 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
         }
       });
     });
+
+    test('shows template alternative labels next to Omeka keys and keeps entity schema selector beside non-linked keys', async ({ page }) => {
+      await app.enableTestMode();
+
+      await page.evaluate(() => {
+        window.debugState.updateState('resourceTemplates', [
+          {
+            'o:id': 11,
+            'o:resource_template_property': [
+              {
+                'o:property': {
+                  'o:id': 1,
+                  'o:term': 'dcterms:title',
+                  'o:label': 'Title'
+                },
+                'o:alternate_label': 'Book title'
+              },
+              {
+                'o:property': {
+                  'o:id': 2,
+                  'o:term': 'dcterms:creator',
+                  'o:label': 'Creator'
+                },
+                'o:alternate_label': 'Author'
+              }
+            ]
+          }
+        ]);
+        window.debugState.updateState('selectedTemplates', ['11']);
+      });
+
+      await app.mapping.fieldOrderModeSelect.selectOption('frequency');
+      await app.mapping.fieldOrderModeSelect.selectOption('template');
+      await page.waitForTimeout(500);
+
+      const titleEntry = app.mapping.nonLinkedKeys.locator('li:not(.placeholder)').filter({ hasText: 'dcterms:title' }).first();
+      await expect(titleEntry.locator('.key-name-compact')).toHaveText('dcterms:title');
+      await expect(titleEntry.locator('.key-template-label')).toHaveText('Book title');
+
+      const schemaSelectorInSection = page.locator('.key-sections .section').first().locator('#entity-schema-selector-container');
+      await expect(schemaSelectorInSection).toBeVisible();
+    });
   });
 
   test.describe('Manual Properties @mapping-manual', () => {

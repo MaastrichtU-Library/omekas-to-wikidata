@@ -156,9 +156,6 @@
             <section id="step2" class="step-content">
                 <div class="mapping-header">
                     <h2>Step 2: Mapping</h2>
-                    <div id="entity-schema-selector-container" class="entity-schema-selector-header">
-                        <!-- Entity Schema selector will be inserted here -->
-                    </div>
                 </div>
                 <div class="add-metadata-section">
                     <div class="mapping-guidance">
@@ -192,6 +189,12 @@
 
                         <details class="section" open>
                             <summary>Non-linked Keys <span id="field-order-indicator" class="badge" style="display: none; margin-left: 8px;"></span></summary>
+                            <div class="section-toolbar section-toolbar--schema">
+                                <div class="section-toolbar__label">Entity Schema</div>
+                                <div id="entity-schema-selector-container" class="entity-schema-selector-inline">
+                                    <!-- Entity Schema selector will be inserted here -->
+                                </div>
+                            </div>
                             <ul id="non-linked-keys" class="key-list">
                                 <li class="placeholder">Keys will appear here after fetching data</li>
                             </ul>

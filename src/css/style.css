@@ -96,20 +96,37 @@ button {
 
 /* Entity Schema Selector Styles */
 .mapping-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
     margin-bottom: 20px;
-    gap: 20px;
 }
 
 .mapping-header h2 {
     margin: 0;
-    flex: 1;
 }
 
 .entity-schema-selector-header {
     flex-shrink: 0;
+}
+
+.section-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem 0;
+}
+
+.section-toolbar__label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #52606d;
+}
+
+.entity-schema-selector-inline {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .add-metadata-section {
@@ -154,6 +171,11 @@ button {
     max-width: 600px;
     text-align: left;
     position: relative;
+}
+
+.entity-schema-selector-inline .entity-schema-selector-custom__button {
+    min-width: 320px;
+    max-width: 100%;
 }
 
 .entity-schema-selector-custom__button:after {
@@ -390,12 +412,6 @@ button {
 
 /* Responsive Design for Entity Schema Components */
 @media (max-width: 768px) {
-    .mapping-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 15px;
-    }
-    
     .entity-schema-selector-custom__button {
         min-width: 300px;
         max-width: 500px;
@@ -405,13 +421,23 @@ button {
         grid-template-columns: 1fr;
     }
     
-    .entity-schema-selector-custom {
+    .entity-schema-selector-custom,
+    .entity-schema-selector-inline {
         width: 100%;
     }
     
     .entity-schema-selector-custom__button {
         width: 100%;
         max-width: none;
+    }
+
+    .section-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .entity-schema-selector-inline {
+        justify-content: stretch;
     }
 }
 
@@ -2176,8 +2202,14 @@ pre.sample-value {
 /* Key item display styles - compact version */
 .key-item-compact {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.5rem;
+}
+
+.key-label-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
 }
 
 .key-item-clickable-compact:hover {
@@ -2188,6 +2220,11 @@ pre.sample-value {
     font-weight: 500;
     color: var(--text-color);
     font-size: 0.9rem;
+}
+
+.key-template-label {
+    font-size: 0.76rem;
+    color: #52606d;
 }
 
 .key-frequency {
@@ -2696,6 +2733,7 @@ pre.sample-value {
     font-size: 0.78rem;
     font-weight: 600;
     color: #52606d;
+    line-height: 1.35;
 }
 
 .property-mapped-prefix {

@@ -7,7 +7,12 @@
 // Import dependencies
 import { eventSystem } from '../../events.js';
 import { createElement, createListItem, showMessage } from '../../ui/components.js';
-import { extractAndAnalyzeKeys, convertCamelCaseToSpaces, extractSampleValue } from '../core/data-analyzer.js';
+import {
+    extractAndAnalyzeKeys,
+    convertCamelCaseToSpaces,
+    extractSampleValue,
+    getOmekaFieldFriendlyName
+} from '../core/data-analyzer.js';
 import { getCompletePropertyData } from '../../api/wikidata.js';
 import { createIdentifierMapping } from '../../utils/identifier-detection.js';
 import { processItemsForValueIdentifiers } from '../../utils/value-processor.js';
@@ -74,6 +79,39 @@ function sortKeysForDisplay(keys, type) {
     });
 }
 
+function createKeyLabelGroup(keyData) {
+    const fieldSuffixParts = [];
+    if (keyData.selectedAtField) {
+        fieldSuffixParts.push(keyData.selectedAtField);
+    }
+    if (Number.isInteger(keyData.selectedObjectIndex)) {
+        fieldSuffixParts.push(`object ${keyData.selectedObjectIndex + 1}`);
+    }
+
+    const keyDisplayText = fieldSuffixParts.length > 0
+        ? `${keyData.key} (${fieldSuffixParts.join(', ')})`
+        : keyData.key;
+
+    const labelGroup = createElement('div', {
+        className: 'key-label-group'
+    });
+
+    const keyName = createElement('span', {
+        className: 'key-name-compact'
+    }, keyDisplayText);
+    labelGroup.appendChild(keyName);
+
+    const friendlyName = getOmekaFieldFriendlyName(keyData, keyData.key);
+    if (friendlyName && friendlyName !== keyData.key) {
+        const keyTemplateLabel = createElement('span', {
+            className: 'key-template-label'
+        }, friendlyName);
+        labelGroup.appendChild(keyTemplateLabel);
+    }
+
+    return labelGroup;
+}
+
 function syncRequiredMappingButtons(keys) {
     const labelButton = document.getElementById('add-label');
     const instanceOfButton = document.getElementById('add-instance-of');
@@ -93,7 +131,7 @@ function syncRequiredMappingButtons(keys) {
         instanceOfButton.textContent = hasInstanceOfMapping ? 'Instance of Set' : 'Set Instance of';
         instanceOfButton.title = hasInstanceOfMapping
             ? 'This project already has an Instance of mapping. Edit the existing Instance of entry in Mapped Keys to change it.'
-            : 'Map the source field that classifies what each item is.';
+            : 'Map the source field that classifies what each item is. This usually follows the selected resource template class.';
     }
 }
 
@@ -448,7 +486,7 @@ export function populateKeyList(listElement, keys, type) {
             const instanceOfPlaceholder = createRequiredPropertyPlaceholder(
                 'P31',
                 'Instance of',
-                'Instance of is required for all Wikidata items'
+                'Instance of is required and usually matches the selected resource template class'
             );
             listElement.appendChild(instanceOfPlaceholder);
         }
@@ -481,21 +519,7 @@ export function populateKeyList(listElement, keys, type) {
                 : 'key-item-compact'
         });
         
-        // Display key name with @ field if present
-        const fieldSuffixParts = [];
-        if (keyData.selectedAtField) {
-            fieldSuffixParts.push(keyData.selectedAtField);
-        }
-        if (Number.isInteger(keyData.selectedObjectIndex)) {
-            fieldSuffixParts.push(`object ${keyData.selectedObjectIndex + 1}`);
-        }
-        const keyDisplayText = fieldSuffixParts.length > 0
-            ? `${keyData.key} (${fieldSuffixParts.join(', ')})`
-            : keyData.key;
-        const keyName = createElement('span', {
-            className: 'key-name-compact'
-        }, keyDisplayText);
-        keyDisplay.appendChild(keyName);
+        keyDisplay.appendChild(createKeyLabelGroup(keyData));
         
         // Show property info for mapped keys immediately after key name
         if (type === 'mapped' && keyData.property) {

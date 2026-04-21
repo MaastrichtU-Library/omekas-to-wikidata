@@ -8,23 +8,29 @@
 
 import { createElement } from '../../ui/components.js';
 import { combineAndSortProperties, extractPropertyValues } from '../core/reconciliation-data.js';
+import { getOmekaFieldFriendlyName } from '../../mapping/core/data-analyzer.js';
 
 function formatSourceFieldLabel(keyObj, fallbackKey) {
     const keyName = typeof keyObj === 'string' ? keyObj : fallbackKey;
+    const friendlyName = getOmekaFieldFriendlyName(keyObj, keyName);
 
     if (!keyName) {
         return 'Source field';
     }
 
+    const baseLabel = friendlyName && friendlyName !== keyName
+        ? `${keyName} (${friendlyName})`
+        : keyName;
+
     if (typeof keyObj === 'object' && keyObj.selectedAtField) {
         if (Number.isInteger(keyObj.selectedObjectIndex)) {
-            return `${keyName} → ${keyObj.selectedAtField} (object ${keyObj.selectedObjectIndex + 1})`;
+            return `${baseLabel} -> ${keyObj.selectedAtField} (object ${keyObj.selectedObjectIndex + 1})`;
         }
 
-        return `${keyName} → ${keyObj.selectedAtField}`;
+        return `${baseLabel} -> ${keyObj.selectedAtField}`;
     }
 
-    return keyName;
+    return baseLabel;
 }
 
 /**
@@ -485,7 +491,10 @@ export function createReconciliationTableFactory(dependencies) {
         const manualProperties = currentState.mappings?.manualProperties || [];
         
         // Combine and sort all properties for display priority
-        const sortedProperties = combineAndSortProperties(mappedKeys, manualProperties);
+        const sortedProperties = combineAndSortProperties(mappedKeys, manualProperties, {
+            resourceTemplates: currentState.resourceTemplates,
+            selectedTemplateIds: currentState.selectedTemplates
+        });
         
         // Clear existing content
         if (propertyHeaders) {

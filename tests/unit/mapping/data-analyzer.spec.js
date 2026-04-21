@@ -27,9 +27,9 @@ describe('mapping/core/data-analyzer', () => {
             {
                 'o:id': 11,
                 'o:resource_template_property': [
-                    { 'o:property': { 'o:id': 3, 'o:term': 'dcterms:date' } },
-                    { 'o:property': { 'o:id': 1, 'o:term': 'dcterms:title' } },
-                    { 'o:property': { 'o:id': 2, 'o:term': 'dcterms:creator' } }
+                    { 'o:property': { 'o:id': 3, 'o:term': 'dcterms:date', 'o:label': 'Date' }, 'o:alternate_label': 'Publication date' },
+                    { 'o:property': { 'o:id': 1, 'o:term': 'dcterms:title', 'o:label': 'Title' }, 'o:alternate_label': 'Book title' },
+                    { 'o:property': { 'o:id': 2, 'o:term': 'dcterms:creator', 'o:label': 'Creator' }, 'o:alternate_label': 'Author' }
                 ]
             }
         ];
@@ -45,6 +45,10 @@ describe('mapping/core/data-analyzer', () => {
             'dcterms:title',
             'dcterms:creator'
         ]);
+        expect(result.find(entry => entry.key === 'dcterms:title')).toEqual(expect.objectContaining({
+            templateAlternateLabel: 'Book title',
+            templateDisplayLabel: 'Book title'
+        }));
     });
 
     test('sorts by frequency when sortMode is frequency', async () => {

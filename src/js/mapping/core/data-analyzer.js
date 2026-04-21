@@ -26,6 +26,21 @@ export {
     resolveOmekaValue
 } from './value-resolution.js';
 
+export function getOmekaFieldFriendlyName(keyOrKeyObj, fallbackKey = '') {
+    const keyData = typeof keyOrKeyObj === 'object' && keyOrKeyObj !== null
+        ? keyOrKeyObj
+        : { key: typeof keyOrKeyObj === 'string' ? keyOrKeyObj : fallbackKey };
+
+    const keyName = keyData.key || fallbackKey;
+    const templateDisplayLabel = keyData.templateDisplayLabel || keyData.templateAlternateLabel || '';
+
+    if (templateDisplayLabel && templateDisplayLabel !== keyName) {
+        return templateDisplayLabel;
+    }
+
+    return keyName || fallbackKey || '';
+}
+
 // Context cache for JSON-LD definitions
 const contextCache = new Map();
 
@@ -302,6 +317,10 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
 
     const templateAllowedTypesByPropertyId = new Map();
     const templateAllowedTypesByTerm = new Map();
+    const templateAlternateLabelByPropertyId = new Map();
+    const templateAlternateLabelByTerm = new Map();
+    const templatePropertyLabelByPropertyId = new Map();
+    const templatePropertyLabelByTerm = new Map();
 
     if (options && options.resourceTemplates && options.selectedTemplateIds) {
         let globalPropIndex = 0;
@@ -311,6 +330,12 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                 template['o:resource_template_property'].forEach(rtp => {
                     const property = rtp['o:property'];
                     const dataTypes = Array.isArray(rtp['o:data_type']) ? rtp['o:data_type'] : [];
+                    const alternateLabel = typeof rtp['o:alternate_label'] === 'string'
+                        ? rtp['o:alternate_label'].trim()
+                        : '';
+                    const propertyLabel = typeof property?.['o:label'] === 'string'
+                        ? property['o:label'].trim()
+                        : '';
                     if (property) {
                         const propId = property['o:id'];
                         const term = property['o:term'];
@@ -322,6 +347,18 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                         }
                         if (term && !templateTermOrder.has(term)) {
                             templateTermOrder.set(term, globalPropIndex);
+                        }
+                        if (pidStr && alternateLabel && !templateAlternateLabelByPropertyId.has(pidStr)) {
+                            templateAlternateLabelByPropertyId.set(pidStr, alternateLabel);
+                        }
+                        if (term && alternateLabel && !templateAlternateLabelByTerm.has(term)) {
+                            templateAlternateLabelByTerm.set(term, alternateLabel);
+                        }
+                        if (pidStr && propertyLabel && !templatePropertyLabelByPropertyId.has(pidStr)) {
+                            templatePropertyLabelByPropertyId.set(pidStr, propertyLabel);
+                        }
+                        if (term && propertyLabel && !templatePropertyLabelByTerm.has(term)) {
+                            templatePropertyLabelByTerm.set(term, propertyLabel);
                         }
                         if (pidStr) {
                             if (!templateAllowedTypesByPropertyId.has(pidStr)) {
@@ -468,6 +505,15 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                 ? finalizeFieldProfileStats(fieldProfileStats.get(key))
                 : buildObservedFieldProfile(sampleValue);
 
+            const propId = keyToPropertyId.get(key);
+            const templateAlternateLabel = propId && templateAlternateLabelByPropertyId.has(propId)
+                ? templateAlternateLabelByPropertyId.get(propId)
+                : templateAlternateLabelByTerm.get(key) || null;
+            const templatePropertyLabel = propId && templatePropertyLabelByPropertyId.has(propId)
+                ? templatePropertyLabelByPropertyId.get(propId)
+                : templatePropertyLabelByTerm.get(key) || null;
+            const templateDisplayLabel = templateAlternateLabel || templatePropertyLabel || null;
+
             return {
                 key,
                 frequency,
@@ -481,6 +527,9 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                 orderIndex: firstSeenOrder.has(key) ? firstSeenOrder.get(key) : Number.MAX_SAFE_INTEGER,
                 templateOrderIndex: templateOrderIndex,
                 fieldProfile,
+                templateAlternateLabel,
+                templatePropertyLabel,
+                templateDisplayLabel,
                 extractionMode: EXTRACTION_MODES.AUTO
             };
         })

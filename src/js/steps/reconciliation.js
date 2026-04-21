@@ -27,6 +27,7 @@
 import { setupModalUI } from '../ui/modal-ui.js';
 import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes, setupDynamicDatePrecision, standardizeDateInput } from '../utils/property-types.js';
 import { getConstraintBasedTypes, buildContextualProperties, validateAgainstFormatConstraints, scoreMatchWithConstraints, getConstraintSummary } from '../utils/constraint-helpers.js';
+import { getOmekaFieldFriendlyName } from '../mapping/core/data-analyzer.js';
 import { eventSystem } from '../events.js';
 import { createLinkItemModal, initializeLinkItemModal } from '../reconciliation/ui/modals/link-item-modal.js';
 import { updateItemCellDisplay } from '../reconciliation/ui/reconciliation-table.js';
@@ -108,15 +109,20 @@ function formatSourceFieldLabel(keyData) {
         return 'Source field';
     }
 
+    const friendlyName = getOmekaFieldFriendlyName(keyData, keyData.key);
+    const baseLabel = friendlyName && friendlyName !== keyData.key
+        ? `${keyData.key} (${friendlyName})`
+        : keyData.key;
+
     if (keyData.selectedAtField) {
         if (Number.isInteger(keyData.selectedObjectIndex)) {
-            return `${keyData.key} → ${keyData.selectedAtField} (object ${keyData.selectedObjectIndex + 1})`;
+            return `${baseLabel} -> ${keyData.selectedAtField} (object ${keyData.selectedObjectIndex + 1})`;
         }
 
-        return `${keyData.key} → ${keyData.selectedAtField}`;
+        return `${baseLabel} -> ${keyData.selectedAtField}`;
     }
 
-    return keyData.key;
+    return baseLabel;
 }
 
 /**
