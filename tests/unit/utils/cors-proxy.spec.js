@@ -46,7 +46,7 @@ describe('utils/cors-proxy', () => {
         });
     });
 
-    test('falls back to CodeTabs proxy after a browser-style CORS failure', async () => {
+    test('falls back to CORSPROXY after a browser-style CORS failure', async () => {
         const proxiedJson = JSON.stringify([{ 'o:id': 1092 }]);
         const fetchMock = global.fetch
             .mockRejectedValueOnce(new Error('Failed to fetch'))
@@ -63,12 +63,12 @@ describe('utils/cors-proxy', () => {
 
         expect(fetchMock).toHaveBeenCalledTimes(2);
         expect(fetchMock.mock.calls[1][0]).toBe(
-            'https://api.codetabs.com/v1/proxy/?quest=https%3A%2F%2Fradboud.example%2Fapi%2Fitems%3Fpage%3D5%26per_page%3D2'
+            'https://corsproxy.io/?url=https%3A%2F%2Fradboud.example%2Fapi%2Fitems%3Fpage%3D5%26per_page%3D2'
         );
         expect(result).toEqual({
             data: [{ 'o:id': 1092 }],
             method: 'proxy',
-            proxyUsed: 'CodeTabs Proxy',
+            proxyUsed: 'CORSPROXY',
             success: true
         });
     });

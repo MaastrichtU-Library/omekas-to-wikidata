@@ -24,13 +24,25 @@ function extractDomain(url) {
 }
 
 /**
- * Configuration for available CORS proxy services
- * Ordered by currently verified availability for public Omeka endpoints.
+ * Configuration for available CORS proxy services.
+ * Ordered by current browser-level verification against the Radboud sample API.
  */
 const CORS_PROXIES = [
     {
+        name: 'CORSPROXY',
+        transform: (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+        parseResponse: (response) => response,
+        headers: {}
+    },
+    {
         name: 'CodeTabs Proxy',
         transform: (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
+        parseResponse: (response) => response,
+        headers: {}
+    },
+    {
+        name: 'Corsfix',
+        transform: (url) => `https://proxy.corsfix.com/?${url}`,
         parseResponse: (response) => response,
         headers: {}
     },
