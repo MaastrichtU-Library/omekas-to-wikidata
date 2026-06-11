@@ -53,7 +53,8 @@ test.describe('Reconciliation headers and source language hints @reconciliation'
     await app.navigateToStep(3);
 
     const header = page.locator('[data-mapping-id="dcterms:title::P1476"]');
-    await expect(header.locator('.property-source-label')).toHaveText('dcterms:title (Book title)');
+    await expect(header.locator('.property-source-label')).toHaveText('Book title');
+    await expect(header.locator('.property-source-technical')).toHaveText('dcterms:title');
     await expect(header.locator('.property-mapped-row')).toContainText('Wikidata: title (P1476)');
     await expect(header.locator('.property-language-indicator')).toHaveText('Language required');
   });
@@ -147,10 +148,10 @@ test.describe('Reconciliation headers and source language hints @reconciliation'
 
     await app.navigateToStep(3);
 
-    const propertyHeaders = page.locator('#property-headers th');
-    await expect(propertyHeaders.nth(1).locator('.property-mapped-row')).toContainText('Wikidata: Labels (label)');
-    await expect(propertyHeaders.nth(2).locator('.property-mapped-row')).toContainText('Wikidata: instance of (P31)');
-    await expect(propertyHeaders.nth(3).locator('.property-mapped-row')).toContainText('Wikidata: author (P50)');
+    const mappedRows = page.locator('#reconciliation-rows tr.reconciliation-row--field');
+    await expect(mappedRows.nth(0).locator('.property-mapped-row')).toContainText('Wikidata: Labels (label)');
+    await expect(mappedRows.nth(1).locator('.property-mapped-row')).toContainText('Wikidata: instance of (P31)');
+    await expect(mappedRows.nth(2).locator('.property-mapped-row')).toContainText('Wikidata: author (P50)');
   });
 
   test('prefills monolingual text language from Omeka source data when available', async ({ page }) => {
@@ -248,4 +249,5 @@ test.describe('Reconciliation headers and source language hints @reconciliation'
     await expect(page.locator('.property-cell .value-text').first()).toHaveText('Aangepaste titel (nl)');
     await expect(page.locator('.property-cell .value-status').first()).toContainText('Custom value');
   });
+
 });

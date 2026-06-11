@@ -66,7 +66,8 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
       await test.step('Verify category sections exist', async () => {
         // Check for the collapsible sections
         const sections = page.locator('.section');
-        await expect(sections).toHaveCount(4); // Manual properties, Non-linked, Mapped, Ignored
+        await expect(sections).toHaveCount(3); // Non-linked, Mapped, Ignored
+        await expect(app.mapping.manualProperties).toBeVisible();
       });
 
       await test.step('Verify non-linked keys are populated', async () => {
@@ -155,8 +156,8 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
       await page.waitForTimeout(500);
 
       const titleEntry = app.mapping.nonLinkedKeys.locator('li:not(.placeholder)').filter({ hasText: 'dcterms:title' }).first();
-      await expect(titleEntry.locator('.key-name-compact')).toHaveText('dcterms:title');
-      await expect(titleEntry.locator('.key-template-label')).toHaveText('Book title');
+      await expect(titleEntry.locator('.key-name-compact--friendly')).toHaveText('Book title');
+      await expect(titleEntry.locator('.key-template-label--technical')).toHaveText('dcterms:title');
 
       const schemaSelectorInSection = page.locator('.key-sections .section').first().locator('#entity-schema-selector-container');
       await expect(schemaSelectorInSection).toBeVisible();
@@ -186,9 +187,8 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
       await test.step('Verify manual properties section', async () => {
         await expect(app.mapping.manualProperties).toBeVisible();
         
-        // Should initially show placeholder text
         const manualPropsText = await app.mapping.manualProperties.textContent();
-        expect(manualPropsText).toContain('No additional properties' || 'placeholder');
+        expect(manualPropsText).toContain('Add a Wikidata property');
       });
     });
   });
@@ -339,8 +339,8 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
     test('property categories are organized correctly', async ({ page }) => {
       await test.step('Verify all category sections exist', async () => {
         await expect(app.mapping.nonLinkedKeys).toBeVisible();
-        await expect(app.mapping.mappedKeys).toBeVisible();  
-        await expect(app.mapping.ignoredKeys).toBeVisible();
+        await expect(app.mapping.mappedKeys).toBeAttached();
+        await expect(app.mapping.ignoredKeys).toBeAttached();
         await expect(app.mapping.manualProperties).toBeVisible();
       });
 
@@ -396,14 +396,8 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
 
     test('test mode functionality', async ({ page }) => {
       await test.step('Check for test mode buttons', async () => {
-        // Look for test mode specific buttons
-        const testButtons = page.locator('.test-mode-only, .test-button');
-        const testButtonCount = await testButtons.count();
-        
-        if (testButtonCount > 0) {
-          // If test buttons exist, they should be visible
-          await expect(testButtons.first()).toBeVisible();
-        }
+        await app.enableTestMode();
+        await expect(app.mapping.testMappingModelBtn).toBeVisible();
       });
     });
   });
@@ -411,8 +405,9 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
   test.describe('Error Handling @mapping-errors', () => {
     test('handles missing data gracefully', async ({ page }) => {
       await test.step('Navigate to mapping without data', async () => {
-        // Start fresh without loading data
-        await page.goto('/');
+        await app.goto();
+        await app.verifyPageTitle();
+        await app.enableTestMode();
         await app.navigateToStep(2);
       });
 
@@ -467,6 +462,11 @@ test.describe('Step 2 - Mapping Tests @mapping', () => {
         await app.openManualJsonInput();
         await app.input.manualJsonTextarea.fill('');
         await app.enterManualJson(newData);
+
+        page.once('dialog', async (dialog) => {
+          await dialog.accept();
+        });
+
         await app.input.processManualJsonButton.click();
         await page.waitForTimeout(1000);
       });

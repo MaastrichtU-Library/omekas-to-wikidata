@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { OmekaToWikidataPage } from '../../helpers/page-objects.js';
 
-test.describe('Mapping extraction strategy guidance @mapping', () => {
-  test('shows datatype-aware extraction guidance for mixed Omeka values', async ({ page }) => {
+test.describe('Mapping source selection guidance @mapping', () => {
+  test('shows source-group controls without extraction-mode guidance for mixed Omeka values', async ({ page }) => {
     const app = new OmekaToWikidataPage(page);
 
     await page.addInitScript(() => {
@@ -61,10 +61,11 @@ test.describe('Mapping extraction strategy guidance @mapping', () => {
     await app.navigateToStep(2);
     await page.locator('#mapped-keys li').filter({ hasText: 'schema:author' }).first().click();
 
-    await expect(page.locator('.field-profile-summary')).toContainText('Recommended extraction: Display text.');
+    await expect(page.locator('.field-profile-summary')).not.toContainText('Recommended extraction');
     await expect(page.locator('.field-profile-summary')).toContainText('template allows literal');
-    await expect(page.locator('.extraction-mode-select')).toHaveValue('auto');
-    await expect(page.locator('.extraction-mode-select option:checked')).toContainText('Automatic (recommended: Display text)');
-    await expect(page.locator('.field-override-help')).toContainText('Leave this on Automatic unless you need to force one exact Omeka subfield.');
+    await expect(page.locator('.extraction-mode-select')).toHaveCount(0);
+    await expect(page.locator('#at-field-select-schema_author')).toHaveCount(0);
+    await expect(page.locator('.value-source-option').filter({ hasText: 'Literal entries' })).toContainText('1 values across 1 items');
+    await expect(page.locator('.value-source-option').filter({ hasText: 'ValueSuggest / authority-linked entries' })).toContainText('1 values across 1 items');
   });
 });

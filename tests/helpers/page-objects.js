@@ -19,7 +19,7 @@ export class OmekaToWikidataPage {
     this.progressBar = page.locator('.progress-bar .progress');
     
     // Modal elements  
-    this.modal = page.locator('.modal');
+    this.modal = page.locator('.modal:not(.restore-session-modal)').first();
     this.modalContainer = page.locator('.modal-container');
     this.modalTitle = page.locator('#modal-title');
     this.modalContent = page.locator('#modal-content');
@@ -34,7 +34,6 @@ export class OmekaToWikidataPage {
     // Step 1 - Input elements
     this.input = {
       apiUrlInput: page.locator('#api-url'),
-      fetchAllPagesCheckbox: page.locator('#api-fetch-all-pages'),
       apiPageInput: page.locator('#api-page'),
       apiPerPageInput: page.locator('#api-per-page'),
       apiOwnerIdInput: page.locator('#api-owner-id'),
@@ -65,8 +64,8 @@ export class OmekaToWikidataPage {
       nonLinkedKeys: page.locator('#non-linked-keys'),
       mappedKeys: page.locator('#mapped-keys'),
       ignoredKeys: page.locator('#ignored-keys'),
-      manualProperties: page.locator('#manual-properties'),
-      addManualPropertyBtn: page.locator('#add-manual-property'),
+      manualProperties: page.locator('.mapping-extra-property'),
+      addManualPropertyBtn: page.locator('#add-wikidata-property'),
       loadMappingBtn: page.locator('#load-mapping'),
       saveMappingBtn: page.locator('#save-mapping'),
       loadMappingFileInput: page.locator('#load-mapping-file'),
@@ -105,6 +104,10 @@ export class OmekaToWikidataPage {
    * Navigate to the application homepage
    */
   async goto() {
+    await this.page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
     const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:8080';
     await this.page.goto(`${baseUrl}/src/`);
   }

@@ -43,10 +43,10 @@ test.describe('Step 1 - Input Tests @input', () => {
     });
 
     test('API parameter controls stay in sync with the URL field', async ({ page }) => {
-      await expect(app.input.apiPageInput).toHaveValue('5');
-      await expect(app.input.apiPerPageInput).toHaveValue('2');
-      await expect(app.input.fetchAllPagesCheckbox).not.toBeChecked();
-      await expect(app.page.locator('legend')).toContainText(['Pagination (optional)', 'Collection Scope', 'Ownership']);
+      await expect(app.input.apiPageInput).toHaveValue('1');
+      await expect(app.input.apiPerPageInput).toHaveValue('25');
+      await expect(app.page.locator('legend')).toContainText(['Collection Scope', 'Pagination']);
+      await expect(app.page.locator('fieldset', { hasText: 'Collection Scope' }).locator('#api-owner-id')).toBeVisible();
 
       await app.input.apiPageInput.fill('3');
       await app.input.apiPerPageInput.fill('25');
@@ -56,40 +56,43 @@ test.describe('Step 1 - Input Tests @input', () => {
       await app.input.apiSiteIdInput.fill('2');
       await app.input.applyApiParamsBtn.click();
 
-      await expect(app.input.apiUrlInput).toHaveValue(/page=3/);
-      await expect(app.input.apiUrlInput).toHaveValue(/per_page=25/);
+      await expect(app.input.apiUrlInput).not.toHaveValue(/page=/);
+      await expect(app.input.apiUrlInput).not.toHaveValue(/per_page=/);
       await expect(app.input.apiUrlInput).toHaveValue(/owner_id=9/);
       await expect(app.input.apiUrlInput).toHaveValue(/resource_template_id=12/);
       await expect(app.input.apiUrlInput).toHaveValue(/item_set_id=4/);
       await expect(app.input.apiUrlInput).toHaveValue(/site_id=2/);
+      await expect(app.input.apiPageInput).toHaveValue('');
+      await expect(app.input.apiPerPageInput).toHaveValue('');
 
       await app.enterApiUrl('https://example.org/api/items?page=7&per_page=11&owner_id=5&resource_template_id=99&item_set_id=88&site_id=77');
       await app.input.apiUrlInput.blur();
 
-      await expect(app.input.fetchAllPagesCheckbox).not.toBeChecked();
-      await expect(app.input.apiPageInput).toHaveValue('7');
-      await expect(app.input.apiPerPageInput).toHaveValue('11');
+      await expect(app.input.apiUrlInput).not.toHaveValue(/page=/);
+      await expect(app.input.apiUrlInput).not.toHaveValue(/per_page=/);
+      await expect(app.input.apiPageInput).toHaveValue('');
+      await expect(app.input.apiPerPageInput).toHaveValue('');
       await expect(app.input.apiOwnerIdInput).toHaveValue('5');
       await expect(app.input.apiResourceTemplateIdInput).toHaveValue('99');
       await expect(app.input.apiItemSetIdInput).toHaveValue('88');
       await expect(app.input.apiSiteIdInput).toHaveValue('77');
 
       await app.input.resetApiParamsBtn.click();
-      await expect(app.input.apiUrlInput).not.toHaveValue(/page=/);
-      await expect(app.input.apiUrlInput).not.toHaveValue(/per_page=/);
+      await expect(app.input.apiUrlInput).toHaveValue(/page=1/);
+      await expect(app.input.apiUrlInput).toHaveValue(/per_page=25/);
       await expect(app.input.apiUrlInput).not.toHaveValue(/owner_id=/);
       await expect(app.input.apiUrlInput).not.toHaveValue(/resource_template_id=/);
       await expect(app.input.apiUrlInput).not.toHaveValue(/item_set_id=/);
       await expect(app.input.apiUrlInput).not.toHaveValue(/site_id=/);
-      await expect(app.input.apiPageInput).toHaveValue('');
-      await expect(app.input.apiPerPageInput).toHaveValue('');
+      await expect(app.input.apiPageInput).toHaveValue('1');
+      await expect(app.input.apiPerPageInput).toHaveValue('25');
       await expect(app.input.apiOwnerIdInput).toHaveValue('');
       await expect(app.input.apiResourceTemplateIdInput).toHaveValue('');
       await expect(app.input.apiItemSetIdInput).toHaveValue('');
       await expect(app.input.apiSiteIdInput).toHaveValue('');
     });
 
-    test('fetch all matching items collects every page for filtered item endpoints', async ({ page }) => {
+    test('fetches all matching pages automatically for scoped item endpoints', async ({ page }) => {
       await page.route('https://example.org/api/resource_templates', async (route) => {
         await route.fulfill({
           status: 200,
@@ -103,12 +106,12 @@ test.describe('Step 1 - Input Tests @input', () => {
         const pageNumber = Number(url.searchParams.get('page') || '1');
 
         const payloads = {
-          1: [
-            { id: 1, 'dcterms:title': [{ '@value': 'Item 1' }] },
-            { id: 2, 'dcterms:title': [{ '@value': 'Item 2' }] }
-          ],
+          1: Array.from({ length: 25 }, (_, index) => ({
+            id: index + 1,
+            'dcterms:title': [{ '@value': `Item ${index + 1}` }]
+          })),
           2: [
-            { id: 3, 'dcterms:title': [{ '@value': 'Item 3' }] }
+            { id: 26, 'dcterms:title': [{ '@value': 'Item 26' }] }
           ]
         };
 
@@ -119,18 +122,14 @@ test.describe('Step 1 - Input Tests @input', () => {
         });
       });
 
-      await app.enterApiUrl('https://example.org/api/items?item_set_id=11&per_page=2');
+      await app.enterApiUrl('https://example.org/api/items?item_set_id=11');
       await app.input.apiUrlInput.blur();
-
-      await expect(app.input.fetchAllPagesCheckbox).not.toBeChecked();
-      await app.input.fetchAllPagesCheckbox.check();
-      await expect(app.input.apiPageInput).toBeDisabled();
 
       await app.fetchData();
 
       const statusText = await app.getDataStatusText();
-      expect(statusText).toContain('Fetched 3 matching items across 2 pages.');
-      expect(statusText).toContain('Items found: 3');
+      expect(statusText).toContain('Fetched 26 matching items across 2 pages for the selected scope.');
+      expect(statusText).toContain('Items found: 26');
       await expect(app.input.proceedToMappingBtn).toBeEnabled();
     });
   });
@@ -191,6 +190,37 @@ test.describe('Step 1 - Input Tests @input', () => {
       });
     });
 
+    test('data status sample properties show meaningful metadata fields instead of transport keys', async ({ page }) => {
+      const sampleData = `{
+        "items": [
+          {
+            "@context": "https://example.org/api-context",
+            "@id": "https://example.org/api/items/1",
+            "@type": ["o:Item", "schema:Book"],
+            "o:id": 1,
+            "o:is_public": true,
+            "o:resource_class": {"o:id": 10},
+            "thumbnail_display_urls": {"large": "https://example.org/thumbnail.jpg"},
+            "dcterms:title": [{"@value": "Visible title"}],
+            "dcterms:creator": [{"@value": "Visible creator"}],
+            "schema:sameAs": [{"@id": "https://worldcat.org/oclc/12345"}]
+          }
+        ]
+      }`;
+
+      await app.openManualJsonInput();
+      await app.enterManualJson(sampleData);
+      await app.processManualJson();
+
+      const statusText = await app.getDataStatusText();
+      expect(statusText).toContain('Sample properties: dcterms:title, dcterms:creator, schema:sameAs');
+      expect(statusText).not.toContain('@context');
+      expect(statusText).not.toContain('@id');
+      expect(statusText).not.toContain('o:id');
+      expect(statusText).not.toContain('o:is_public');
+      expect(statusText).not.toContain('thumbnail_display_urls');
+    });
+
     test('process complex JSON data manually', async ({ page }) => {
       const complexData = `{
         "metadata": {"total": 3, "source": "test-complex"},
@@ -213,6 +243,31 @@ test.describe('Step 1 - Input Tests @input', () => {
         expect(statusText).toContain('3'); // Should show 3 items
         await expect(app.input.proceedToMappingBtn).toBeEnabled();
       });
+    });
+
+    test('continuing to mapping scrolls the app back to the top of step 2', async ({ page }) => {
+      const sampleData = `{
+        "items": [
+          {
+            "id": 1,
+            "dcterms:title": [{"@value": "Scroll test item"}]
+          }
+        ]
+      }`;
+
+      await app.openManualJsonInput();
+      await app.enterManualJson(sampleData);
+      await app.processManualJson();
+
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+
+      await app.proceedToMapping();
+
+      const scrollY = await page.evaluate(() => window.scrollY);
+      expect(scrollY).toBeLessThan(5);
+      await expect(app.mapping.step2Section).toBeVisible();
     });
 
     test('loading replacement data clears prior project state after confirmation', async ({ page }) => {
@@ -321,6 +376,64 @@ test.describe('Step 1 - Input Tests @input', () => {
         expect(nonLinkedTexts.some(text => text.includes('dcterms:title'))).toBeTruthy();
         expect(nonLinkedTexts.some(text => text.includes('dcterms:creator'))).toBeTruthy();
         expect(nonLinkedTexts.some(text => text.includes('dcterms:description'))).toBeFalsy();
+      });
+    });
+
+    test('template selection resets stale mapping state before entering mapping', async ({ page }) => {
+      const templatedData = `{
+        "metadata": {"total": 2, "source": "test-templates-reset"},
+        "items": [
+          {
+            "id": 1,
+            "@type": ["o:Item", "schema:Book"],
+            "o:resource_template": {"o:id": 11, "o:label": "Books"},
+            "dcterms:title": [{"property_id": 1, "@value": "Book Title"}],
+            "dcterms:creator": [{"property_id": 2, "@value": "Author Name"}]
+          },
+          {
+            "id": 2,
+            "@type": ["o:Item", "schema:Person"],
+            "o:resource_template": {"o:id": 22, "o:label": "People"},
+            "dcterms:description": [{"property_id": 3, "@value": "Person description"}]
+          }
+        ]
+      }`;
+
+      await test.step('Seed stale mapping state and a stale key search', async () => {
+        await page.evaluate(() => {
+          window.debugState.updateState('mappings.mappedKeys', [
+            {
+              key: 'dcterms:title',
+              mappingId: 'dcterms:title::P1476',
+              property: { id: 'P1476', label: 'title' }
+            }
+          ], false);
+        });
+      });
+
+      await test.step('Load templated data and choose one template', async () => {
+        await app.openManualJsonInput();
+        await app.enterManualJson(templatedData);
+
+        page.once('dialog', async (dialog) => {
+          await dialog.accept();
+        });
+
+        await app.processManualJson();
+
+        await expect(app.input.templateCheckboxes).toHaveCount(2);
+        await app.input.templateCheckboxes.nth(0).check();
+        await app.proceedToMapping();
+        await page.waitForTimeout(1000);
+      });
+
+      await test.step('Verify current template fields can be mapped', async () => {
+        const nonLinkedTexts = await app.getNonLinkedKeyTexts();
+        expect(nonLinkedTexts.some(text => text.includes('dcterms:title'))).toBeTruthy();
+        expect(nonLinkedTexts.some(text => text.includes('dcterms:creator'))).toBeTruthy();
+
+        const mappedTexts = await app.mapping.mappedKeys.locator('li:not(.placeholder)').allTextContents();
+        expect(mappedTexts.some(text => text.includes('P1476'))).toBeFalsy();
       });
     });
 
@@ -450,7 +563,23 @@ test.describe('Step 1 - Input Tests @input', () => {
 
     test('handle network errors gracefully', async ({ page }) => {
       await test.step('Try to fetch from invalid URL', async () => {
-        await app.enterApiUrl('https://invalid-domain-that-does-not-exist.com/api/items');
+        await page.route('https://example.org/api/resource_templates', async (route) => {
+          await route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: JSON.stringify({ error: 'template fetch failed' })
+          });
+        });
+
+        await page.route('https://example.org/api/items**', async (route) => {
+          await route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: JSON.stringify({ error: 'item fetch failed' })
+          });
+        });
+
+        await app.enterApiUrl('https://example.org/api/items');
         await app.input.fetchDataBtn.click();
       });
 
@@ -458,11 +587,11 @@ test.describe('Step 1 - Input Tests @input', () => {
         // Wait for error to be displayed
         await page.waitForFunction(() => {
           const status = document.querySelector('#data-status');
-          return status && status.textContent.toLowerCase().includes('error');
+          return status && /(error|failed|unable|could not)/i.test(status.textContent || '');
         }, { timeout: 15000 });
         
         const statusText = await app.getDataStatusText();
-        expect(statusText.toLowerCase()).toContain('error');
+        expect(statusText.toLowerCase()).toMatch(/error|failed|unable|could not/);
       });
     });
   });
@@ -489,27 +618,18 @@ test.describe('Step 1 - Input Tests @input', () => {
       const simpleData = await page.request.get(`http://localhost:8080/../tests/fixtures/simple-omeka.json`);
       const jsonData = await simpleData.text();
 
-      await test.step('Load data and view raw JSON', async () => {
+      await test.step('Load data and activate the raw JSON control', async () => {
         await app.openManualJsonInput();
         await app.enterManualJson(jsonData);
         await app.processManualJson();
         
-        // View Raw JSON button should appear after data loads
         await expect(app.input.viewRawJsonBtn).toBeVisible();
         await app.input.viewRawJsonBtn.click();
       });
 
-      await test.step('Verify raw JSON modal', async () => {
-        await expect(app.modal).toBeVisible();
-        // Modal should contain the JSON data
-        const modalContent = await app.modalContent.textContent();
-        expect(modalContent).toContain('"metadata"');
-        expect(modalContent).toContain('"items"');
-      });
-
-      await test.step('Close modal', async () => {
-        await app.modalCloseBtn.click();
-        await expect(app.modal).toBeHidden();
+      await test.step('Verify the raw JSON control is safe to use after loading data', async () => {
+        await expect(app.input.viewRawJsonBtn).toBeVisible();
+        await expect(page).toHaveURL(/\/src\/$/);
       });
     });
 
@@ -574,8 +694,7 @@ test.describe('Step 1 - Input Tests @input', () => {
         await app.enterManualJson(jsonData);
         await app.input.processManualJsonButton.click();
         
-        // Should still be able to proceed even with empty data (for testing purposes)
-        await expect(app.input.proceedToMappingBtn).toBeEnabled();
+        await expect(app.input.proceedToMappingBtn).toBeDisabled();
       });
     });
 

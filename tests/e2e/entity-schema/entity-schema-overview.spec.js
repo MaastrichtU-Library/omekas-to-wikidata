@@ -79,6 +79,16 @@ test.describe('Entity Schema Overview @smoke', () => {
       // Check for progress indicators
       const requiredProgress = collapsedView.locator('.required-progress');
       await expect(requiredProgress).toBeVisible();
+
+      const schemaIdLinkBox = await schemaIdLink.boundingBox();
+      const schemaLabelBox = await schemaLabel.boundingBox();
+      const requiredProgressBox = await requiredProgress.boundingBox();
+
+      expect(schemaLabelBox).not.toBeNull();
+      expect(schemaIdLinkBox).not.toBeNull();
+      expect(requiredProgressBox).not.toBeNull();
+      expect((schemaIdLinkBox?.y ?? 0)).toBeGreaterThan((schemaLabelBox?.y ?? 0) + 1);
+      expect((requiredProgressBox?.y ?? 0)).toBeGreaterThan((schemaIdLinkBox?.y ?? 0) + 1);
       
       // Check for toggle indicator
       const toggleIndicator = page.locator('.toggle-indicator');
@@ -175,7 +185,10 @@ test.describe('Entity Schema Overview @smoke', () => {
     
     await test.step('Select first Entity Schema', async () => {
       await page.click('.entity-schema-selector-custom__button');
-      await page.click('.entity-schema-selector-custom__option:first-child .entity-schema-selector-custom__option-label');
+      await page.locator('.entity-schema-selector-custom__option-label')
+        .filter({ hasText: 'Maastricht University Library' })
+        .first()
+        .click();
       await page.waitForTimeout(1000);
       
       // Verify first schema is shown
@@ -188,7 +201,10 @@ test.describe('Entity Schema Overview @smoke', () => {
     
     await test.step('Select different Entity Schema', async () => {
       await page.click('.entity-schema-selector-custom__button');
-      await page.click('.entity-schema-selector-custom__option:nth-child(2) .entity-schema-selector-custom__option-label');
+      await page.locator('.entity-schema-selector-custom__option-label')
+        .filter({ hasText: 'Radboud University Library' })
+        .first()
+        .click();
       await page.waitForTimeout(1000);
       
       // Verify second schema is shown
