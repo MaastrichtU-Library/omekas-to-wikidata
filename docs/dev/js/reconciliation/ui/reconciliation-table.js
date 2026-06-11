@@ -7,25 +7,8 @@
  */
 
 import { createElement } from '../../ui/components.js';
-import { combineAndSortProperties, extractPropertyValues } from '../core/reconciliation-data.js';
-
-function formatSourceFieldLabel(keyObj, fallbackKey) {
-    const keyName = typeof keyObj === 'string' ? keyObj : fallbackKey;
-
-    if (!keyName) {
-        return 'Source field';
-    }
-
-    if (typeof keyObj === 'object' && keyObj.selectedAtField) {
-        if (Number.isInteger(keyObj.selectedObjectIndex)) {
-            return `${keyName} → ${keyObj.selectedAtField} (object ${keyObj.selectedObjectIndex + 1})`;
-        }
-
-        return `${keyName} → ${keyObj.selectedAtField}`;
-    }
-
-    return keyName;
-}
+import { combineAndSortProperties, extractPropertyValues, extractPropertyValueDetails } from '../core/reconciliation-data.js';
+import { getOmekaFieldFriendlyName } from '../../mapping/core/data-analyzer.js';
 
 /**
  * Create item cell content with link button
@@ -95,7 +78,8 @@ function createItemCellContent(itemId, itemNumber, linkedQid = null) {
  * @param {string|null} linkedQid - Linked Wikidata QID if any
  */
 export function updateItemCellDisplay(itemId, itemNumber, linkedQid = null) {
-    const itemCell = document.querySelector(`#row-${itemId} .item-cell`);
+    const itemCell = document.querySelector(`#row-${itemId} .item-cell`) ||
+        document.querySelector(`.item-header[data-item-id="${itemId}"]`);
     if (!itemCell) return;
 
     // Clear existing content
@@ -246,6 +230,7 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
             valueElement.dataset.status = status;
             
             const statusSpan = valueElement.querySelector('.value-status');
+            const valueTextSpan = valueElement.querySelector('.value-text');
             if (statusSpan) {
                 if (status === 'pending') {
                     statusSpan.textContent = 'Click to reconcile';
@@ -258,9 +243,13 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
                     } else if (reconciliation.type === 'string') {
                         statusSpan.textContent = '✓ String value';
                         statusSpan.title = `Using original value as string: "${reconciliation.value}"`;
+                        if (valueTextSpan && reconciliation.value) {
+                            valueTextSpan.textContent = reconciliation.value;
+                        }
                     } else {
                         const autoAcceptedText = reconciliation.qualifiers?.autoAccepted ? ' (auto)' : '';
                         let customText = `✓ Custom value${autoAcceptedText}`;
+                        let customTooltip = reconciliation.value || '';
                         
                         // Show date precision for date values
                         if (reconciliation.datatype === 'time' && reconciliation.qualifiers?.precision) {
@@ -274,9 +263,20 @@ export function updateCellDisplay(itemId, mappingId, valueIndex, status, reconci
                             };
                             const precisionLabel = precisionLabels[reconciliation.qualifiers.precision] || reconciliation.qualifiers.precision;
                             customText = `✓ Date (${precisionLabel})${autoAcceptedText}`;
+                            customTooltip = `${reconciliation.value || ''}${customTooltip ? ` (${precisionLabel})` : precisionLabel}`;
                         }
                         
                         statusSpan.textContent = customText;
+                        if (customTooltip) {
+                            statusSpan.title = customTooltip;
+                        }
+
+                        if (valueTextSpan && reconciliation.value) {
+                            const languageSuffix = reconciliation.languageLabel || reconciliation.language;
+                            valueTextSpan.textContent = languageSuffix
+                                ? `${reconciliation.value} (${languageSuffix})`
+                                : reconciliation.value;
+                        }
                     }
                     statusSpan.className = 'value-status reconciled';
                     
@@ -363,6 +363,9 @@ export function createPropertyCellFactory(openReconciliationModal) {
  */
 function createValueElement(itemId, property, valueIndex, value, openReconciliationModal, keyObj) {
     const mappingId = keyObj?.mappingId || property;
+    const valueDetail = value && typeof value === 'object' && 'value' in value
+        ? value
+        : { value };
 
     const valueDiv = createElement('div', {
         className: 'property-value',
@@ -374,18 +377,28 @@ function createValueElement(itemId, property, valueIndex, value, openReconciliat
 
     const textSpan = createElement('span', {
         className: 'value-text'
-    }, value || 'Empty value');
+    }, valueDetail.value || 'Empty value');
 
     const statusSpan = createElement('span', {
         className: 'value-status'
     }, 'Click to reconcile');
+
+    if (valueDetail.sourceLabel) {
+        valueDiv.appendChild(createElement('span', {
+            className: 'value-source-badge',
+            title: valueDetail.sourceDetail || valueDetail.sourceLabel,
+            dataset: {
+                sourceKey: valueDetail.sourceKey || ''
+            }
+        }, valueDetail.sourceLabel));
+    }
 
     valueDiv.appendChild(textSpan);
     valueDiv.appendChild(statusSpan);
 
     // Add click handler - pass keyObj to modal
     const clickHandler = () => {
-        openReconciliationModal(itemId, property, valueIndex, value, keyObj);
+        openReconciliationModal(itemId, property, valueIndex, valueDetail.value, keyObj);
     };
 
     valueDiv.addEventListener('click', clickHandler);
@@ -461,6 +474,180 @@ export function createReconciliationTableFactory(dependencies) {
 
     const createPropertyCell = createPropertyCellFactory(openReconciliationModal);
     const createManualPropertyCell = createManualPropertyCellFactory(openReconciliationModal);
+
+    function syncReconciliationColgroup(itemCount) {
+        const table = propertyHeaders?.closest('table');
+        if (!table) {
+            return;
+        }
+
+        const existingColgroup = table.querySelector('colgroup.reconciliation-colgroup');
+        if (existingColgroup) {
+            existingColgroup.remove();
+        }
+
+        const colgroup = createElement('colgroup', {
+            className: 'reconciliation-colgroup'
+        });
+        colgroup.appendChild(createElement('col', {
+            className: 'reconciliation-col reconciliation-col--field'
+        }));
+
+        for (let index = 0; index < itemCount; index += 1) {
+            colgroup.appendChild(createElement('col', {
+                className: 'reconciliation-col reconciliation-col--item'
+            }));
+        }
+
+        table.insertBefore(colgroup, table.firstChild);
+    }
+
+    function createMappedFieldHeaderContent(keyObj, keyName, data) {
+        const headerContent = createElement('div', {
+            className: 'property-header-content property-header-content--row'
+        });
+
+        const sourceRow = createElement('div', {
+            className: 'property-source-row'
+        });
+        const friendlyName = getOmekaFieldFriendlyName(keyObj, keyName);
+        const sourceLabel = createElement('span', {
+            className: 'property-source-label property-source-label--primary'
+        }, friendlyName && friendlyName !== keyName ? friendlyName : keyName);
+        sourceRow.appendChild(sourceLabel);
+
+        if (friendlyName && friendlyName !== keyName) {
+            sourceRow.appendChild(createElement('span', {
+                className: 'property-source-technical'
+            }, keyName));
+        }
+
+        const mappedRow = createElement('div', {
+            className: 'property-mapped-row'
+        });
+        const mappedPrefix = createElement('span', {
+            className: 'property-mapped-prefix'
+        }, 'Wikidata: ');
+        const labelSpan = createElement('span', {
+            className: 'property-label'
+        }, keyObj.property.label);
+        const wikidataUrl = getWikidataUrlForProperty(keyObj.property);
+        const qidLink = createElement('a', {
+            className: 'property-qid-link',
+            href: wikidataUrl,
+            target: '_blank',
+            onClick: (e) => e.stopPropagation()
+        }, keyObj.property.id);
+
+        mappedRow.appendChild(mappedPrefix);
+        mappedRow.appendChild(labelSpan);
+        mappedRow.appendChild(document.createTextNode(' ('));
+        mappedRow.appendChild(qidLink);
+        mappedRow.appendChild(document.createTextNode(')'));
+
+        if (keyObj.property.datatype === 'monolingualtext') {
+            mappedRow.appendChild(createElement('span', {
+                className: 'property-language-indicator',
+                title: 'This Wikidata property expects text with a language code.'
+            }, ' Language required'));
+        }
+
+        headerContent.appendChild(sourceRow);
+        headerContent.appendChild(mappedRow);
+
+        if (keyObj.property?.datatype === 'wikibase-item') {
+            const buttonContainer = createElement('div', {
+                className: 'reconcile-button-container'
+            });
+            const reconcileBtn = createElement('button', {
+                className: 'reconcile-column-btn',
+                title: `Reconcile all ${keyObj.property.label} values`,
+                dataset: {
+                    property: keyName,
+                    status: 'ready'
+                }
+            }, 'Reconcile field');
+            reconcileBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await reconcileColumn(keyName, keyObj, data);
+            });
+            buttonContainer.appendChild(reconcileBtn);
+            headerContent.appendChild(buttonContainer);
+        }
+
+        return headerContent;
+    }
+
+    function createManualFieldHeaderContent(manualProp, data) {
+        const headerContent = createElement('div', {
+            className: 'property-header-content property-header-content--row'
+        });
+
+        const sourceRow = createElement('div', {
+            className: 'property-source-row'
+        }, `Manual value (${manualProp.property.id})`);
+
+        const mappedRow = createElement('div', {
+            className: 'property-mapped-row'
+        });
+        const mappedPrefix = createElement('span', {
+            className: 'property-mapped-prefix'
+        }, 'Wikidata: ');
+        const labelSpan = createElement('span', {
+            className: 'property-label'
+        }, manualProp.property.label);
+        const qidLink = createElement('a', {
+            className: 'property-qid-link',
+            href: getWikidataUrlForProperty(manualProp.property),
+            target: '_blank',
+            onClick: (e) => e.stopPropagation()
+        }, manualProp.property.id);
+
+        mappedRow.appendChild(mappedPrefix);
+        mappedRow.appendChild(labelSpan);
+        mappedRow.appendChild(document.createTextNode(' ('));
+        mappedRow.appendChild(qidLink);
+        mappedRow.appendChild(document.createTextNode(')'));
+
+        if (manualProp.isRequired) {
+            mappedRow.appendChild(createElement('span', {
+                className: 'required-indicator-header'
+            }, ' *'));
+        }
+
+        if (manualProp.property?.datatype === 'monolingualtext') {
+            mappedRow.appendChild(createElement('span', {
+                className: 'property-language-indicator',
+                title: 'This Wikidata property expects text with a language code.'
+            }, ' Language required'));
+        }
+
+        headerContent.appendChild(sourceRow);
+        headerContent.appendChild(mappedRow);
+
+        if (manualProp.property?.datatype === 'wikibase-item') {
+            const buttonContainer = createElement('div', {
+                className: 'reconcile-button-container'
+            });
+            const reconcileBtn = createElement('button', {
+                className: 'reconcile-column-btn',
+                title: `Reconcile all ${manualProp.property.label} values`,
+                dataset: {
+                    property: manualProp.property.id,
+                    status: 'ready',
+                    isManual: 'true'
+                }
+            }, 'Reconcile field');
+            reconcileBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await reconcileColumn(manualProp.property.id, manualProp, data);
+            });
+            buttonContainer.appendChild(reconcileBtn);
+            headerContent.appendChild(buttonContainer);
+        }
+
+        return headerContent;
+    }
     
     return async function createReconciliationTable(data, mappedKeys, isReturningToStep = false) {
         
@@ -469,333 +656,130 @@ export function createReconciliationTableFactory(dependencies) {
         const manualProperties = currentState.mappings?.manualProperties || [];
         
         // Combine and sort all properties for display priority
-        const sortedProperties = combineAndSortProperties(mappedKeys, manualProperties);
-        
-        // Clear existing content
+        const sortedProperties = combineAndSortProperties(mappedKeys, manualProperties, {
+            resourceTemplates: currentState.resourceTemplates,
+            selectedTemplateIds: currentState.selectedTemplates
+        });
+
+        syncReconciliationColgroup(data.length);
+
         if (propertyHeaders) {
             propertyHeaders.innerHTML = '';
-            
-            // Add item header
-            const itemHeader = createElement('th', {
-                className: 'item-header'
-            }, 'Item');
-            propertyHeaders.appendChild(itemHeader);
-            
-            // Add property headers for all properties in sorted order
+            propertyHeaders.appendChild(createElement('th', {
+                className: 'field-header'
+            }, 'Mapped field'));
+
+            data.forEach((item, index) => {
+                const itemId = `item-${index}`;
+                const linkedQid = state.getLinkedItem ? state.getLinkedItem(itemId) : null;
+                const itemHeader = createElement('th', {
+                    className: 'item-header',
+                    dataset: { itemId }
+                });
+                itemHeader.appendChild(createItemCellContent(itemId, index + 1, linkedQid));
+                propertyHeaders.appendChild(itemHeader);
+            });
+        }
+
+        if (reconciliationRows) {
+            reconciliationRows.innerHTML = '';
+
             sortedProperties.forEach(propItem => {
+                const tr = createElement('tr', {
+                    className: 'reconciliation-row reconciliation-row--field'
+                });
+
                 if (propItem.type === 'mapped') {
-                    // Handle mapped property
                     const keyObj = propItem.data;
                     const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                    
-                    // Create header content with property label and clickable QID
-                    let headerContent;
-                    let clickHandler = null;
-                    
-                    if (keyObj.property && keyObj.property.label && keyObj.property.id) {
-                        // Create header with both the Omeka source field and the mapped Wikidata property
-                        headerContent = createElement('div', {
-                            className: 'property-header-content'
-                        });
-
-                        const sourceRow = createElement('div', {
-                            className: 'property-source-row'
-                        });
-                        const sourceLabel = createElement('span', {
-                            className: 'property-source-label'
-                        }, formatSourceFieldLabel(keyObj, keyName));
-                        sourceRow.appendChild(sourceLabel);
-
-                        const mappedRow = createElement('div', {
-                            className: 'property-mapped-row'
-                        });
-                        const mappedPrefix = createElement('span', {
-                            className: 'property-mapped-prefix'
-                        }, 'Wikidata: ');
-                        const labelSpan = createElement('span', {
-                            className: 'property-label'
-                        }, keyObj.property.label);
-                        const wikidataUrl = getWikidataUrlForProperty(keyObj.property);
-                        const qidLink = createElement('a', {
-                            className: 'property-qid-link',
-                            href: wikidataUrl,
-                            target: '_blank',
-                            onClick: (e) => e.stopPropagation()
-                        }, keyObj.property.id);
-
-                        mappedRow.appendChild(mappedPrefix);
-                        mappedRow.appendChild(labelSpan);
-                        mappedRow.appendChild(document.createTextNode(' ('));
-                        mappedRow.appendChild(qidLink);
-                        mappedRow.appendChild(document.createTextNode(')'));
-
-                        if (keyObj.property.datatype === 'monolingualtext') {
-                            const languageIndicator = createElement('span', {
-                                className: 'property-language-indicator',
-                                title: 'This Wikidata property expects text with a language code.'
-                            }, ' Language required');
-                            mappedRow.appendChild(languageIndicator);
-                        }
-
-                        headerContent.appendChild(sourceRow);
-                        headerContent.appendChild(mappedRow);
-                        
-                        // Add reconciliation button for wikibase-item properties
-                        if (keyObj.property && keyObj.property.datatype === 'wikibase-item') {
-                            const buttonContainer = createElement('div', {
-                                className: 'reconcile-button-container'
-                            });
-                            
-                            const reconcileBtn = createElement('button', {
-                                className: 'reconcile-column-btn',
-                                title: `Reconcile all ${keyObj.property.label} values`,
-                                dataset: { 
-                                    property: keyName,
-                                    status: 'ready'
-                                }
-                            });
-                            
-                            const buttonText = createElement('span', {}, '🔄 Reconcile');
-                            reconcileBtn.appendChild(buttonText);
-                            
-                            // Add click handler for column reconciliation
-                            reconcileBtn.addEventListener('click', async (e) => {
-                                e.stopPropagation(); // Prevent header click
-                                await reconcileColumn(keyName, keyObj, data);
-                            });
-                            
-                            buttonContainer.appendChild(reconcileBtn);
-                            headerContent.appendChild(buttonContainer);
-                        }
-                        
-                        // Set click handler to open mapping modal
-                        clickHandler = () => {
-                            if (window.openMappingModal) {
-                                window.openMappingModal(keyObj);
-                            }
-                        };
-                    } else {
-                        // Fallback to original key name if no property info available
-                        headerContent = keyName;
-                        clickHandler = () => {
-                            if (window.openMappingModal) {
-                                window.openMappingModal(keyObj);
-                            }
-                        };
-                    }
-                    
                     const mappingId = keyObj?.mappingId || keyName;
-                    const th = createElement('th', {
-                        className: 'property-header clickable-header',
+
+                    const fieldCell = createElement('td', {
+                        className: 'property-header clickable-header field-row-header',
                         dataset: {
                             property: keyName,
-                            mappingId: mappingId  // NEW: Add mappingId to header
+                            mappingId
                         },
-                        onClick: clickHandler,
-                        style: { cursor: 'pointer' },
-                        title: 'Click to modify mapping'
-                    }, headerContent);
-
-                    propertyHeaders.appendChild(th);
-                } else if (propItem.type === 'manual') {
-                    // Handle manual property
-                    const manualProp = propItem.data;
-                    
-                    // Create header content with source context and mapped Wikidata property
-                    const headerContent = createElement('div', { 
-                        className: 'property-header-content' 
-                    });
-
-                    const sourceRow = createElement('div', {
-                        className: 'property-source-row'
-                    });
-                    const sourceLabel = createElement('span', {
-                        className: 'property-source-label'
-                    }, `Manual value (${manualProp.property.id})`);
-                    sourceRow.appendChild(sourceLabel);
-
-                    const mappedRow = createElement('div', {
-                        className: 'property-mapped-row'
-                    });
-                    const mappedPrefix = createElement('span', {
-                        className: 'property-mapped-prefix'
-                    }, 'Wikidata: ');
-                    const labelSpan = createElement('span', {
-                        className: 'property-label'
-                    }, manualProp.property.label);
-                    const wikidataUrl = getWikidataUrlForProperty(manualProp.property);
-                    const qidLink = createElement('a', {
-                        className: 'property-qid-link',
-                        href: wikidataUrl,
-                        target: '_blank',
-                        onClick: (e) => e.stopPropagation() // Prevent header click when clicking QID
-                    }, manualProp.property.id);
-
-                    mappedRow.appendChild(mappedPrefix);
-                    mappedRow.appendChild(labelSpan);
-                    mappedRow.appendChild(document.createTextNode(' ('));
-                    mappedRow.appendChild(qidLink);
-                    mappedRow.appendChild(document.createTextNode(')'));
-                    
-                    // Add required indicator if applicable
-                    if (manualProp.isRequired) {
-                        const requiredIndicator = createElement('span', {
-                            className: 'required-indicator-header'
-                        }, ' *');
-                        mappedRow.appendChild(requiredIndicator);
-                    }
-
-                    if (manualProp.property.datatype === 'monolingualtext') {
-                        const languageIndicator = createElement('span', {
-                            className: 'property-language-indicator',
-                            title: 'This Wikidata property expects text with a language code.'
-                        }, ' Language required');
-                        mappedRow.appendChild(languageIndicator);
-                    }
-
-                    headerContent.appendChild(sourceRow);
-                    headerContent.appendChild(mappedRow);
-                    
-                    // Add reconciliation button for wikibase-item manual properties
-                    if (manualProp.property && manualProp.property.datatype === 'wikibase-item') {
-                        const buttonContainer = createElement('div', {
-                            className: 'reconcile-button-container'
-                        });
-                        
-                        const reconcileBtn = createElement('button', {
-                            className: 'reconcile-column-btn',
-                            title: `Reconcile all ${manualProp.property.label} values`,
-                            dataset: { 
-                                property: manualProp.property.id,
-                                status: 'ready',
-                                isManual: 'true'
+                        onClick: () => {
+                            if (window.openMappingModal) {
+                                window.openMappingModal(keyObj);
                             }
-                        });
-                        
-                        const buttonText = createElement('span', {}, '🔄 Reconcile');
-                        reconcileBtn.appendChild(buttonText);
-                        
-                        // Add click handler for manual property column reconciliation
-                        reconcileBtn.addEventListener('click', async (e) => {
-                            e.stopPropagation(); // Prevent header click
-                            await reconcileColumn(manualProp.property.id, manualProp, data);
-                        });
-                        
-                        buttonContainer.appendChild(reconcileBtn);
-                        headerContent.appendChild(buttonContainer);
-                    }
-                    
-                    const th = createElement('th', {
-                        className: 'property-header manual-property-header clickable-header',
+                        },
+                        title: 'Click to modify mapping'
+                    }, keyObj.property?.label
+                        ? createMappedFieldHeaderContent(keyObj, keyName, data)
+                        : keyName);
+                    tr.appendChild(fieldCell);
+
+                    data.forEach((item, index) => {
+                        const itemId = `item-${index}`;
+                        const valueDetails = extractPropertyValueDetails(item, keyObj, state);
+
+                        if (valueDetails.length === 0) {
+                            tr.appendChild(createElement('td', {
+                                className: 'property-cell empty-cell',
+                                dataset: {
+                                    itemId,
+                                    property: keyName,
+                                    mappingId
+                                }
+                            }, '-'));
+                        } else if (valueDetails.length === 1) {
+                            tr.appendChild(createPropertyCell(itemId, keyName, 0, valueDetails[0], keyObj));
+                        } else {
+                            const td = createElement('td', {
+                                className: 'property-cell multi-value-cell',
+                                dataset: {
+                                    itemId,
+                                    property: keyName,
+                                    mappingId
+                                }
+                            });
+
+                            valueDetails.forEach((valueDetail, valueIndex) => {
+                                td.appendChild(createValueElement(itemId, keyName, valueIndex, valueDetail, openReconciliationModal, keyObj));
+                            });
+
+                            tr.appendChild(td);
+                        }
+                    });
+                } else if (propItem.type === 'manual') {
+                    const manualProp = propItem.data;
+                    const propertyId = manualProp.property.id;
+
+                    const fieldCell = createElement('td', {
+                        className: 'property-header manual-property-header clickable-header field-row-header',
                         dataset: {
-                            property: manualProp.property.id,
-                            mappingId: manualProp.property.id,  // NEW: For manual properties, use propertyId as mappingId
+                            property: propertyId,
+                            mappingId: propertyId,
                             isManual: 'true'
                         },
                         title: `${manualProp.property.description}\nClick to modify property settings`,
                         onClick: () => {
-                            // Open the manual property edit modal
                             if (window.openManualPropertyEditModal) {
                                 window.openManualPropertyEditModal(manualProp);
                             }
-                        },
-                        style: { cursor: 'pointer' }
-                    }, headerContent);
-                    
-                    propertyHeaders.appendChild(th);
-                }
-            });
-        }
-        
-        // Create item rows
-        if (reconciliationRows) {
-            reconciliationRows.innerHTML = '';
-            
-            data.forEach((item, index) => {
-                const itemId = `item-${index}`;
-                const tr = createElement('tr', {
-                    id: `row-${itemId}`,
-                    className: 'reconciliation-row'
-                });
-                
-                // Add item cell with link button
-                const itemNumber = index + 1;
-                const linkedQid = state.getLinkedItem ? state.getLinkedItem(itemId) : null;
-                const itemCell = createElement('td', {
-                    className: 'item-cell'
-                });
-                const itemCellContent = createItemCellContent(itemId, itemNumber, linkedQid);
-                itemCell.appendChild(itemCellContent);
-                tr.appendChild(itemCell);
-                
-                // Add property cells (using sorted order to match headers)
-                sortedProperties.forEach(propItem => {
-                    if (propItem.type === 'mapped') {
-                        // Handle mapped property cell
-                        const keyObj = propItem.data;
-                        const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-                        // Pass the full keyObj and state to apply transformations and preserve @ field information
-                        const values = extractPropertyValues(item, keyObj, state);
-                        
-                        const mappingId = keyObj?.mappingId || keyName;
-
-                        if (values.length === 0) {
-                            // Empty cell
-                            const td = createElement('td', {
-                                className: 'property-cell empty-cell',
-                                dataset: {
-                                    itemId: itemId,
-                                    property: keyName,
-                                    mappingId: mappingId  // NEW: Add mappingId to empty cells
-                                }
-                            }, '—');
-                            tr.appendChild(td);
-                        } else if (values.length === 1) {
-                            // Single value cell - pass keyObj
-                            const td = createPropertyCell(itemId, keyName, 0, values[0], keyObj);
-                            tr.appendChild(td);
-                        } else {
-                            // Multiple values cell
-                            const td = createElement('td', {
-                                className: 'property-cell multi-value-cell',
-                                dataset: {
-                                    itemId: itemId,
-                                    property: keyName,
-                                    mappingId: mappingId  // NEW: Add mappingId to multi-value cells
-                                }
-                            });
-
-                            values.forEach((value, valueIndex) => {
-                                const valueDiv = createValueElement(itemId, keyName, valueIndex, value, openReconciliationModal, keyObj);
-                                td.appendChild(valueDiv);
-                            });
-
-                            tr.appendChild(td);
                         }
-                    } else if (propItem.type === 'manual') {
-                        // Handle manual property cell
-                        const manualProp = propItem.data;
-                        const propertyId = manualProp.property.id;
-                        const defaultValue = manualProp.defaultValue || '';
-                        
-                        // Create a cell for the manual property with the default value
-                        const td = createManualPropertyCell(itemId, propertyId, defaultValue, manualProp);
-                        tr.appendChild(td);
-                    }
-                });
-                
+                    }, createManualFieldHeaderContent(manualProp, data));
+                    tr.appendChild(fieldCell);
+
+                    data.forEach((item, index) => {
+                        const itemId = `item-${index}`;
+                        tr.appendChild(createManualPropertyCell(itemId, propertyId, manualProp.defaultValue || '', manualProp));
+                    });
+                }
+
                 reconciliationRows.appendChild(tr);
             });
-            
-            // Only restore reconciliation display when returning to step
-            // No automatic reconciliation for fresh tables - users control reconciliation via column buttons
+
             if (isReturningToStep) {
                 restoreReconciliationDisplay(data, mappedKeys, manualProperties);
             }
-            
         } else {
-            console.error('🔨 reconciliationRows element not found!');
+            console.error('reconciliationRows element not found');
         }
+
+        return;
     };
 }
 

@@ -504,10 +504,9 @@ function setupLanguageSelection() {
     }
     
     // Set default language from storage or confirmed data
-    const storedLanguage = getStoredLanguage();
     const confirmedLanguage = window.currentModalContext.selectedLanguage;
     const sourceLanguage = window.currentModalContext.sourceLanguage;
-    const defaultLanguage = confirmedLanguage || sourceLanguage || storedLanguage;
+    const defaultLanguage = confirmedLanguage || sourceLanguage || getStoredLanguage();
     
     if (defaultLanguage) {
         languageSearch.value = defaultLanguage.label;

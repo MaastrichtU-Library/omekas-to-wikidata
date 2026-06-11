@@ -10,12 +10,48 @@
  */
 
 import { createElement } from '../../ui/components.js';
+import { getOmekaFieldFriendlyName } from '../../mapping/core/data-analyzer.js';
 import { 
     createReconciliationModalByType,
     initializeReconciliationModal,
     isModalTypeSupported,
     createFallbackModal
 } from './modals/modal-factory.js';
+
+function createModalContextBanner(itemId, property, valueIndex, value, keyObjOrManualProp, mappingId) {
+    const keyName = keyObjOrManualProp?.key || property;
+    const fieldLabel = keyObjOrManualProp?.key
+        ? getOmekaFieldFriendlyName(keyObjOrManualProp, keyName)
+        : 'Manual value';
+    const wikidataLabel = keyObjOrManualProp?.property?.label || property;
+    const wikidataId = keyObjOrManualProp?.property?.id || mappingId || property;
+
+    const banner = createElement('div', {
+        className: 'reconciliation-modal-context'
+    });
+
+    const itemNumber = String(itemId).startsWith('item-')
+        ? Number(String(itemId).replace('item-', '')) + 1
+        : itemId;
+
+    banner.appendChild(createElement('div', {
+        className: 'reconciliation-modal-context__eyebrow'
+    }, `Item ${itemNumber} / value ${Number(valueIndex) + 1}`));
+
+    banner.appendChild(createElement('div', {
+        className: 'reconciliation-modal-context__field'
+    }, fieldLabel && fieldLabel !== keyName ? `${fieldLabel} (${keyName})` : keyName));
+
+    banner.appendChild(createElement('div', {
+        className: 'reconciliation-modal-context__target'
+    }, `Wikidata target: ${wikidataLabel} (${wikidataId})`));
+
+    banner.appendChild(createElement('div', {
+        className: 'reconciliation-modal-context__value'
+    }, value || 'Empty value'));
+
+    return banner;
+}
 
 /**
  * Create reconciliation modal using factory system
@@ -508,6 +544,8 @@ function setupSharedReconciliationModalControls(modalContainer, state) {
         return;
     }
 
+    const contextContainer = modalContainer.querySelector('.reconciliation-modal-context');
+
     const currentState = typeof state.getState === 'function' ? state.getState() : state;
     const existingCellData = currentState.reconciliationData?.[window.currentModalContext.itemId]
         ?.properties?.[window.currentModalContext.mappingId]
@@ -535,14 +573,20 @@ function setupSharedReconciliationModalControls(modalContainer, state) {
         });
         const applyToAllText = createElement(
             'span',
-            {},
-            `Apply this choice to ${duplicateCount} identical value${duplicateCount === 1 ? '' : 's'} in this column`
+            {
+                className: 'apply-identical-controls__text'
+            },
+            `Apply this choice to ${duplicateCount} identical value${duplicateCount === 1 ? '' : 's'} in this row`
         );
 
         applyToAllCheckbox.checked = Boolean(window.currentModalContext.applyToIdenticalValues);
         applyToAllLabel.appendChild(applyToAllCheckbox);
         applyToAllLabel.appendChild(applyToAllText);
-        actions.parentNode.insertBefore(applyToAllLabel, actions);
+        if (contextContainer) {
+            contextContainer.appendChild(applyToAllLabel);
+        } else {
+            actions.parentNode.insertBefore(applyToAllLabel, actions);
+        }
     }
 
     if (window.currentModalContext.currentStatus && window.currentModalContext.currentStatus !== 'pending' &&
@@ -1005,6 +1049,10 @@ export function createOpenReconciliationModalFactory(dependencies) {
 
         // Create modal content
         const modalElement = createReconciliationModal(itemId, property, valueIndex, value, keyObjOrManualProp?.property, existingMatches, state, mappingId);
+        modalElement.insertBefore(
+            createModalContextBanner(itemId, property, valueIndex, value, keyObjOrManualProp, mappingId),
+            modalElement.firstChild
+        );
 
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {

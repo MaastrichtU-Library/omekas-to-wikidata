@@ -100,6 +100,15 @@ export function initializeSchemaOverview(state) {
         });
 
         const info = createElement('div', { className: 'schema-overview-collapsed' });
+        const mainInfo = createElement('div', {
+            className: 'schema-overview-collapsed__main'
+        });
+        const metadata = createElement('div', {
+            className: 'schema-overview-collapsed__meta'
+        });
+        const status = createElement('div', {
+            className: 'schema-overview-collapsed__status'
+        });
 
         // Schema label
         const label = createElement('span', {
@@ -129,16 +138,16 @@ export function initializeSchemaOverview(state) {
             className: 'toggle-indicator'
         }, isExpanded ? '▲' : '▼');
 
-        info.appendChild(label);
-        info.appendChild(createElement('span', {}, ' '));
-        info.appendChild(idLink);
-        info.appendChild(createElement('span', {}, ' • '));
-        info.appendChild(requiredProgress);
-        
+        mainInfo.appendChild(label);
+        metadata.appendChild(idLink);
+        status.appendChild(requiredProgress);
         if (summary.hasOptionalProperties) {
-            info.appendChild(createElement('span', {}, ' • '));
-            info.appendChild(optionalProgress);
+            status.appendChild(optionalProgress);
         }
+
+        info.appendChild(mainInfo);
+        info.appendChild(metadata);
+        info.appendChild(status);
 
         header.appendChild(info);
         header.appendChild(toggleIndicator);
@@ -265,18 +274,21 @@ export function initializeSchemaOverview(state) {
             statusIndicator.classList.add('unmapped', sectionType);
         }
 
-        // Property label
+        const labelGroup = createElement('span', {
+            className: 'schema-property-label-group'
+        });
         const label = createElement('span', {
-            className: 'property-label'
+            className: 'property-label property-label--primary'
         }, property.label || property.id);
 
-        // Property ID with link
         const idLink = createElement('a', {
-            className: 'property-id-link',
+            className: 'property-id-link property-id-link--secondary',
             href: property.url || `https://www.wikidata.org/wiki/Property:${property.id}`,
             target: '_blank',
             title: `View ${property.id} on Wikidata`
-        }, `(${property.id})`);
+        }, property.id);
+        labelGroup.appendChild(label);
+        labelGroup.appendChild(idLink);
 
         // Source indicator if required
         let sourceIndicator = null;
@@ -288,16 +300,12 @@ export function initializeSchemaOverview(state) {
         }
         
         item.appendChild(statusIndicator);
-        item.appendChild(label);
-        item.appendChild(createElement('span', {}, ' '));
+        item.appendChild(labelGroup);
         
         // Add source indicator BEFORE the P-ID
         if (sourceIndicator) {
             item.appendChild(sourceIndicator);
-            item.appendChild(createElement('span', {}, ' '));
         }
-        
-        item.appendChild(idLink);
 
         return item;
     }

@@ -7,7 +7,13 @@
 // Import dependencies
 import { eventSystem } from '../../events.js';
 import { createElement, createListItem, showMessage } from '../../ui/components.js';
-import { extractAndAnalyzeKeys, convertCamelCaseToSpaces, extractSampleValue } from '../core/data-analyzer.js';
+import {
+    extractAndAnalyzeKeys,
+    convertCamelCaseToSpaces,
+    extractSampleValue,
+    getOmekaFieldFriendlyName,
+    buildIncludedSegmentsSignature
+} from '../core/data-analyzer.js';
 import { getCompletePropertyData } from '../../api/wikidata.js';
 import { createIdentifierMapping } from '../../utils/identifier-detection.js';
 import { processItemsForValueIdentifiers } from '../../utils/value-processor.js';
@@ -17,6 +23,185 @@ const nonLinkedKeysList = document.getElementById('non-linked-keys');
 const mappedKeysList = document.getElementById('mapped-keys');
 const ignoredKeysList = document.getElementById('ignored-keys');
 const proceedToReconciliationBtn = document.getElementById('proceed-to-reconciliation');
+const nonLinkedKeySearchInput = document.getElementById('non-linked-key-search');
+let nonLinkedKeySearchInitialized = false;
+
+function getDisplayPriority(keyObj) {
+    const propertyId = typeof keyObj === 'object' ? keyObj.property?.id : null;
+    if (propertyId === 'label') {
+        return -2;
+    }
+    if (propertyId === 'P31') {
+        return -1;
+    }
+    return 0;
+}
+
+function applySortIndex(keyObj, keyOrderIndex) {
+    if (!keyObj || typeof keyObj !== 'object') {
+        return keyObj;
+    }
+
+    return {
+        ...keyObj,
+        sortIndex: keyOrderIndex.get(keyObj.key) ?? keyObj.sortIndex ?? Number.MAX_SAFE_INTEGER
+    };
+}
+
+function mergeAnalyzerMetadata(keyObj, analyzedKey) {
+    if (!keyObj || typeof keyObj !== 'object' || !analyzedKey) {
+        return keyObj;
+    }
+
+    return {
+        ...analyzedKey,
+        ...keyObj,
+        fieldProfile: keyObj.fieldProfile || analyzedKey.fieldProfile
+    };
+}
+
+function sortKeysForDisplay(keys, type) {
+    return [...keys].sort((a, b) => {
+        if (type === 'mapped') {
+            const priorityDifference = getDisplayPriority(a) - getDisplayPriority(b);
+            if (priorityDifference !== 0) {
+                return priorityDifference;
+            }
+        }
+
+        const aSortIndex = typeof a === 'object' ? a.sortIndex ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+        const bSortIndex = typeof b === 'object' ? b.sortIndex ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+
+        if (aSortIndex !== bSortIndex) {
+            return aSortIndex - bSortIndex;
+        }
+
+        const aLabel = typeof a === 'object'
+            ? `${a.key || ''}::${a.selectedAtField || ''}::${a.selectedObjectIndex ?? ''}::${(a.includedSegments || []).join('|')}`
+            : String(a);
+        const bLabel = typeof b === 'object'
+            ? `${b.key || ''}::${b.selectedAtField || ''}::${b.selectedObjectIndex ?? ''}::${(b.includedSegments || []).join('|')}`
+            : String(b);
+        return aLabel.localeCompare(bLabel);
+    });
+}
+
+function getKeySearchScore(keyObj, searchTerm) {
+    if (!searchTerm) {
+        return 0;
+    }
+
+    const keyData = typeof keyObj === 'string'
+        ? { key: keyObj }
+        : keyObj;
+    const keyName = keyData.key || '';
+    const friendlyName = getOmekaFieldFriendlyName(keyData, keyName) || '';
+    const normalizedTerm = searchTerm.toLowerCase();
+    const normalizedFriendly = friendlyName.toLowerCase();
+    const normalizedKey = keyName.toLowerCase();
+
+    if (normalizedFriendly.startsWith(normalizedTerm)) return 0;
+    if (normalizedFriendly.includes(normalizedTerm)) return 1;
+    if (normalizedKey.startsWith(normalizedTerm)) return 2;
+    if (normalizedKey.includes(normalizedTerm)) return 3;
+    return Number.POSITIVE_INFINITY;
+}
+
+function filterKeysForSearch(keys, type) {
+    if (type !== 'non-linked') {
+        return keys;
+    }
+
+    const searchTerm = nonLinkedKeySearchInput?.value?.trim();
+    if (!searchTerm) {
+        return keys;
+    }
+
+    return keys
+        .map(keyObj => ({
+            keyObj,
+            score: getKeySearchScore(keyObj, searchTerm)
+        }))
+        .filter(result => Number.isFinite(result.score))
+        .sort((a, b) => a.score - b.score)
+        .map(result => result.keyObj);
+}
+
+function setupNonLinkedKeySearch(state) {
+    if (!nonLinkedKeySearchInput || nonLinkedKeySearchInitialized) {
+        return;
+    }
+
+    nonLinkedKeySearchInitialized = true;
+    nonLinkedKeySearchInput.addEventListener('input', () => {
+        const currentState = state.getState();
+        populateKeyList(nonLinkedKeysList, currentState.mappings.nonLinkedKeys, 'non-linked');
+    });
+}
+
+function createKeyLabelGroup(keyData) {
+    const fieldSuffixParts = [];
+    if (keyData.selectedAtField) {
+        fieldSuffixParts.push(keyData.selectedAtField);
+    }
+    if (Number.isInteger(keyData.selectedObjectIndex)) {
+        fieldSuffixParts.push(`object ${keyData.selectedObjectIndex + 1}`);
+    }
+
+    const keyDisplayText = fieldSuffixParts.length > 0
+        ? `${keyData.key} (${fieldSuffixParts.join(', ')})`
+        : keyData.key;
+
+    const labelGroup = createElement('div', {
+        className: 'key-label-group'
+    });
+
+    const friendlyName = getOmekaFieldFriendlyName(keyData, keyData.key);
+    if (friendlyName && friendlyName !== keyData.key) {
+        const keyTemplateLabel = createElement('span', {
+            className: 'key-name-compact key-name-compact--friendly'
+        }, friendlyName);
+        labelGroup.appendChild(keyTemplateLabel);
+    }
+
+    const keyName = createElement('span', {
+        className: friendlyName && friendlyName !== keyData.key
+            ? 'key-template-label key-template-label--technical'
+            : 'key-name-compact'
+    }, keyDisplayText);
+    labelGroup.appendChild(keyName);
+
+    if (Array.isArray(keyData.includedSegmentLabels) && keyData.includedSegmentLabels.length > 0) {
+        labelGroup.appendChild(createElement('span', {
+            className: 'key-segment-summary'
+        }, `Segments: ${keyData.includedSegmentLabels.join(', ')}`));
+    }
+
+    return labelGroup;
+}
+
+function syncRequiredMappingButtons(keys) {
+    const labelButton = document.getElementById('add-label');
+    const instanceOfButton = document.getElementById('add-instance-of');
+    const hasLabelMapping = hasMappingForProperty(keys, 'label');
+    const hasInstanceOfMapping = hasMappingForProperty(keys, 'P31');
+
+    if (labelButton) {
+        labelButton.disabled = hasLabelMapping;
+        labelButton.textContent = hasLabelMapping ? 'Label Set' : 'Set Label';
+        labelButton.title = hasLabelMapping
+            ? 'This project already has a Label mapping. Edit the existing Label entry in Mapped Keys to change it.'
+            : 'Map the source field that contains the main title or name.';
+    }
+
+    if (instanceOfButton) {
+        instanceOfButton.disabled = hasInstanceOfMapping;
+        instanceOfButton.textContent = hasInstanceOfMapping ? 'Instance of Set' : 'Set Instance of';
+        instanceOfButton.title = hasInstanceOfMapping
+            ? 'This project already has an Instance of mapping. Edit the existing Instance of entry in Mapped Keys to change it.'
+            : 'Map the source field that classifies what each item is. This usually follows the selected resource template class.';
+    }
+}
 
 /**
  * Populates all mapping interface lists with analyzed property data
@@ -27,6 +212,8 @@ export async function populateLists(state) {
     if (!currentState.fetchedData) {
         return;
     }
+
+    setupNonLinkedKeySearch(state);
 
     // Determine field ordering mode (default: template order)
     const sortMode = (currentState.mappings && currentState.mappings.sortMode) ? currentState.mappings.sortMode : 'template';
@@ -61,6 +248,7 @@ export async function populateLists(state) {
         analysisOptions.selectedTemplateIds = currentState.selectedTemplates;
     }
     const keyAnalysis = await extractAndAnalyzeKeys(processedData, analysisOptions);
+    const keyAnalysisByKey = new Map(keyAnalysis.map(entry => [entry.key, entry]));
 
     // Build a stable order index map based on analyzer output
     const keyOrderIndex = new Map();
@@ -110,6 +298,11 @@ export async function populateLists(state) {
      * - Internal technical fields not relevant to content description
      */
     const shouldIgnoreKey = (key) => {
+        const mediaLikeKeys = new Set(['dcterms:hasFormat', 'o:media', 'thumbnail_display_urls']);
+        if (mediaLikeKeys.has(key) || key.toLowerCase().includes('iiif')) {
+            return true;
+        }
+
         return ignorePatterns.some(pattern => {
             if (pattern.endsWith(':')) {
                 return key.startsWith(pattern);
@@ -188,19 +381,27 @@ export async function populateLists(state) {
     // Merge failed auto-mapped identifier fields with non-identifier fields
     // and restore the analyzer's original order to avoid reordering by type
     const mergedNonLinked = [...keysToAddAsNonLinked, ...nonIdentifierFields]
-        .sort((a, b) => (keyOrderIndex.get(a.key || a) ?? Number.MAX_SAFE_INTEGER) - (keyOrderIndex.get(b.key || b) ?? Number.MAX_SAFE_INTEGER));
+        .map(keyObj => applySortIndex(keyObj, keyOrderIndex))
+        .sort((a, b) => (a.sortIndex ?? Number.MAX_SAFE_INTEGER) - (b.sortIndex ?? Number.MAX_SAFE_INTEGER));
     
     // Add ignored keys to ignored list
-    const currentIgnoredKeys = [...updatedState.mappings.ignoredKeys, ...ignoredKeys];
+    const currentIgnoredKeys = [
+        ...updatedState.mappings.ignoredKeys.map(keyObj => mergeAnalyzerMetadata(keyObj, keyAnalysisByKey.get(keyObj.key || keyObj))),
+        ...ignoredKeys
+    ].map(keyObj => applySortIndex(keyObj, keyOrderIndex));
     
     // Add regular keys (without identifiers) and failed auto-mappings to non-linked keys
-    const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys.filter(k => 
-        !keyAnalysis.find(ka => ka.key === (k.key || k))
-    );
+    const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys
+        .filter(k => !keyAnalysis.find(ka => ka.key === (k.key || k)))
+        .map(keyObj => applySortIndex(keyObj, keyOrderIndex));
     const allNonLinkedKeys = [...currentNonLinkedKeys, ...mergedNonLinked];
     
     // Add auto-mapped keys to existing mapped keys
-    const allMappedKeys = [...updatedState.mappings.mappedKeys, ...autoMappedKeys];
+    const hydratedMappedKeys = updatedState.mappings.mappedKeys.map(keyObj =>
+        mergeAnalyzerMetadata(keyObj, keyAnalysisByKey.get(keyObj.key || keyObj))
+    );
+    const allMappedKeys = [...hydratedMappedKeys, ...autoMappedKeys]
+        .map(keyObj => applySortIndex(keyObj, keyOrderIndex));
     
     // Update all mappings atomically
     state.updateMappings(allNonLinkedKeys, allMappedKeys, currentIgnoredKeys);
@@ -224,6 +425,7 @@ export async function populateLists(state) {
     populateKeyList(nonLinkedKeysList, finalState.mappings.nonLinkedKeys, 'non-linked');
     populateKeyList(mappedKeysList, finalState.mappings.mappedKeys, 'mapped');
     populateKeyList(ignoredKeysList, finalState.mappings.ignoredKeys, 'ignored');
+    syncRequiredMappingButtons(finalState.mappings.mappedKeys);
     
     // Update section counts
     updateSectionCounts(finalState.mappings);
@@ -337,11 +539,12 @@ export function populateKeyList(listElement, keys, type) {
     if (!listElement) return;
 
     listElement.innerHTML = '';
+    const displayKeys = filterKeysForSearch(sortKeysForDisplay(keys, type), type);
 
     // Add required property placeholders for mapped keys section
     if (type === 'mapped') {
-        const hasLabelMapping = hasMappingForProperty(keys, 'label');
-        const hasInstanceOfMapping = hasMappingForProperty(keys, 'P31');
+        const hasLabelMapping = hasMappingForProperty(displayKeys, 'label');
+        const hasInstanceOfMapping = hasMappingForProperty(displayKeys, 'P31');
 
         // Add Label placeholder if no label mapping exists
         if (!hasLabelMapping) {
@@ -358,17 +561,17 @@ export function populateKeyList(listElement, keys, type) {
             const instanceOfPlaceholder = createRequiredPropertyPlaceholder(
                 'P31',
                 'Instance of',
-                'Instance of is required for all Wikidata items'
+                'Instance of is required and usually matches the selected resource template class'
             );
             listElement.appendChild(instanceOfPlaceholder);
         }
     }
 
-    if (!keys.length) {
+    if (!displayKeys.length) {
         // Only show "No mapped keys yet" if there are also no placeholders
         if (type !== 'mapped' || listElement.children.length === 0) {
             const placeholderText = type === 'non-linked'
-                ? 'All keys have been processed'
+                ? (nonLinkedKeySearchInput?.value?.trim() ? 'No matching keys found' : 'All keys have been processed')
                 : type === 'mapped'
                     ? 'No mapped keys yet'
                     : 'No ignored keys';
@@ -378,7 +581,7 @@ export function populateKeyList(listElement, keys, type) {
         return;
     }
     
-    keys.forEach(keyObj => {
+    displayKeys.forEach(keyObj => {
         // Handle both string keys (legacy) and key objects
         const keyData = typeof keyObj === 'string' 
             ? { key: keyObj, type: 'unknown', frequency: 1, totalItems: 1 }
@@ -391,27 +594,18 @@ export function populateKeyList(listElement, keys, type) {
                 : 'key-item-compact'
         });
         
-        // Display key name with @ field if present
-        const fieldSuffixParts = [];
-        if (keyData.selectedAtField) {
-            fieldSuffixParts.push(keyData.selectedAtField);
-        }
-        if (Number.isInteger(keyData.selectedObjectIndex)) {
-            fieldSuffixParts.push(`object ${keyData.selectedObjectIndex + 1}`);
-        }
-        const keyDisplayText = fieldSuffixParts.length > 0
-            ? `${keyData.key} (${fieldSuffixParts.join(', ')})`
-            : keyData.key;
-        const keyName = createElement('span', {
-            className: 'key-name-compact'
-        }, keyDisplayText);
-        keyDisplay.appendChild(keyName);
+        keyDisplay.appendChild(createKeyLabelGroup(keyData));
         
         // Show property info for mapped keys immediately after key name
         if (type === 'mapped' && keyData.property) {
+            const sourceSummary = keyData.property.id === 'label'
+                ? 'Label from selected Omeka field'
+                : keyData.property.id === 'P31'
+                    ? 'Instance of from selected Omeka field or template class'
+                    : `${keyData.property.id}: ${keyData.property.label}`;
             const propertyInfo = createElement('span', {
                 className: 'property-info'
-            }, ` → ${keyData.property.id}: ${keyData.property.label}`);
+            }, ` → ${sourceSummary}`);
             keyDisplay.appendChild(propertyInfo);
         }
         
@@ -463,6 +657,16 @@ export function populateKeyList(listElement, keys, type) {
 export function moveKeyToCategory(keyData, category, state) {
     const currentState = state.getState();
     const targetKey = typeof keyData === 'string' ? keyData : keyData.key;
+    const previousCategory = currentState.mappings.mappedKeys.some(k => {
+        if (keyData.mappingId && k.mappingId) {
+            return k.mappingId === keyData.mappingId;
+        }
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare === targetKey;
+    }) ? 'mapped' : currentState.mappings.ignoredKeys.some(k => {
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare === targetKey;
+    }) ? 'ignored' : 'non-linked';
     
     // Remove from ALL existing categories first
     const updatedNonLinkedKeys = currentState.mappings.nonLinkedKeys.filter(k => {
@@ -515,6 +719,13 @@ export function moveKeyToCategory(keyData, category, state) {
     // Update UI
     populateLists(state);
     state.markChangesUnsaved();
+
+    eventSystem.publish(eventSystem.Events.MAPPING_UPDATED, {
+        type: category,
+        previousCategory,
+        keyData: keyDataWithAnimation,
+        mappingId: keyDataWithAnimation.mappingId || null
+    });
 }
 
 /**
@@ -522,13 +733,37 @@ export function moveKeyToCategory(keyData, category, state) {
  */
 export function mapKeyToProperty(keyData, property, state) {
     const currentState = state.getState();
+    const singletonPropertyIds = new Set(['label', 'P31']);
+    const segmentSignature = keyData.segmentSignature || buildIncludedSegmentsSignature(keyData.includedSegments);
+    const includedSegmentLabels = Array.isArray(keyData.segmentOptions)
+        ? keyData.segmentOptions
+            .filter(option => Array.isArray(keyData.includedSegments) && keyData.includedSegments.includes(option.key))
+            .map(option => option.label)
+        : (keyData.includedSegmentLabels || []);
+
+    if (singletonPropertyIds.has(property.id)) {
+        const existingMapping = currentState.mappings.mappedKeys.find(mappedKey =>
+            mappedKey?.property?.id === property.id && mappedKey.mappingId !== keyData.mappingId
+        );
+
+        if (existingMapping) {
+            const propertyLabel = property.id === 'label' ? 'Label' : 'Instance of';
+            showMessage(
+                `${propertyLabel} can only be mapped once. Edit the existing ${propertyLabel} entry in Mapped Keys if you want to change it.`,
+                'warning',
+                5000
+            );
+            return false;
+        }
+    }
 
     // Generate the mapping ID for this key-property combination, including @ field if selected
     const newMappingId = state.generateMappingId(
         keyData.key,
         property.id,
         keyData.selectedAtField,
-        keyData.selectedObjectIndex
+        keyData.selectedObjectIndex,
+        segmentSignature
     );
 
     // When editing an existing mapping, preserve its transformation blocks and
@@ -567,6 +802,10 @@ export function mapKeyToProperty(keyData, property, state) {
     const mappedKey = {
         ...keyData,
         property: property,
+        extractionMode: keyData.extractionMode || 'auto',
+        includedSegments: keyData.includedSegments || undefined,
+        includedSegmentLabels: includedSegmentLabels.length > 0 ? includedSegmentLabels : undefined,
+        segmentSignature: segmentSignature || undefined,
         mappingId: newMappingId,
         mappedAt: new Date().toISOString()
     };
@@ -582,6 +821,8 @@ export function mapKeyToProperty(keyData, property, state) {
         property: property,
         mappingId: newMappingId
     });
+
+    return true;
 }
 
 /**

@@ -46,6 +46,7 @@ export function setupState() {
         selectedExample: null,
         resourceTemplates: [],
         selectedTemplates: [],
+        resourceClassCache: {},
         
         // Step 2: Mapping
         entitySchema: '', // Deprecated - use selectedEntitySchema instead
@@ -1117,9 +1118,10 @@ export function setupState() {
      * @param {string} propertyId - The Wikidata property ID
      * @param {string} atField - Optional @ field selector (e.g., '@id', '@value')
      * @param {number|null} objectIndex - Optional source object index for mixed JSON value arrays
+     * @param {string|null} segmentSignature - Optional segment-family signature
      * @returns {string} The mapping ID
      */
-    function generateMappingId(key, propertyId, atField, objectIndex = null) {
+    function generateMappingId(key, propertyId, atField, objectIndex = null, segmentSignature = null) {
         if (!key || !propertyId) return propertyId || key || 'unknown';
 
         const selectorParts = [];
@@ -1128,6 +1130,9 @@ export function setupState() {
         }
         if (Number.isInteger(objectIndex)) {
             selectorParts.push(`obj${objectIndex}`);
+        }
+        if (segmentSignature) {
+            selectorParts.push(`seg${segmentSignature}`);
         }
 
         if (selectorParts.length > 0) {

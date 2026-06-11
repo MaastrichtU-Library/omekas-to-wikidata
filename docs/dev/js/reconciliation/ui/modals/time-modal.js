@@ -222,6 +222,19 @@ export function createTimeModal(itemId, property, valueIndex, value, propertyDat
     // Detect precision and standardize the current value
     const detectedPrecision = detectDatePrecision(displayValue);
     const standardizedResult = standardizeDateInput(displayValue);
+    const intervalChoiceHtml = standardizedResult.isInterval
+        ? `
+            <div class="date-interval-choice">
+                <div class="section-title">Date range detected</div>
+                <p>Omeka S stores this as an interval. Choose the value to send to Wikidata for this property.</p>
+                <select id="date-interval-choice">
+                    ${standardizedResult.intervalChoices.map(choice => `
+                        <option value="${choice.id}">${escapeHtml(choice.label)}</option>
+                    `).join('')}
+                </select>
+            </div>
+        `
+        : '';
 
     const modalContent = document.createElement('div');
     modalContent.className = 'time-modal';
@@ -291,8 +304,9 @@ export function createTimeModal(itemId, property, valueIndex, value, propertyDat
                     
                     <!-- Format Hint -->
                     <div class="date-format-hint" id="date-format-hint">
-                        Supports: Year (2023), Month (2023-06), Day (2023-06-15), Decade (1990s)
+                        Supports: Year (2023), Month (2023-06), Day (2023-06-15), Decade (1990s), Year range (1475/1525)
                     </div>
+                    ${intervalChoiceHtml}
                 </div>
             </div>
 
@@ -361,6 +375,14 @@ export function initializeTimeModal(modalElement) {
     const precisionSelect = document.getElementById('precision-select');
     if (precisionSelect) {
         setupPrecisionSelector(precisionSelect);
+    }
+
+    const intervalChoice = document.getElementById('date-interval-choice');
+    if (intervalChoice) {
+        intervalChoice.addEventListener('change', () => {
+            updateStandardizedPreview();
+            updateConfirmButtonState();
+        });
     }
     
     // Set up dynamic date precision detection
@@ -503,18 +525,22 @@ function updateStandardizedPreview() {
     const previewValue = document.getElementById('preview-value');
     const currentValue = window.currentModalContext?.currentValue || '';
     const precisionSelect = document.getElementById('precision-select');
+    const intervalChoice = document.getElementById('date-interval-choice');
     
     if (!previewValue) return;
     
     if (currentValue.trim()) {
         const selectedPrecision = precisionSelect ? precisionSelect.value : detectDatePrecision(currentValue);
         const standardized = standardizeDateInput(currentValue);
+        const selectedIntervalChoice = standardized.isInterval && intervalChoice
+            ? standardized.intervalChoices.find(choice => choice.id === intervalChoice.value)
+            : null;
         
         // Use the selected precision if different from detected
-        let displayText = standardized.displayValue || currentValue;
+        let displayText = selectedIntervalChoice?.displayValue || standardized.displayValue || currentValue;
         if (selectedPrecision !== standardized.precision) {
             // Reprocess with manual precision
-            displayText = formatDateWithPrecision(currentValue, selectedPrecision);
+            displayText = selectedIntervalChoice?.displayValue || formatDateWithPrecision(currentValue, selectedPrecision);
         }
         
         previewValue.textContent = displayText;
@@ -654,6 +680,7 @@ window.confirmTimeValue = function() {
     const precisionSelect = document.getElementById('precision-select');
     const currentValue = dateEditor ? dateEditor.value : window.currentModalContext.currentValue;
     const selectedPrecision = precisionSelect ? precisionSelect.value : window.currentModalContext.detectedPrecision;
+    const intervalChoice = document.getElementById('date-interval-choice');
     
     // Update context with the actual current value
     if (dateEditor) {
@@ -673,16 +700,28 @@ window.confirmTimeValue = function() {
     
     // Standardize the date with the selected precision
     const standardized = standardizeDateInput(currentValue);
-    const displayValue = formatDateWithPrecision(currentValue, selectedPrecision);
+    const selectedIntervalChoice = standardized.isInterval && intervalChoice
+        ? standardized.intervalChoices.find(choice => choice.id === intervalChoice.value)
+        : null;
+    const dateForExport = selectedIntervalChoice?.date || standardized.date;
+    const displayValue = selectedIntervalChoice?.displayValue || formatDateWithPrecision(currentValue, selectedPrecision);
     
     // Prepare confirmation data
     const confirmationData = {
         type: 'custom',
         value: currentValue.trim(),
         displayValue: displayValue,
-        standardizedDate: standardized.date,
+        standardizedDate: dateForExport,
         precision: selectedPrecision,
-        datatype: 'time'
+        datatype: 'time',
+        intervalSource: standardized.isInterval
+            ? {
+                originalValue: currentValue.trim(),
+                choice: selectedIntervalChoice?.id || 'start',
+                start: standardized.intervalStart,
+                end: standardized.intervalEnd
+            }
+            : null
     };
     
     // Store confirmation data in context for handlers
