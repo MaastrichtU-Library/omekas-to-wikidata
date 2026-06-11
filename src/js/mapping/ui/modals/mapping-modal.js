@@ -12,15 +12,20 @@ import { moveKeyToCategory, mapKeyToProperty, moveToNextUnmappedKey } from '../m
 import { formatSampleValue } from './modal-helpers.js';
 import { showMessage } from '../../../ui/components.js';
 import {
-    extractAtFieldsFromAllItems,
-    extractAllFieldsFromItems,
-    getAvailableExtractionModes,
-    getDefaultExtractionMode,
-    getExtractionModeLabel,
+    buildObservedFieldProfile,
     describeFieldProfile,
-    resolveOmekaValue
+    getOrderedValueSourceTypes,
+    summarizeObservedSegments,
+    summarizeValueSourcesForResolvedDetails,
+    buildIncludedSegmentsSignature,
+    getValueSourceTypeLabel,
+    getValueSourceTypeDescription,
+    getOmekaFieldFriendlyName,
+    extractSampleValue
 } from '../../core/data-analyzer.js';
 import { extractAllFields } from '../../../transformations.js';
+import { fetchWithCorsProxy } from '../../../utils/cors-proxy.js';
+import { extractPropertyValueDetails } from '../../../reconciliation/core/reconciliation-data.js';
 
 /**
  * Search Wikidata items using the wbsearchentities API
@@ -104,6 +109,983 @@ function insertWikidataItemReference(item) {
     
     // Show a success message
     showMessage(`Added ${item.label} (${item.id}) to pattern`, 'success', 2000);
+}
+
+const GUIDED_PROPERTY_CONFIG = Object.freeze({
+    label: {
+        title: 'Set Label',
+        property: {
+            id: 'label',
+            label: 'Labels',
+            description: 'Main name for entities',
+            datatype: 'monolingualtext',
+            datatypeLabel: 'Monolingual text',
+            isMetadata: true,
+            helpUrl: 'https://www.wikidata.org/wiki/Help:Label'
+        },
+        guidance: 'Choose the imported Omeka S field that contains the main title or name for the record. This usually comes from a field named Title or Name.',
+        searchPlaceholder: 'Search title or name fields...',
+        selectionLabel: 'Source field for the Wikidata label',
+        targetHeading: 'Wikidata Label',
+        autoSuggestPattern: /(title|name|label)/i
+    },
+    description: {
+        title: 'Add Description',
+        property: {
+            id: 'description',
+            label: 'Descriptions',
+            description: 'Short disambiguating phrases',
+            datatype: 'monolingualtext',
+            datatypeLabel: 'Monolingual text',
+            isMetadata: true,
+            helpUrl: 'https://www.wikidata.org/wiki/Help:Description'
+        },
+        guidance: 'Choose the imported Omeka S field that contains the short descriptive phrase you want to send to Wikidata.',
+        searchPlaceholder: 'Search description fields...',
+        selectionLabel: 'Source field for the Wikidata description',
+        targetHeading: 'Wikidata Description',
+        autoSuggestPattern: /(description|summary|abstract|note)/i
+    },
+    aliases: {
+        title: 'Add Aliases',
+        property: {
+            id: 'aliases',
+            label: 'Aliases',
+            description: 'Alternative names',
+            datatype: 'monolingualtext',
+            datatypeLabel: 'Monolingual text',
+            isMetadata: true,
+            helpUrl: 'https://www.wikidata.org/wiki/Help:Aliases'
+        },
+        guidance: 'Choose the imported Omeka S field that contains alternative names or variant titles for the record.',
+        searchPlaceholder: 'Search alias or variant-title fields...',
+        selectionLabel: 'Source field for Wikidata aliases',
+        targetHeading: 'Wikidata Aliases',
+        autoSuggestPattern: /(alias|variant|alternative|other title)/i
+    },
+    instance_of: {
+        title: 'Set Instance of',
+        property: {
+            id: 'P31',
+            label: 'instance of',
+            description: 'that class of which this subject is a particular example',
+            datatype: 'wikibase-item',
+            datatypeLabel: 'Item',
+            url: 'https://www.wikidata.org/wiki/Property:P31'
+        },
+        guidance: 'Use the Omeka S resource template class as the source for what kind of object these records describe. This value will be reconciled in the next step.',
+        searchPlaceholder: 'Search type or class fields...',
+        selectionLabel: 'Detected type source',
+        targetHeading: 'Wikidata Instance of',
+        autoSuggestPattern: /(resource class|type|class|genre)/i
+    }
+});
+
+function detectGuidedModalMode(keyData) {
+    if (keyData?.modalMode && GUIDED_PROPERTY_CONFIG[keyData.modalMode]) {
+        return keyData.modalMode;
+    }
+
+    const propertyId = keyData?.guidedProperty?.id || keyData?.property?.id || '';
+    if (propertyId === 'P31') {
+        return 'instance_of';
+    }
+    if (propertyId === 'label' || propertyId === 'description' || propertyId === 'aliases') {
+        return propertyId;
+    }
+
+    return null;
+}
+
+function getGuidedPropertyForMode(mode) {
+    return GUIDED_PROPERTY_CONFIG[mode]?.property || null;
+}
+
+function normalizeFetchedItems(data) {
+    if (Array.isArray(data)) {
+        return data;
+    }
+
+    if (data?.items && Array.isArray(data.items)) {
+        return data.items;
+    }
+
+    return data ? [data] : [];
+}
+
+function isMediaLikeFieldKey(fieldKey) {
+    if (!fieldKey) {
+        return false;
+    }
+
+    const normalized = String(fieldKey).toLowerCase();
+    return normalized === 'o:media'
+        || normalized === 'thumbnail_display_urls'
+        || normalized === 'dcterms:hasformat'
+        || normalized.includes('iiif')
+        || normalized.includes('thumbnail');
+}
+
+function buildSelectableFieldCandidates(currentState) {
+    const candidatesByKey = new Map();
+    const mappingCategories = [
+        ...(currentState?.mappings?.nonLinkedKeys || []),
+        ...(currentState?.mappings?.mappedKeys || []),
+        ...(currentState?.mappings?.ignoredKeys || [])
+    ];
+
+    mappingCategories
+        .filter(candidate => typeof candidate === 'object' && candidate?.key)
+        .forEach(candidate => {
+            if (candidate.isCustomProperty || candidate.key.startsWith('custom_')) {
+                return;
+            }
+            if (!candidatesByKey.has(candidate.key)) {
+                candidatesByKey.set(candidate.key, {
+                    ...candidate,
+                    mappingId: undefined
+                });
+            }
+        });
+
+    const selectedTemplateIds = new Set((currentState?.selectedTemplates || []).map(String));
+    const templateDisplayLabelByTerm = new Map();
+    const templateAlternateLabelByTerm = new Map();
+    (currentState?.resourceTemplates || [])
+        .filter(template => selectedTemplateIds.size === 0 || selectedTemplateIds.has(String(template?.['o:id'])))
+        .forEach(template => {
+            (template?.['o:resource_template_property'] || []).forEach(templateProperty => {
+                const term = templateProperty?.['o:property']?.['o:term'];
+                if (!term) {
+                    return;
+                }
+
+                const alternateLabel = typeof templateProperty?.['o:alternate_label'] === 'string'
+                    ? templateProperty['o:alternate_label'].trim()
+                    : '';
+                const propertyLabel = typeof templateProperty?.['o:property']?.['o:label'] === 'string'
+                    ? templateProperty['o:property']['o:label'].trim()
+                    : '';
+
+                if (alternateLabel && !templateAlternateLabelByTerm.has(term)) {
+                    templateAlternateLabelByTerm.set(term, alternateLabel);
+                }
+                if ((alternateLabel || propertyLabel) && !templateDisplayLabelByTerm.has(term)) {
+                    templateDisplayLabelByTerm.set(term, alternateLabel || propertyLabel);
+                }
+            });
+        });
+
+    const items = normalizeFetchedItems(currentState?.fetchedData);
+    const fallbackCandidatesByKey = new Map();
+    items.forEach(item => {
+        if (!item || typeof item !== 'object') {
+            return;
+        }
+
+        Object.keys(item)
+            .filter(key => !key.startsWith('@'))
+            .forEach((key, index) => {
+                if (key.startsWith('o:') || isMediaLikeFieldKey(key)) {
+                    return;
+                }
+
+                const existing = fallbackCandidatesByKey.get(key) || {
+                    key,
+                    sampleValue: null,
+                    frequency: 0,
+                    totalItems: items.length || 1,
+                    sortIndex: index,
+                    fieldProfile: null,
+                    templateDisplayLabel: templateDisplayLabelByTerm.get(key) || null,
+                    templateAlternateLabel: templateAlternateLabelByTerm.get(key) || null,
+                    mappingId: undefined
+                };
+
+                existing.frequency += 1;
+                if (existing.sampleValue === null) {
+                    existing.sampleValue = extractSampleValue(item[key]);
+                }
+                if (!existing.fieldProfile) {
+                    existing.fieldProfile = buildObservedFieldProfile(item[key]);
+                }
+                if (existing.sortIndex === undefined || existing.sortIndex === null) {
+                    existing.sortIndex = index;
+                }
+
+                fallbackCandidatesByKey.set(key, existing);
+            });
+    });
+
+    fallbackCandidatesByKey.forEach((candidate, key) => {
+        if (!candidatesByKey.has(key)) {
+            candidatesByKey.set(key, candidate);
+            return;
+        }
+
+        const existing = candidatesByKey.get(key);
+        candidatesByKey.set(key, {
+            ...candidate,
+            ...existing,
+            sampleValue: existing.sampleValue ?? candidate.sampleValue,
+            frequency: existing.frequency ?? candidate.frequency,
+            totalItems: existing.totalItems ?? candidate.totalItems,
+            sortIndex: existing.sortIndex ?? candidate.sortIndex,
+            fieldProfile: existing.fieldProfile || candidate.fieldProfile,
+            templateDisplayLabel: existing.templateDisplayLabel || candidate.templateDisplayLabel,
+            templateAlternateLabel: existing.templateAlternateLabel || candidate.templateAlternateLabel
+        });
+    });
+
+    return Array.from(candidatesByKey.values())
+        .filter(candidate => !candidate.key.startsWith('o:'))
+        .filter(candidate => !isMediaLikeFieldKey(candidate.key));
+}
+
+function getResourceClassUri(resourceClassValue) {
+    if (!resourceClassValue) {
+        return null;
+    }
+
+    if (typeof resourceClassValue === 'string' && /^https?:\/\//i.test(resourceClassValue)) {
+        return resourceClassValue;
+    }
+
+    if (resourceClassValue && typeof resourceClassValue === 'object') {
+        const directUri = resourceClassValue['@id'] || resourceClassValue.id || null;
+        if (typeof directUri === 'string' && directUri.trim()) {
+            return directUri.trim();
+        }
+    }
+
+    return null;
+}
+
+function mergeResourceClassCandidate(candidate, resourceClassData = null) {
+    if (!candidate) {
+        return null;
+    }
+
+    const mergedData = resourceClassData && typeof resourceClassData === 'object'
+        ? resourceClassData
+        : {};
+    const resourceClassLabel = mergedData['o:label']
+        || candidate.resourceClassLabel
+        || mergedData.label
+        || mergedData.display_title
+        || mergedData['o:local_name']
+        || null;
+    const resourceClassTerm = mergedData['o:term']
+        || candidate.resourceClassTerm
+        || null;
+    const resourceClassUri = getResourceClassUri(mergedData)
+        || candidate.resourceClassUri
+        || candidate.linkedDataUri
+        || null;
+
+    return {
+        ...candidate,
+        resourceClassLabel,
+        resourceClassTerm,
+        resourceClassUri,
+        linkedDataUri: resourceClassUri,
+        preferredSourceField: 'o:label',
+        sampleValue: resourceClassLabel || candidate.sampleValue || 'No sample available',
+        fieldProfile: buildObservedFieldProfile(mergedData && Object.keys(mergedData).length > 0 ? [mergedData] : [candidate]),
+        resourceClassData: Object.keys(mergedData).length > 0 ? mergedData : candidate.resourceClassData || null
+    };
+}
+
+async function ensureResourceClassDefinition(candidate, stateInstance = window.mappingStepState) {
+    if (!candidate || candidate.key !== 'o:resource_class') {
+        return candidate;
+    }
+
+    const currentState = typeof stateInstance?.getState === 'function'
+        ? stateInstance.getState()
+        : null;
+    const resourceClassUri = candidate.resourceClassUri || candidate.linkedDataUri || getResourceClassUri(candidate.resourceClassData);
+    if (!resourceClassUri) {
+        return mergeResourceClassCandidate(candidate);
+    }
+
+    const cachedData = currentState?.resourceClassCache?.[resourceClassUri];
+    if (cachedData) {
+        return mergeResourceClassCandidate(candidate, cachedData);
+    }
+
+    try {
+        const result = await fetchWithCorsProxy(resourceClassUri, {
+            headers: {
+                Accept: 'application/json, application/ld+json'
+            }
+        });
+        const resourceClassData = result?.data && typeof result.data === 'object'
+            ? result.data
+            : null;
+
+        if (!resourceClassData) {
+            return mergeResourceClassCandidate(candidate);
+        }
+
+        if (typeof stateInstance?.updateState === 'function') {
+            const latestState = stateInstance.getState();
+            stateInstance.updateState('resourceClassCache', {
+                ...(latestState?.resourceClassCache || {}),
+                [resourceClassUri]: resourceClassData
+            }, false);
+        }
+
+        return mergeResourceClassCandidate(candidate, resourceClassData);
+    } catch (error) {
+        console.warn('Unable to fetch resource class details for guided instance-of modal:', error);
+        return mergeResourceClassCandidate(candidate);
+    }
+}
+
+function createResourceClassCandidate(currentState) {
+    const selectedTemplateIds = new Set((currentState?.selectedTemplates || []).map(String));
+    const selectedTemplates = (currentState?.resourceTemplates || []).filter(template =>
+        selectedTemplateIds.has(String(template?.['o:id']))
+    );
+
+    const templateResourceClass = selectedTemplates
+        .map(template => template?.['o:resource_class'])
+        .find(Boolean);
+
+    const items = normalizeFetchedItems(currentState?.fetchedData);
+    const samples = items
+        .map(item => item?.['o:resource_class'])
+        .filter(Boolean);
+
+    const sample = templateResourceClass || samples[0];
+    if (!sample) {
+        return null;
+    }
+
+    return mergeResourceClassCandidate({
+        key: 'o:resource_class',
+        type: 'guided',
+        frequency: samples.length || selectedTemplates.length || 1,
+        totalItems: items.length || samples.length || selectedTemplates.length || 1,
+        sampleValue: sample?.['o:label']
+            || sample?.label
+            || sample?.display_title
+            || sample?.['o:term']
+            || sample?.['o:local_name']
+            || sample?.['@value']
+            || (typeof sample?.['@id'] === 'string' ? sample['@id'].split('/').pop() : null)
+            || 'Resource class',
+        templateDisplayLabel: 'Resource class',
+        templateAlternateLabel: 'Resource class',
+        fieldProfile: buildObservedFieldProfile(samples.length > 0 ? samples : [sample]),
+        linkedDataUri: getResourceClassUri(sample),
+        resourceClassUri: getResourceClassUri(sample),
+        resourceClassLabel: sample?.['o:label'] || sample?.['o:local_name'] || null,
+        resourceClassTerm: sample?.['o:term'] || null,
+        preferredSourceField: 'o:label',
+        resourceClassData: sample,
+        sortIndex: -1
+    }, sample);
+}
+
+function getFirstResolvedSampleDetail(candidate, stateInstance = window.mappingStepState) {
+    if (!candidate || typeof stateInstance?.getState !== 'function') {
+        return null;
+    }
+
+    const currentState = stateInstance.getState();
+    const items = normalizeFetchedItems(currentState?.fetchedData);
+
+    for (const item of items) {
+        if (item?.[candidate.key] === undefined) {
+            continue;
+        }
+
+        const resolvedDetails = extractPropertyValueDetails(item, candidate, stateInstance);
+        const firstDetail = resolvedDetails.find(detail => detail?.value);
+        if (firstDetail) {
+            return firstDetail;
+        }
+    }
+
+    return null;
+}
+
+function createGuidedPreviewRow(label, value, modifier = '') {
+    const row = createElement('div', {
+        className: `guided-field-selector__preview-row${modifier ? ` ${modifier}` : ''}`
+    });
+    const labelElement = createElement('span', {
+        className: 'guided-field-selector__preview-label'
+    }, `${label}:`);
+    const valueElement = createElement('span', {
+        className: 'guided-field-selector__preview-value'
+    }, value || 'No sample available');
+    row.appendChild(labelElement);
+    row.appendChild(valueElement);
+    return row;
+}
+
+function createManualInstanceSelection(manualText = '', selectedProperty = null) {
+    const trimmedText = typeof manualText === 'string' ? manualText.trim() : '';
+
+    return {
+        key: 'o:resource_class',
+        type: 'guided',
+        templateDisplayLabel: 'Manual instance-of text',
+        templateAlternateLabel: 'Manual instance-of text',
+        sampleValue: trimmedText || 'No sample available',
+        preferredSourceField: null,
+        selectedAtField: null,
+        guidedSourceMode: 'manual_text',
+        guidedManualText: trimmedText,
+        property: selectedProperty,
+        mappingId: undefined
+    };
+}
+
+function getObservedSegmentOptions(items, keyData, state) {
+    const analysisKeyData = {
+        ...keyData,
+        includedSegments: undefined,
+        includedSegmentLabels: undefined,
+        segmentSignature: undefined,
+        includedValueSources: undefined
+    };
+
+    const detailsByItem = items
+        .filter(item => item?.[keyData.key] !== undefined)
+        .map(item => extractPropertyValueDetails(item, analysisKeyData, state));
+
+    return summarizeObservedSegments(detailsByItem);
+}
+
+function syncSelectedSegments(keyData, segmentOptions) {
+    const availableKeys = new Set((segmentOptions || []).map(option => option.key));
+
+    if (!Array.isArray(keyData.includedSegments) || keyData.includedSegments.length === 0) {
+        keyData.includedSegments = [...availableKeys];
+    } else {
+        keyData.includedSegments = keyData.includedSegments.filter(segmentKey => availableKeys.has(segmentKey));
+        if (keyData.includedSegments.length === 0 && availableKeys.size > 0) {
+            keyData.includedSegments = [...availableKeys];
+        }
+    }
+
+    keyData.includedSegmentLabels = (segmentOptions || [])
+        .filter(option => keyData.includedSegments.includes(option.key))
+        .map(option => option.label);
+    keyData.segmentSignature = buildIncludedSegmentsSignature(keyData.includedSegments);
+}
+
+function updateSelectedSegmentsFromKeys(keyData, segmentOptions, selectedKeys = []) {
+    keyData.includedSegments = [...selectedKeys];
+    keyData.includedSegmentLabels = (segmentOptions || [])
+        .filter(option => keyData.includedSegments.includes(option.key))
+        .map(option => option.label);
+    keyData.segmentSignature = buildIncludedSegmentsSignature(keyData.includedSegments);
+}
+
+function getSourceFieldSearchScore(candidate, searchTerm) {
+    if (!searchTerm) {
+        return 0;
+    }
+
+    const normalizedTerm = searchTerm.toLowerCase();
+    const friendlyName = (getOmekaFieldFriendlyName(candidate, candidate.key) || '').toLowerCase();
+    const keyName = (candidate.key || '').toLowerCase();
+
+    if (friendlyName.startsWith(normalizedTerm)) return 0;
+    if (friendlyName.includes(normalizedTerm)) return 1;
+    if (keyName.startsWith(normalizedTerm)) return 2;
+    if (keyName.includes(normalizedTerm)) return 3;
+    return Number.POSITIVE_INFINITY;
+}
+
+function getDefaultGuidedCandidate(candidates, mode, currentKey = '') {
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+        return null;
+    }
+
+    if (currentKey) {
+        const currentMatch = candidates.find(candidate => candidate.key === currentKey);
+        if (currentMatch) {
+            return currentMatch;
+        }
+    }
+
+    const pattern = GUIDED_PROPERTY_CONFIG[mode]?.autoSuggestPattern;
+    if (pattern) {
+        const suggested = candidates.find(candidate => {
+            const friendlyName = getOmekaFieldFriendlyName(candidate, candidate.key);
+            return pattern.test(friendlyName) || pattern.test(candidate.key);
+        });
+        if (suggested) {
+            return suggested;
+        }
+    }
+
+    return candidates[0];
+}
+
+function buildGuidedFieldCandidates(currentState, mode) {
+    const selectableCandidates = buildSelectableFieldCandidates(currentState);
+
+    if (mode === 'instance_of') {
+        const resourceClassCandidate = createResourceClassCandidate(currentState);
+        if (resourceClassCandidate) {
+            return [resourceClassCandidate, ...selectableCandidates.filter(candidate => candidate.key !== 'o:resource_class')];
+        }
+    }
+
+    return selectableCandidates;
+}
+
+function createGuidedSourceFieldSelector(keyData, mode, selectedProperty) {
+    const currentState = window.mappingStepState?.getState();
+    const fieldCandidates = buildGuidedFieldCandidates(currentState, mode);
+    const guidedConfig = GUIDED_PROPERTY_CONFIG[mode];
+    const wrapper = createElement('div', {
+        className: 'guided-field-selector'
+    });
+
+    wrapper.appendChild(createElement('h4', {}, guidedConfig.selectionLabel));
+    wrapper.appendChild(createElement('p', {
+        className: 'field-override-help'
+    }, 'Media and IIIF-related fields are hidden here so you can focus on values you genuinely want to send to Wikidata.'));
+
+    const samplePreview = createElement('div', {
+        className: 'guided-field-selector__preview'
+    });
+
+    const setGuidedSelection = (selection) => {
+        window.currentMappingGuidedSelection = selection
+            ? {
+                ...selection,
+                property: selectedProperty,
+                mappingId: undefined
+            }
+            : null;
+    };
+
+    const updatePreview = async (selectedCandidate) => {
+        if (!selectedCandidate) {
+            samplePreview.textContent = 'No source field selected yet.';
+            return;
+        }
+
+        samplePreview.textContent = 'Loading sample preview...';
+
+        if (selectedCandidate.guidedSourceMode === 'manual_text') {
+            setGuidedSelection(selectedCandidate);
+            samplePreview.innerHTML = '';
+            samplePreview.appendChild(createGuidedPreviewRow('Selected source', 'Manual instance-of text'));
+            samplePreview.appendChild(createGuidedPreviewRow(
+                'Sample value used for reconciliation',
+                selectedCandidate.guidedManualText || 'No sample available',
+                'guided-field-selector__preview-row--stacked'
+            ));
+            return;
+        }
+
+        const enrichedCandidate = mode === 'instance_of'
+            ? await ensureResourceClassDefinition(selectedCandidate)
+            : selectedCandidate;
+
+        setGuidedSelection(enrichedCandidate);
+
+        const friendlyName = getOmekaFieldFriendlyName(enrichedCandidate, enrichedCandidate.key) || enrichedCandidate.key;
+        const keyLine = friendlyName && friendlyName !== enrichedCandidate.key
+            ? `${friendlyName} (${enrichedCandidate.key})`
+            : enrichedCandidate.key;
+        const sampleDetail = getFirstResolvedSampleDetail({
+            ...enrichedCandidate,
+            property: selectedProperty,
+            selectedAtField: enrichedCandidate.selectedAtField || enrichedCandidate.preferredSourceField
+        });
+
+        samplePreview.innerHTML = '';
+        samplePreview.appendChild(createGuidedPreviewRow('Selected source', keyLine));
+
+        if (mode === 'instance_of') {
+            samplePreview.appendChild(createGuidedPreviewRow('Label', enrichedCandidate.resourceClassLabel || 'No class label available'));
+            samplePreview.appendChild(createGuidedPreviewRow('Term', enrichedCandidate.resourceClassTerm || 'No class term available'));
+            samplePreview.appendChild(createGuidedPreviewRow(
+                'Sample value used for reconciliation',
+                sampleDetail?.value || enrichedCandidate.resourceClassLabel || enrichedCandidate.sampleValue || 'No sample available',
+                'guided-field-selector__preview-row--stacked'
+            ));
+            return;
+        }
+
+        samplePreview.appendChild(createGuidedPreviewRow(
+            'Sample value',
+            sampleDetail?.value || enrichedCandidate.sampleValue || 'No sample available'
+        ));
+    };
+
+    if (mode === 'instance_of') {
+        const modeFieldset = createElement('div', {
+            className: 'guided-instance-mode'
+        });
+        modeFieldset.appendChild(createElement('div', {
+            className: 'guided-instance-mode__title'
+        }, 'Choose how to define Instance of'));
+
+        let activeMode = keyData.guidedSourceMode === 'manual_text' ? 'manual_text' : 'resource_class';
+        const modeOptions = createElement('div', {
+            className: 'guided-instance-mode__options'
+        });
+        const radioGroupName = `guided-instance-mode-${Date.now()}`;
+        const automaticModeId = `guided-instance-mode-automatic-${Date.now()}`;
+        const manualModeId = `guided-instance-mode-manual-${Date.now()}`;
+        const automaticControls = createElement('div', {
+            className: 'guided-instance-mode__panel'
+        });
+        const manualControls = createElement('div', {
+            className: 'guided-instance-mode__panel'
+        });
+        const manualInput = createElement('textarea', {
+            className: 'guided-instance-mode__textarea',
+            rows: 3,
+            placeholder: 'Example: Manuscript'
+        });
+        manualInput.value = keyData.guidedManualText || '';
+
+        [
+            {
+                id: automaticModeId,
+                value: 'resource_class',
+                label: 'Use the Omeka resource class'
+            },
+            {
+                id: manualModeId,
+                value: 'manual_text',
+                label: 'Enter instance-of text manually'
+            }
+        ].forEach(option => {
+            const label = createElement('label', {
+                className: 'guided-instance-mode__option'
+            });
+            label.appendChild(createElement('input', {
+                type: 'radio',
+                name: radioGroupName,
+                id: option.id,
+                value: option.value,
+                checked: activeMode === option.value,
+                onChange: () => {
+                    activeMode = option.value;
+                    renderActiveMode();
+                }
+            }));
+            label.appendChild(createElement('span', {}, option.label));
+            modeOptions.appendChild(label);
+        });
+
+        modeFieldset.appendChild(modeOptions);
+        wrapper.appendChild(modeFieldset);
+
+        const searchInput = createElement('input', {
+            type: 'text',
+            className: 'field-search-input',
+            placeholder: guidedConfig.searchPlaceholder
+        });
+        automaticControls.appendChild(searchInput);
+
+        const select = createElement('select', {
+            className: 'field-selector guided-field-selector__select'
+        });
+        automaticControls.appendChild(select);
+
+        manualControls.appendChild(createElement('label', {
+            className: 'guided-instance-mode__manual-label'
+        }, 'Instance-of text to reconcile'));
+        manualControls.appendChild(createElement('p', {
+            className: 'field-override-help'
+        }, 'Use this when the Omeka class is missing or when you want to reconcile a different class label against Wikidata.'));
+        manualControls.appendChild(manualInput);
+
+        wrapper.appendChild(automaticControls);
+        wrapper.appendChild(manualControls);
+        wrapper.appendChild(samplePreview);
+
+        const renderOptions = () => {
+            const searchTerm = searchInput.value.trim();
+            const rankedCandidates = fieldCandidates
+                .map(candidate => ({ candidate, score: getSourceFieldSearchScore(candidate, searchTerm) }))
+                .filter(result => !searchTerm || Number.isFinite(result.score))
+                .sort((left, right) => {
+                    if (left.score !== right.score) {
+                        return left.score - right.score;
+                    }
+                    const leftIndex = left.candidate.sortIndex ?? Number.MAX_SAFE_INTEGER;
+                    const rightIndex = right.candidate.sortIndex ?? Number.MAX_SAFE_INTEGER;
+                    if (leftIndex !== rightIndex) {
+                        return leftIndex - rightIndex;
+                    }
+                    return (getOmekaFieldFriendlyName(left.candidate, left.candidate.key) || left.candidate.key)
+                        .localeCompare(getOmekaFieldFriendlyName(right.candidate, right.candidate.key) || right.candidate.key);
+                })
+                .map(result => result.candidate);
+
+            select.innerHTML = '';
+
+            if (rankedCandidates.length === 0) {
+                select.appendChild(createElement('option', {
+                    value: ''
+                }, 'No matching fields found'));
+                select.disabled = true;
+                if (activeMode === 'resource_class') {
+                    samplePreview.textContent = 'No matching source fields found for this search.';
+                    setGuidedSelection(null);
+                }
+                return;
+            }
+
+            select.disabled = false;
+            rankedCandidates.forEach(candidate => {
+                const friendlyName = getOmekaFieldFriendlyName(candidate, candidate.key);
+                const optionText = friendlyName && friendlyName !== candidate.key
+                    ? `${friendlyName} (${candidate.key})`
+                    : candidate.key;
+
+                select.appendChild(createElement('option', {
+                    value: candidate.key,
+                    selected: false
+                }, optionText));
+            });
+
+            const defaultCandidate = getDefaultGuidedCandidate(rankedCandidates, mode, keyData.key);
+            if (defaultCandidate) {
+                select.value = defaultCandidate.key;
+                if (activeMode === 'resource_class') {
+                    setGuidedSelection(defaultCandidate);
+                    void updatePreview(defaultCandidate);
+                }
+            }
+        };
+
+        const renderActiveMode = () => {
+            automaticControls.style.display = activeMode === 'resource_class' ? '' : 'none';
+            manualControls.style.display = activeMode === 'manual_text' ? '' : 'none';
+
+            if (activeMode === 'manual_text') {
+                const manualSelection = createManualInstanceSelection(manualInput.value, selectedProperty);
+                setGuidedSelection(manualSelection);
+                void updatePreview(manualSelection);
+            } else {
+                const selectedCandidate = fieldCandidates.find(candidate => candidate.key === select.value)
+                    || getDefaultGuidedCandidate(fieldCandidates, mode, keyData.key);
+                setGuidedSelection(selectedCandidate);
+                void updatePreview(selectedCandidate);
+            }
+        };
+
+        searchInput.addEventListener('input', renderOptions);
+        select.addEventListener('change', () => {
+            if (activeMode !== 'resource_class') {
+                return;
+            }
+
+            const selectedCandidate = fieldCandidates.find(candidate => candidate.key === select.value) || null;
+            setGuidedSelection(selectedCandidate);
+            void updatePreview(selectedCandidate);
+            if (selectedCandidate) {
+                updateModalTitle(selectedProperty);
+            }
+        });
+        manualInput.addEventListener('input', () => {
+            if (activeMode !== 'manual_text') {
+                return;
+            }
+            const manualSelection = createManualInstanceSelection(manualInput.value, selectedProperty);
+            setGuidedSelection(manualSelection);
+            void updatePreview(manualSelection);
+        });
+
+        renderOptions();
+        renderActiveMode();
+        return wrapper;
+    }
+
+    const searchInput = createElement('input', {
+        type: 'text',
+        className: 'field-search-input',
+        placeholder: guidedConfig.searchPlaceholder
+    });
+    wrapper.appendChild(searchInput);
+
+    const select = createElement('select', {
+        className: 'field-selector guided-field-selector__select'
+    });
+    wrapper.appendChild(select);
+    wrapper.appendChild(samplePreview);
+
+    const renderOptions = () => {
+        const searchTerm = searchInput.value.trim();
+        const rankedCandidates = fieldCandidates
+            .map(candidate => ({ candidate, score: getSourceFieldSearchScore(candidate, searchTerm) }))
+            .filter(result => !searchTerm || Number.isFinite(result.score))
+            .sort((left, right) => {
+                if (left.score !== right.score) {
+                    return left.score - right.score;
+                }
+                const leftIndex = left.candidate.sortIndex ?? Number.MAX_SAFE_INTEGER;
+                const rightIndex = right.candidate.sortIndex ?? Number.MAX_SAFE_INTEGER;
+                if (leftIndex !== rightIndex) {
+                    return leftIndex - rightIndex;
+                }
+                return (getOmekaFieldFriendlyName(left.candidate, left.candidate.key) || left.candidate.key)
+                    .localeCompare(getOmekaFieldFriendlyName(right.candidate, right.candidate.key) || right.candidate.key);
+            })
+            .map(result => result.candidate);
+
+        select.innerHTML = '';
+
+        if (rankedCandidates.length === 0) {
+            select.appendChild(createElement('option', {
+                value: ''
+            }, 'No matching fields found'));
+            select.disabled = true;
+            samplePreview.textContent = 'No matching source fields found for this search.';
+            setGuidedSelection(null);
+            return;
+        }
+
+        select.disabled = false;
+        rankedCandidates.forEach(candidate => {
+            const friendlyName = getOmekaFieldFriendlyName(candidate, candidate.key);
+            const optionText = friendlyName && friendlyName !== candidate.key
+                ? `${friendlyName} (${candidate.key})`
+                : candidate.key;
+
+            select.appendChild(createElement('option', {
+                value: candidate.key,
+                selected: false
+            }, optionText));
+        });
+
+        const defaultCandidate = getDefaultGuidedCandidate(rankedCandidates, mode, window.currentMappingGuidedSelection?.key || keyData.key);
+        if (defaultCandidate) {
+            select.value = defaultCandidate.key;
+            setGuidedSelection(defaultCandidate);
+            void updatePreview(defaultCandidate);
+        }
+    };
+
+    searchInput.addEventListener('input', renderOptions);
+    select.addEventListener('change', () => {
+        const selectedCandidate = fieldCandidates.find(candidate => candidate.key === select.value) || null;
+        setGuidedSelection(selectedCandidate);
+        void updatePreview(selectedCandidate);
+        if (selectedCandidate) {
+            updateModalTitle(selectedProperty);
+        }
+    });
+
+    renderOptions();
+    return wrapper;
+}
+
+function createGuidedMappingModalContent(keyData, mode) {
+    const guidedConfig = GUIDED_PROPERTY_CONFIG[mode];
+    const selectedProperty = keyData.guidedProperty || keyData.property || getGuidedPropertyForMode(mode);
+    window.currentMappingSelectedProperty = selectedProperty;
+
+    const container = createElement('div', {
+        className: 'mapping-modal-content two-column-layout guided-mapping-modal'
+    });
+
+    const leftColumn = createElement('div', {
+        className: 'mapping-column left-column'
+    });
+    leftColumn.appendChild(createElement('div', {
+        className: 'column-header'
+    }, 'Choose Omeka S Source'));
+    leftColumn.appendChild(createElement('div', {
+        className: 'metadata-info'
+    }, guidedConfig.guidance));
+    leftColumn.appendChild(createGuidedSourceFieldSelector(keyData, mode, selectedProperty));
+
+    const rightColumn = createElement('div', {
+        className: 'mapping-column right-column'
+    });
+    rightColumn.appendChild(createElement('div', {
+        className: 'column-header'
+    }, guidedConfig.targetHeading));
+
+    const propertyInfo = createElement('div', {
+        className: 'property-info guided-target-card'
+    });
+    propertyInfo.appendChild(createElement('h3', {}, `${selectedProperty.label}${selectedProperty.id ? ` (${selectedProperty.id})` : ''}`));
+    propertyInfo.appendChild(createElement('p', {}, selectedProperty.description));
+    propertyInfo.appendChild(createElement('div', {
+        className: 'metadata-notice'
+    }, mode === 'instance_of'
+        ? 'The Omeka S resource template class is treated as the source value for what each item is. You will confirm the matching Wikidata item during Reconciliation.'
+        : 'Pick the imported Omeka S field that already contains the value you genuinely want to send to Wikidata.'));
+    if (selectedProperty.helpUrl || selectedProperty.url) {
+        propertyInfo.appendChild(createElement('a', {
+            href: selectedProperty.helpUrl || selectedProperty.url,
+            target: '_blank',
+            rel: 'noopener'
+        }, `Learn more about ${selectedProperty.label} →`));
+    }
+    rightColumn.appendChild(propertyInfo);
+
+    const datatypeInfo = createElement('div', {
+        className: 'datatype-info',
+        id: 'datatype-info-section'
+    });
+    datatypeInfo.innerHTML = `
+        <div class="datatype-display">
+            <h4>Expected Value Type</h4>
+            <div id="detected-datatype" class="detected-datatype">
+                <span class="datatype-label">${selectedProperty.datatypeLabel}</span>
+            </div>
+        </div>
+    `;
+    rightColumn.appendChild(datatypeInfo);
+
+    container.appendChild(leftColumn);
+    container.appendChild(rightColumn);
+    updateModalTitle(selectedProperty);
+    return container;
+}
+
+function buildGuidedKeyData(baseKeyData, selectedProperty) {
+    const selectedCandidate = window.currentMappingGuidedSelection;
+    if (!selectedCandidate) {
+        return null;
+    }
+
+    const isManualInstanceText = selectedCandidate.guidedSourceMode === 'manual_text';
+
+    return {
+        ...selectedCandidate,
+        property: selectedProperty,
+        mappingId: baseKeyData.mappingId,
+        isMetadata: Boolean(selectedProperty?.isMetadata),
+        modalMode: detectGuidedModalMode(baseKeyData),
+        guidedSourceMode: isManualInstanceText ? 'manual_text' : 'resource_class',
+        guidedManualText: isManualInstanceText ? selectedCandidate.guidedManualText || null : null,
+        selectedAtField: isManualInstanceText
+            ? null
+            : baseKeyData.selectedAtField
+                || selectedCandidate.selectedAtField
+                || (selectedProperty?.id === 'P31' && selectedCandidate.key === 'o:resource_class'
+                ? (selectedCandidate.preferredSourceField || 'o:label')
+                : undefined),
+        extractionMode: isManualInstanceText ? undefined : selectedCandidate.extractionMode || 'auto',
+        includedValueSources: isManualInstanceText
+            ? undefined
+            : Array.isArray(selectedCandidate.includedValueSources)
+            ? [...selectedCandidate.includedValueSources]
+            : selectedCandidate.fieldProfile?.valueSourceTypes
+                ? [...selectedCandidate.fieldProfile.valueSourceTypes]
+                : undefined
+    };
 }
 
 /**
@@ -190,7 +1172,9 @@ function selectMetadataField(metadataOption) {
 export function openMappingModal(keyData) {
     // Store keyData globally for modal title updates
     window.currentMappingKeyData = keyData;
-    window.currentMappingSelectedProperty = keyData.property || null;
+    const guidedMode = detectGuidedModalMode(keyData);
+    window.currentMappingSelectedProperty = keyData.guidedProperty || keyData.property || getGuidedPropertyForMode(guidedMode) || null;
+    window.currentMappingGuidedSelection = null;
     
     // Extract fields once for the entire modal session to optimize performance
     if (keyData && keyData.sampleValue && window.mappingStepState) {
@@ -222,7 +1206,52 @@ export function openMappingModal(keyData) {
                                 keyData.key.trim() === '' || 
                                 keyData.key.startsWith('custom_') || 
                                 keyData.isCustomProperty === true;
-        const buttons = isCustomProperty ? [
+        const saveGuidedMapping = (closeAfterSave = true) => {
+            const selectedProperty = getSelectedPropertyFromModal();
+            if (!selectedProperty) {
+                showMessage('Please choose the Wikidata target for this mapping.', 'warning', 3000);
+                return false;
+            }
+
+            const guidedKeyData = buildGuidedKeyData(keyData, selectedProperty);
+            if (!guidedKeyData) {
+                showMessage('Please choose an Omeka S source field first.', 'warning', 3000);
+                return false;
+            }
+            if (guidedKeyData.guidedSourceMode === 'manual_text' && !guidedKeyData.guidedManualText) {
+                showMessage('Enter the instance-of text you want to reconcile before saving.', 'warning', 3000);
+                return false;
+            }
+
+            const mappingSucceeded = mapKeyToProperty(guidedKeyData, selectedProperty, window.mappingStepState);
+            if (!mappingSucceeded) {
+                return false;
+            }
+
+            if (closeAfterSave) {
+                modalUI.closeModal();
+            }
+            return true;
+        };
+
+        const buttons = isCustomProperty ? (guidedMode ? [
+            {
+                text: 'Cancel',
+                type: 'secondary',
+                keyboardShortcut: 'Escape',
+                callback: () => {
+                    modalUI.closeModal();
+                }
+            },
+            {
+                text: 'Confirm',
+                type: 'primary',
+                keyboardShortcut: 'Enter',
+                callback: () => {
+                    saveGuidedMapping(true);
+                }
+            }
+        ] : [
             // For custom properties, show simpler button set
             {
                 text: 'Cancel',
@@ -293,6 +1322,23 @@ export function openMappingModal(keyData) {
                     } else {
                         showMessage('Please select a Wikidata property first.', 'warning', 3000);
                     }
+                }
+            }
+        ]) : (guidedMode ? [
+            {
+                text: 'Cancel',
+                type: 'secondary',
+                keyboardShortcut: 'Escape',
+                callback: () => {
+                    modalUI.closeModal();
+                }
+            },
+            {
+                text: 'Confirm',
+                type: 'primary',
+                keyboardShortcut: 'Enter',
+                callback: () => {
+                    saveGuidedMapping(true);
                 }
             }
         ] : [
@@ -381,10 +1427,14 @@ export function openMappingModal(keyData) {
                     }
                 }
             }
-        ];
+        ]);
         
         // Open modal with mapping relationship header
-        const modalTitle = isCustomProperty ? 'Select Value' : createMappingRelationshipTitle(keyData.key, null);
+        const modalTitle = guidedMode
+            ? GUIDED_PROPERTY_CONFIG[guidedMode]?.title || 'Select Value'
+            : isCustomProperty
+                ? 'Select Value'
+                : createMappingRelationshipTitle(keyData.key, null);
         modalUI.openModal(
             modalTitle,
             modalContent,
@@ -396,7 +1446,9 @@ export function openMappingModal(keyData) {
                     modal.classList.remove('mapping-modal-wide');
                 }
                 window.updateMappingExtractionUI = null;
+                window.refreshMappingSamples = null;
                 window.currentMappingSelectedProperty = null;
+                window.currentMappingGuidedSelection = null;
             }
         );
         
@@ -414,6 +1466,11 @@ export function openMappingModal(keyData) {
  * Creates mapping modal content with two-column layout
  */
 export function createMappingModalContent(keyData) {
+    const guidedMode = detectGuidedModalMode(keyData);
+    if (guidedMode) {
+        return createGuidedMappingModalContent(keyData, guidedMode);
+    }
+
     // Check if this is a metadata property (labels, descriptions, aliases)
     const isMetadata = keyData.isMetadata || ['label', 'description', 'aliases'].includes(keyData.key?.toLowerCase());
     
@@ -422,9 +1479,10 @@ export function createMappingModalContent(keyData) {
                             keyData.key.trim() === '' || 
                             keyData.key.startsWith('custom_') || 
                             keyData.isCustomProperty === true;
+    const useThreeColumnLayout = !isMetadata && !isCustomProperty;
     
     const container = createElement('div', {
-        className: 'mapping-modal-content two-column-layout'
+        className: `mapping-modal-content ${useThreeColumnLayout ? 'three-column-layout' : 'two-column-layout'}`
     });
     
     // Add duplicate notice if this is a duplicate mapping
@@ -435,16 +1493,21 @@ export function createMappingModalContent(keyData) {
         duplicateNotice.innerHTML = `
             <div class="duplicate-notice-content">
                 <strong>Creating duplicate mapping for:</strong> ${keyData.key}
-                <p>Select a different @ field or property to create an additional mapping for this key.</p>
+                <p>Select a different segment family, source filter, @ field, or property to create an additional mapping for this key.</p>
             </div>
         `;
         container.appendChild(duplicateNotice);
     }
     
-    // LEFT COLUMN - Omeka S Data (or empty for custom properties)
+    // LEFT COLUMN - Samples for standard mappings, custom value content for manual mappings
     const leftColumn = createElement('div', {
-        className: 'mapping-column left-column'
+        className: `mapping-column left-column${useThreeColumnLayout ? ' sample-column' : ''}`
     });
+    const middleColumn = useThreeColumnLayout
+        ? createElement('div', {
+            className: 'mapping-column middle-column'
+        })
+        : null;
     
     if (isCustomProperty) {
         // For custom properties, rebrand as "Custom Value" section
@@ -623,13 +1686,24 @@ export function createMappingModalContent(keyData) {
         
         leftColumn.appendChild(itemSearchSection);
     } else {
-        // Column header
+        if (useThreeColumnLayout) {
+            delete keyData.extractionMode;
+            delete keyData.selectedAtField;
+            delete keyData.selectedObjectIndex;
+        }
+
+        const infoColumn = middleColumn || leftColumn;
         const leftHeader = createElement('div', {
             className: 'column-header'
-        }, 'Omeka S Data');
+        }, useThreeColumnLayout ? 'Sample Values' : 'Omeka S Data');
         leftColumn.appendChild(leftHeader);
-        
-        // Key information section
+
+        if (useThreeColumnLayout && middleColumn) {
+            middleColumn.appendChild(createElement('div', {
+                className: 'column-header'
+            }, 'Omeka S Data'));
+        }
+
         const keyInfo = createElement('div', {
             className: 'key-info'
         });
@@ -651,8 +1725,10 @@ export function createMappingModalContent(keyData) {
     const items = currentState.fetchedData
         ? (Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData])
         : [];
-    const fieldGroups = items.length > 0 ? extractAllFieldsFromItems(keyData.key, items) : [];
     const propertyDatatype = () => window.currentMappingSelectedProperty?.datatype || keyData.property?.datatype || null;
+    const segmentOptions = getObservedSegmentOptions(items, keyData, window.mappingStepState);
+    keyData.segmentOptions = segmentOptions;
+    syncSelectedSegments(keyData, segmentOptions);
 
     const fieldProfileSection = createElement('div', {
         className: 'field-profile-section'
@@ -664,156 +1740,187 @@ export function createMappingModalContent(keyData) {
     fieldProfileSection.appendChild(fieldProfileSummary);
     keyInfo.appendChild(fieldProfileSection);
 
-    const extractionSection = createElement('div', {
-        className: 'at-field-section extraction-section'
+    const segmentSection = createElement('div', {
+        className: 'segment-family-section'
     });
-    const extractionLabel = createElement('label', {
-        className: 'at-field-label'
-    }, 'Value extraction:');
-    const extractionSelect = createElement('select', {
-        className: 'at-field-select extraction-mode-select',
-        id: `extraction-mode-select-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`,
-        onChange: (e) => {
-            keyData.extractionMode = e.target.value;
-            const samplesContent = document.querySelector('.samples-content');
-            if (samplesContent && samplesContent.hasChildNodes()) {
-                loadSampleValues(samplesContent, keyData, window.mappingStepState);
-            }
-        }
-    });
-    extractionSection.appendChild(extractionLabel);
-    extractionSection.appendChild(extractionSelect);
-
-    const fieldOverrideSection = createElement('div', {
-        className: 'field-override-section'
-    });
-    const fieldOverrideLabel = createElement('label', {
-        className: 'at-field-label'
-    }, 'Specific source field override (advanced):');
-    const fieldOverrideSelect = createElement('select', {
-        className: 'at-field-select',
-        id: `at-field-select-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`,
-        onChange: (e) => {
-            if (e.target.value === '__auto__') {
-                keyData.selectedAtField = undefined;
-                keyData.selectedObjectIndex = undefined;
-            } else {
-                const [selectedObjectIndex, ...fieldParts] = e.target.value.split('::');
-                keyData.selectedObjectIndex = Number.parseInt(selectedObjectIndex, 10);
-                keyData.selectedAtField = fieldParts.join('::');
-            }
-
-            const samplesContent = document.querySelector('.samples-content');
-            if (samplesContent && samplesContent.hasChildNodes()) {
-                loadSampleValues(samplesContent, keyData, window.mappingStepState);
-            }
-        }
-    });
-    fieldOverrideSection.appendChild(fieldOverrideLabel);
-    fieldOverrideSection.appendChild(fieldOverrideSelect);
-
-    const fieldOverrideHelp = createElement('div', {
+    const segmentTitle = createElement('div', {
+        className: 'value-source-title'
+    }, 'Observed segments in this field:');
+    const segmentHelp = createElement('p', {
         className: 'field-override-help'
-    }, 'Leave this on Automatic unless you need to force one exact Omeka subfield.');
-    fieldOverrideSection.appendChild(fieldOverrideHelp);
+    }, 'Choose which value family from this Omeka S field should be used for this Wikidata property. One field can contain several families, including more than one literal family or more than one URI or authority family. You can map the same field again when another family should go to a different Wikidata property.');
+    const segmentOptionsContainer = createElement('div', {
+        className: 'segment-family-options'
+    });
+    segmentSection.appendChild(segmentTitle);
+    segmentSection.appendChild(segmentHelp);
+    segmentSection.appendChild(segmentOptionsContainer);
 
-    const refreshExtractionUI = () => {
-        const profileDescription = describeFieldProfile(keyData.fieldProfile, propertyDatatype());
-        fieldProfileSummary.textContent = profileDescription.summary;
+    const valueSourceSection = createElement('div', {
+        className: 'value-source-section'
+    });
+    const valueSourceTitle = createElement('div', {
+        className: 'value-source-title'
+    }, 'Value sources to include:');
+    const valueSourceHelp = createElement('p', {
+        className: 'field-override-help'
+    }, 'Choose which value-entry groups are allowed at all. Authority-linked and direct Wikidata-linked entries reconcile by readable label text, while standalone URL entries stay URL-valued segments.');
+    const valueSourceOptions = createElement('div', {
+        className: 'value-source-options'
+    });
+    valueSourceSection.appendChild(valueSourceTitle);
+    valueSourceSection.appendChild(valueSourceHelp);
+    valueSourceSection.appendChild(valueSourceOptions);
 
-        const recommendedMode = getDefaultExtractionMode(keyData.fieldProfile, propertyDatatype());
-        const selectedMode = keyData.extractionMode || 'auto';
-        extractionSelect.innerHTML = '';
+    const samplesSection = createElement('div', {
+        className: useThreeColumnLayout ? 'samples-section samples-section--open' : 'samples-section'
+    });
+    const samplesHeading = createElement('h4', {
+        className: 'samples-heading'
+    }, 'What will be reconciled');
+    const samplesHelp = createElement('p', {
+        className: 'field-override-help'
+    }, 'These sample values use the same source filters and extraction rules as Reconciliation.');
+    const samplesContent = createElement('div', {
+        className: useThreeColumnLayout ? 'samples-content samples-content--open' : 'samples-content'
+    });
+    samplesSection.appendChild(samplesHeading);
+    samplesSection.appendChild(samplesHelp);
+    samplesSection.appendChild(samplesContent);
+    let lastAvailableSources = [];
 
-        getAvailableExtractionModes(keyData.fieldProfile, propertyDatatype()).forEach(mode => {
-            const label = mode === 'auto'
-                ? `Automatic (recommended: ${getExtractionModeLabel(recommendedMode)})`
-                : getExtractionModeLabel(mode);
-            const option = createElement('option', {
-                value: mode,
-                selected: mode === selectedMode
-            }, label);
-            extractionSelect.appendChild(option);
-        });
+    const getSegmentFilteredValueDetails = () => {
+        const analysisKeyData = {
+            ...keyData,
+            includedValueSources: undefined
+        };
 
-        if (![...extractionSelect.options].some(option => option.value === selectedMode)) {
-            extractionSelect.value = 'auto';
-            keyData.extractionMode = 'auto';
-        } else {
-            extractionSelect.value = selectedMode;
-        }
-
-        fieldOverrideSelect.innerHTML = '';
-        const autoOption = createElement('option', {
-            value: '__auto__',
-            selected: !keyData.selectedAtField
-        }, 'Use the extraction strategy above');
-        fieldOverrideSelect.appendChild(autoOption);
-
-        fieldGroups.forEach((group) => {
-            if (group.fields.length === 0) return;
-
-            const optGroup = createElement('optgroup', {
-                label: fieldGroups.length > 1 ? `Object ${group.objectIndex + 1}` : 'Available Fields'
-            });
-
-            group.fields.forEach(field => {
-                const optionValue = `${group.objectIndex}::${field.key}`;
-                const option = createElement('option', {
-                    value: optionValue,
-                    selected: keyData.selectedAtField === field.key && keyData.selectedObjectIndex === group.objectIndex
-                }, `${field.key}: ${field.preview}`);
-                optGroup.appendChild(option);
-            });
-
-            fieldOverrideSelect.appendChild(optGroup);
-        });
-
-        fieldOverrideSection.style.display = fieldGroups.length > 0 ? '' : 'none';
+        return items
+            .filter(item => item?.[keyData.key] !== undefined)
+            .map(item => extractPropertyValueDetails(item, analysisKeyData, window.mappingStepState))
+            .filter(details => Array.isArray(details) && details.length > 0);
     };
 
-    keyInfo.appendChild(extractionSection);
-    if (fieldGroups.length > 0) {
-        keyInfo.appendChild(fieldOverrideSection);
-    }
-    refreshExtractionUI();
-    window.updateMappingExtractionUI = refreshExtractionUI;
-    
-    // Sample values section (collapsible)
-    const samplesSection = createElement('div', {
-        className: 'samples-section'
-    });
-    
-    // Sample toggle button
-    const samplesToggle = createElement('button', {
-        className: 'samples-toggle',
-        onClick: () => {
-            const isExpanded = samplesSection.classList.contains('expanded');
-            if (isExpanded) {
-                samplesSection.classList.remove('expanded');
-                samplesToggle.textContent = '▶ Show Sample Values';
-            } else {
-                samplesSection.classList.add('expanded');
-                samplesToggle.textContent = '▼ Hide Sample Values';
-                
-                // Load samples if not already loaded
-                if (!samplesContent.hasChildNodes()) {
-                    loadSampleValues(samplesContent, keyData, window.mappingStepState);
+    const renderSegmentOptions = () => {
+        const currentSegmentOptions = getObservedSegmentOptions(items, keyData, window.mappingStepState);
+        keyData.segmentOptions = currentSegmentOptions;
+        syncSelectedSegments(keyData, currentSegmentOptions);
+        segmentOptionsContainer.innerHTML = '';
+        segmentSection.style.display = currentSegmentOptions.length > 1 ? '' : 'none';
+
+        currentSegmentOptions.forEach(option => {
+            const optionId = `segment-family-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}-${option.key.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const optionLabel = createElement('label', {
+                className: 'value-source-option segment-family-option',
+                title: option.preview || option.label
+            });
+            const checkbox = createElement('input', {
+                type: 'checkbox',
+                id: optionId,
+                checked: keyData.includedSegments.includes(option.key),
+                onChange: (event) => {
+                    const checkedSegments = Array.from(segmentOptionsContainer.querySelectorAll('input[type="checkbox"]:checked'))
+                        .map(input => input.value);
+
+                    if (checkedSegments.length === 0) {
+                        event.target.checked = true;
+                        return;
+                    }
+
+                    updateSelectedSegmentsFromKeys(keyData, currentSegmentOptions, checkedSegments);
+                    refreshExtractionUI({ restoreNewlyAvailableSources: true });
                 }
+            });
+            checkbox.value = option.key;
+            optionLabel.appendChild(checkbox);
+
+            const optionText = createElement('div', {
+                className: 'value-source-option__content'
+            });
+            optionText.appendChild(createElement('span', {}, option.label));
+            optionText.appendChild(createElement('small', {}, `${option.valueCount || 0} values across ${option.itemCount || 0} items`));
+            if (option.preview) {
+                optionText.appendChild(createElement('small', {
+                    className: 'segment-family-option__preview'
+                }, `Example: ${option.preview}`));
+            }
+
+            optionLabel.appendChild(optionText);
+            segmentOptionsContainer.appendChild(optionLabel);
+        });
+    };
+
+    const refreshExtractionUI = ({ restoreNewlyAvailableSources = false } = {}) => {
+        const profileDescription = describeFieldProfile(keyData.fieldProfile, propertyDatatype());
+        fieldProfileSummary.textContent = profileDescription.summary;
+        renderSegmentOptions();
+
+        const segmentFilteredValueDetails = getSegmentFilteredValueDetails();
+        const filteredSourceStats = summarizeValueSourcesForResolvedDetails(segmentFilteredValueDetails);
+        const availableSources = getOrderedValueSourceTypes(
+            Object.entries(filteredSourceStats)
+                .filter(([, counts]) => (counts?.valueCount || 0) > 0)
+                .map(([sourceType]) => sourceType)
+        );
+        valueSourceOptions.innerHTML = '';
+        valueSourceSection.style.display = availableSources.length > 1 ? '' : 'none';
+
+        if (availableSources.length <= 1) {
+            keyData.includedValueSources = undefined;
+        } else if (!Array.isArray(keyData.includedValueSources) && availableSources.length > 0) {
+            keyData.includedValueSources = [...availableSources];
+        } else if (Array.isArray(keyData.includedValueSources)) {
+            const validSelectedSources = keyData.includedValueSources.filter(sourceType => availableSources.includes(sourceType));
+            if (restoreNewlyAvailableSources) {
+                const newlyAvailableSources = availableSources.filter(sourceType => !lastAvailableSources.includes(sourceType));
+                keyData.includedValueSources = [...new Set([...validSelectedSources, ...newlyAvailableSources])];
+            } else {
+                keyData.includedValueSources = validSelectedSources;
+            }
+            if (keyData.includedValueSources.length === 0 && availableSources.length > 0) {
+                keyData.includedValueSources = [...availableSources];
             }
         }
-    }, '▶ Show Sample Values');
-    
-    samplesSection.appendChild(samplesToggle);
-    
-    // Collapsible samples content
-    const samplesContent = createElement('div', {
-        className: 'samples-content'
-    });
-    
-    samplesSection.appendChild(samplesContent);
-    keyInfo.appendChild(samplesSection);
-    leftColumn.appendChild(keyInfo);
+        lastAvailableSources = [...availableSources];
+
+        availableSources.forEach(sourceType => {
+            const optionId = `value-source-${sourceType}-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const optionLabel = createElement('label', {
+                className: 'value-source-option',
+                title: getValueSourceTypeDescription(sourceType, propertyDatatype())
+            });
+            const checkbox = createElement('input', {
+                type: 'checkbox',
+                id: optionId,
+                checked: !Array.isArray(keyData.includedValueSources) || keyData.includedValueSources.includes(sourceType),
+                onChange: () => {
+                    const checkedSources = Array.from(valueSourceOptions.querySelectorAll('input[type="checkbox"]:checked'))
+                        .map(input => input.value);
+                    keyData.includedValueSources = checkedSources.length > 0 ? checkedSources : [...availableSources];
+                    loadSampleValues(samplesContent, keyData, window.mappingStepState);
+                }
+            });
+            checkbox.value = sourceType;
+            optionLabel.appendChild(checkbox);
+            const optionText = createElement('div', {
+                className: 'value-source-option__content'
+            });
+            optionText.appendChild(createElement('span', {}, getValueSourceTypeLabel(sourceType)));
+            optionText.appendChild(createElement('small', {}, `${filteredSourceStats[sourceType]?.valueCount || 0} values across ${filteredSourceStats[sourceType]?.itemCount || 0} items`));
+            optionLabel.appendChild(optionText);
+            valueSourceOptions.appendChild(optionLabel);
+        });
+
+        loadSampleValues(samplesContent, keyData, window.mappingStepState);
+    };
+
+    keyInfo.appendChild(segmentSection);
+    keyInfo.appendChild(valueSourceSection);
+    refreshExtractionUI();
+    window.updateMappingExtractionUI = refreshExtractionUI;
+    window.refreshMappingSamples = () => loadSampleValues(samplesContent, keyData, window.mappingStepState);
+    infoColumn.appendChild(keyInfo);
+    leftColumn.appendChild(samplesSection);
     
     // Value transformation section (Stage 3) - Collapsible
     const transformationSection = createElement('div', {
@@ -862,10 +1969,13 @@ export function createMappingModalContent(keyData) {
     transformationContent.appendChild(valueTransformationContainer);
     
     transformationSection.appendChild(transformationContent);
-        leftColumn.appendChild(transformationSection);
+        infoColumn.appendChild(transformationSection);
     }
     
     container.appendChild(leftColumn);
+    if (middleColumn) {
+        container.appendChild(middleColumn);
+    }
     
     // RIGHT COLUMN - Wikidata Property
     const rightColumn = createElement('div', {
@@ -1143,51 +2253,56 @@ function loadSampleValues(container, keyData, state) {
     const items = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
     const samples = [];
     const maxSamples = 5;
+    const previewKeyData = {
+        ...keyData,
+        property: window.currentMappingSelectedProperty || keyData.property
+    };
     
-    // Extract up to 5 sample values for this key
+    // Extract up to 5 sample values using the same segment-resolution pipeline as Reconciliation.
     for (const item of items) {
         if (samples.length >= maxSamples) break;
-        if (item[keyData.key] !== undefined) {
-            let valueToFormat = item[keyData.key];
-
-            const keyValue = item[keyData.key];
-            const valuesToProcess = Array.isArray(keyValue) ? keyValue : [keyValue];
-
-            if (Number.isInteger(keyData.selectedObjectIndex) && valuesToProcess[keyData.selectedObjectIndex] !== undefined) {
-                valueToFormat = valuesToProcess[keyData.selectedObjectIndex];
-            }
-
-            if (typeof valueToFormat === 'object') {
-                const resolvedSample = resolveOmekaValue(valueToFormat, {
-                    extractionMode: keyData.extractionMode,
-                    propertyDatatype: keyData.property?.datatype || window.currentMappingSelectedProperty?.datatype || null,
-                    fieldProfile: keyData.fieldProfile,
-                    selectedAtField: keyData.selectedAtField
-                });
-
-                if (resolvedSample?.value) {
-                    valueToFormat = resolvedSample.value;
-                }
-            }
-            
-            const sampleHtml = formatSampleValue(valueToFormat, keyData.contextMap || new Map());
-            samples.push(sampleHtml);
+        if (item[keyData.key] === undefined) {
+            continue;
         }
+
+        const valueDetails = extractPropertyValueDetails(item, previewKeyData, state);
+        if (valueDetails.length === 0) {
+            continue;
+        }
+
+        const renderedDetails = valueDetails.map(detail => {
+            const sampleHtml = formatSampleValue(detail.value, keyData.contextMap || new Map());
+            const segmentBadge = detail.segmentLabel
+                ? `<span class="sample-segment-badge">${detail.segmentLabel}</span>`
+                : '';
+            const sourceBadge = detail.sourceLabel
+                ? `<span class="sample-source-badge">${detail.sourceLabel}</span>`
+                : '';
+            return `
+                <div class="sample-value-detail">
+                    <div class="sample-value-badges">${segmentBadge}${sourceBadge}</div>
+                    <div class="sample-value-text">${sampleHtml}</div>
+                </div>
+            `;
+        }).join('');
+
+        samples.push(`
+            <div class="sample-item">
+                <strong>Sample ${samples.length + 1}:</strong>
+                <div class="sample-value-stack">${renderedDetails}</div>
+            </div>
+        `);
     }
     
     if (samples.length === 0) {
-        container.innerHTML = '<div class="no-samples">No sample values found</div>';
+        const hasRawValues = items.some(item => item[keyData.key] !== undefined);
+        container.innerHTML = hasRawValues
+            ? '<div class="no-samples">No sample values remain with the current settings.</div>'
+            : '<div class="no-samples">No sample values found</div>';
         return;
     }
     
-    // Display samples
-    const samplesHtml = samples.map((sample, index) => `
-        <div class="sample-item">
-            <strong>Sample ${index + 1}:</strong> ${sample}
-        </div>
-    `).join('');
-    
-    container.innerHTML = samplesHtml;
+    container.innerHTML = samples.join('');
 }
 
 /**

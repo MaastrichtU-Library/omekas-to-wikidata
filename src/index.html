@@ -73,40 +73,33 @@
                 <div class="input-container">
                     <div class="form-group">
                         <label for="api-url">API URL:</label>
-                        <input type="text" id="api-url" value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&amp;per_page=2" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items/1)">
+                        <input type="text" id="api-url" value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=1&amp;per_page=25" placeholder="Enter Omeka S API URL (e.g., https://example.org/api/items?page=1&amp;per_page=25)">
                         <label for="api-url-preset">Sample API URLs:</label>
                         <select id="api-url-preset" onchange="if (this.value) document.getElementById('api-url').value = this.value;">
                             <option value="">Keep current API URL</option>
-                            <option value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=5&amp;per_page=2">Maastricht University demo</option>
-                            <option value="https://radboudcollections.omeka.net/api/items?page=5&amp;per_page=2">Radboud Collections demo</option>
+                            <option value="https://digitalcollections.library.maastrichtuniversity.nl/api/items?page=1&amp;per_page=25">Maastricht University demo</option>
+                            <option value="https://radboudcollections.omeka.net/api/items?page=1&amp;per_page=25">Radboud Collections demo</option>
                         </select>
                         <div class="api-parameter-controls">
                             <div class="api-parameter-groups">
-                                <fieldset class="api-parameter-group">
-                                    <legend>Pagination (optional)</legend>
-                                    <label class="api-checkbox-option" for="api-fetch-all-pages">
-                                        <input type="checkbox" id="api-fetch-all-pages" checked>
-                                        Fetch all matching items
-                                    </label>
-                                    <p class="api-parameter-hint">Recommended when you filter by item set, site, owner, or resource template.</p>
-                                    <label for="api-page">Page</label>
-                                    <input type="number" id="api-page" min="1" step="1" placeholder="1">
-                                    <label for="api-per-page">Items per page</label>
-                                    <input type="number" id="api-per-page" min="1" step="1" placeholder="25">
-                                </fieldset>
-                                <fieldset class="api-parameter-group">
+                                <fieldset class="api-parameter-group api-parameter-group--primary">
                                     <legend>Collection Scope</legend>
                                     <label for="api-resource-template-id">Resource template ID</label>
-                                    <input type="number" id="api-resource-template-id" min="1" step="1" placeholder="e.g. 12">
+                                    <input type="number" id="api-resource-template-id" min="1" step="1" placeholder="Radboud: 6/7, Maastricht: 18">
                                     <label for="api-item-set-id">Item set ID</label>
-                                    <input type="number" id="api-item-set-id" min="1" step="1" placeholder="e.g. 4">
+                                    <input type="number" id="api-item-set-id" min="1" step="1" placeholder="Radboud: 11, Maastricht: 72953">
                                     <label for="api-site-id">Site ID</label>
-                                    <input type="number" id="api-site-id" min="1" step="1" placeholder="e.g. 2">
-                                </fieldset>
-                                <fieldset class="api-parameter-group">
-                                    <legend>Ownership</legend>
+                                    <input type="number" id="api-site-id" min="1" step="1" placeholder="Radboud: 1, Maastricht: 28">
                                     <label for="api-owner-id">Owner ID</label>
-                                    <input type="number" id="api-owner-id" min="1" step="1" placeholder="e.g. 7">
+                                    <input type="number" id="api-owner-id" min="1" step="1" placeholder="Radboud: 2 or 4">
+                                </fieldset>
+                                <fieldset class="api-parameter-group api-parameter-group--optional">
+                                    <legend>Pagination</legend>
+                                    <p class="api-parameter-hint">Broad `/api/items` browsing uses one page at a time. When you apply a resource template ID, item set ID, site ID, owner ID, or a combination of those, the tool removes `page` and `per_page` from the visible URL and automatically fetches all matching pages for that scope.</p>
+                                    <label for="api-page">Page</label>
+                                    <input type="number" id="api-page" min="1" step="1" value="1" placeholder="1">
+                                    <label for="api-per-page">Items per page</label>
+                                    <input type="number" id="api-per-page" min="1" step="1" value="25" placeholder="25">
                                 </fieldset>
                             </div>
                             <div class="api-parameter-actions">
@@ -159,14 +152,25 @@
                 </div>
                 <div class="add-metadata-section">
                     <div class="mapping-guidance">
-                        <strong>Add required Wikidata values only when they are missing from the imported fields.</strong>
-                        Use Label for the main title or name, use Instance of for the class of item, and use Add extra Wikidata property only when you genuinely need to create a value in the tool.
+                        <strong>Start by defining <mark>Label</mark> and <mark>Instance of</mark>.</strong>
+                        Label is usually the main title or name field. Instance of is usually based on the class of the Omeka S resource template.
+                        Non-linked keys can stay unlinked: only map an Omeka S field when you want to reconcile its values and send them to Wikidata.
                     </div>
-                    <button id="add-label" class="button button--secondary">Set Label</button>
-                    <button id="add-description" class="button button--secondary">Add Description</button>
-                    <button id="add-aliases" class="button button--secondary">Add Aliases</button>
-                    <button id="add-instance-of" class="button button--secondary">Set Instance of</button>
-                    <button id="add-wikidata-property" class="button button--secondary">Add Extra Wikidata Property</button>
+                    <div class="mapping-checklist">
+                        <div class="mapping-checklist__item">
+                            <p><strong>1. Label</strong> Choose the Omeka S field that contains the title or name for the Wikidata item.</p>
+                            <button id="add-label" class="button button--secondary">Set Label</button>
+                        </div>
+                        <div class="mapping-checklist__item">
+                            <p><strong>2. Instance of</strong> Confirm what kind of thing the items are, often from the resource template class.</p>
+                            <button id="add-instance-of" class="button button--secondary">Set Instance of</button>
+                        </div>
+                        <div class="mapping-checklist__item">
+                            <p><strong>3. Optional names</strong> Add descriptions or aliases when the imported fields contain values you want on Wikidata.</p>
+                            <button id="add-description" class="button button--secondary">Add Description</button>
+                            <button id="add-aliases" class="button button--secondary">Add Aliases</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="mapping-container">
                     
@@ -185,38 +189,53 @@
                         </div>
                     </div>
 
-                    <div class="key-sections">
+                    <div class="mapping-workspace">
+                        <div class="key-sections">
 
-                        <details class="section" open>
-                            <summary>Non-linked Keys <span id="field-order-indicator" class="badge" style="display: none; margin-left: 8px;"></span></summary>
-                            <div class="section-toolbar section-toolbar--schema">
-                                <div class="section-toolbar__label">Entity Schema</div>
-                                <div id="entity-schema-selector-container" class="entity-schema-selector-inline">
-                                    <!-- Entity Schema selector will be inserted here -->
+                            <details class="section" open>
+                                <summary>Non-linked Keys <span id="field-order-indicator" class="badge" style="display: none; margin-left: 8px;"></span></summary>
+                                <div class="section-toolbar section-toolbar--schema">
+                                    <div class="section-toolbar__label">Entity Schema</div>
+                                    <div id="entity-schema-selector-container" class="entity-schema-selector-inline">
+                                        <!-- Entity Schema selector will be inserted here -->
+                                    </div>
                                 </div>
+                                <p class="section-help">Map only the keys whose values you want to reconcile and export to Wikidata. Everything else can stay non-linked or be ignored.</p>
+                                <div class="key-search">
+                                    <label for="non-linked-key-search">Search Omeka S fields</label>
+                                    <input id="non-linked-key-search" type="search" placeholder="Search by template label first, then property term..." autocomplete="off">
+                                </div>
+                                <ul id="non-linked-keys" class="key-list">
+                                    <li class="placeholder">Keys will appear here after fetching data</li>
+                                </ul>
+                            </details>
+                            
+                            <details class="section">
+                                <summary>Mapped Keys</summary>
+                                <ul id="mapped-keys" class="key-list">
+                                    <li class="placeholder">Mapped keys will appear here</li>
+                                </ul>
+                            </details>
+                            
+                            <details class="section">
+                                <summary>Ignored Keys</summary>
+                                <ul id="ignored-keys" class="key-list">
+                                    <li class="placeholder">Ignored keys will appear here</li>
+                                </ul>
+                            </details>
+
+                            <div class="mapping-extra-property">
+                                <p>Add a Wikidata property only when you need a value that is not naturally covered by the imported Omeka S fields.</p>
+                                <button id="add-wikidata-property" class="button button--secondary">Add Extra Wikidata Property</button>
                             </div>
-                            <ul id="non-linked-keys" class="key-list">
-                                <li class="placeholder">Keys will appear here after fetching data</li>
-                            </ul>
-                        </details>
+                        </div>
                         
-                        <details class="section">
-                            <summary>Mapped Keys</summary>
-                            <ul id="mapped-keys" class="key-list">
-                                <li class="placeholder">Mapped keys will appear here</li>
-                            </ul>
-                        </details>
-                        
-                        <details class="section">
-                            <summary>Ignored Keys</summary>
-                            <ul id="ignored-keys" class="key-list">
-                                <li class="placeholder">Ignored keys will appear here</li>
-                            </ul>
-                        </details>
+                        <aside class="entity-schema-side-panel">
+                            <h3>Entity Schema</h3>
+                            <p>Choose a schema above to keep its recommended properties visible while mapping.</p>
+                            <div id="entity-schema-overview-container"></div>
+                        </aside>
                     </div>
-                    
-                    <!-- Entity Schema Overview Section -->
-                    <div id="entity-schema-overview-container"></div>
                     
                     <div class="navigation-buttons">
                         <button id="back-to-input" class="button button--secondary secondary-button">Back to Input</button>
@@ -230,6 +249,9 @@
             <section id="step3" class="step-content">
                 <h2>Step 3: Reconciliation</h2>
                 <div class="reconciliation-container">
+                    <p class="step-intro">
+                        Review each mapped field and decide what its values should become on Wikidata. Reconcile entity values to QIDs, confirm text and dates, and skip values that should not be exported.
+                    </p>
                     <div id="reconciliation-progress-panel" class="reconciliation-progress-panel">
                         <div class="reconciliation-progress-header">
                             <div id="reconciliation-progress-summary" class="reconciliation-progress-summary">0 of 0 values reviewed</div>
@@ -240,17 +262,31 @@
                         </div>
                         <div id="reconciliation-progress-details" class="reconciliation-progress-details">Map properties in Step 2 to populate the reconciliation queue.</div>
                     </div>
+                    <div class="reconciliation-language-default" aria-label="Default label language">
+                        <div>
+                            <strong>Label language for this set</strong>
+                            <span>Use this when every Label value should receive the same Wikidata language code.</span>
+                        </div>
+                        <select id="default-label-language">
+                            <option value="">Choose language</option>
+                            <option value="nl" data-label="Dutch">Dutch (nl)</option>
+                            <option value="en" data-label="English">English (en)</option>
+                            <option value="de" data-label="German">German (de)</option>
+                            <option value="fr" data-label="French">French (fr)</option>
+                        </select>
+                        <button id="apply-label-language" class="button button--secondary secondary-button" type="button">Use for labels</button>
+                    </div>
                     <div class="reconciliation-table-container">
                         <table class="reconciliation-table">
                             <thead>
                                 <tr id="property-headers">
-                                    <th>Item</th>
-                                    <th class="placeholder">Properties will appear here</th>
+                                    <th>Mapped field</th>
+                                    <th class="placeholder">Items will appear here</th>
                                 </tr>
                             </thead>
                             <tbody id="reconciliation-rows">
                                 <tr class="placeholder">
-                                    <td>Item 1</td>
+                                    <td>Mapped field</td>
                                     <td>Values will appear here after mapping</td>
                                 </tr>
                             </tbody>
@@ -270,6 +306,9 @@
             <section id="step4" class="step-content">
                 <h2>Step 4: References</h2>
                 <div class="references-container">
+                    <p class="step-intro">
+                        References tell Wikidata where a statement came from. This step detects source URLs such as Omeka item links, OCLC WorldCat links, ARK identifiers, and sameAs links, then lets you assign them to mapped properties.
+                    </p>
                     <div id="references-list" class="references-list">
                         <!-- References will be populated here by JavaScript -->
                     </div>

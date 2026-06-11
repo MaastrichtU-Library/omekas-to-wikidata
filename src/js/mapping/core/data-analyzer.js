@@ -19,11 +19,23 @@ import {
 export {
     EXTRACTION_MODES,
     buildObservedFieldProfile,
+    getExtractionModeDescription,
     getExtractionModeLabel,
     getDefaultExtractionMode,
     getAvailableExtractionModes,
     describeFieldProfile,
-    resolveOmekaValue
+    resolveOmekaValue,
+    getValueSourceTypeLabel,
+    getValueSourceTypeDescription,
+    getOrderedValueSourceTypes,
+    summarizeValueSourcesForField,
+    summarizeValueSourcesForResolvedDetails,
+    summarizeObservedSegments,
+    getSegmentMetadata,
+    buildIncludedSegmentsSignature,
+    getValueSourceMetadata,
+    classifyValueSource,
+    VALUE_SOURCE_TYPES
 } from './value-resolution.js';
 
 export function getOmekaFieldFriendlyName(keyOrKeyObj, fallbackKey = '') {

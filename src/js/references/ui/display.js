@@ -78,7 +78,7 @@ export function renderReferencesSection(summary, container, totalItems = 0, stat
             margin: '8px 0 12px 0',
             padding: '0 12px'
         }
-    }, 'Some references are detected automatically from your data. Click "Add custom reference" to add more by hand.');
+    }, 'References explain where Wikidata statements come from. This app detects useful source URLs such as Omeka item pages, OCLC links, ARK links, sameAs links, and similar authority/source URLs; add a custom reference when the right source is not detected automatically.');
     section.appendChild(guideText);
 
     // Create list

@@ -27,12 +27,11 @@
 import { setupModalUI } from '../ui/modal-ui.js';
 import { detectPropertyType, getInputFieldConfig, createInputHTML, validateInput, getSuggestedEntityTypes, setupDynamicDatePrecision, standardizeDateInput } from '../utils/property-types.js';
 import { getConstraintBasedTypes, buildContextualProperties, validateAgainstFormatConstraints, scoreMatchWithConstraints, getConstraintSummary } from '../utils/constraint-helpers.js';
-import { getOmekaFieldFriendlyName } from '../mapping/core/data-analyzer.js';
 import { eventSystem } from '../events.js';
 import { createLinkItemModal, initializeLinkItemModal } from '../reconciliation/ui/modals/link-item-modal.js';
 import { updateItemCellDisplay } from '../reconciliation/ui/reconciliation-table.js';
 import { getMockItemsData, getMockMappingData } from '../data/mock-data.js';
-import { createElement } from '../ui/components.js';
+import { showMessage } from '../ui/components.js';
 import {
     // Core data processing
     calculateTotalReconciliableCells,
@@ -103,27 +102,6 @@ import {
     displayAutomaticMatches,
     displayReconciliationError
 } from '../reconciliation/index.js';
-
-function formatSourceFieldLabel(keyData) {
-    if (!keyData?.key) {
-        return 'Source field';
-    }
-
-    const friendlyName = getOmekaFieldFriendlyName(keyData, keyData.key);
-    const baseLabel = friendlyName && friendlyName !== keyData.key
-        ? `${keyData.key} (${friendlyName})`
-        : keyData.key;
-
-    if (keyData.selectedAtField) {
-        if (Number.isInteger(keyData.selectedObjectIndex)) {
-            return `${baseLabel} -> ${keyData.selectedAtField} (object ${keyData.selectedObjectIndex + 1})`;
-        }
-
-        return `${baseLabel} -> ${keyData.selectedAtField}`;
-    }
-
-    return baseLabel;
-}
 
 /**
  * Initializes the reconciliation step interface and processing engine
@@ -204,6 +182,8 @@ export function setupReconciliationStep(state) {
     const reconcileNextBtn = document.getElementById('reconcile-next');
     const proceedToDesignerBtn = document.getElementById('proceed-to-designer');
     const testReconciliationModelBtn = document.getElementById('test-reconciliation-model');
+    const defaultLabelLanguageSelect = document.getElementById('default-label-language');
+    const applyLabelLanguageBtn = document.getElementById('apply-label-language');
     
     // Debug DOM element initialization
     
@@ -367,7 +347,7 @@ export function setupReconciliationStep(state) {
         };
     }
     
-    // Add click handler for proceed to designer button
+    // Add click handler for the proceed-to-references button
     if (proceedToDesignerBtn) {
         proceedToDesignerBtn.addEventListener('click', () => {
             
@@ -382,7 +362,7 @@ export function setupReconciliationStep(state) {
             // Check state
             const currentState = state.getState();
             
-            // Navigate to designer step
+            // Navigate to References step
             state.setCurrentStep(4);
         });
     }
@@ -422,6 +402,26 @@ export function setupReconciliationStep(state) {
     if (testReconciliationModelBtn) {
         testReconciliationModelBtn.addEventListener('click', () => {
             modules.loadMockDataForTesting();
+        });
+    }
+
+    if (applyLabelLanguageBtn && defaultLabelLanguageSelect) {
+        applyLabelLanguageBtn.addEventListener('click', () => {
+            const selectedOption = defaultLabelLanguageSelect.selectedOptions[0];
+            const languageCode = selectedOption?.value;
+
+            if (!languageCode) {
+                showMessage('Choose a language before applying it to labels.', 'warning');
+                return;
+            }
+
+            const languageLabel = selectedOption.dataset.label || selectedOption.textContent.replace(/\s*\(.+\)\s*$/, '');
+            localStorage.setItem('reconciliation_last_language', JSON.stringify({
+                code: languageCode,
+                label: languageLabel
+            }));
+
+            showMessage(`Label language set to ${languageLabel}. Label modals will prefill this language.`, 'success');
         });
     }
 
@@ -631,227 +631,13 @@ export function setupReconciliationStep(state) {
     }
     
     /**
-     * Updates the reconciliation table when a mapping changes
-     * This function performs a targeted update of only the affected column
-     * instead of regenerating the entire table for better performance.
-     * 
-     * @param {Object} mappingData - The mapping change event data
-     * @param {Object} mappingData.keyData - The updated key data with new mapping
-     * @param {Object} mappingData.previousKeyData - The previous key data before mapping
-     * @param {Object} mappingData.property - The Wikidata property that was mapped
-     * @param {string} mappingData.mappingId - The unique mapping ID
+     * Updates the reconciliation table when a mapping changes.
+     * The current field-first table uses mapped keys as rows, so a full rebuild is
+     * safer than the older column-targeted refresh path.
      */
-    async function updateTableForMappingChange(mappingData) {
-        const { keyData, previousKeyData, property, mappingId } = mappingData;
-
-        if (!keyData || !keyData.key) {
-            console.warn('Invalid mapping data for table update:', mappingData);
-            return;
-        }
-
-        const currentState = state.getState();
-        if (!currentState.fetchedData) {
-            return;
-        }
-
-        const keyName = keyData.key;
-        const data = Array.isArray(currentState.fetchedData) ? currentState.fetchedData : [currentState.fetchedData];
-
-        // Update property header
-        updatePropertyHeader(mappingId, keyData, property);
-
-        // Update all data cells for this property column
-        await updatePropertyColumn(mappingId, keyData, data);
-
-        // Update state to reflect the new mapping
-        const updatedState = state.getState();
-        if (updatedState.reconciliationData) {
-            // Clear existing reconciliation data for this property since the mapping changed
-            Object.keys(updatedState.reconciliationData).forEach(itemId => {
-                const itemData = updatedState.reconciliationData[itemId];
-                if (itemData.properties && itemData.properties[mappingId]) {
-                    // Reset reconciliation status for this property
-                    itemData.properties[mappingId].reconciled = itemData.properties[mappingId].reconciled.map(reconciledItem => ({
-                        ...reconciledItem,
-                        status: 'pending',
-                        matches: [],
-                        selectedMatch: null
-                    }));
-                }
-            });
-
-            state.updateState('reconciliationData', updatedState.reconciliationData);
-            const refreshedProgress = modules.calculateCurrentProgress();
-            state.updateState('reconciliationProgress', refreshedProgress);
-            renderReconciliationProgress(refreshedProgress);
-        }
-
+    async function updateTableForMappingChange() {
+        await initializeReconciliation();
     }
-    
-    /**
-     * Updates the property header for a changed mapping
-     */
-    function updatePropertyHeader(mappingId, keyData, property) {
-        if (!propertyHeaders) return;
-
-        // Find the existing header element using mappingId
-        const headerElement = propertyHeaders.querySelector(`[data-mapping-id="${mappingId}"]`);
-        if (!headerElement) return;
-        
-        // Update header content with new property information
-        const headerContent = createElement('div', { 
-            className: 'property-header-content' 
-        });
-
-        const sourceRow = createElement('div', {
-            className: 'property-source-row'
-        });
-        const sourceLabel = createElement('span', {
-            className: 'property-source-label'
-        }, formatSourceFieldLabel(keyData));
-        sourceRow.appendChild(sourceLabel);
-
-        const mappedRow = createElement('div', {
-            className: 'property-mapped-row'
-        });
-        const mappedPrefix = createElement('span', {
-            className: 'property-mapped-prefix'
-        }, 'Wikidata: ');
-        const labelSpan = createElement('span', {
-            className: 'property-label'
-        }, property.label);
-
-        // Clickable QID link
-        const getWikidataUrlForProperty = modules.getPropertyDisplayInfo ? 
-            (prop) => `https://www.wikidata.org/wiki/Property:${prop.id}` :
-            (prop) => `https://www.wikidata.org/wiki/Property:${prop.id}`;
-        
-        const wikidataUrl = getWikidataUrlForProperty(property);
-        const qidLink = createElement('a', {
-            className: 'property-qid-link',
-            href: wikidataUrl,
-            target: '_blank',
-            onClick: (e) => e.stopPropagation()
-        }, property.id);
-        mappedRow.appendChild(mappedPrefix);
-        mappedRow.appendChild(labelSpan);
-        mappedRow.appendChild(document.createTextNode(' ('));
-        mappedRow.appendChild(qidLink);
-        mappedRow.appendChild(document.createTextNode(')'));
-
-        if (property.datatype === 'monolingualtext') {
-            const languageIndicator = createElement('span', {
-                className: 'property-language-indicator',
-                title: 'This Wikidata property expects text with a language code.'
-            }, ' Language required');
-            mappedRow.appendChild(languageIndicator);
-        }
-
-        headerContent.appendChild(sourceRow);
-        headerContent.appendChild(mappedRow);
-        
-        // Replace header content
-        headerElement.innerHTML = '';
-        headerElement.appendChild(headerContent);
-        
-        // Update click handler
-        headerElement.onclick = () => {
-            if (window.openMappingModal) {
-                window.openMappingModal(keyData);
-            }
-        };
-    }
-    
-    /**
-     * Updates all data cells in a property column
-     */
-    async function updatePropertyColumn(mappingId, keyData, data) {
-        if (!reconciliationRows) return;
-
-        const keyName = keyData.key;
-
-        // Find all rows and update the cells for this property
-        const rows = reconciliationRows.querySelectorAll('.reconciliation-row');
-
-        data.forEach((item, index) => {
-            const itemId = `item-${index}`;
-            const row = rows[index];
-            if (!row) return;
-
-            // Find the cell for this property using mappingId
-            const cell = row.querySelector(`[data-mapping-id="${mappingId}"]`);
-            if (!cell) return;
-            
-            // Re-extract values with updated @ field and transformations
-            const values = extractPropertyValues(item, keyData, state);
-            
-            // Clear existing cell content
-            cell.innerHTML = '';
-            cell.className = 'property-cell';
-            
-            if (values.length === 0) {
-                // Empty cell
-                cell.className += ' empty-cell';
-                cell.textContent = '—';
-            } else if (values.length === 1) {
-                // Single value cell
-                cell.className += ' single-value-cell';
-                cell.dataset.itemId = itemId;
-                cell.dataset.property = keyName;
-                cell.dataset.mappingId = mappingId;  // NEW: Add mappingId
-                cell.dataset.valueIndex = '0';
-
-                const valueDiv = createValueElement(itemId, keyName, mappingId, 0, values[0], keyData);
-                cell.appendChild(valueDiv);
-            } else {
-                // Multiple values cell
-                cell.className += ' multi-value-cell';
-                cell.dataset.itemId = itemId;
-                cell.dataset.property = keyName;
-                cell.dataset.mappingId = mappingId;  // NEW: Add mappingId
-
-                values.forEach((value, valueIndex) => {
-                    const valueDiv = createValueElement(itemId, keyName, mappingId, valueIndex, value, keyData);
-                    cell.appendChild(valueDiv);
-                });
-            }
-        });
-    }
-    
-    /**
-     * Creates a value element for table cells
-     */
-    function createValueElement(itemId, property, mappingId, valueIndex, value, keyData) {
-        const valueDiv = createElement('div', {
-            className: 'property-value',
-            dataset: {
-                status: 'pending',
-                mappingId: mappingId  // NEW: Add mappingId to value element
-            }
-        });
-
-        const textSpan = createElement('span', {
-            className: 'value-text'
-        }, value || 'Empty value');
-
-        const statusSpan = createElement('span', {
-            className: 'value-status'
-        }, 'Click to reconcile');
-
-        valueDiv.appendChild(textSpan);
-        valueDiv.appendChild(statusSpan);
-
-        // Add click handler for reconciliation
-        valueDiv.addEventListener('click', () => {
-            if (modules.openReconciliationModal) {
-                // CRITICAL FIX: Pass keyData as 5th parameter so modal can determine correct mappingId
-                modules.openReconciliationModal(itemId, property, valueIndex, value, keyData);
-            }
-        });
-
-        return valueDiv;
-    }
-    
     
     /**
      * Calculates total reconciliable cells for accurate progress tracking

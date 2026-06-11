@@ -29,6 +29,7 @@
 import { createDownloadLink, createFileInput, createElement, createButton, showMessage } from '../ui/components.js';
 import { eventSystem } from '../events.js';
 import { detectIdentifier } from '../utils/identifier-detection.js';
+import { formatDateForQuickStatements } from '../utils/property-types.js';
 
 // Validation constants for Wikidata format compliance
 // These patterns ensure generated QuickStatements meet Wikidata requirements
@@ -237,66 +238,14 @@ export function setupExportStep(state) {
      * - Automatically detects input format and adjusts parsing accordingly
      */
     function formatDate(dateString, precision = 11) {
-        if (!dateString) return null;
-        
-        try {
-            let dateStr = String(dateString).trim();
-            let year, month, day;
-            
-            // Handle decade inputs (e.g., "1990s", "199x")
-            if (precision === 8 && /^\d{3}[0-9xX][sS]?$/.test(dateStr)) {
-                const decadeMatch = dateStr.match(/^(\d{3})[0-9xX]/);
-                if (decadeMatch) {
-                    year = `${decadeMatch[1]}0`;
-                    month = '01';
-                    day = '01';
-                }
-            }
-            // Handle year-only inputs (e.g., "2023")
-            else if (/^\d{4}$/.test(dateStr)) {
-                year = dateStr;
-                month = '01';
-                day = '01';
-            }
-            // Handle year-month inputs (e.g., "2023-05")
-            else if (/^\d{4}-\d{1,2}$/.test(dateStr)) {
-                const [y, m] = dateStr.split('-');
-                year = y;
-                month = m.padStart(2, '0');
-                day = '01';
-            }
-            // Handle full date inputs (e.g., "2023-05-15")
-            else if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateStr)) {
-                const [y, m, d] = dateStr.split('-');
-                year = y;
-                month = m.padStart(2, '0');
-                day = d.padStart(2, '0');
-            }
-            // Try to parse as Date object for other formats
-            else {
-                const date = new Date(dateStr);
-                if (isNaN(date.getTime())) {
-                    return null;
-                }
-                year = String(date.getFullYear());
-                month = String(date.getMonth() + 1).padStart(2, '0');
-                day = String(date.getDate()).padStart(2, '0');
-            }
-            
-            // Validate year is reasonable
-            if (!year || year.length < 4 || isNaN(parseInt(year))) {
-                return null;
-            }
-            
-            // Ensure we have valid month and day
-            month = month || '01';
-            day = day || '01';
-            
-            return `+${year}-${month}-${day}T00:00:00Z/${precision}`;
-        } catch (error) {
-            console.error('Error formatting date:', dateString, error);
-            return null;
-        }
+        const precisionNameByNumber = {
+            11: 'day',
+            10: 'month',
+            9: 'year',
+            8: 'decade',
+            7: 'century'
+        };
+        return formatDateForQuickStatements(dateString, precisionNameByNumber[precision]);
     }
 
     /**
@@ -525,7 +474,7 @@ export function setupExportStep(state) {
                     // Create new item since it has valid reconciled properties
                     quickStatementsText += 'CREATE\n';
 
-                    // Note: Label/description/alias configuration removed (was in step 4 designer)
+                    // Label, description, and alias configuration now comes from Mapping/Reconciliation.
                     // Items will be created without labels - these can be added manually in Wikidata
 
                     itemPrefix = 'LAST';
@@ -606,7 +555,12 @@ export function setupExportStep(state) {
                                     if (match.datatype === 'time') {
                                         // Extract precision from saved reconciliation data
                                         const precision = getPrecisionNumber(match.precision);
-                                        value = formatDate(match.value, precision);
+                                        value = match.standardizedDate
+                                            ? formatDateForQuickStatements({
+                                                date: match.standardizedDate,
+                                                precision: match.precision || 'day'
+                                            })
+                                            : formatDate(match.value, precision);
                                         if (!value) {
                                             errors.push(`Invalid date format for ${propertyKey}: ${match.value}`);
                                             return;

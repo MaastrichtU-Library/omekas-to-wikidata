@@ -11,7 +11,8 @@ import {
     extractAndAnalyzeKeys,
     convertCamelCaseToSpaces,
     extractSampleValue,
-    getOmekaFieldFriendlyName
+    getOmekaFieldFriendlyName,
+    buildIncludedSegmentsSignature
 } from '../core/data-analyzer.js';
 import { getCompletePropertyData } from '../../api/wikidata.js';
 import { createIdentifierMapping } from '../../utils/identifier-detection.js';
@@ -22,6 +23,8 @@ const nonLinkedKeysList = document.getElementById('non-linked-keys');
 const mappedKeysList = document.getElementById('mapped-keys');
 const ignoredKeysList = document.getElementById('ignored-keys');
 const proceedToReconciliationBtn = document.getElementById('proceed-to-reconciliation');
+const nonLinkedKeySearchInput = document.getElementById('non-linked-key-search');
+let nonLinkedKeySearchInitialized = false;
 
 function getDisplayPriority(keyObj) {
     const propertyId = typeof keyObj === 'object' ? keyObj.property?.id : null;
@@ -73,9 +76,66 @@ function sortKeysForDisplay(keys, type) {
             return aSortIndex - bSortIndex;
         }
 
-        const aLabel = typeof a === 'object' ? `${a.key || ''}::${a.selectedAtField || ''}::${a.selectedObjectIndex ?? ''}` : String(a);
-        const bLabel = typeof b === 'object' ? `${b.key || ''}::${b.selectedAtField || ''}::${b.selectedObjectIndex ?? ''}` : String(b);
+        const aLabel = typeof a === 'object'
+            ? `${a.key || ''}::${a.selectedAtField || ''}::${a.selectedObjectIndex ?? ''}::${(a.includedSegments || []).join('|')}`
+            : String(a);
+        const bLabel = typeof b === 'object'
+            ? `${b.key || ''}::${b.selectedAtField || ''}::${b.selectedObjectIndex ?? ''}::${(b.includedSegments || []).join('|')}`
+            : String(b);
         return aLabel.localeCompare(bLabel);
+    });
+}
+
+function getKeySearchScore(keyObj, searchTerm) {
+    if (!searchTerm) {
+        return 0;
+    }
+
+    const keyData = typeof keyObj === 'string'
+        ? { key: keyObj }
+        : keyObj;
+    const keyName = keyData.key || '';
+    const friendlyName = getOmekaFieldFriendlyName(keyData, keyName) || '';
+    const normalizedTerm = searchTerm.toLowerCase();
+    const normalizedFriendly = friendlyName.toLowerCase();
+    const normalizedKey = keyName.toLowerCase();
+
+    if (normalizedFriendly.startsWith(normalizedTerm)) return 0;
+    if (normalizedFriendly.includes(normalizedTerm)) return 1;
+    if (normalizedKey.startsWith(normalizedTerm)) return 2;
+    if (normalizedKey.includes(normalizedTerm)) return 3;
+    return Number.POSITIVE_INFINITY;
+}
+
+function filterKeysForSearch(keys, type) {
+    if (type !== 'non-linked') {
+        return keys;
+    }
+
+    const searchTerm = nonLinkedKeySearchInput?.value?.trim();
+    if (!searchTerm) {
+        return keys;
+    }
+
+    return keys
+        .map(keyObj => ({
+            keyObj,
+            score: getKeySearchScore(keyObj, searchTerm)
+        }))
+        .filter(result => Number.isFinite(result.score))
+        .sort((a, b) => a.score - b.score)
+        .map(result => result.keyObj);
+}
+
+function setupNonLinkedKeySearch(state) {
+    if (!nonLinkedKeySearchInput || nonLinkedKeySearchInitialized) {
+        return;
+    }
+
+    nonLinkedKeySearchInitialized = true;
+    nonLinkedKeySearchInput.addEventListener('input', () => {
+        const currentState = state.getState();
+        populateKeyList(nonLinkedKeysList, currentState.mappings.nonLinkedKeys, 'non-linked');
     });
 }
 
@@ -96,17 +156,25 @@ function createKeyLabelGroup(keyData) {
         className: 'key-label-group'
     });
 
-    const keyName = createElement('span', {
-        className: 'key-name-compact'
-    }, keyDisplayText);
-    labelGroup.appendChild(keyName);
-
     const friendlyName = getOmekaFieldFriendlyName(keyData, keyData.key);
     if (friendlyName && friendlyName !== keyData.key) {
         const keyTemplateLabel = createElement('span', {
-            className: 'key-template-label'
+            className: 'key-name-compact key-name-compact--friendly'
         }, friendlyName);
         labelGroup.appendChild(keyTemplateLabel);
+    }
+
+    const keyName = createElement('span', {
+        className: friendlyName && friendlyName !== keyData.key
+            ? 'key-template-label key-template-label--technical'
+            : 'key-name-compact'
+    }, keyDisplayText);
+    labelGroup.appendChild(keyName);
+
+    if (Array.isArray(keyData.includedSegmentLabels) && keyData.includedSegmentLabels.length > 0) {
+        labelGroup.appendChild(createElement('span', {
+            className: 'key-segment-summary'
+        }, `Segments: ${keyData.includedSegmentLabels.join(', ')}`));
     }
 
     return labelGroup;
@@ -144,6 +212,8 @@ export async function populateLists(state) {
     if (!currentState.fetchedData) {
         return;
     }
+
+    setupNonLinkedKeySearch(state);
 
     // Determine field ordering mode (default: template order)
     const sortMode = (currentState.mappings && currentState.mappings.sortMode) ? currentState.mappings.sortMode : 'template';
@@ -228,6 +298,11 @@ export async function populateLists(state) {
      * - Internal technical fields not relevant to content description
      */
     const shouldIgnoreKey = (key) => {
+        const mediaLikeKeys = new Set(['dcterms:hasFormat', 'o:media', 'thumbnail_display_urls']);
+        if (mediaLikeKeys.has(key) || key.toLowerCase().includes('iiif')) {
+            return true;
+        }
+
         return ignorePatterns.some(pattern => {
             if (pattern.endsWith(':')) {
                 return key.startsWith(pattern);
@@ -464,7 +539,7 @@ export function populateKeyList(listElement, keys, type) {
     if (!listElement) return;
 
     listElement.innerHTML = '';
-    const displayKeys = sortKeysForDisplay(keys, type);
+    const displayKeys = filterKeysForSearch(sortKeysForDisplay(keys, type), type);
 
     // Add required property placeholders for mapped keys section
     if (type === 'mapped') {
@@ -496,7 +571,7 @@ export function populateKeyList(listElement, keys, type) {
         // Only show "No mapped keys yet" if there are also no placeholders
         if (type !== 'mapped' || listElement.children.length === 0) {
             const placeholderText = type === 'non-linked'
-                ? 'All keys have been processed'
+                ? (nonLinkedKeySearchInput?.value?.trim() ? 'No matching keys found' : 'All keys have been processed')
                 : type === 'mapped'
                     ? 'No mapped keys yet'
                     : 'No ignored keys';
@@ -523,9 +598,14 @@ export function populateKeyList(listElement, keys, type) {
         
         // Show property info for mapped keys immediately after key name
         if (type === 'mapped' && keyData.property) {
+            const sourceSummary = keyData.property.id === 'label'
+                ? 'Label from selected Omeka field'
+                : keyData.property.id === 'P31'
+                    ? 'Instance of from selected Omeka field or template class'
+                    : `${keyData.property.id}: ${keyData.property.label}`;
             const propertyInfo = createElement('span', {
                 className: 'property-info'
-            }, ` → ${keyData.property.id}: ${keyData.property.label}`);
+            }, ` → ${sourceSummary}`);
             keyDisplay.appendChild(propertyInfo);
         }
         
@@ -577,6 +657,16 @@ export function populateKeyList(listElement, keys, type) {
 export function moveKeyToCategory(keyData, category, state) {
     const currentState = state.getState();
     const targetKey = typeof keyData === 'string' ? keyData : keyData.key;
+    const previousCategory = currentState.mappings.mappedKeys.some(k => {
+        if (keyData.mappingId && k.mappingId) {
+            return k.mappingId === keyData.mappingId;
+        }
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare === targetKey;
+    }) ? 'mapped' : currentState.mappings.ignoredKeys.some(k => {
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare === targetKey;
+    }) ? 'ignored' : 'non-linked';
     
     // Remove from ALL existing categories first
     const updatedNonLinkedKeys = currentState.mappings.nonLinkedKeys.filter(k => {
@@ -629,6 +719,13 @@ export function moveKeyToCategory(keyData, category, state) {
     // Update UI
     populateLists(state);
     state.markChangesUnsaved();
+
+    eventSystem.publish(eventSystem.Events.MAPPING_UPDATED, {
+        type: category,
+        previousCategory,
+        keyData: keyDataWithAnimation,
+        mappingId: keyDataWithAnimation.mappingId || null
+    });
 }
 
 /**
@@ -637,6 +734,12 @@ export function moveKeyToCategory(keyData, category, state) {
 export function mapKeyToProperty(keyData, property, state) {
     const currentState = state.getState();
     const singletonPropertyIds = new Set(['label', 'P31']);
+    const segmentSignature = keyData.segmentSignature || buildIncludedSegmentsSignature(keyData.includedSegments);
+    const includedSegmentLabels = Array.isArray(keyData.segmentOptions)
+        ? keyData.segmentOptions
+            .filter(option => Array.isArray(keyData.includedSegments) && keyData.includedSegments.includes(option.key))
+            .map(option => option.label)
+        : (keyData.includedSegmentLabels || []);
 
     if (singletonPropertyIds.has(property.id)) {
         const existingMapping = currentState.mappings.mappedKeys.find(mappedKey =>
@@ -659,7 +762,8 @@ export function mapKeyToProperty(keyData, property, state) {
         keyData.key,
         property.id,
         keyData.selectedAtField,
-        keyData.selectedObjectIndex
+        keyData.selectedObjectIndex,
+        segmentSignature
     );
 
     // When editing an existing mapping, preserve its transformation blocks and
@@ -699,6 +803,9 @@ export function mapKeyToProperty(keyData, property, state) {
         ...keyData,
         property: property,
         extractionMode: keyData.extractionMode || 'auto',
+        includedSegments: keyData.includedSegments || undefined,
+        includedSegmentLabels: includedSegmentLabels.length > 0 ? includedSegmentLabels : undefined,
+        segmentSignature: segmentSignature || undefined,
         mappingId: newMappingId,
         mappedAt: new Date().toISOString()
     };

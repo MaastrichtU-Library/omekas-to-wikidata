@@ -82,6 +82,55 @@ function getResourceTemplateId(resourceTemplate) {
     return rawId ? JSON.stringify(rawId) : '';
 }
 
+const SYSTEM_METADATA_KEYS = new Set([
+    'o:id',
+    'o:is_public',
+    'o:owner',
+    'o:resource_class',
+    'o:resource_template',
+    'o:media',
+    'o:item_set',
+    'o:site',
+    'o:thumbnail',
+    'o:thumbnail_urls',
+    'o:primary_media',
+    'o:created',
+    'o:modified',
+    'thumbnail_display_urls'
+]);
+
+function isMeaningfulMetadataProperty(propertyKey) {
+    if (!propertyKey || propertyKey.startsWith('@')) {
+        return false;
+    }
+
+    if (SYSTEM_METADATA_KEYS.has(propertyKey)) {
+        return false;
+    }
+
+    if (propertyKey.startsWith('o:')) {
+        return propertyKey === 'o:title';
+    }
+
+    return true;
+}
+
+function getMeaningfulMetadataProperties(sampleItem = null) {
+    if (!sampleItem || typeof sampleItem !== 'object') {
+        return [];
+    }
+
+    const allKeys = Object.keys(sampleItem);
+    const filteredKeys = allKeys.filter(isMeaningfulMetadataProperty);
+
+    if (filteredKeys.length > 0) {
+        return filteredKeys;
+    }
+
+    const nonTransportKeys = allKeys.filter(key => !key.startsWith('@'));
+    return nonTransportKeys.length > 0 ? nonTransportKeys : allKeys;
+}
+
 /**
  * Initializes the input step interface with comprehensive data acquisition capabilities
  * 
@@ -113,8 +162,9 @@ export function setupInputStep(state) {
     const apiUrlPreset = document.getElementById('api-url-preset');
     const applyApiParamsBtn = document.getElementById('apply-api-params');
     const resetApiParamsBtn = document.getElementById('reset-api-params');
-    const fetchAllPagesCheckbox = document.getElementById('api-fetch-all-pages');
     const defaultApiUrl = apiUrlInput?.value || '';
+    const defaultPage = '1';
+    const defaultPerPage = '25';
     // Advanced parameters removed for MVP
     // const apiKeyInput = document.getElementById('api-key');
     // const paginationInput = document.getElementById('pagination');
@@ -132,12 +182,12 @@ export function setupInputStep(state) {
     const cancelManualJsonButton = document.getElementById('cancel-manual-json');
 
     const apiParameterFields = [
-        { input: document.getElementById('api-page'), param: 'page' },
-        { input: document.getElementById('api-per-page'), param: 'per_page' },
-        { input: document.getElementById('api-owner-id'), param: 'owner_id' },
         { input: document.getElementById('api-resource-template-id'), param: 'resource_template_id' },
         { input: document.getElementById('api-item-set-id'), param: 'item_set_id' },
-        { input: document.getElementById('api-site-id'), param: 'site_id' }
+        { input: document.getElementById('api-site-id'), param: 'site_id' },
+        { input: document.getElementById('api-owner-id'), param: 'owner_id' },
+        { input: document.getElementById('api-page'), param: 'page' },
+        { input: document.getElementById('api-per-page'), param: 'per_page' }
     ];
 
     function parseApiUrl(url) {
@@ -161,32 +211,37 @@ export function setupInputStep(state) {
         });
     }
 
-    function syncFetchAllPagesControl(url) {
-        if (!fetchAllPagesCheckbox) {
-            return;
+    function hasScopedCollectionFilters(url) {
+        const parsedUrl = parseApiUrl(url);
+        if (!parsedUrl) {
+            return false;
         }
 
-        const parsedUrl = parseApiUrl(url);
-        const explicitPageSelection = Boolean(
-            parsedUrl?.searchParams.get('page') || parsedUrl?.searchParams.get('per_page')
-        );
-
-        fetchAllPagesCheckbox.checked = !explicitPageSelection;
-        updatePaginationControlState();
+        return ['resource_template_id', 'item_set_id', 'site_id', 'owner_id']
+            .some(param => Boolean(parsedUrl.searchParams.get(param)));
     }
 
-    function updatePaginationControlState() {
-        const shouldFetchAllPages = fetchAllPagesCheckbox?.checked;
-        const pageInput = document.getElementById('api-page');
-
-        if (!pageInput) {
-            return;
+    function ensureDefaultPagination(url) {
+        const parsedUrl = parseApiUrl(url);
+        if (!parsedUrl) {
+            return url;
         }
 
-        pageInput.disabled = Boolean(shouldFetchAllPages);
-        pageInput.title = shouldFetchAllPages
-            ? 'Page selection is disabled while "Fetch all matching items" is enabled.'
-            : '';
+        if (hasScopedCollectionFilters(parsedUrl.toString())) {
+            parsedUrl.searchParams.delete('page');
+            parsedUrl.searchParams.delete('per_page');
+            return parsedUrl.toString();
+        }
+
+        if (!parsedUrl.searchParams.get('page')) {
+            parsedUrl.searchParams.set('page', defaultPage);
+        }
+
+        if (!parsedUrl.searchParams.get('per_page')) {
+            parsedUrl.searchParams.set('per_page', defaultPerPage);
+        }
+
+        return parsedUrl.toString();
     }
 
     function updateApiUrlFromParameterControls({ clear = false } = {}) {
@@ -198,53 +253,67 @@ export function setupInputStep(state) {
 
         if (clear) {
             apiParameterFields.forEach(({ input, param }) => {
-                parsedUrl.searchParams.delete(param);
+                const defaultValue = param === 'page'
+                    ? defaultPage
+                    : param === 'per_page'
+                        ? defaultPerPage
+                        : '';
+
+                if (defaultValue) {
+                    parsedUrl.searchParams.set(param, defaultValue);
+                } else {
+                    parsedUrl.searchParams.delete(param);
+                }
+
                 if (input) {
-                    input.value = '';
+                    input.value = defaultValue;
                 }
             });
         } else {
             apiParameterFields.forEach(({ input, param }) => {
-                const value = input?.value?.trim() || '';
+                const fallbackValue = param === 'page'
+                    ? defaultPage
+                    : param === 'per_page'
+                        ? defaultPerPage
+                        : '';
+                const value = input?.value?.trim() || fallbackValue;
                 if (value) {
                     parsedUrl.searchParams.set(param, value);
+                    if (input) {
+                        input.value = value;
+                    }
                 } else {
                     parsedUrl.searchParams.delete(param);
                 }
             });
         }
 
-        apiUrlInput.value = parsedUrl.toString();
+        apiUrlInput.value = ensureDefaultPagination(parsedUrl.toString());
         syncApiParameterControls(apiUrlInput.value);
-        syncFetchAllPagesControl(apiUrlInput.value);
         return true;
     }
 
-    syncApiParameterControls(defaultApiUrl);
-    syncFetchAllPagesControl(defaultApiUrl);
+    if (apiUrlInput) {
+        apiUrlInput.value = ensureDefaultPagination(defaultApiUrl);
+    }
+    syncApiParameterControls(apiUrlInput?.value || defaultApiUrl);
 
     if (apiUrlInput) {
         apiUrlInput.addEventListener('change', () => {
-            syncApiParameterControls(apiUrlInput.value.trim());
-            syncFetchAllPagesControl(apiUrlInput.value.trim());
+            apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
+            syncApiParameterControls(apiUrlInput.value);
         });
 
         apiUrlInput.addEventListener('blur', () => {
-            syncApiParameterControls(apiUrlInput.value.trim());
-            syncFetchAllPagesControl(apiUrlInput.value.trim());
+            apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
+            syncApiParameterControls(apiUrlInput.value);
         });
     }
 
     if (apiUrlPreset) {
         apiUrlPreset.addEventListener('change', () => {
-            syncApiParameterControls(apiUrlInput.value.trim());
-            syncFetchAllPagesControl(apiUrlInput.value.trim());
-        });
-    }
-
-    if (fetchAllPagesCheckbox) {
-        fetchAllPagesCheckbox.addEventListener('change', () => {
-            updatePaginationControlState();
+            apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
+            syncApiParameterControls(apiUrlInput.value);
         });
     }
 
@@ -260,7 +329,47 @@ export function setupInputStep(state) {
         });
     }
 
+    function resetDownstreamWorkflowState(markUnsaved = true) {
+        const currentState = state.getState();
+        const preservedSortMode = currentState.mappings?.sortMode || 'template';
+
+        state.updateMappings([], [], []);
+        state.updateState('mappings.sortMode', preservedSortMode, false);
+        state.updateState('mappings.manualProperties', [], false);
+        state.updateState('mappings.transformationBlocks', {}, false);
+        state.updateState('mappings.selectedTransformationFields', {}, false);
+        state.updateState('schemaMappingStatus', {
+            requiredMapped: [],
+            requiredUnmapped: [],
+            optionalMapped: [],
+            optionalUnmapped: [],
+            lastUpdated: null
+        }, false);
+        state.updateState('reconciliationData', [], false);
+        state.updateState('reconciliationProgress', { total: 0, completed: 0, skipped: 0, errors: 0 }, false);
+        state.updateState('linkedItems', {}, false);
+        state.updateState('references', {
+            itemReferences: {},
+            summary: {},
+            selectedTypes: ['omeka-item', 'oclc', 'ark', 'sameas'],
+            customReferences: [],
+            propertyReferences: {}
+        }, false);
+        state.updateState('quickStatements', '', false);
+        state.updateState('exportTimestamp', null, false);
+
+        const keySearchInput = document.getElementById('non-linked-key-search');
+        if (keySearchInput) {
+            keySearchInput.value = '';
+        }
+
+        if (markUnsaved) {
+            state.markChangesUnsaved?.();
+        }
+    }
+
     function updateActiveInputData(data, markUnsaved = true) {
+        resetDownstreamWorkflowState(markUnsaved);
         state.updateState('fetchedData', data, markUnsaved);
         state.updateState('selectedExample', getSelectedExampleFromData(data), markUnsaved);
     }
@@ -293,7 +402,7 @@ export function setupInputStep(state) {
         }
 
         const startingPage = Math.max(1, Number(parsedUrl.searchParams.get('page')) || 1);
-        const configuredPageSize = Math.max(1, Number(parsedUrl.searchParams.get('per_page')) || 100);
+        const configuredPageSize = Math.max(1, Number(parsedUrl.searchParams.get('per_page')) || Number(defaultPerPage));
         const allItems = [];
         let currentPage = startingPage;
         let fetchedPages = 0;
@@ -446,13 +555,14 @@ export function setupInputStep(state) {
                     console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
                 }
                 
+                apiUrlInput.value = ensureDefaultPagination(apiUrl);
                 const shouldFetchAllPages =
-                    Boolean(fetchAllPagesCheckbox?.checked) &&
-                    supportsPagedItemFetching(apiUrl);
+                    hasScopedCollectionFilters(apiUrlInput.value) &&
+                    supportsPagedItemFetching(apiUrlInput.value);
 
                 const result = shouldFetchAllPages
-                    ? await fetchAllMatchingItems(apiUrl)
-                    : await fetchWithCorsProxy(apiUrl);
+                    ? await fetchAllMatchingItems(apiUrlInput.value)
+                    : await fetchWithCorsProxy(apiUrlInput.value);
                 const data = result.data;
 
                 // Validate JSON structure
@@ -503,6 +613,13 @@ export function setupInputStep(state) {
             
             // Navigate to step 2
             state.setCurrentStep(2);
+            requestAnimationFrame(() => {
+                window.scrollTo({
+                    top: 0,
+                    left: 0,
+                    behavior: 'auto'
+                });
+            });
         });
     }
     
@@ -837,11 +954,9 @@ export function setupInputStep(state) {
             ? Object.keys(sampleItem).length
             : 0;
 
-        let sampleProperties = [];
-        if (sampleItem) {
-            const keys = Object.keys(sampleItem);
-            sampleProperties = keys.slice(0, 5);
-        }
+        const sampleProperties = sampleItem
+            ? getMeaningfulMetadataProperties(sampleItem).slice(0, 5)
+            : [];
 
         let methodMessage = '';
         if (method === 'manual') {
@@ -911,8 +1026,8 @@ export function setupInputStep(state) {
 
         if (details.fetchedAllPages) {
             const pageSummary = details.fetchedPages > 1
-                ? `Fetched ${details.itemCount} matching items across ${details.fetchedPages} pages.`
-                : `Fetched ${details.itemCount} matching item${details.itemCount === 1 ? '' : 's'} from a single page.`;
+                ? `Fetched ${details.itemCount} matching items across ${details.fetchedPages} pages for the selected scope.`
+                : `Fetched ${details.itemCount} matching item${details.itemCount === 1 ? '' : 's'} for the selected scope.`;
 
             summaryContainer.appendChild(
                 createElement('p', { className: 'hint' }, [
@@ -954,7 +1069,7 @@ export function setupInputStep(state) {
                 templateChoices.appendChild(
                     createElement('label', { className: 'template-choice' }, [
                         checkbox,
-                        ` ${templateName} `,
+                        createElement('span', { className: 'template-choice__label' }, templateName),
                         createElement('span', { className: 'muted' }, `(${templateEntry.count} items)`)
                     ])
                 );
@@ -1111,7 +1226,6 @@ export function setupInputStep(state) {
         if (apiUrlInput && currentState.apiUrl) {
             apiUrlInput.value = currentState.apiUrl;
             syncApiParameterControls(currentState.apiUrl);
-            syncFetchAllPagesControl(currentState.apiUrl);
         }
         
         // Update data status if there's fetched data
@@ -1131,7 +1245,6 @@ export function setupInputStep(state) {
             if (apiUrlInput && !currentState.apiUrl) {
                 apiUrlInput.value = defaultApiUrl;
                 syncApiParameterControls(defaultApiUrl);
-                syncFetchAllPagesControl(defaultApiUrl);
             }
             if (dataStatus) {
                 dataStatus.innerHTML = '<p class="placeholder">Data status will appear here after fetching</p>';

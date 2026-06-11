@@ -7,16 +7,60 @@
 
 // Import dependencies
 import { createElement, createButton } from '../../ui/components.js';
-import { BLOCK_TYPES, BLOCK_METADATA, createTransformationBlock, getTransformationPreview, extractAllFields, searchFields, COMMON_REGEX_PATTERNS } from '../../transformations.js';
+import { BLOCK_TYPES, BLOCK_METADATA, createTransformationBlock, getTransformationPreview, extractAllFields, COMMON_REGEX_PATTERNS } from '../../transformations.js';
 import { 
     extractAvailableFields,
     getFieldValueFromSample,
     convertSampleValueToString,
-    resolveOmekaValue
+    resolveOmekaValue,
+    buildIncludedSegmentsSignature
 } from './data-analyzer.js';
 
 // Global variable to track currently dragged element 
 let currentDraggedElement = null;
+
+function getTopLevelFieldKey(path = '') {
+    return String(path).split(/[.[\]]/).filter(Boolean)[0] || '';
+}
+
+function isMediaLikeFieldPath(path = '') {
+    const topLevelKey = getTopLevelFieldKey(path).toLowerCase();
+    return topLevelKey === 'o:media'
+        || topLevelKey === 'thumbnail_display_urls'
+        || topLevelKey === 'dcterms:hasformat'
+        || topLevelKey.includes('iiif')
+        || topLevelKey.includes('thumbnail');
+}
+
+function buildTemplateLabelMap(resourceTemplates = [], selectedTemplateIds = []) {
+    const selectedIdSet = new Set((selectedTemplateIds || []).map(id => String(id)));
+    const labels = new Map();
+
+    (resourceTemplates || []).forEach(template => {
+        if (!selectedIdSet.has(String(template['o:id']))) {
+            return;
+        }
+
+        (template['o:resource_template_property'] || []).forEach(templateProperty => {
+            const property = templateProperty?.['o:property'];
+            const term = property?.['o:term'];
+            if (!term || labels.has(term)) {
+                return;
+            }
+
+            const alternateLabel = typeof templateProperty?.['o:alternate_label'] === 'string'
+                ? templateProperty['o:alternate_label'].trim()
+                : '';
+            const propertyLabel = typeof property?.['o:label'] === 'string'
+                ? property['o:label'].trim()
+                : '';
+
+            labels.set(term, alternateLabel || propertyLabel || '');
+        });
+    });
+
+    return labels;
+}
 
 /**
  * Renders the value transformation UI for Stage 3
@@ -38,12 +82,14 @@ export function renderValueTransformationUI(keyData, state) {
     // Use temporary ID when no property selected (same pattern as custom properties)
     let mappingId;
     if (propertyId) {
+        const segmentSignature = keyData.segmentSignature || buildIncludedSegmentsSignature(keyData.includedSegments);
         // Final mapping ID with property, including @ field if selected
         mappingId = state.generateMappingId(
             keyData.key,
             propertyId,
             keyData.selectedAtField,
-            keyData.selectedObjectIndex
+            keyData.selectedObjectIndex,
+            segmentSignature
         );
     } else {
         // Temporary mapping ID when no property selected yet
@@ -267,6 +313,10 @@ export function updateTransformationPreview(mappingId, state) {
             }
         }
     });
+
+    if (typeof window.refreshMappingSamples === 'function') {
+        window.refreshMappingSamples();
+    }
 }
 
 /**
@@ -279,6 +329,10 @@ export function refreshTransformationUI(mappingId, state) {
     const container = document.getElementById(`transformation-blocks-${mappingId}`);
     if (container && container.dataset.sampleValue) {
         renderTransformationBlocks(mappingId, container.dataset.sampleValue, container, state);
+    }
+
+    if (typeof window.refreshMappingSamples === 'function') {
+        window.refreshMappingSamples();
     }
 }
 
@@ -684,7 +738,46 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
         }
     }
     
-    const filteredFields = searchFields(allFields, searchTerm);
+    const templateLabelMap = buildTemplateLabelMap(currentState.resourceTemplates, currentState.selectedTemplates);
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+    const filteredFields = allFields
+        .filter(field => !isMediaLikeFieldPath(field.path))
+        .map(field => {
+            const topLevelKey = getTopLevelFieldKey(field.path);
+            const templateLabel = templateLabelMap.get(topLevelKey) || '';
+            const pathText = field.path.toLowerCase();
+            const labelText = templateLabel.toLowerCase();
+
+            let score = 0;
+            if (normalizedSearchTerm) {
+                if (labelText.startsWith(normalizedSearchTerm)) {
+                    score = 0;
+                } else if (labelText.includes(normalizedSearchTerm)) {
+                    score = 1;
+                } else if (pathText.startsWith(normalizedSearchTerm)) {
+                    score = 2;
+                } else if (pathText.includes(normalizedSearchTerm)) {
+                    score = 3;
+                } else {
+                    score = Number.POSITIVE_INFINITY;
+                }
+            }
+
+            return {
+                ...field,
+                templateLabel,
+                score
+            };
+        })
+        .filter(field => !normalizedSearchTerm || Number.isFinite(field.score))
+        .sort((left, right) => {
+            if (left.score !== right.score) {
+                return left.score - right.score;
+            }
+            const leftLabel = left.templateLabel || left.path;
+            const rightLabel = right.templateLabel || right.path;
+            return leftLabel.localeCompare(rightLabel);
+        });
     
     if (filteredFields.length === 0) {
         resultsContainer.appendChild(createElement('div', { 
@@ -723,7 +816,11 @@ export function updateFieldSearchResults(searchTerm, mappingId, block, resultsCo
             }
         });
         
-        const pathElement = createElement('div', { className: 'field-path' }, field.path);
+        const pathElement = createElement('div', {
+            className: 'field-path'
+        }, field.templateLabel
+            ? `${field.templateLabel} (${field.path})`
+            : field.path);
         const previewElement = createElement('div', { className: 'field-preview' }, field.preview);
         
         fieldItem.appendChild(pathElement);

@@ -10,7 +10,7 @@ import { showMessage, createElement, createListItem } from '../../ui/components.
 import { getCompletePropertyData, getBatchPropertyInfo, getCachedProperty } from '../../api/wikidata.js';
 import { refreshStage3TransformationUI as refreshStage3UI } from './transformation-engine.js';
 import { updateModalTitle, updateStage2Summary } from '../ui/modals/mapping-modal.js';
-import { convertCamelCaseToSpaces } from './data-analyzer.js';
+import { convertCamelCaseToSpaces, buildIncludedSegmentsSignature } from './data-analyzer.js';
 import { displayPropertyConstraints } from './constraint-validator.js';
 import { createConstraintsSection } from '../ui/constraint-ui.js';
 import { openRawJsonModal } from '../ui/modals/json-modal.js';
@@ -669,11 +669,13 @@ export async function selectProperty(property, state) {
     const keyData = window.currentMappingKeyData;
     if (keyData && keyData.key && state) {
         const tempMappingId = `temp_${keyData.key}`;
+        const segmentSignature = keyData.segmentSignature || buildIncludedSegmentsSignature(keyData.includedSegments);
         const finalMappingId = state.generateMappingId(
             keyData.key,
             property.id,
             keyData.selectedAtField,
-            keyData.selectedObjectIndex
+            keyData.selectedObjectIndex,
+            segmentSignature
         );
 
         // Check if there are transformations stored under the temporary ID

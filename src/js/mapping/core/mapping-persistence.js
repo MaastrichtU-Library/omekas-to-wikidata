@@ -26,6 +26,12 @@ export function generateMappingData(state) {
                 selectedAtField: key.selectedAtField ?? null,
                 selectedObjectIndex: Number.isInteger(key.selectedObjectIndex) ? key.selectedObjectIndex : null,
                 extractionMode: key.extractionMode || null,
+                includedSegments: key.includedSegments || null,
+                includedSegmentLabels: key.includedSegmentLabels || null,
+                segmentSignature: key.segmentSignature || null,
+                includedValueSources: key.includedValueSources || null,
+                guidedSourceMode: key.guidedSourceMode || null,
+                guidedManualText: key.guidedManualText || null,
                 property: key.property ? {
                     id: key.property.id,
                     label: key.property.label,
@@ -44,7 +50,13 @@ export function generateMappingData(state) {
                 contextMap: key.contextMap && key.contextMap instanceof Map ? Object.fromEntries(key.contextMap) : {},
                 selectedAtField: key.selectedAtField ?? null,
                 selectedObjectIndex: Number.isInteger(key.selectedObjectIndex) ? key.selectedObjectIndex : null,
-                extractionMode: key.extractionMode || null
+                extractionMode: key.extractionMode || null,
+                includedSegments: key.includedSegments || null,
+                includedSegmentLabels: key.includedSegmentLabels || null,
+                segmentSignature: key.segmentSignature || null,
+                includedValueSources: key.includedValueSources || null,
+                guidedSourceMode: key.guidedSourceMode || null,
+                guidedManualText: key.guidedManualText || null
             })),
             manualProperties: (currentState.mappings.manualProperties || []).map(prop => ({
                 property: {
@@ -141,6 +153,12 @@ export async function loadMappingFromData(mappingData, state) {
                 selectedAtField: key.selectedAtField ?? undefined,
                 selectedObjectIndex: Number.isInteger(key.selectedObjectIndex) ? key.selectedObjectIndex : undefined,
                 extractionMode: key.extractionMode || undefined,
+                includedSegments: key.includedSegments || undefined,
+                includedSegmentLabels: key.includedSegmentLabels || undefined,
+                segmentSignature: key.segmentSignature || undefined,
+                includedValueSources: key.includedValueSources || undefined,
+                guidedSourceMode: key.guidedSourceMode || undefined,
+                guidedManualText: key.guidedManualText || undefined,
                 // Skip dataset validation for custom mappings
                 notInCurrentDataset: isCustomMapping ? false : !currentDataKeys.has(key.key)
             };

@@ -538,6 +538,10 @@ export function detectDatePrecision(dateInput) {
     }
     
     const input = dateInput.trim();
+
+    if (/^\d{3,4}\s*\/\s*\d{3,4}$/.test(input)) {
+        return 'year';
+    }
     
     // Check for year only (4 digits) - MUST come before decade check
     if (/^\d{4}$/.test(input)) {
@@ -586,6 +590,44 @@ export function standardizeDateInput(dateInput) {
     
     const input = dateInput.trim();
     const precision = detectDatePrecision(input);
+
+    const intervalMatch = input.match(/^(\d{3,4})\s*\/\s*(\d{3,4})$/);
+    if (intervalMatch) {
+        const startYear = intervalMatch[1].padStart(4, '0');
+        const endYear = intervalMatch[2].padStart(4, '0');
+
+        return {
+            date: `${startYear}-01-01`,
+            precision: 'year',
+            displayValue: `${startYear}/${endYear}`,
+            isInterval: true,
+            intervalStart: startYear,
+            intervalEnd: endYear,
+            intervalChoices: [
+                {
+                    id: 'start',
+                    label: `Use start year ${startYear}`,
+                    date: `${startYear}-01-01`,
+                    displayValue: startYear,
+                    precision: 'year'
+                },
+                {
+                    id: 'end',
+                    label: `Use end year ${endYear}`,
+                    date: `${endYear}-01-01`,
+                    displayValue: endYear,
+                    precision: 'year'
+                },
+                {
+                    id: 'midpoint',
+                    label: 'Use approximate midpoint',
+                    date: `${String(Math.round((Number(startYear) + Number(endYear)) / 2)).padStart(4, '0')}-01-01`,
+                    displayValue: `circa ${Math.round((Number(startYear) + Number(endYear)) / 2)}`,
+                    precision: 'year'
+                }
+            ]
+        };
+    }
     
     // Handle decade format
     if (precision === 'decade') {
@@ -647,6 +689,39 @@ export function standardizeDateInput(dateInput) {
     
     // Fallback
     return { date: input, precision: 'day', displayValue: input };
+}
+
+/**
+ * Format a standardized date result for QuickStatements.
+ * @param {Object|string} dateInput - A standardizeDateInput result or raw date string
+ * @param {string} [precisionOverride] - Optional precision override
+ * @returns {string|null} QuickStatements time value or null
+ */
+export function formatDateForQuickStatements(dateInput, precisionOverride = null) {
+    const standardized = typeof dateInput === 'string'
+        ? standardizeDateInput(dateInput)
+        : dateInput;
+
+    if (!standardized?.date) {
+        return null;
+    }
+
+    const precisionMapping = {
+        day: 11,
+        month: 10,
+        year: 9,
+        decade: 8,
+        century: 7
+    };
+    const precision = precisionMapping[precisionOverride || standardized.precision] || 11;
+    const dateParts = String(standardized.date).match(/^(\d{4,})-(\d{2})-(\d{2})$/);
+
+    if (!dateParts) {
+        return null;
+    }
+
+    const [, year, month, day] = dateParts;
+    return `+${year}-${month}-${day}T00:00:00Z/${precision}`;
 }
 
 /**

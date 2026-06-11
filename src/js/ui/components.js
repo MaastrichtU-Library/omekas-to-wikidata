@@ -35,6 +35,11 @@ export function createElement(tag, attrs = {}, content = null) {
                 element.setAttribute('disabled', 'disabled');
             }
             // If false, don't set the attribute at all
+        } else if (key === 'checked') {
+            if (value === true || value === 'true') {
+                element.checked = true;
+            }
+            // If false, don't set the property or attribute
         } else if (key === 'selected' && element.tagName === 'OPTION') {
             // Handle selected property for option elements
             if (value === true || value === 'true') {
