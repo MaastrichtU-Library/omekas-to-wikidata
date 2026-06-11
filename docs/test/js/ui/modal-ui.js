@@ -53,7 +53,12 @@ export function setupModalUI() {
     function openModal(title, content, buttons = [], onClose = null) {
         // Set title
         if (modalTitle) {
-            modalTitle.textContent = title;
+            // Check if title contains HTML tags
+            if (typeof title === 'string' && title.includes('<')) {
+                modalTitle.innerHTML = title;
+            } else {
+                modalTitle.textContent = title;
+            }
         }
         
         // Set content
@@ -101,16 +106,26 @@ export function setupModalUI() {
         if (closeModalBtn) {
             closeModalBtn.addEventListener('click', closeModal);
         }
-        
+
         // Setup clicking outside modal to close
+        // Track mousedown to distinguish between clicks and drag-end events
         if (modalContainer) {
+            let mouseDownOnContainer = false;
+
+            modalContainer.addEventListener('mousedown', (e) => {
+                mouseDownOnContainer = (e.target === modalContainer);
+            });
+
             modalContainer.addEventListener('click', (e) => {
-                if (e.target === modalContainer) {
+                // Only close if both mousedown and mouseup (click) happened on the container
+                // This prevents text selection drags from closing the modal
+                if (e.target === modalContainer && mouseDownOnContainer) {
                     closeModal();
                 }
+                mouseDownOnContainer = false;
             });
         }
-        
+
         // Ensure modal is hidden initially by setting the style directly
         if (modalContainer) {
             modalContainer.style.display = 'none';

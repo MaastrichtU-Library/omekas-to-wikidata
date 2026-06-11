@@ -4,6 +4,24 @@
  * Uses the event system to notify other modules of state changes.
  * @module state
  * @returns {Object} State management API with methods for state manipulation
+ * @example
+ * // Initialize state management
+ * import { setupState } from './state.js';
+ * const state = setupState();
+ * 
+ * // Get current state
+ * const currentState = state.getState();
+ * console.log(currentState.currentStep);
+ * 
+ * // Update state
+ * state.updateState('currentStep', 2);
+ * state.updateMappings(['unmapped1'], [{ key: 'title', property: {id: 'P1476'} }], []);
+ * 
+ * // Listen for state changes
+ * import { eventSystem } from './events.js';
+ * eventSystem.subscribe(eventSystem.Events.STATE_CHANGED, (change) => {
+ *   console.log('State changed:', change.path, change.newValue);
+ * });
  */
 import { eventSystem } from './events.js';
 
@@ -23,16 +41,33 @@ export function setupState() {
         apiUrl: '',
         apiKey: '',
         pagination: 10,
+        allFetchedData: null,
         fetchedData: null,
         selectedExample: null,
+        resourceTemplates: [],
+        selectedTemplates: [],
+        resourceClassCache: {},
         
         // Step 2: Mapping
-        entitySchema: '',
+        entitySchema: '', // Deprecated - use selectedEntitySchema instead
+        selectedEntitySchema: null, // Current selected Entity Schema object
+        entitySchemaHistory: [], // Recently selected schemas for quick access
         mappings: {
             nonLinkedKeys: [],
             mappedKeys: [],
             ignoredKeys: [],
-            manualProperties: []
+            sortMode: 'template',
+            transformationBlocks: {}, // mappingId -> array of transformation blocks
+            selectedTransformationFields: {} // mappingId -> selected field key
+        },
+        
+        // Entity Schema mapping status tracking
+        schemaMappingStatus: {
+            requiredMapped: [],
+            requiredUnmapped: [],
+            optionalMapped: [],
+            optionalUnmapped: [],
+            lastUpdated: null
         },
         
         // Step 3: Reconciliation
@@ -41,13 +76,17 @@ export function setupState() {
             completed: 0
         },
         reconciliationData: [],
+        linkedItems: {}, // Maps itemId to Wikidata QID for items linked to existing Wikidata items
         
-        // Step 4: Designer
-        references: [], // Deprecated - references now stored in reconciliationData
-        selectedExampleItem: '',
-        designerData: [],
-        globalReferences: [], // References that apply to all items/properties
-        
+        // Step 4: References
+        references: {
+            itemReferences: {}, // Map of itemId -> array of reference objects
+            summary: {}, // Map of referenceType -> {count, examples: [{itemId, value}]}
+            selectedTypes: ['omeka-item', 'oclc', 'ark', 'sameas'], // List of selected reference types (default: all selected)
+            customReferences: [], // Array of custom reference objects added by user
+            propertyReferences: {} // Map of propertyId -> array of reference type IDs
+        },
+
         // Step 5: Export
         quickStatements: '',
         exportTimestamp: null
@@ -141,8 +180,10 @@ export function setupState() {
             const reconciledCount = Object.keys(savedState.reconciliationData).length;
             summary.push(`• ${reconciledCount} item${reconciledCount > 1 ? 's' : ''} with reconciliation data`);
         }
-        if (savedState.references && savedState.references.length > 0) {
-            summary.push(`• ${savedState.references.length} reference${savedState.references.length > 1 ? 's' : ''} configured`);
+        if (savedState.references && savedState.references.itemReferences &&
+            Object.keys(savedState.references.itemReferences).length > 0) {
+            const refCount = Object.keys(savedState.references.itemReferences).length;
+            summary.push(`• ${refCount} item${refCount > 1 ? 's' : ''} with references`);
         }
         
         summaryEl.innerHTML = summary.length > 0 ? 
@@ -246,6 +287,11 @@ export function setupState() {
     /**
      * Returns a deep copy of the current state
      * @returns {Object} Deep copy of the current state
+     * @example
+     * const state = setupState();
+     * const currentState = state.getState();
+     * console.log(currentState.currentStep); // 1
+     * console.log(currentState.mappings.mappedKeys); // []
      */
     function getState() {
         const stateCopy = JSON.parse(JSON.stringify(state));
@@ -257,6 +303,19 @@ export function setupState() {
      * @param {string} path - Dot-notation path to the state property to update (e.g., 'mappings.nonLinkedKeys')
      * @param {any} value - New value to set
      * @param {boolean} markUnsaved - Whether to mark state as having unsaved changes (default: true)
+     * @example
+     * // Update current step
+     * state.updateState('currentStep', 2);
+     * 
+     * @example
+     * // Update nested mapping data
+     * state.updateState('mappings.mappedKeys', [
+     *   { key: 'dcterms:title', property: { id: 'P1476', label: 'title' } }
+     * ]);
+     * 
+     * @example
+     * // Update without marking as unsaved (for system updates)
+     * state.updateState('reconciliationProgress.completed', 5, false);
      */
     function updateState(path, value, markUnsaved = true) {
         // Split the path by dots
@@ -309,14 +368,29 @@ export function setupState() {
             oldValue: oldState,
             newValue: state
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
      * Resets the state to the initial default values
+     * @param {Object} [options] - Optional reset behavior overrides
+     * @param {boolean} [options.preserveTestMode=false] - Keep the current test mode setting
+     * @param {string} [options.apiUrl=''] - API URL value to keep after reset
      */
-    function resetState() {
+    function resetState(options = {}) {
         const oldState = JSON.parse(JSON.stringify(state));
+        const {
+            preserveTestMode = false,
+            apiUrl = ''
+        } = options;
+
         state = JSON.parse(JSON.stringify(initialState));
+        if (preserveTestMode) {
+            state.testMode = oldState.testMode;
+        }
+        state.apiUrl = apiUrl;
         state.hasUnsavedChanges = false;
         
         // Clear persisted state as well
@@ -327,6 +401,9 @@ export function setupState() {
             oldState,
             newState: state
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -355,6 +432,9 @@ export function setupState() {
             oldStep,
             newStep: step
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -381,6 +461,9 @@ export function setupState() {
             oldHighestStep,
             newHighestStep: step
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -440,7 +523,7 @@ export function setupState() {
                 return state.reconciliationProgress.completed === state.reconciliationProgress.total && 
                        state.reconciliationProgress.total > 0;
             case 4:
-                return state.references.length > 0 && state.designerData.length > 0;
+                return true; // Always valid - empty placeholder step
             default:
                 return false;
         }
@@ -518,6 +601,9 @@ export function setupState() {
             oldMode,
             newMode
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -540,6 +626,9 @@ export function setupState() {
             oldValue: oldMappings,
             newValue: JSON.parse(JSON.stringify(state.mappings))
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -573,6 +662,9 @@ export function setupState() {
             oldValue,
             newValue: [...state.mappings[category]]
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -607,6 +699,9 @@ export function setupState() {
             oldValue,
             newValue: [...state.mappings[category]]
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -622,8 +717,11 @@ export function setupState() {
         if (!state.mappings.ignoredKeys) {
             state.mappings.ignoredKeys = [];
         }
-        if (!state.mappings.manualProperties) {
-            state.mappings.manualProperties = [];
+        if (!state.mappings.transformationBlocks) {
+            state.mappings.transformationBlocks = {};
+        }
+        if (!state.mappings.selectedTransformationFields) {
+            state.mappings.selectedTransformationFields = {};
         }
     }
     
@@ -641,6 +739,9 @@ export function setupState() {
             oldValue: oldProgress.completed,
             newValue: state.reconciliationProgress.completed
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -662,6 +763,9 @@ export function setupState() {
             oldValue: oldSkipped,
             newValue: state.reconciliationProgress.skipped
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
     
     /**
@@ -682,56 +786,299 @@ export function setupState() {
             oldValue: oldProgress,
             newValue: JSON.parse(JSON.stringify(state.reconciliationProgress))
         });
+        
+        // Persist state to localStorage
+        persistState();
     }
+    
     
     /**
-     * Adds a manual property
-     * @param {Object} manualProperty - Manual property object with property, defaultValue, isRequired
+<<<<<<< HEAD
+     * Toggles a reference type between selected and ignored
+     * @param {string} type - Reference type to toggle (e.g., 'omeka-item', 'oclc', 'ark')
      */
-    function addManualProperty(manualProperty) {
-        ensureMappingArrays();
-        
-        const oldValue = [...state.mappings.manualProperties];
-        
-        // Check if property already exists
-        const existingIndex = state.mappings.manualProperties.findIndex(p => p.property.id === manualProperty.property.id);
-        if (existingIndex === -1) {
-            state.mappings.manualProperties.push({
-                ...manualProperty,
-                addedAt: new Date().toISOString()
-            });
-            state.hasUnsavedChanges = true;
-            
-            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-                path: 'mappings.manualProperties',
-                oldValue,
-                newValue: [...state.mappings.manualProperties]
-            });
+    function toggleReferenceType(type) {
+        const oldSelectedTypes = [...state.references.selectedTypes];
+        const index = state.references.selectedTypes.indexOf(type);
+
+        if (index === -1) {
+            // Not selected, add it
+            state.references.selectedTypes.push(type);
+        } else {
+            // Already selected, remove it
+            state.references.selectedTypes.splice(index, 1);
         }
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners of the reference type toggle
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.selectedTypes',
+            oldValue: oldSelectedTypes,
+            newValue: [...state.references.selectedTypes]
+        });
+
+        // Persist state to localStorage
+        persistState();
     }
-    
+
     /**
-     * Removes a manual property by property ID
-     * @param {String} propertyId - The Wikidata property ID to remove
+     * Checks if a reference type is selected
+     * @param {string} type - Reference type to check
+     * @returns {boolean} True if the reference type is selected
      */
-    function removeManualProperty(propertyId) {
-        ensureMappingArrays();
-        
-        const oldValue = [...state.mappings.manualProperties];
-        const index = state.mappings.manualProperties.findIndex(p => p.property.id === propertyId);
-        
-        if (index > -1) {
-            state.mappings.manualProperties.splice(index, 1);
-            state.hasUnsavedChanges = true;
-            
-            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
-                path: 'mappings.manualProperties',
-                oldValue,
-                newValue: [...state.mappings.manualProperties]
-            });
-        }
+    function isReferenceTypeSelected(type) {
+        return state.references.selectedTypes.includes(type);
     }
-    
+
+    /**
+     * Adds a custom reference to the state
+     * @param {Object} customRef - Custom reference object
+     */
+    function addCustomReference(customRef) {
+        if (!state.references.customReferences) {
+            state.references.customReferences = [];
+        }
+
+        const oldValue = [...state.references.customReferences];
+        state.references.customReferences.push(customRef);
+
+        // Also add to selectedTypes so it's selected by default
+        if (!state.references.selectedTypes.includes(customRef.id)) {
+            state.references.selectedTypes.push(customRef.id);
+        }
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.customReferences',
+            oldValue,
+            newValue: [...state.references.customReferences]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Removes a custom reference from the state
+     * @param {string} id - ID of the custom reference to remove
+     */
+    function removeCustomReference(id) {
+        if (!state.references.customReferences) {
+            return;
+        }
+
+        const oldValue = [...state.references.customReferences];
+        state.references.customReferences = state.references.customReferences.filter(ref => ref.id !== id);
+
+        // Also remove from selectedTypes
+        const typeIndex = state.references.selectedTypes.indexOf(id);
+        if (typeIndex !== -1) {
+            state.references.selectedTypes.splice(typeIndex, 1);
+        }
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.customReferences',
+            oldValue,
+            newValue: [...state.references.customReferences]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Gets all custom references
+     * @returns {Array} Array of custom reference objects
+     */
+    function getCustomReferences() {
+        return state.references.customReferences || [];
+    }
+
+    /**
+     * Updates an existing custom reference
+     * @param {string} id - ID of the custom reference to update
+     * @param {Object} updatedReference - Complete reference object from createCustomReference
+     */
+    function updateCustomReference(id, updatedReference) {
+        if (!state.references.customReferences) {
+            return;
+        }
+
+        const index = state.references.customReferences.findIndex(ref => ref.id === id);
+        if (index === -1) {
+            console.error(`Custom reference with id ${id} not found`);
+            return;
+        }
+
+        const oldValue = [...state.references.customReferences];
+
+        // Replace with the complete updated reference object
+        // The modal now provides a complete reference via createCustomReference
+        state.references.customReferences[index] = updatedReference;
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.customReferences',
+            oldValue,
+            newValue: [...state.references.customReferences]
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Gets all currently selected reference types (both auto-detected and custom)
+     * @returns {Array<string>} Array of selected reference type IDs
+     */
+    function getSelectedReferenceTypes() {
+        const selectedTypes = [];
+
+        // Add auto-detected reference types
+        const autoDetectedTypes = ['omeka-item', 'oclc', 'ark', 'sameas'];
+        autoDetectedTypes.forEach(type => {
+            if (state.references.selectedTypes.includes(type)) {
+                selectedTypes.push(type);
+            }
+        });
+
+        // Add custom reference types that are selected
+        const customReferences = state.references.customReferences || [];
+        customReferences.forEach(customRef => {
+            if (state.references.selectedTypes.includes(customRef.id)) {
+                selectedTypes.push(customRef.id);
+            }
+        });
+
+        return selectedTypes;
+    }
+
+    /**
+     * Assigns reference types to a property
+     * @param {string} propertyId - Wikidata property ID (e.g., 'P1476')
+     * @param {Array<string>} referenceTypeIds - Array of reference type IDs to assign
+     */
+    function assignReferencesToProperty(propertyId, referenceTypeIds) {
+        if (!propertyId) {
+            console.error('Property ID is required');
+            return;
+        }
+
+        if (!state.references.propertyReferences) {
+            state.references.propertyReferences = {};
+        }
+
+        const oldValue = { ...state.references.propertyReferences };
+
+        // Assign the references to the property
+        state.references.propertyReferences[propertyId] = [...referenceTypeIds];
+
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'references.propertyReferences',
+            oldValue,
+            newValue: { ...state.references.propertyReferences }
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Gets reference types assigned to a property
+     * @param {string} propertyId - Wikidata property ID (e.g., 'P1476')
+     * @returns {Array<string>} Array of reference type IDs assigned to this property
+     */
+    function getPropertyReferences(propertyId) {
+        if (!state.references.propertyReferences) {
+            return [];
+        }
+        return state.references.propertyReferences[propertyId] || [];
+    }
+
+    /**
+     * Links an item to an existing Wikidata item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     * @param {string} qid - Wikidata QID (e.g., 'Q12345')
+     */
+    function linkItemToWikidata(itemId, qid) {
+        if (!itemId || !qid) {
+            console.error('Both itemId and qid are required for linking');
+            return;
+        }
+
+        const oldLinkedItems = JSON.parse(JSON.stringify(state.linkedItems || {}));
+
+        if (!state.linkedItems) {
+            state.linkedItems = {};
+        }
+
+        state.linkedItems[itemId] = qid;
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners of the link update
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `linkedItems.${itemId}`,
+            oldValue: oldLinkedItems[itemId] || null,
+            newValue: qid
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Unlinks an item from its Wikidata item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     */
+    function unlinkItem(itemId) {
+        if (!itemId) {
+            console.error('itemId is required for unlinking');
+            return;
+        }
+
+        if (!state.linkedItems || !state.linkedItems[itemId]) {
+            // Item is not linked, nothing to do
+            return;
+        }
+
+        const oldQid = state.linkedItems[itemId];
+        delete state.linkedItems[itemId];
+        state.hasUnsavedChanges = true;
+
+        // Notify listeners of the unlink
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `linkedItems.${itemId}`,
+            oldValue: oldQid,
+            newValue: null
+        });
+
+        // Persist state to localStorage
+        persistState();
+    }
+
+    /**
+     * Gets the linked Wikidata QID for an item
+     * @param {string} itemId - Item ID (e.g., 'item-0')
+     * @returns {string|null} Wikidata QID or null if not linked
+     */
+    function getLinkedItem(itemId) {
+        if (!itemId || !state.linkedItems) {
+            return null;
+        }
+        return state.linkedItems[itemId] || null;
+    }
+
     /**
      * Loads mock data for testing purposes
      * @param {Object} mockItems - Mock items data with items array
@@ -760,6 +1107,341 @@ export function setupState() {
             oldValue: null,
             newValue: { mockItems, mockMapping }
         });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Generates a mapping ID from key and property ID
+     * @param {string} key - The source data key
+     * @param {string} propertyId - The Wikidata property ID
+     * @param {string} atField - Optional @ field selector (e.g., '@id', '@value')
+     * @param {number|null} objectIndex - Optional source object index for mixed JSON value arrays
+     * @param {string|null} segmentSignature - Optional segment-family signature
+     * @returns {string} The mapping ID
+     */
+    function generateMappingId(key, propertyId, atField, objectIndex = null, segmentSignature = null) {
+        if (!key || !propertyId) return propertyId || key || 'unknown';
+
+        const selectorParts = [];
+        if (atField) {
+            selectorParts.push(atField);
+        }
+        if (Number.isInteger(objectIndex)) {
+            selectorParts.push(`obj${objectIndex}`);
+        }
+        if (segmentSignature) {
+            selectorParts.push(`seg${segmentSignature}`);
+        }
+
+        if (selectorParts.length > 0) {
+            return `${key}::${selectorParts.join('::')}::${propertyId}`;
+        }
+        return `${key}::${propertyId}`;
+    }
+    
+    /**
+     * Adds a transformation block to a property mapping
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
+     * @param {Object} block - The transformation block to add
+     */
+    function addTransformationBlock(mappingId, block) {
+        ensureMappingArrays();
+        
+        if (!state.mappings.transformationBlocks[mappingId]) {
+            state.mappings.transformationBlocks[mappingId] = [];
+        }
+        
+        const oldValue = JSON.parse(JSON.stringify(state.mappings.transformationBlocks[mappingId]));
+        
+        // Generate unique ID if not provided
+        const blockWithId = {
+            ...block,
+            id: block.id || `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            order: state.mappings.transformationBlocks[mappingId].length
+        };
+        
+        // Check if a block with this ID already exists
+        const existingBlockIndex = state.mappings.transformationBlocks[mappingId].findIndex(b => b.id === blockWithId.id);
+        if (existingBlockIndex !== -1) {
+            // Update existing block instead of adding duplicate
+            state.mappings.transformationBlocks[mappingId][existingBlockIndex] = blockWithId;
+        } else {
+            state.mappings.transformationBlocks[mappingId].push(blockWithId);
+        }
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.transformationBlocks.${mappingId}`,
+            oldValue,
+            newValue: [...state.mappings.transformationBlocks[mappingId]]
+        });
+        
+        // Persist state to localStorage
+        persistState();
+        
+        return blockWithId;
+    }
+    
+    /**
+     * Removes a transformation block by ID
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
+     * @param {string} blockId - The block ID to remove
+     */
+    function removeTransformationBlock(mappingId, blockId) {
+        ensureMappingArrays();
+        
+        if (!state.mappings.transformationBlocks[mappingId]) return;
+        
+        const oldValue = [...state.mappings.transformationBlocks[mappingId]];
+        const index = state.mappings.transformationBlocks[mappingId].findIndex(b => b.id === blockId);
+        
+        if (index > -1) {
+            state.mappings.transformationBlocks[mappingId].splice(index, 1);
+            
+            // Update order indices for remaining blocks
+            state.mappings.transformationBlocks[mappingId].forEach((block, i) => {
+                block.order = i;
+            });
+            
+            state.hasUnsavedChanges = true;
+            
+            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                path: `mappings.transformationBlocks.${mappingId}`,
+                oldValue,
+                newValue: [...state.mappings.transformationBlocks[mappingId]]
+            });
+            
+            // Persist state to localStorage
+            persistState();
+        }
+    }
+    
+    /**
+     * Updates a transformation block configuration
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
+     * @param {string} blockId - The block ID to update
+     * @param {Object} config - The new configuration
+     */
+    function updateTransformationBlock(mappingId, blockId, config) {
+        ensureMappingArrays();
+        
+        if (!state.mappings.transformationBlocks[mappingId]) return;
+        
+        const oldValue = [...state.mappings.transformationBlocks[mappingId]];
+        const block = state.mappings.transformationBlocks[mappingId].find(b => b.id === blockId);
+        
+        if (block) {
+            block.config = { ...block.config, ...config };
+            state.hasUnsavedChanges = true;
+            
+            eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+                path: `mappings.transformationBlocks.${mappingId}`,
+                oldValue,
+                newValue: [...state.mappings.transformationBlocks[mappingId]]
+            });
+            
+            // Persist state to localStorage
+            persistState();
+        }
+    }
+    
+    /**
+     * Reorders transformation blocks for a property mapping
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
+     * @param {Array} newOrder - Array of block IDs in new order
+     */
+    function reorderTransformationBlocks(mappingId, newOrder) {
+        ensureMappingArrays();
+        
+        if (!state.mappings.transformationBlocks[mappingId]) return;
+        
+        const oldValue = [...state.mappings.transformationBlocks[mappingId]];
+        const blocks = state.mappings.transformationBlocks[mappingId];
+        
+        // Create new ordered array
+        const reorderedBlocks = newOrder.map((blockId, index) => {
+            const block = blocks.find(b => b.id === blockId);
+            if (block) {
+                block.order = index;
+                return block;
+            }
+        }).filter(Boolean);
+        
+        state.mappings.transformationBlocks[mappingId] = reorderedBlocks;
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.transformationBlocks.${mappingId}`,
+            oldValue,
+            newValue: [...state.mappings.transformationBlocks[mappingId]]
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets transformation blocks for a property mapping
+     * @param {string} mappingId - The mapping ID (key::propertyId format) or legacy propertyId
+     * @returns {Array} Array of transformation blocks
+     */
+    function getTransformationBlocks(mappingId) {
+        ensureMappingArrays();
+        // First try with the mapping ID as-is
+        if (state.mappings.transformationBlocks[mappingId]) {
+            return state.mappings.transformationBlocks[mappingId];
+        }
+        // Backwards compatibility: if not found and doesn't contain '::', it might be a legacy propertyId
+        // Check if any existing keys end with this propertyId
+        if (!mappingId.includes('::')) {
+            for (const key in state.mappings.transformationBlocks) {
+                if (key.endsWith(`::${mappingId}`)) {
+                    return state.mappings.transformationBlocks[key];
+                }
+            }
+        }
+        return [];
+    }
+    
+    /**
+     * Sets the selected transformation field for a mapping
+     * @param {string} mappingId - The mapping ID
+     * @param {string} fieldKey - The selected field key
+     */
+    function setSelectedTransformationField(mappingId, fieldKey) {
+        ensureMappingArrays();
+        
+        const oldValue = state.mappings.selectedTransformationFields[mappingId];
+        state.mappings.selectedTransformationFields[mappingId] = fieldKey;
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: `mappings.selectedTransformationFields.${mappingId}`,
+            oldValue,
+            newValue: fieldKey
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets the selected transformation field for a mapping
+     * @param {string} mappingId - The mapping ID
+     * @returns {string|null} The selected field key or null
+     */
+    function getSelectedTransformationField(mappingId) {
+        ensureMappingArrays();
+        return state.mappings.selectedTransformationFields[mappingId] || null;
+    }
+    
+    /**
+     * Sets the selected Entity Schema
+     * @param {Object} schema - The Entity Schema object
+     */
+    function setSelectedEntitySchema(schema) {
+        const oldValue = state.selectedEntitySchema;
+        state.selectedEntitySchema = schema;
+        
+        // Add to history if not already present
+        if (schema && schema.id) {
+            ensureEntitySchemaHistory();
+            const existingIndex = state.entitySchemaHistory.findIndex(s => s.id === schema.id);
+            if (existingIndex > -1) {
+                // Move to front
+                state.entitySchemaHistory.splice(existingIndex, 1);
+            }
+            // Add to front, keep only last 10
+            state.entitySchemaHistory.unshift(schema);
+            state.entitySchemaHistory = state.entitySchemaHistory.slice(0, 10);
+        }
+        
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'selectedEntitySchema',
+            oldValue,
+            newValue: schema
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets the currently selected Entity Schema
+     * @returns {Object|null} The selected Entity Schema or null
+     */
+    function getSelectedEntitySchema() {
+        return state.selectedEntitySchema;
+    }
+    
+    /**
+     * Gets the Entity Schema history
+     * @returns {Array} Array of recently selected Entity Schemas
+     */
+    function getEntitySchemaHistory() {
+        ensureEntitySchemaHistory();
+        return [...state.entitySchemaHistory];
+    }
+    
+    /**
+     * Ensures the Entity Schema history array is initialized
+     */
+    function ensureEntitySchemaHistory() {
+        if (!state.entitySchemaHistory) {
+            state.entitySchemaHistory = [];
+        }
+    }
+    
+    /**
+     * Clears the Entity Schema history
+     */
+    function clearEntitySchemaHistory() {
+        const oldValue = [...(state.entitySchemaHistory || [])];
+        state.entitySchemaHistory = [];
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'entitySchemaHistory',
+            oldValue,
+            newValue: []
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Updates the Entity Schema mapping status
+     * @param {Object} status - Mapping status object with categorized properties
+     */
+    function updateSchemaMappingStatus(status) {
+        const oldValue = { ...state.schemaMappingStatus };
+        state.schemaMappingStatus = {
+            ...status,
+            lastUpdated: new Date().toISOString()
+        };
+        state.hasUnsavedChanges = true;
+        
+        eventSystem.publish(eventSystem.Events.STATE_CHANGED, {
+            path: 'schemaMappingStatus',
+            oldValue,
+            newValue: state.schemaMappingStatus
+        });
+        
+        // Persist state to localStorage
+        persistState();
+    }
+    
+    /**
+     * Gets the current Entity Schema mapping status
+     * @returns {Object} Current mapping status
+     */
+    function getSchemaMappingStatus() {
+        return { ...state.schemaMappingStatus };
     }
     
     /**
@@ -796,12 +1478,40 @@ export function setupState() {
         addToMappingCategory,
         removeFromMappingCategory,
         ensureMappingArrays,
-        addManualProperty,
-        removeManualProperty,
+        // Convenience methods for transformation blocks
+        generateMappingId,
+        addTransformationBlock,
+        removeTransformationBlock,
+        updateTransformationBlock,
+        reorderTransformationBlocks,
+        getTransformationBlocks,
+        setSelectedTransformationField,
+        getSelectedTransformationField,
         // Convenience methods for reconciliation progress
         incrementReconciliationCompleted,
         incrementReconciliationSkipped,
         setReconciliationProgress,
+        // Convenience methods for references
+        toggleReferenceType,
+        isReferenceTypeSelected,
+        addCustomReference,
+        removeCustomReference,
+        getCustomReferences,
+        updateCustomReference,
+        getSelectedReferenceTypes,
+        assignReferencesToProperty,
+        getPropertyReferences,
+        // Convenience methods for linked items
+        linkItemToWikidata,
+        unlinkItem,
+        getLinkedItem,
+        // Convenience methods for Entity Schema
+        setSelectedEntitySchema,
+        getSelectedEntitySchema,
+        getEntitySchemaHistory,
+        clearEntitySchemaHistory,
+        updateSchemaMappingStatus,
+        getSchemaMappingStatus,
         // Utility methods
         loadMockData,
         // Persistence methods

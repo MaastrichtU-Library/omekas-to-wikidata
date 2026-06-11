@@ -1,13 +1,87 @@
 /**
- * Handles the Export step functionality
+ * Handles the Export step functionality - QuickStatements generation and validation
+ * 
+ * This module generates the final QuickStatements format for importing data into Wikidata.
+ * QuickStatements is Wikidata's batch import tool that requires precise formatting:
+ * - Tab-separated values with specific column meanings
+ * - Proper escaping of special characters and strings
+ * - Validation against Wikidata property and entity ID patterns
+ * - Date formatting with precision indicators
+ * - Reference sourcing and statement qualifiers
+ * 
+ * The export process is the culmination of the entire workflow - it transforms:
+ * - Raw Omeka S metadata (step 1)
+ * - Property mappings (step 2)
+ * - Entity reconciliation (step 3)
+ * 
+ * Into properly formatted QuickStatements that can be imported directly into Wikidata
+ * without manual intervention or formatting corrections.
+ * 
+ * Critical Requirements:
+ * - All property IDs must be valid Wikidata format (P123, S456)
+ * - All entity references must be valid Q-numbers or reconciled entities
+ * - String values must be properly escaped for QuickStatements parser
+ * - Date values must include appropriate precision indicators
+ * - References must follow Wikidata sourcing requirements
+ * 
+ * @module export
  */
 import { createDownloadLink, createFileInput, createElement, createButton, showMessage } from '../ui/components.js';
 import { eventSystem } from '../events.js';
+import { detectIdentifier } from '../utils/identifier-detection.js';
+import { formatDateForQuickStatements } from '../utils/property-types.js';
 
-// Constants for validation
-const PROPERTY_ID_REGEX = /^[PS]\d+$/;  // Matches P123, S456 (Wikidata properties)
-const LANGUAGE_PROPERTY_REGEX = /^[LDA][a-z]{2,3}(-[a-z]+)?$/;  // Matches Len, Den, Amul, Lde-ch (language-specific labels/descriptions/aliases)
+// Validation constants for Wikidata format compliance
+// These patterns ensure generated QuickStatements meet Wikidata requirements
 
+/**
+ * Validates Wikidata property and statement IDs
+ * - P\d+: Property IDs (e.g., P31 for "instance of", P569 for "date of birth")
+ * - S\d+: Statement IDs used for references and qualifiers
+ * @see https://www.wikidata.org/wiki/Wikidata:Glossary
+ */
+const PROPERTY_ID_REGEX = /^[PS]\d+$/;
+
+/**
+ * Validates language-specific property formats for multilingual content
+ * - L + language code: Labels (e.g., "Len" for English label)
+ * - D + language code: Descriptions (e.g., "Dde" for German description)
+ * - A + language code: Aliases (e.g., "Afr" for French aliases)
+ * Supports standard language codes with optional regional variants
+ * @see https://www.wikidata.org/wiki/Help:Multilingual
+ */
+const LANGUAGE_PROPERTY_REGEX = /^[LDA][a-z]{2,3}(-[a-z]+)?$/;
+
+/**
+ * Initializes the export step interface with QuickStatements generation capabilities
+ * 
+ * This function sets up the final step where all processed data is transformed into
+ * QuickStatements format for Wikidata import. It handles the complex task of:
+ * - Aggregating data from all previous workflow steps
+ * - Applying final validation and format checking
+ * - Generating syntactically correct QuickStatements
+ * - Providing multiple export options (copy, download, direct import)
+ * 
+ * The export step requires complete data from the entire workflow:
+ * - Validated Omeka S data with proper structure
+ * - Complete property mappings to Wikidata properties
+ * - Reconciled entities with confidence scores
+ * 
+ * @param {Object} state - Application state management instance
+ * @param {Function} state.getState - Retrieves complete application state
+ * @param {Object} state.reconciliationData - Entity reconciliation results
+ * @param {Array} state.mappedProperties - Property mappings from mapping step
+ * @param {Object} state.designerConfig - Final structure configuration
+ * 
+ * @description
+ * Export workflow:
+ * 1. Validates completeness of all previous steps
+ * 2. Aggregates reconciled entities and mapped properties
+ * 3. Applies final formatting and validation rules
+ * 4. Generates QuickStatements with proper escaping and formatting
+ * 5. Provides export interface with copy/download/direct import options
+ * 6. Validates generated statements against Wikidata requirements
+ */
 export function setupExportStep(state) {
     const quickStatementsTextarea = document.getElementById('quick-statements');
     const copyQuickStatementsBtn = document.getElementById('copy-quick-statements');
@@ -76,48 +150,164 @@ export function setupExportStep(state) {
         generateQuickStatements();
     }
     
-    // Utility function to escape strings for QuickStatements
+    /**
+     * Escapes strings for QuickStatements format compliance
+     * 
+     * QuickStatements requires specific string escaping to prevent parsing errors:
+     * - Double quotes must be escaped as double double-quotes ("")
+     * - Newlines and carriage returns must be converted to spaces
+     * - Empty/null values must be represented as empty quoted strings
+     * 
+     * This escaping is critical because improperly formatted strings can cause:
+     * - QuickStatements import failures
+     * - Data corruption during parsing
+     * - Silent truncation of content
+     * 
+     * @param {string|null|undefined} str - String to escape for QuickStatements
+     * @returns {string} Properly escaped string ready for QuickStatements format
+     * 
+     * @example
+     * escapeQuickStatementsString('Book "Title" Name') // '"Book ""Title"" Name"'
+     * escapeQuickStatementsString('Multi\nline') // '"Multi line"'
+     * escapeQuickStatementsString(null) // '""'
+     */
     function escapeQuickStatementsString(str) {
         if (!str) return '""';
         // Escape quotes and handle special characters
         return `"${str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, ' ')}"`;
     }
     
-    // Format dates for QuickStatements
-    function formatDate(dateString, precision = 11) {
-        if (!dateString) return null;
+    /**
+     * Converts precision string to Wikidata precision number
+     * 
+     * Maps user-friendly precision names to Wikidata's numeric precision system:
+     * - 'day': 11 (most precise - full date)
+     * - 'month': 10 (month-level precision)
+     * - 'year': 9 (year-level precision)
+     * - 'decade': 8 (decade-level precision)
+     * 
+     * @param {string} precisionString - User-friendly precision name
+     * @returns {number} Wikidata precision number (defaults to 11 for day)
+     * 
+     * @example
+     * getPrecisionNumber('year') // 9
+     * getPrecisionNumber('month') // 10
+     * getPrecisionNumber('day') // 11
+     * getPrecisionNumber('decade') // 8
+     */
+    function getPrecisionNumber(precisionString) {
+        const precisionMapping = {
+            'day': 11,
+            'month': 10,
+            'year': 9,
+            'decade': 8,
+            'century': 7  // Future support
+        };
         
-        try {
-            let date;
-            if (dateString instanceof Date) {
-                date = dateString;
-            } else {
-                date = new Date(dateString);
-            }
-            
-            if (isNaN(date.getTime())) {
-                return null;
-            }
-            
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            
-            return `+${year}-${month}-${day}T00:00:00Z/${precision}`;
-        } catch (error) {
-            console.error('Error formatting date:', dateString, error);
-            return null;
-        }
+        return precisionMapping[precisionString] || 11; // Default to day precision
     }
     
+    /**
+     * Formats dates for QuickStatements with appropriate precision indicators
+     * 
+     * Wikidata requires specific date formatting with precision values that indicate
+     * the granularity of the date information:
+     * - Precision 11: Day-level precision (YYYY-MM-DD)
+     * - Precision 10: Month-level precision (YYYY-MM)
+     * - Precision 9: Year-level precision (YYYY)
+     * 
+     * The precision affects how Wikidata displays and processes the date,
+     * and must match the actual precision of the source data.
+     * 
+     * @param {string|Date} dateString - Date value to format
+     * @param {number} precision - Wikidata precision level (8=decade, 9=year, 10=month, 11=day)
+     * @returns {string|null} Formatted date string or null for invalid dates
+     * 
+     * @example
+     * formatDate("2023-05-15", 11) // "+2023-05-15T00:00:00Z/11"
+     * formatDate("2023-05", 10) // "+2023-05-01T00:00:00Z/10"
+     * formatDate("2023", 9) // "+2023-01-01T00:00:00Z/9"
+     * formatDate("1990s", 8) // "+1990-01-01T00:00:00Z/8"
+     * 
+     * @description
+     * Date formatting requirements:
+     * - Must include timezone indicator (Z for UTC)
+     * - Must include precision suffix (/8, /9, /10, /11)
+     * - Must handle various input formats gracefully (full dates, year-month, year-only, decades)
+     * - Must return null for unparseable dates
+     * - Automatically detects input format and adjusts parsing accordingly
+     */
+    function formatDate(dateString, precision = 11) {
+        const precisionNameByNumber = {
+            11: 'day',
+            10: 'month',
+            9: 'year',
+            8: 'decade',
+            7: 'century'
+        };
+        return formatDateForQuickStatements(dateString, precisionNameByNumber[precision]);
+    }
+
+    /**
+     * Collects references for a specific property and item
+     * @param {string} propertyId - Wikidata property ID (e.g., 'P1476')
+     * @param {string} itemId - Item ID (e.g., 'https://...items/123')
+     * @param {Object} currentState - Application state
+     * @returns {Array} Array of reference objects with url property
+     */
+    function getReferencesForPropertyAndItem(propertyId, itemId, currentState) {
+        const references = [];
+
+        // Get property-specific reference assignments
+        const assignedReferenceTypes = currentState.references?.propertyReferences?.[propertyId] || [];
+
+        // If no references assigned to this property, return empty array
+        if (assignedReferenceTypes.length === 0) {
+            return references;
+        }
+
+        // Get all item references (auto-detected)
+        const itemReferences = currentState.references?.itemReferences?.[itemId] || [];
+
+        // Get all custom references
+        const customReferences = currentState.references?.customReferences || [];
+
+        // Collect references based on assigned types
+        assignedReferenceTypes.forEach(refTypeId => {
+            // Check if this is an auto-detected reference type
+            const autoDetectedTypes = ['omeka-item', 'oclc', 'ark'];
+            if (autoDetectedTypes.includes(refTypeId)) {
+                // Find matching auto-detected references for this item
+                const matchingRefs = itemReferences.filter(ref => ref.type === refTypeId);
+                matchingRefs.forEach(ref => {
+                    if (ref.url) {
+                        references.push({ url: ref.url });
+                    }
+                });
+            } else {
+                // This is a custom reference - find it in customReferences
+                const customRef = customReferences.find(cr => cr.id === refTypeId);
+                if (customRef && customRef.items) {
+                    // Find this item's URL in the custom reference's items array
+                    const itemRef = customRef.items.find(item => item.itemId === itemId);
+                    if (itemRef && itemRef.url) {
+                        references.push({ url: itemRef.url });
+                    }
+                }
+            }
+        });
+
+        return references;
+    }
+
     // Format a single statement with references
     function formatStatement(itemId, propertyId, value, references = []) {
         if (!itemId || !propertyId || !value) {
             return null;
         }
-        
+
         let statement = `${itemId}\t${propertyId}\t${value}`;
-        
+
         // Add references
         if (references && references.length > 0) {
             references.forEach(ref => {
@@ -132,8 +322,21 @@ export function setupExportStep(state) {
                 }
             });
         }
-        
+
         return statement;
+    }
+
+    function normalizeExternalIdentifierValue(rawValue) {
+        if (rawValue === null || rawValue === undefined) {
+            return rawValue;
+        }
+
+        const detectedIdentifier = detectIdentifier(rawValue, 'export');
+        if (detectedIdentifier?.identifierValue) {
+            return detectedIdentifier.identifierValue;
+        }
+
+        return String(rawValue).trim();
     }
     
     // Validate QuickStatements syntax
@@ -196,55 +399,31 @@ export function setupExportStep(state) {
     }
     
     /**
-     * Extract label or description value from item data with fallback to original fetched data
+     * Check if an item has any valid reconciled properties that should be exported
      * 
-     * This function implements a two-stage fallback strategy:
-     * 1. First tries to get the value from reconciled data (user has explicitly matched/selected values)
-     * 2. Falls back to the original fetched data if no reconciled value exists
+     * An item is considered exportable if it has at least one property with a selectedMatch.
+     * Items where all properties were skipped during reconciliation should not be exported.
      * 
-     * @param {Object} itemData - The item's reconciled data containing properties and their matches
-     * @param {string} propertyKey - The key/field name to extract the value from
-     * @param {Array} fetchedData - The original fetched data array from Omeka S
-     * @param {string} itemId - The item identifier in format "item-N" where N is the index
-     * @returns {string|null} The extracted value or null if not found
+     * @param {Object} itemData - The item's reconciliation data
+     * @returns {boolean} True if the item has at least one valid reconciled property
      */
-    function getLabelOrDescriptionValue(itemData, propertyKey, fetchedData, itemId) {
-        // Stage 1: Try to get from reconciled data (preferred source)
-        // This contains user-selected matches from the reconciliation process
-        if (itemData.properties && itemData.properties[propertyKey]) {
+    function hasValidReconciledProperties(itemData) {
+        if (!itemData || !itemData.properties) {
+            return false;
+        }
+        
+        return Object.keys(itemData.properties).some(propertyKey => {
             const propertyData = itemData.properties[propertyKey];
-            if (propertyData.reconciled && propertyData.reconciled[0] && propertyData.reconciled[0].selectedMatch) {
-                // Return the matched value if available, otherwise the original value
-                return propertyData.reconciled[0].selectedMatch.value || propertyData.reconciled[0].original;
-            }
-        }
-        
-        // Stage 2: Fall back to original fetched data
-        // This is the raw data from Omeka S before any reconciliation
-        if (fetchedData && Array.isArray(fetchedData)) {
-            // Extract numeric index from itemId (format: "item-0", "item-1", etc.)
-            const itemIndex = parseInt(itemId.replace('item-', ''));
-            const originalItem = fetchedData[itemIndex];
             
-            if (originalItem && originalItem[propertyKey] !== undefined && originalItem[propertyKey] !== null) {
-                let value = originalItem[propertyKey];
-                
-                // Handle complex Omeka S value structures
-                if (Array.isArray(value)) {
-                    // Take first value if property contains multiple values
-                    value = value[0];
-                }
-                if (typeof value === 'object' && value !== null) {
-                    // Extract value from Omeka S value objects
-                    // Try common Omeka S value properties in order of preference
-                    value = value['@value'] || value['o:label'] || JSON.stringify(value);
-                }
-                
-                return value;
+            if (!propertyData || !propertyData.reconciled) {
+                return false;
             }
-        }
-        
-        return null;
+            
+            // Check if any reconciled value has a selectedMatch
+            return propertyData.reconciled.some(reconciledValue => {
+                return reconciledValue && reconciledValue.selectedMatch;
+            });
+        });
     }
     
     // Generate QuickStatements
@@ -255,15 +434,8 @@ export function setupExportStep(state) {
         const reconciliationData = currentState.reconciliationData;
         const mappedKeys = currentState.mappings?.mappedKeys || [];
         const manualProperties = currentState.mappings?.manualProperties || [];
-        
-        // Combine old-style references with new global references
-        // Note: We don't filter by enabled anymore since we now use property-specific references
-        const oldReferences = currentState.references || [];
-        const globalReferences = currentState.globalReferences || [];
-        const allReferences = [...oldReferences, ...globalReferences];
-        
+
         const entitySchema = currentState.entitySchema;
-        const designerData = currentState.designerData || {};
         
         if (!reconciliationData || Object.keys(reconciliationData).length === 0) {
             quickStatementsTextarea.value = 'No reconciliation data available. Please complete the reconciliation step.';
@@ -277,109 +449,187 @@ export function setupExportStep(state) {
         // Process each item
         Object.keys(reconciliationData).forEach(itemId => {
             const itemData = reconciliationData[itemId];
-            
+
             try {
-                // Always create new items
-                quickStatementsText += 'CREATE\n';
-                
-                // Add labels for all configured languages
-                const labelMappings = designerData.labelMappings || {};
-                Object.keys(labelMappings).forEach(languageCode => {
-                    const propertyKey = labelMappings[languageCode];
-                    if (propertyKey) {
-                        const labelValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
-                        if (labelValue) {
-                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
-                            quickStatementsText += `LAST\tL${langSuffix}\t${escapeQuickStatementsString(labelValue)}\n`;
-                        }
-                    }
-                });
-                
-                // Add descriptions for all configured languages
-                const descriptionMappings = designerData.descriptionMappings || {};
-                Object.keys(descriptionMappings).forEach(languageCode => {
-                    const propertyKey = descriptionMappings[languageCode];
-                    if (propertyKey) {
-                        const descriptionValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
-                        if (descriptionValue) {
-                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
-                            quickStatementsText += `LAST\tD${langSuffix}\t${escapeQuickStatementsString(descriptionValue)}\n`;
-                        }
-                    }
-                });
-                
-                // Add aliases for all configured languages
-                const aliasMappings = designerData.aliasMappings || {};
-                Object.keys(aliasMappings).forEach(languageCode => {
-                    const propertyKey = aliasMappings[languageCode];
-                    if (propertyKey) {
-                        const aliasValue = getLabelOrDescriptionValue(itemData, propertyKey, currentState.fetchedData, itemId);
-                        if (aliasValue) {
-                            const langSuffix = languageCode === 'en' ? 'en' : languageCode;
-                            quickStatementsText += `LAST\tA${langSuffix}\t${escapeQuickStatementsString(aliasValue)}\n`;
-                        }
-                    }
-                });
-                
-                // Add entity type from schema if available and valid
-                // Only add P31 (instance of) if entitySchema is a valid Q-identifier
-                if (entitySchema && entitySchema.match(/^Q\d+$/)) {
-                    quickStatementsText += `LAST\tP31\t${entitySchema}\n`;
+                // Only export items that have at least one reconciled property with selectedMatch
+                // Skip items where all properties were skipped during reconciliation
+                if (!hasValidReconciledProperties(itemData)) {
+                    return; // Skip this item entirely
                 }
-                
-                var itemPrefix = 'LAST';
-                
+
+                // Extract the original item ID from the source data
+                // References in Step 4 are keyed by the @id field (e.g., "https://...items/123")
+                // But reconciliation uses simplified IDs (e.g., "item-0")
+                // We need to get the @id from originalData for reference lookups
+                const originalItemId = itemData.originalData?.['@id'] || itemId;
+
+                // Check if item is linked to an existing Wikidata item
+                const linkedQid = currentState.linkedItems ? currentState.linkedItems[itemId] : null;
+
+                var itemPrefix;
+                if (linkedQid) {
+                    // Item is linked to existing Wikidata item - use QID directly, don't create new item
+                    itemPrefix = linkedQid;
+                } else {
+                    // Create new item since it has valid reconciled properties
+                    quickStatementsText += 'CREATE\n';
+
+                    // Label, description, and alias configuration now comes from Mapping/Reconciliation.
+                    // Items will be created without labels - these can be added manually in Wikidata
+
+                    itemPrefix = 'LAST';
+                }
+
+                // Collect all statements for this item before outputting them
+                // This allows us to ensure labels are output first
+                const itemStatements = [];
+
                 // Process each property
                 Object.keys(itemData.properties).forEach(propertyKey => {
                     const propertyData = itemData.properties[propertyKey];
-                    
-                    // Determine if this is a manual property or mapped property
+
+                    // Extract the Wikidata property ID from the mappingId
+                    // The mappingId format is: ${key}::${propertyId} or custom_${name}::${propertyId}
+                    // We need to extract the propertyId part (after the final ::)
                     let wikidataPropertyId;
+                    let propertyMetadata = null;
                     let isManualProperty = false;
-                    
-                    // Check if this is a manual property first
-                    const manualProperty = manualProperties.find(mp => mp.property.id === propertyKey);
-                    if (manualProperty) {
-                        wikidataPropertyId = manualProperty.property.id;
-                        isManualProperty = true;
+
+                    // Check if propertyKey contains :: separator (new mappingId format)
+                    if (propertyKey.includes('::')) {
+                        // Extract the property ID (last part after final ::)
+                        const parts = propertyKey.split('::');
+                        wikidataPropertyId = parts[parts.length - 1];
+
+                        // Determine if this is a manual or mapped property
+                        if (propertyKey.startsWith('custom_')) {
+                            isManualProperty = true;
+                            // Find the manual property by matching the property ID
+                            const manualProperty = manualProperties.find(mp => mp.property.id === wikidataPropertyId);
+                            if (manualProperty) {
+                                propertyMetadata = manualProperty.property;
+                            }
+                        } else {
+                            // It's a mapped property - extract the key part (before :: separator)
+                            const key = parts[0];
+                            const mapping = mappedKeys.find(m => m.key === key && m.property?.id === wikidataPropertyId);
+                            if (mapping) {
+                                propertyMetadata = mapping.property;
+                            }
+                        }
                     } else {
-                        // Find the corresponding mapping to get the Wikidata property ID
-                        const mapping = mappedKeys.find(m => m.key === propertyKey);
-                        wikidataPropertyId = mapping?.property?.id || propertyKey;
+                        // Legacy format without :: separator (backward compatibility)
+                        wikidataPropertyId = propertyKey;
+
+                        // Try to find it as manual property first
+                        const manualProperty = manualProperties.find(mp => mp.property.id === propertyKey);
+                        if (manualProperty) {
+                            propertyMetadata = manualProperty.property;
+                            isManualProperty = true;
+                        } else {
+                            // Try to find as mapped property
+                            const mapping = mappedKeys.find(m => m.key === propertyKey);
+                            if (mapping) {
+                                wikidataPropertyId = mapping.property?.id || propertyKey;
+                                propertyMetadata = mapping.property;
+                            }
+                        }
                     }
-                    
+
+                    // Store original property ID for reference lookup (before QuickStatements transformation)
+                    const originalPropertyId = wikidataPropertyId;
+
                     // Process each reconciled value
                     propertyData.reconciled.forEach(reconciledValue => {
                         if (reconciledValue.selectedMatch) {
                             const match = reconciledValue.selectedMatch;
                             let value = '';
-                            
+                            // Reset to original property ID for each value (in case it was transformed in previous iteration)
+                            let currentPropertyId = originalPropertyId;
+                            let isLabel = false;
+
                             try {
                                 if (match.type === 'wikidata') {
                                     value = match.id;
                                 } else if (match.type === 'custom') {
                                     if (match.datatype === 'time') {
-                                        value = formatDate(match.value);
+                                        // Extract precision from saved reconciliation data
+                                        const precision = getPrecisionNumber(match.precision);
+                                        value = match.standardizedDate
+                                            ? formatDateForQuickStatements({
+                                                date: match.standardizedDate,
+                                                precision: match.precision || 'day'
+                                            })
+                                            : formatDate(match.value, precision);
                                         if (!value) {
                                             errors.push(`Invalid date format for ${propertyKey}: ${match.value}`);
                                             return;
                                         }
+                                    } else if (match.datatype === 'monolingualtext') {
+                                        // Handle monolingual text - two different formats:
+                                        // 1. Labels/descriptions/aliases: Len "value" (language in property ID)
+                                        // 2. Regular monolingual properties: P1476 en"value" (language prefix in value)
+
+                                        const languageCode = match.language || 'en'; // Default to 'en' if no language specified
+
+                                        // Warn if language code is missing
+                                        if (!match.language) {
+                                            console.warn(`No language code specified for ${currentPropertyId} "${match.value}". Defaulting to "en". Please re-reconcile this value with a language selection.`);
+                                        }
+
+                                        // Handle both singular and plural forms (alias/aliases)
+                                        isLabel = currentPropertyId === 'label' || currentPropertyId === 'labels';
+                                        const isDescription = currentPropertyId === 'description' || currentPropertyId === 'descriptions';
+                                        const isAlias = currentPropertyId === 'alias' || currentPropertyId === 'aliases';
+
+                                        if (isLabel || isDescription || isAlias) {
+                                            // Format: Len "value" - language code goes in property ID
+                                            value = escapeQuickStatementsString(match.value);
+
+                                            // Map property type to QuickStatements prefix
+                                            let prefix;
+                                            if (isLabel) {
+                                                prefix = 'L';
+                                            } else if (isDescription) {
+                                                prefix = 'D';
+                                            } else if (isAlias) {
+                                                prefix = 'A';
+                                            }
+
+                                            // Transform property ID to QuickStatements format
+                                            currentPropertyId = `${prefix}${languageCode}`;
+                                        } else {
+                                            // Format: P1476 en:"value" - language code with colon prefixes the value
+                                            // Don't escape the value yet, add language prefix first
+                                            const escapedValue = match.value.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, ' ');
+                                            value = `${languageCode}:"${escapedValue}"`;
+                                        }
+                                    } else if (match.datatype === 'external-id') {
+                                        value = escapeQuickStatementsString(normalizeExternalIdentifierValue(match.value));
                                     } else {
                                         value = escapeQuickStatementsString(match.value);
                                     }
                                 } else if (match.type === 'string') {
                                     // Handle string type reconciliation (from "Accept as String" option)
-                                    value = escapeQuickStatementsString(match.value);
+                                    if (propertyMetadata?.datatype === 'external-id') {
+                                        value = escapeQuickStatementsString(normalizeExternalIdentifierValue(match.value));
+                                    } else {
+                                        value = escapeQuickStatementsString(match.value);
+                                    }
                                 }
-                                
+
                                 if (value) {
-                                    // Use property-specific references if available, otherwise use all global references
-                                    let references = propertyData.references || allReferences;
-                                    
-                                    // Format the statement
-                                    const statement = formatStatement(itemPrefix, wikidataPropertyId, value, references);
+                                    // Get property-specific references using:
+                                    // 1. ORIGINAL property ID (before QuickStatements transformation like "label" → "Len")
+                                    // 2. ORIGINAL item ID (the @id field from source data, not the simplified "item-0" ID)
+                                    // This ensures references are found correctly in both dimensions
+                                    const references = getReferencesForPropertyAndItem(originalPropertyId, originalItemId, currentState);
+
+                                    // Format the statement using the transformed property ID for QuickStatements
+                                    const statement = formatStatement(itemPrefix, currentPropertyId, value, references);
                                     if (statement) {
-                                        quickStatementsText += statement + '\n';
+                                        // Store statement with flag indicating if it's a label
+                                        itemStatements.push({ statement, isLabel });
                                     }
                                 }
                             } catch (error) {
@@ -387,6 +637,28 @@ export function setupExportStep(state) {
                             }
                         }
                     });
+                });
+
+                // Sort statements so labels come first
+                itemStatements.sort((a, b) => {
+                    if (a.isLabel && !b.isLabel) return -1;
+                    if (!a.isLabel && b.isLabel) return 1;
+                    return 0;
+                });
+
+                // Deduplicate statements - keep only unique statements
+                const seenStatements = new Set();
+                const uniqueStatements = itemStatements.filter(({ statement }) => {
+                    if (seenStatements.has(statement)) {
+                        return false;
+                    }
+                    seenStatements.add(statement);
+                    return true;
+                });
+
+                // Output statements in sorted order
+                uniqueStatements.forEach(({ statement }) => {
+                    quickStatementsText += statement + '\n';
                 });
                 
                 // Add separator between items

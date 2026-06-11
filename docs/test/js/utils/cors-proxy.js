@@ -4,13 +4,51 @@
  */
 
 /**
- * Configuration for available CORS proxy services
- * Ordered by success rate: CORS Proxy (corsproxy.io) → AllOrigins (fixed) → Community Proxy → ThingProxy → YQL Proxy
+ * Domain memory cache for tracking CORS-blocked domains
+ * Reduces console noise by skipping direct fetch for known blocked domains
+ */
+const corsBlockedDomains = new Set();
+
+/**
+ * Extracts domain from URL for CORS tracking
+ * @param {string} url - Full URL
+ * @returns {string} - Domain (e.g., "example.com")
+ */
+function extractDomain(url) {
+    try {
+        const urlObj = new URL(url);
+        return urlObj.hostname;
+    } catch {
+        return url; // Fallback if URL parsing fails
+    }
+}
+
+/**
+ * Configuration for available CORS proxy services.
+ * Ordered by current browser-level verification against the Radboud sample API.
  */
 const CORS_PROXIES = [
     {
-        name: 'CORS Proxy (corsproxy.io)',
-        transform: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        name: 'CORSPROXY',
+        transform: (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+        parseResponse: (response) => response,
+        headers: {}
+    },
+    {
+        name: 'CodeTabs Proxy',
+        transform: (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
+        parseResponse: (response) => response,
+        headers: {}
+    },
+    {
+        name: 'Corsfix',
+        transform: (url) => `https://proxy.corsfix.com/?${url}`,
+        parseResponse: (response) => response,
+        headers: {}
+    },
+    {
+        name: 'Community CORS Proxy (CORS.lol)',
+        transform: (url) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
         parseResponse: (response) => response,
         headers: {}
     },
@@ -49,83 +87,92 @@ const CORS_PROXIES = [
             throw new Error('AllOrigins returned unexpected response format');
         },
         headers: {}
-    },
-    {
-        name: 'Community CORS Proxy (CORS.lol)',
-        transform: (url) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
-        parseResponse: (response) => response,
-        headers: {}
-    },
-    {
-        name: 'ThingProxy',
-        transform: (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
-        parseResponse: (response) => response,
-        headers: {}
-    },
-    {
-        name: 'YQL Proxy',
-        transform: (url) => `https://query.yahooapis.com/v1/public/yql?q=${encodeURIComponent(`select * from json where url="${url}"`)}&format=json&env=store://datatables.org/alltableswithkeys`,
-        parseResponse: (response) => {
-            // YQL wraps response in query.results
-            if (response && response.query && response.query.results && response.query.results.json) {
-                return response.query.results.json;
-            }
-            throw new Error('YQL returned unexpected response format');
-        },
-        headers: {}
     }
 ];
 
+function isJsonContentType(contentType) {
+    if (!contentType) {
+        return false;
+    }
+
+    const mediaType = contentType.split(';')[0].trim().toLowerCase();
+    return mediaType === 'application/json' || mediaType.endsWith('+json');
+}
+
+async function parseJsonResponse(response, sourceName) {
+    const contentType = response.headers.get('content-type');
+
+    if (isJsonContentType(contentType)) {
+        return response.json();
+    }
+
+    const textData = await response.text();
+
+    try {
+        return JSON.parse(textData);
+    } catch {
+        throw new Error(`${sourceName} returned non-JSON content: ${contentType || 'unknown content type'}`);
+    }
+}
+
 /**
  * Attempts to fetch data using direct request first, then CORS proxies as fallback
+ * Remembers CORS-blocked domains to skip direct fetch and reduce console noise
  * @param {string} url - The original API URL to fetch
  * @param {Object} options - Fetch options (optional)
  * @returns {Promise<{data: Object, method: string, proxyUsed: string|null}>}
  */
 export async function fetchWithCorsProxy(url, options = {}) {
     let lastError = null;
-    
-    // First attempt: Direct fetch (no proxy)
-    try {
-        const response = await fetch(url, options);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
+    const domain = extractDomain(url);
+    const isKnownCorsBlocked = corsBlockedDomains.has(domain);
+
+    // Skip direct fetch if we know this domain is CORS-blocked
+    if (isKnownCorsBlocked) {
+        console.log(`📡 Using proxy for known CORS-blocked domain: ${domain}`);
+    } else {
+        // First attempt: Direct fetch (no proxy)
+        try {
+            const response = await fetch(url, options);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
+            }
+
+            const data = await parseJsonResponse(response, 'Response');
+
+            return {
+                data,
+                method: 'direct',
+                proxyUsed: null,
+                success: true
+            };
+
+        } catch (error) {
+            lastError = error;
+
+            // Check if it's a CORS error
+            if (!isCorsError(error)) {
+                // If it's not a CORS error, don't try proxies
+                throw error;
+            }
+
+            // Remember this domain for future requests
+            corsBlockedDomains.add(domain);
+            console.log(`🔄 CORS blocked - switching to proxy (future requests will skip direct fetch)`);
         }
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            throw new Error('Response is not valid JSON. Please check the API URL.');
-        }
-        
-        const data = await response.json();
-        
-        return {
-            data,
-            method: 'direct',
-            proxyUsed: null,
-            success: true
-        };
-        
-    } catch (error) {
-        lastError = error;
-        
-        // Check if it's a CORS error
-        if (!isCorsError(error)) {
-            // If it's not a CORS error, don't try proxies
-            throw error;
-        }
-        
-        console.log('Direct fetch failed with CORS error, trying proxy fallbacks...');
     }
     
     // Attempt each proxy in order
     for (let i = 0; i < CORS_PROXIES.length; i++) {
         const proxy = CORS_PROXIES[i];
-        
+
         try {
-            console.log(`Attempting ${proxy.name}...`);
-            
+            // Only show attempting message if previous proxies failed
+            if (i > 0) {
+                console.log(`  Trying ${proxy.name}...`);
+            }
+
             const proxyUrl = proxy.transform(url);
             const proxyOptions = {
                 ...options,
@@ -134,44 +181,30 @@ export async function fetchWithCorsProxy(url, options = {}) {
                     ...proxy.headers
                 }
             };
-            
+
             const response = await fetch(proxyUrl, proxyOptions);
-            
+
             if (!response.ok) {
                 throw new Error(`Proxy ${proxy.name} returned ${response.status}: ${response.statusText}`);
             }
-            
-            // Check content type
-            const contentType = response.headers.get('content-type');
-            console.log(`${proxy.name} content-type:`, contentType);
-            
-            let rawData;
-            if (contentType && contentType.includes('application/json')) {
-                rawData = await response.json();
-            } else {
-                // If not JSON, try to parse as text first
-                const textData = await response.text();
-                console.log(`${proxy.name} raw response:`, textData.substring(0, 200) + '...');
-                try {
-                    rawData = JSON.parse(textData);
-                } catch {
-                    throw new Error(`${proxy.name} returned non-JSON content: ${contentType}`);
-                }
-            }
-            
+
+            const rawData = await parseJsonResponse(response, proxy.name);
             const data = proxy.parseResponse(rawData);
-            
-            console.log(`Successfully fetched data using ${proxy.name}`);
-            
+
+            console.log(`✅ Fetched via ${proxy.name}`);
+
             return {
                 data,
                 method: 'proxy',
                 proxyUsed: proxy.name,
                 success: true
             };
-            
+
         } catch (error) {
-            console.log(`${proxy.name} failed:`, error.message);
+            // Only log failures if we're going to try another proxy
+            if (i < CORS_PROXIES.length - 1) {
+                console.log(`  ⚠️ ${proxy.name} failed, trying next...`);
+            }
             lastError = error;
             continue;
         }
