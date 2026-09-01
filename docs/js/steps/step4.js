@@ -69,7 +69,9 @@ function handleStep4Entry(state, container) {
     }
 
     // Detect references from the fetched data
-    const detectionResults = detectReferences(currentState.fetchedData);
+    const detectionResults = detectReferences(currentState.fetchedData, {
+        apiUrl: currentState.apiUrl
+    });
 
     // Store results in state
     state.updateState('references.itemReferences', detectionResults.itemReferences, false);

@@ -6,6 +6,187 @@
 
 import { getMockItemsData, getMockMappingData } from '../../data/mock-data.js';
 import { applyTransformationChain } from '../../transformations.js';
+import { detectIdentifier } from '../../utils/identifier-detection.js';
+import { resolveOmekaValue, buildIncludedSegmentsSignature } from '../../mapping/core/data-analyzer.js';
+
+function getResourceClassUri(rawValue, fallbackUri = null) {
+    if (typeof rawValue === 'string' && /^https?:\/\//i.test(rawValue)) {
+        return rawValue;
+    }
+
+    if (typeof rawValue === 'number' || (typeof rawValue === 'string' && /^\d+$/.test(rawValue.trim()))) {
+        return fallbackUri;
+    }
+
+    if (rawValue && typeof rawValue === 'object') {
+        if (typeof rawValue['@id'] === 'string' && rawValue['@id'].trim()) {
+            return rawValue['@id'].trim();
+        }
+        if (typeof rawValue.id === 'string' && rawValue.id.trim()) {
+            return rawValue.id.trim();
+        }
+    }
+
+    return fallbackUri;
+}
+
+function hydrateResourceClassValue(rawValue, keyOrKeyObj, state) {
+    const fallbackUri = keyOrKeyObj?.resourceClassUri || null;
+    const resourceClassUri = getResourceClassUri(rawValue, fallbackUri);
+    const cache = typeof state?.getState === 'function'
+        ? state.getState()?.resourceClassCache || {}
+        : {};
+    const cachedClass = resourceClassUri ? cache[resourceClassUri] : null;
+
+    const baseValue = rawValue && typeof rawValue === 'object'
+        ? rawValue
+        : {};
+
+    return {
+        ...cachedClass,
+        ...baseValue,
+        '@id': resourceClassUri || baseValue['@id'] || cachedClass?.['@id'] || null,
+        'o:label': baseValue['o:label']
+            || cachedClass?.['o:label']
+            || keyOrKeyObj?.resourceClassLabel
+            || null,
+        'o:term': baseValue['o:term']
+            || cachedClass?.['o:term']
+            || keyOrKeyObj?.resourceClassTerm
+            || null,
+        'o:local_name': baseValue['o:local_name']
+            || cachedClass?.['o:local_name']
+            || null
+    };
+}
+
+function getSegmentSignatureForKey(keyObj = {}) {
+    return keyObj.segmentSignature || buildIncludedSegmentsSignature(keyObj.includedSegments);
+}
+
+function getMappingIdForKey(keyObj, state) {
+    const keyName = typeof keyObj === 'string' ? keyObj : keyObj?.key;
+    if (!keyName) {
+        return 'unknown';
+    }
+
+    if (state && typeof keyObj === 'object' && keyObj.property) {
+        return state.generateMappingId(
+            keyName,
+            keyObj.property.id,
+            keyObj.selectedAtField,
+            keyObj.selectedObjectIndex,
+            getSegmentSignatureForKey(keyObj)
+        );
+    }
+
+    return keyName;
+}
+
+function getApplicableTransformationBlocks(state, keyObj, keyName, propertyId, selectedAtField, selectedObjectIndex) {
+    if (!state || typeof state.getTransformationBlocks !== 'function') {
+        return [];
+    }
+
+    const possibleMappingIds = [];
+    const keyObject = typeof keyObj === 'object' ? keyObj : null;
+
+    if (propertyId && typeof state.generateMappingId === 'function') {
+        possibleMappingIds.push(
+            state.generateMappingId(
+                keyName,
+                propertyId,
+                selectedAtField,
+                selectedObjectIndex,
+                getSegmentSignatureForKey(keyObject || {})
+            )
+        );
+    }
+
+    if (keyObject?.previewMappingId) {
+        possibleMappingIds.push(keyObject.previewMappingId);
+    }
+
+    if (keyName) {
+        possibleMappingIds.push(`temp_${keyName}`);
+    }
+
+    if (keyObject?.isCustomProperty === true || keyName?.startsWith('custom_')) {
+        possibleMappingIds.push('temp_custom_property');
+    }
+
+    for (const mappingId of possibleMappingIds) {
+        const blocks = state.getTransformationBlocks(mappingId);
+        if (Array.isArray(blocks) && blocks.length > 0) {
+            return blocks;
+        }
+    }
+
+    return [];
+}
+
+function createPendingReconciledValues(values = []) {
+    return values.map(() => ({
+        status: 'pending',
+        matches: [],
+        selectedMatch: null,
+        manualValue: null,
+        qualifiers: {},
+        confidence: 0
+    }));
+}
+
+function createValueFingerprint(valueDetails = []) {
+    return JSON.stringify((valueDetails || []).map(detail => ({
+        value: detail?.value ?? null,
+        language: detail?.language ?? null,
+        sourceKey: detail?.sourceKey ?? null,
+        segmentKey: detail?.segmentKey ?? null
+    })));
+}
+
+function createMappingSignature(keyObj, state = null, mappingId = null) {
+    if (!keyObj || typeof keyObj !== 'object') {
+        return JSON.stringify({ key: keyObj || null });
+    }
+
+    const effectiveMappingId = mappingId || getMappingIdForKey(keyObj, state);
+    const transformationBlocks = state && typeof state.getTransformationBlocks === 'function'
+        ? state.getTransformationBlocks(effectiveMappingId) || []
+        : [];
+
+    return JSON.stringify({
+        key: keyObj.key || null,
+        propertyId: keyObj.property?.id || null,
+        selectedAtField: keyObj.selectedAtField || null,
+        selectedObjectIndex: Number.isInteger(keyObj.selectedObjectIndex) ? keyObj.selectedObjectIndex : null,
+        includedValueSources: Array.isArray(keyObj.includedValueSources) ? [...keyObj.includedValueSources].sort() : [],
+        includedSegments: Array.isArray(keyObj.includedSegments) ? [...keyObj.includedSegments].sort() : [],
+        segmentSignature: getSegmentSignatureForKey(keyObj),
+        guidedSourceMode: keyObj.guidedSourceMode || null,
+        guidedManualText: keyObj.guidedManualText || null,
+        transformationBlocks
+    });
+}
+
+function createPropertyReconciliationEntry(item, keyObj, state = null) {
+    const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+    const mappingId = getMappingIdForKey(keyObj, state);
+    const valueDetails = extractPropertyValueDetails(item, keyObj, state);
+    const values = valueDetails.map(detail => detail.value);
+
+    return {
+        originalValues: values,
+        originalValueDetails: valueDetails,
+        valueFingerprint: createValueFingerprint(valueDetails),
+        mappingSignature: createMappingSignature(keyObj, state, mappingId),
+        references: [],
+        propertyMetadata: typeof keyObj === 'object' ? keyObj : null,
+        keyName,
+        mappingId,
+        reconciled: createPendingReconciledValues(values)
+    };
+}
 
 /**
  * Calculates total reconciliable cells for accurate progress tracking
@@ -74,12 +255,56 @@ export function calculateTotalReconciliableCells(data, mappedKeys) {
  * any configured transformations before returning the values.
  */
 export function extractPropertyValues(item, keyOrKeyObj, state = null) {
+    return extractPropertyValueDetails(item, keyOrKeyObj, state).map(detail => detail.value);
+}
+
+/**
+ * Extract value details from Omeka S items, preserving useful metadata like source language.
+ * @param {Object} item - Single Omeka S item object
+ * @param {string|Object} keyOrKeyObj - Property key or key object with selectedAtField
+ * @param {Object} [state] - Optional state object to apply transformations
+ * @returns {Array<Object>} Array of value detail objects
+ */
+export function extractPropertyValueDetails(item, keyOrKeyObj, state = null) {
+    const inferPropertyDatatypeFromId = (propertyId) => {
+        if (!propertyId) {
+            return null;
+        }
+
+        const monolingualPropertyIds = ['P1476', 'P1448', 'P1705', 'P2561', 'P1449', 'P1477', 'P1813', 'P1810', 'P1533'];
+        const externalIdPropertyIds = ['P243', 'P8091', 'P214', 'P213', 'P244', 'P227', 'P269', 'P396', 'P646', 'P345'];
+        const timePropertyIds = ['P571', 'P577', 'P569', 'P570', 'P580', 'P582', 'P585', 'P1619', 'P1249'];
+
+        if (monolingualPropertyIds.includes(propertyId)) {
+            return 'monolingualtext';
+        }
+
+        if (externalIdPropertyIds.includes(propertyId)) {
+            return 'external-id';
+        }
+
+        if (timePropertyIds.includes(propertyId)) {
+            return 'time';
+        }
+
+        return null;
+    };
+
     // Handle both string keys and key objects
-    let key, selectedAtField, isCustomProperty;
+    let key, selectedAtField, selectedObjectIndex, isCustomProperty, propertyDatatype, extractionMode, fieldProfile, includedSegments, guidedSourceMode, guidedManualText;
     if (typeof keyOrKeyObj === 'object' && keyOrKeyObj.key) {
         key = keyOrKeyObj.key;
         selectedAtField = keyOrKeyObj.selectedAtField;
+        selectedObjectIndex = keyOrKeyObj.selectedObjectIndex;
         isCustomProperty = keyOrKeyObj.isCustomProperty === true;
+        propertyDatatype = keyOrKeyObj.property?.datatype || inferPropertyDatatypeFromId(keyOrKeyObj.property?.id);
+        extractionMode = keyOrKeyObj.extractionMode;
+        fieldProfile = keyOrKeyObj.fieldProfile || null;
+        includedSegments = keyOrKeyObj.includedSegments || null;
+        guidedSourceMode = keyOrKeyObj.guidedSourceMode || null;
+        guidedManualText = typeof keyOrKeyObj.guidedManualText === 'string'
+            ? keyOrKeyObj.guidedManualText.trim()
+            : '';
     } else {
         key = keyOrKeyObj;
     }
@@ -107,7 +332,13 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
                 
                 // Generate mapping ID to look up transformations
                 if (propertyId) {
-                    const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
+                    const mappingId = state.generateMappingId(
+                        key,
+                        propertyId,
+                        selectedAtField,
+                        selectedObjectIndex,
+                        getSegmentSignatureForKey(typeof keyOrKeyObj === 'object' ? keyOrKeyObj : {})
+                    );
                     const transformationBlocks = state.getTransformationBlocks(mappingId);
                     
                     
@@ -147,51 +378,120 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         } else {
         }
         
-        return extractedValues;
+        return extractedValues.map(value => ({
+            value,
+            language: null,
+            matchedPart: 'generated',
+            resolvedMode: 'generated'
+        }));
     }
     
-    const value = item[key];
-    if (!value) return [];
-    
-    // Helper function to extract value from a single object
-    const extractFromObject = (v) => {
-        // If a specific @ field is selected, ONLY return that field's value
-        if (selectedAtField) {
-            if (typeof v === 'object' && v[selectedAtField] !== undefined) {
-                return String(v[selectedAtField]);
-            } else {
-                // Don't fall back to default extraction when a specific @ field is requested
-                // Return null to indicate this object doesn't have the requested field
-                return null;
-            }
+    const normalizeExternalIdentifier = (rawValue) => {
+        if (rawValue === null || rawValue === undefined) {
+            return rawValue;
         }
-        
-        // Default extraction logic (only when no specific @ field is selected)
-        if (typeof v === 'object' && v['o:label']) {
-            return v['o:label'];
-        } else if (typeof v === 'object' && v['@value']) {
-            return v['@value'];
-        } else if (typeof v === 'object' && v['@id']) {
-            return v['@id'];
-        } else if (typeof v === 'string') {
-            return v;
-        } else {
-            return String(v);
-        }
+
+        const detectedIdentifier = detectIdentifier(rawValue, key);
+        return detectedIdentifier?.identifierValue || rawValue;
     };
-    
-    // Handle different data structures
-    let extractedValues;
-    if (Array.isArray(value)) {
-        // Filter out null values to only include objects that have the requested @ field
-        extractedValues = value.map(v => extractFromObject(v)).filter(v => v !== null);
+
+    const prepareRawValue = (rawValue) => {
+        if (key === 'o:resource_class') {
+            return hydrateResourceClassValue(rawValue, keyOrKeyObj, state);
+        }
+
+        return rawValue;
+    };
+
+    // Helper function to extract value details from a single object
+    const extractFromObject = (v) => {
+        const preparedValue = prepareRawValue(v);
+        const resolvedValue = resolveOmekaValue(preparedValue, {
+            extractionMode,
+            propertyDatatype,
+            fieldProfile,
+            selectedAtField,
+            includedValueSources: keyOrKeyObj.includedValueSources,
+            includedSegments
+        });
+
+        if (!resolvedValue || resolvedValue.value === null || resolvedValue.value === undefined || String(resolvedValue.value).trim() === '') {
+            return null;
+        }
+
+        return {
+            value: resolvedValue.value,
+            language: resolvedValue.language ?? null,
+            matchedPart: resolvedValue.matchedPart ?? null,
+            resolvedMode: resolvedValue.resolvedMode ?? extractionMode ?? 'auto',
+            sourceType: resolvedValue.sourceType ?? resolvedValue.valueSource ?? null,
+            sourceKey: resolvedValue.sourceKey ?? resolvedValue.sourceType ?? resolvedValue.valueSource ?? null,
+            sourceLabel: resolvedValue.sourceLabel ?? null,
+            sourceDetail: resolvedValue.sourceDetail ?? null,
+            segmentKey: resolvedValue.segmentKey ?? null,
+            segmentLabel: resolvedValue.segmentLabel ?? null,
+            segmentPreview: resolvedValue.segmentPreview ?? null,
+            segmentKind: resolvedValue.segmentKind ?? null,
+            dedupeKey: resolvedValue.dedupeKey ?? `${String(resolvedValue.value).trim().toLowerCase()}::${resolvedValue.sourceKey ?? resolvedValue.sourceType ?? resolvedValue.valueSource ?? 'value'}`
+        };
+    };
+
+    let extractedDetails;
+    if (guidedSourceMode === 'manual_text' && guidedManualText) {
+        extractedDetails = [{
+            value: guidedManualText,
+            language: null,
+            matchedPart: 'manual',
+            resolvedMode: 'manual',
+            sourceType: 'literal',
+            sourceKey: 'manual_text',
+            sourceLabel: 'Manual text',
+            sourceDetail: 'Manual instance-of text',
+            segmentKey: 'literal::manual-instance-of',
+            segmentLabel: 'Manual text values',
+            segmentPreview: guidedManualText,
+            segmentKind: 'literal',
+            dedupeKey: `manual::${guidedManualText.trim().toLowerCase()}`
+        }];
     } else {
-        const extracted = extractFromObject(value);
-        extractedValues = extracted !== null ? [extracted] : [];
+        const value = item[key];
+        if (!value) return [];
+
+        // Handle different data structures
+        if (Array.isArray(value)) {
+            const valuesToExtract = Number.isInteger(selectedObjectIndex) && value[selectedObjectIndex] !== undefined
+                ? [value[selectedObjectIndex]]
+                : value;
+
+            // Filter out null values to only include objects that have the requested field
+            extractedDetails = valuesToExtract
+                .map(v => extractFromObject(v))
+                .filter(detail => detail && detail.value !== null);
+        } else {
+            const extracted = extractFromObject(value);
+            extractedDetails = extracted !== null && extracted.value !== null ? [extracted] : [];
+        }
     }
+
+    if (propertyDatatype === 'external-id') {
+        extractedDetails = extractedDetails.map(detail => ({
+            ...detail,
+            value: normalizeExternalIdentifier(detail.value)
+        }));
+    }
+
+    const seenDedupeKeys = new Set();
+    extractedDetails = extractedDetails.filter(detail => {
+        const dedupeKey = detail.dedupeKey || `${String(detail.value).trim().toLowerCase()}::${detail.sourceKey || detail.sourceType || 'value'}`;
+        if (seenDedupeKeys.has(dedupeKey)) {
+            return false;
+        }
+        seenDedupeKeys.add(dedupeKey);
+        return true;
+    });
     
     // Apply transformations if state is provided
-    if (state && extractedValues.length > 0) {
+    if (state && extractedDetails.length > 0) {
         try {
             // Get property information for generating mapping ID
             let propertyId;
@@ -200,18 +500,25 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
             }
             
             // Generate mapping ID to look up transformations
-            if (propertyId) {
-                const mappingId = state.generateMappingId(key, propertyId, selectedAtField);
-                const transformationBlocks = state.getTransformationBlocks(mappingId);
-                
-                if (transformationBlocks && transformationBlocks.length > 0) {
-                    // Apply transformations to each extracted value
-                    extractedValues = extractedValues.map(originalValue => {
-                        const transformationResult = applyTransformationChain(originalValue, transformationBlocks);
-                        // Get the final transformed value
-                        return transformationResult[transformationResult.length - 1]?.value || originalValue;
-                    });
-                }
+            const transformationBlocks = getApplicableTransformationBlocks(
+                state,
+                typeof keyOrKeyObj === 'object' ? keyOrKeyObj : null,
+                key,
+                propertyId,
+                selectedAtField,
+                selectedObjectIndex
+            );
+
+            if (transformationBlocks.length > 0) {
+                // Apply transformations to each extracted value
+                extractedDetails = extractedDetails.map(detail => {
+                    const transformationResult = applyTransformationChain(detail.value, transformationBlocks);
+                    // Get the final transformed value
+                    return {
+                        ...detail,
+                        value: transformationResult[transformationResult.length - 1]?.value || detail.value
+                    };
+                });
             }
         } catch (error) {
             console.warn('Error applying transformations to extracted values:', error);
@@ -219,21 +526,86 @@ export function extractPropertyValues(item, keyOrKeyObj, state = null) {
         }
     }
     
-    return extractedValues;
+    return extractedDetails;
 }
 
 /**
  * Combine and sort all properties (mapped and manual) to prioritize label, description, aliases, and instance of
  */
-export function combineAndSortProperties(mappedKeys, manualProperties = []) {
+function buildTemplateDisplayLabelMap(resourceTemplates = [], selectedTemplateIds = []) {
+    const selectedIdSet = new Set((selectedTemplateIds || []).map(id => String(id)));
+    const displayLabelByTerm = new Map();
+
+    (resourceTemplates || []).forEach(template => {
+        if (!selectedIdSet.has(String(template['o:id']))) {
+            return;
+        }
+
+        const templateProperties = Array.isArray(template['o:resource_template_property'])
+            ? template['o:resource_template_property']
+            : [];
+
+        templateProperties.forEach(templateProperty => {
+            const term = templateProperty?.['o:property']?.['o:term'];
+            const alternateLabel = typeof templateProperty?.['o:alternate_label'] === 'string'
+                ? templateProperty['o:alternate_label'].trim()
+                : '';
+            const propertyLabel = typeof templateProperty?.['o:property']?.['o:label'] === 'string'
+                ? templateProperty['o:property']['o:label'].trim()
+                : '';
+
+            if (!term || displayLabelByTerm.has(term)) {
+                return;
+            }
+
+            displayLabelByTerm.set(term, alternateLabel || propertyLabel || null);
+        });
+    });
+
+    return displayLabelByTerm;
+}
+
+export function combineAndSortProperties(mappedKeys, manualProperties = [], options = {}) {
+    const getMappedPropertyPriority = (item) => {
+        if (item.type !== 'mapped') {
+            return 10;
+        }
+
+        const propertyId = item.data?.property?.id;
+        if (propertyId === 'label') {
+            return 0;
+        }
+        if (propertyId === 'P31') {
+            return 1;
+        }
+        return 5;
+    };
+
+    const getSortIndex = (item) => {
+        if (item.type === 'mapped') {
+            return item.data?.sortIndex ?? Number.MAX_SAFE_INTEGER;
+        }
+        return Number.MAX_SAFE_INTEGER;
+    };
+
     // Create array with mapped and manual properties
     const allProperties = [];
+    const templateDisplayLabelByTerm = buildTemplateDisplayLabelMap(
+        options.resourceTemplates,
+        options.selectedTemplateIds
+    );
     
     // Add mapped properties with a type indicator
     mappedKeys.forEach((keyObj, index) => {
+        const enrichedKeyObj = keyObj?.templateDisplayLabel || keyObj?.templateAlternateLabel
+            ? keyObj
+            : {
+                ...keyObj,
+                templateDisplayLabel: templateDisplayLabelByTerm.get(keyObj?.key) || keyObj?.templateDisplayLabel || null
+            };
         allProperties.push({
             type: 'mapped',
-            data: keyObj,
+            data: enrichedKeyObj,
             originalIndex: index
         });
     });
@@ -249,21 +621,16 @@ export function combineAndSortProperties(mappedKeys, manualProperties = []) {
     
     // Sort the array
     return allProperties.sort((a, b) => {
-        const getPriority = (item) => {
-            if (item.type === 'mapped') {
-                const property = typeof item.data === 'string' ? null : item.data.property;
-                if (!property) return 100;
-            }
-            
-            // All properties maintain their original relative order
-            return 1;
-        };
-        
-        const aPriority = getPriority(a);
-        const bPriority = getPriority(b);
-        
+        const aPriority = getMappedPropertyPriority(a);
+        const bPriority = getMappedPropertyPriority(b);
         if (aPriority !== bPriority) {
             return aPriority - bPriority;
+        }
+
+        const aSortIndex = getSortIndex(a);
+        const bSortIndex = getSortIndex(b);
+        if (aSortIndex !== bSortIndex) {
+            return aSortIndex - bSortIndex;
         }
         
         // If same priority, maintain original order
@@ -436,39 +803,9 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
             properties: {}
         };
 
-        // Initialize each mapped property
         mappedKeys.forEach(keyObj => {
-            const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-            // Pass the full keyObj and state to apply transformations
-            const values = extractPropertyValues(item, keyObj, state);
-
-            // Generate mappingId for unique identification
-            let mappingId;
-            if (state && typeof keyObj === 'object' && keyObj.property) {
-                mappingId = state.generateMappingId(
-                    keyName,
-                    keyObj.property.id,
-                    keyObj.selectedAtField
-                );
-            } else {
-                mappingId = keyName; // Fallback for string keys
-            }
-
-            reconciliationData[itemId].properties[mappingId] = {
-                originalValues: values,
-                references: [], // References specific to this property
-                propertyMetadata: typeof keyObj === 'object' ? keyObj : null, // Store full property object with constraints
-                keyName: keyName,  // NEW: Store original key name for reference
-                mappingId: mappingId,  // NEW: Store mappingId explicitly
-                reconciled: values.map(() => ({
-                    status: 'pending', // pending, reconciled, skipped, failed
-                    matches: [],
-                    selectedMatch: null,
-                    manualValue: null,
-                    qualifiers: {},
-                    confidence: 0
-                }))
-            };
+            const propertyEntry = createPropertyReconciliationEntry(item, keyObj, state);
+            reconciliationData[itemId].properties[propertyEntry.mappingId] = propertyEntry;
         });
 
     });
@@ -487,82 +824,36 @@ export function initializeReconciliationDataStructure(data, mappedKeys, state = 
  * @returns {Object} Merged reconciliation data with preserved existing work and new properties
  */
 export function mergeReconciliationData(existingReconciliationData, data, currentMappedKeys, state = null) {
+    const mergedData = {};
 
-    // Start with a copy of existing data
-    const mergedData = JSON.parse(JSON.stringify(existingReconciliationData));
-
-    // Track which mappingIds are already in the existing data
-    const existingMappingIds = new Set();
-    Object.values(mergedData).forEach(itemData => {
-        if (itemData.properties) {
-            Object.keys(itemData.properties).forEach(mappingId => {
-                existingMappingIds.add(mappingId);
-            });
-        }
-    });
-
-    // Identify new properties by mappingId that need to be added
-    const newProperties = [];
-    currentMappedKeys.forEach(keyObj => {
-        const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
-
-        let mappingId;
-        if (state && typeof keyObj === 'object' && keyObj.property) {
-            mappingId = state.generateMappingId(
-                keyName,
-                keyObj.property.id,
-                keyObj.selectedAtField
-            );
-        } else {
-            mappingId = keyName;
-        }
-
-        if (!existingMappingIds.has(mappingId)) {
-            newProperties.push({ keyObj, mappingId });
-        }
-    });
-
-    // If no new properties, return existing data
-    if (newProperties.length === 0) {
-        return mergedData;
-    }
-
-    // Add new properties to existing items
     data.forEach((item, index) => {
         const itemId = `item-${index}`;
+        const existingItemData = existingReconciliationData?.[itemId];
 
-        // Ensure item exists in merged data
-        if (!mergedData[itemId]) {
-            mergedData[itemId] = {
-                originalData: item,
-                properties: {}
-            };
-        }
+        mergedData[itemId] = {
+            originalData: item,
+            properties: {}
+        };
 
-        // Add new properties to this item
-        newProperties.forEach(({ keyObj, mappingId }) => {
-            const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
+        currentMappedKeys.forEach(keyObj => {
+            const freshEntry = createPropertyReconciliationEntry(item, keyObj, state);
+            const existingEntry = existingItemData?.properties?.[freshEntry.mappingId];
+            const canPreserveExistingEntry = existingEntry
+                && (
+                    (existingEntry.mappingSignature === freshEntry.mappingSignature
+                        && existingEntry.valueFingerprint === freshEntry.valueFingerprint)
+                    || (!existingEntry.mappingSignature
+                        && JSON.stringify(existingEntry.originalValues || []) === JSON.stringify(freshEntry.originalValues || []))
+                )
+                && Array.isArray(existingEntry.reconciled)
+                && existingEntry.reconciled.length === freshEntry.reconciled.length;
 
-            // Extract values for the new property
-            const values = extractPropertyValues(item, keyObj, state);
+            if (canPreserveExistingEntry) {
+                freshEntry.reconciled = existingEntry.reconciled;
+                freshEntry.references = existingEntry.references || [];
+            }
 
-            // Initialize reconciliation structure for the new property
-            mergedData[itemId].properties[mappingId] = {
-                originalValues: values,
-                references: [],
-                propertyMetadata: typeof keyObj === 'object' ? keyObj : null,
-                keyName: keyName,  // Store original key name
-                mappingId: mappingId,  // Store mappingId
-                reconciled: values.map(() => ({
-                    status: 'pending',
-                    matches: [],
-                    selectedMatch: null,
-                    manualValue: null,
-                    qualifiers: {},
-                    confidence: 0
-                }))
-            };
-
+            mergedData[itemId].properties[freshEntry.mappingId] = freshEntry;
         });
     });
 
@@ -628,7 +919,9 @@ export function migrateReconciliationData(oldReconciliationData, currentMappedKe
                 const mappingId = state.generateMappingId(
                     keyName,
                     keyObj.property.id,
-                    keyObj.selectedAtField
+                    keyObj.selectedAtField,
+                    keyObj.selectedObjectIndex,
+                    getSegmentSignatureForKey(keyObj)
                 );
 
                 // Migrate the property data to use mappingId as key

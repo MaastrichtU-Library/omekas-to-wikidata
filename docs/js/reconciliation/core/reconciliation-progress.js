@@ -135,117 +135,218 @@ export function updateCellQueueStatus(itemId, mappingId, valueIndex, status) {
  * Create cell marking functions factory
  */
 export function createCellMarkers(reconciliationData, state, updateCellDisplay, updateProceedButton, contextSuggestions) {
-    
-    function markCellAsReconciled(cellInfo, reconciliation) {
-        const { itemId, property, mappingId, valueIndex } = cellInfo;
+    function cloneReconciliationPayload(payload) {
+        if (!payload || typeof payload !== 'object') {
+            return payload;
+        }
 
-        // Update data structure
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[mappingId]) {
-            const propData = reconciliationData[itemId].properties[mappingId];
-            if (propData.reconciled[valueIndex]) {
+        return JSON.parse(JSON.stringify(payload));
+    }
+
+    function normalizeComparableValue(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        return String(value).trim();
+    }
+
+    function calculateProgressSnapshot() {
+        let total = 0;
+        let completed = 0;
+        let skipped = 0;
+        let errors = 0;
+
+        Object.values(reconciliationData).forEach(itemData => {
+            Object.values(itemData.properties || {}).forEach(propData => {
+                (propData.reconciled || []).forEach(reconciledItem => {
+                    total++;
+
+                    if (reconciledItem.status === 'reconciled' || reconciledItem.status === 'no-item') {
+                        completed++;
+                    } else if (reconciledItem.status === 'skipped') {
+                        skipped++;
+                    } else if (reconciledItem.status === 'error') {
+                        errors++;
+                    }
+                });
+            });
+        });
+
+        return { total, completed, skipped, errors };
+    }
+
+    function syncProgressState() {
+        const progress = calculateProgressSnapshot();
+        state.updateState('reconciliationProgress', progress);
+        updateProceedButton();
+        return progress;
+    }
+
+    function getCellEntry(cellInfo) {
+        const { itemId, mappingId, valueIndex } = cellInfo;
+        const propData = reconciliationData[itemId]?.properties?.[mappingId];
+        const reconciledEntry = propData?.reconciled?.[valueIndex];
+
+        return { propData, reconciledEntry };
+    }
+
+    function getMatchingCells(cellInfo) {
+        const normalizedValue = normalizeComparableValue(
+            reconciliationData[cellInfo.itemId]?.properties?.[cellInfo.mappingId]?.originalValues?.[cellInfo.valueIndex] ?? cellInfo.value
+        );
+
+        if (!cellInfo.applyToIdenticalValues || !normalizedValue) {
+            return [cellInfo];
+        }
+
+        const matchingCells = [];
+
+        Object.entries(reconciliationData).forEach(([itemId, itemData]) => {
+            const propData = itemData.properties?.[cellInfo.mappingId];
+            if (!propData || !Array.isArray(propData.originalValues)) {
+                return;
+            }
+
+            propData.originalValues.forEach((originalValue, valueIndex) => {
+                if (normalizeComparableValue(originalValue) !== normalizedValue) {
+                    return;
+                }
+
+                matchingCells.push({
+                    ...cellInfo,
+                    itemId,
+                    valueIndex,
+                    value: originalValue
+                });
+            });
+        });
+
+        return matchingCells.length > 0 ? matchingCells : [cellInfo];
+    }
+
+    function markCellAsReconciled(cellInfo, reconciliation) {
+        const targetCells = getMatchingCells(cellInfo);
+
+        targetCells.forEach(targetCell => {
+            const { itemId, property, mappingId, valueIndex } = targetCell;
+            const { propData, reconciledEntry } = getCellEntry(targetCell);
+
+            if (propData && reconciledEntry) {
                 propData.reconciled[valueIndex] = {
+                    ...reconciledEntry,
                     status: 'reconciled',
-                    selectedMatch: reconciliation,
-                    matches: [], // Could store all matches for reference
+                    selectedMatch: cloneReconciliationPayload(reconciliation),
+                    matches: [],
                     confidence: reconciliation.type === 'wikidata' ? 95 : 80
                 };
             }
-        }
 
-        // Update UI
-        updateCellDisplay(itemId, mappingId, valueIndex, 'reconciled', reconciliation);
+            updateCellDisplay(itemId, mappingId, valueIndex, 'reconciled', reconciliation);
 
-        // Update progress
-        state.incrementReconciliationCompleted();
-        updateProceedButton();
+            if (reconciliation.type === 'wikidata') {
+                contextSuggestions.set(property, reconciliation);
+            }
+        });
 
-        // Store in context suggestions (using keyName for cross-mapping suggestions)
-        if (reconciliation.type === 'wikidata') {
-            contextSuggestions.set(property, reconciliation);
-        }
-
-        // Update state
+        syncProgressState();
         state.updateState('reconciliationData', reconciliationData);
     }
     
     function markCellAsSkipped(cellInfo) {
-        const { itemId, mappingId, valueIndex } = cellInfo;
+        const targetCells = getMatchingCells(cellInfo);
 
-        // Update data structure
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[mappingId]) {
-            const propData = reconciliationData[itemId].properties[mappingId];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].status = 'skipped';
+        targetCells.forEach(targetCell => {
+            const { itemId, mappingId, valueIndex } = targetCell;
+            const { propData, reconciledEntry } = getCellEntry(targetCell);
+
+            if (propData && reconciledEntry) {
+                propData.reconciled[valueIndex] = {
+                    ...reconciledEntry,
+                    status: 'skipped',
+                    selectedMatch: null,
+                    confidence: 0
+                };
             }
-        }
 
-        // Update UI
-        updateCellDisplay(itemId, mappingId, valueIndex, 'skipped');
+            updateCellDisplay(itemId, mappingId, valueIndex, 'skipped');
+        });
 
-        // Update progress
-        state.incrementReconciliationSkipped();
-        updateProceedButton();
-
-        // Update state
+        syncProgressState();
         state.updateState('reconciliationData', reconciliationData);
     }
     
     function markCellAsNoItem(cellInfo) {
-        const { itemId, mappingId, valueIndex } = cellInfo;
+        const targetCells = getMatchingCells(cellInfo);
 
-        // Update data structure
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[mappingId]) {
-            const propData = reconciliationData[itemId].properties[mappingId];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].status = 'no-item';
-                propData.reconciled[valueIndex].selectedMatch = {
-                    type: 'no-item',
-                    reason: 'No appropriate Wikidata item exists'
+        targetCells.forEach(targetCell => {
+            const { itemId, mappingId, valueIndex } = targetCell;
+            const { propData, reconciledEntry } = getCellEntry(targetCell);
+
+            if (propData && reconciledEntry) {
+                propData.reconciled[valueIndex] = {
+                    ...reconciledEntry,
+                    status: 'no-item',
+                    selectedMatch: {
+                        type: 'no-item',
+                        reason: 'No appropriate Wikidata item exists'
+                    },
+                    confidence: 0
                 };
             }
-        }
 
-        // Update UI
-        updateCellDisplay(itemId, mappingId, valueIndex, 'no-item');
+            updateCellDisplay(itemId, mappingId, valueIndex, 'no-item');
+        });
 
-        // Update progress (count as completed since it's a decision)
-        state.incrementReconciliationCompleted();
-        updateProceedButton();
-
-        // Update state
+        syncProgressState();
         state.updateState('reconciliationData', reconciliationData);
     }
     
     function markCellAsString(cellInfo) {
-        const { itemId, mappingId, valueIndex, value } = cellInfo;
+        const targetCells = getMatchingCells(cellInfo);
 
-        // Update data structure
-        if (reconciliationData[itemId] && reconciliationData[itemId].properties[mappingId]) {
-            const propData = reconciliationData[itemId].properties[mappingId];
-            if (propData.reconciled[valueIndex]) {
-                propData.reconciled[valueIndex].status = 'reconciled';
-                propData.reconciled[valueIndex].selectedMatch = {
-                    type: 'string',
-                    value: value,
-                    label: value,
-                    description: 'Used as string value'
+        targetCells.forEach(targetCell => {
+            const { itemId, mappingId, valueIndex, value } = targetCell;
+            const { propData, reconciledEntry } = getCellEntry(targetCell);
+            const stringSelection = {
+                type: 'string',
+                value,
+                label: value,
+                description: 'Used as string value'
+            };
+
+            if (propData && reconciledEntry) {
+                propData.reconciled[valueIndex] = {
+                    ...reconciledEntry,
+                    status: 'reconciled',
+                    selectedMatch: stringSelection,
+                    matches: [],
+                    confidence: 80
                 };
             }
-        }
 
-        // Update UI
-        updateCellDisplay(itemId, mappingId, valueIndex, 'reconciled', {
-            type: 'string',
-            value: value,
-            label: value,
-            description: 'Used as string value'
+            updateCellDisplay(itemId, mappingId, valueIndex, 'reconciled', stringSelection);
         });
 
-        // Update progress (count as completed since it's a decision)
-        state.incrementReconciliationCompleted();
-        updateProceedButton();
+        syncProgressState();
+        state.updateState('reconciliationData', reconciliationData);
+    }
 
-        // Update state
+    function markCellAsPending(cellInfo) {
+        const { itemId, mappingId, valueIndex } = cellInfo;
+        const { propData, reconciledEntry } = getCellEntry(cellInfo);
+
+        if (propData && reconciledEntry) {
+            propData.reconciled[valueIndex] = {
+                ...reconciledEntry,
+                status: 'pending',
+                selectedMatch: null,
+                confidence: 0
+            };
+        }
+
+        updateCellDisplay(itemId, mappingId, valueIndex, 'pending');
+        syncProgressState();
         state.updateState('reconciliationData', reconciliationData);
     }
     
@@ -253,6 +354,7 @@ export function createCellMarkers(reconciliationData, state, updateCellDisplay, 
         markCellAsReconciled,
         markCellAsSkipped,
         markCellAsNoItem,
-        markCellAsString
+        markCellAsString,
+        markCellAsPending
     };
 }

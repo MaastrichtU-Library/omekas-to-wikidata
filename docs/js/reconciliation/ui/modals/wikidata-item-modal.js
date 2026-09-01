@@ -55,6 +55,8 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
         </div>
 
         <div class="wikidata-item-section">
+            <div class="current-selection current-selection--hidden" id="current-wikidata-selection"></div>
+
             <!-- Existing Matches -->
             <div class="existing-matches" id="existing-matches">
                 <div class="section-title">Existing Matches</div>
@@ -64,6 +66,7 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
             <!-- Manual Search -->
             <div class="manual-search">
                 <div class="section-title">Search Wikidata</div>
+                <div class="manual-search-help">Search here to override an automatic suggestion or correct an earlier choice.</div>
                 <div class="search-container">
                     <input type="text" id="wikidata-search" class="search-input"
                            placeholder="Type to search..." value="${escapeHtml(value)}" style="width: 100%;">
@@ -93,6 +96,8 @@ export function createWikidataItemModal(itemId, property, valueIndex, value, pro
  */
 export function initializeWikidataItemModal(modalElement) {
     const value = modalElement.dataset.value;
+    const preservedSelection = window.currentModalContext?.currentSelection || null;
+    const preservedStatus = window.currentModalContext?.currentStatus || 'pending';
     // Dataset attributes are lost when modal is created from innerHTML
     // So we need to get existingMatches from window.currentModalContext instead
     let existingMatches = modalElement.dataset.existingMatches ?
@@ -115,8 +120,12 @@ export function initializeWikidataItemModal(modalElement) {
             JSON.parse(modalElement.dataset.propertyData) : null,
         dataType: 'wikibase-item',
         existingMatches: existingMatches,  // Now this has the correct value from the fallback above
-        modalType: 'wikidata-item'
+        modalType: 'wikidata-item',
+        currentStatus: preservedStatus,
+        currentSelection: preservedSelection
     };
+
+    renderCurrentWikidataSelection(window.currentModalContext.currentSelection);
 
     // Load existing matches for Wikidata items
     loadWikidataItemMatches(value, existingMatches);
@@ -180,14 +189,6 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
                     <button class="btn btn-link" onclick="showAllWikidataMatches()">Show all ${matches.length} matches</button>
                 ` : ''}
             `;
-
-            // Auto-select high-confidence matches (≥90%)
-            const highConfidenceMatch = matches.find(match => match.score >= 90);
-            if (highConfidenceMatch) {
-                setTimeout(() => {
-                    applyWikidataMatchDirectly(highConfidenceMatch.id);
-                }, 100);
-            }
 
         } else {
             // Only show "no matches" if container is in loading state
@@ -261,11 +262,36 @@ export function createWikidataMatchItem(match) {
         <div class="wikidata-match-item" data-match-id="${safeMatchId}" onclick="applyWikidataMatchDirectly('${jsEscapedId}')">
             <div class="match-content">
                 <div class="match-title">
-                    ${label} <span class="match-qid-inline">(${safeMatchId})</span>
+                    <span class="match-label">${label}</span> <span class="match-qid-inline">(${safeMatchId})</span>
                 </div>
                 ${description ? `<div class="match-description">${description}</div>` : ''}
             </div>
         </div>
+    `;
+}
+
+function renderCurrentWikidataSelection(currentSelection) {
+    const currentSelectionContainer = document.getElementById('current-wikidata-selection');
+    if (!currentSelectionContainer) {
+        return;
+    }
+
+    if (!currentSelection || currentSelection.type !== 'wikidata') {
+        currentSelectionContainer.classList.add('current-selection--hidden');
+        currentSelectionContainer.innerHTML = '';
+        return;
+    }
+
+    const label = escapeHtml(currentSelection.label || currentSelection.id || 'Selected item');
+    const qid = escapeHtml(currentSelection.id || '');
+    const description = currentSelection.description ? `<div class="current-selection-description">${escapeHtml(currentSelection.description)}</div>` : '';
+
+    currentSelectionContainer.classList.remove('current-selection--hidden');
+    currentSelectionContainer.innerHTML = `
+        <div class="current-selection-label">Current selection</div>
+        <div class="current-selection-value">${label}${qid ? ` <span class="match-qid-inline">(${qid})</span>` : ''}</div>
+        ${description}
+        <div class="current-selection-help">Choose another match below to replace it, or use "Undo decision" to reset this value.</div>
     `;
 }
 
@@ -354,7 +380,7 @@ window.applyWikidataMatchDirectly = function(matchId) {
     }
     
     // Try both class selectors for compatibility
-    const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-name');
+    const matchLabelElement = matchElement.querySelector('.match-label') || matchElement.querySelector('.match-title') || matchElement.querySelector('.match-name');
     const matchDescriptionElement = matchElement.querySelector('.match-description');
     
     const matchLabel = matchLabelElement?.textContent || 'Unknown';
