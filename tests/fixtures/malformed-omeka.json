@@ -1,0 +1,11 @@
+{
+  "wrong_structure": true,
+  "not_omeka": {
+    "some_data": [
+      {
+        "random": "data",
+        "not": "omeka format"
+      }
+    ]
+  }
+}

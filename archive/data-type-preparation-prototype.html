@@ -1,0 +1,2989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Type Preparation Modal Prototype</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .description {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border-left: 4px solid #2196F3;
+        }
+
+        /* Modal styling matching existing patterns */
+        .modal-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Data type navigation */
+        .data-type-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 30px;
+            padding: 0 0 20px 0;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .data-type-tab {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .data-type-tab:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+
+        .data-type-tab.active {
+            border-color: #007bff;
+            background: #007bff;
+            color: white;
+        }
+
+        /* Data type sections */
+        .data-type-section {
+            display: none;
+        }
+
+        .data-type-section.active {
+            display: block;
+        }
+
+        .section-header {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .section-description {
+            color: #666;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+        }
+
+        /* Form sections */
+        .form-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
+
+        .form-section h4 {
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .form-section p {
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Input styling */
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .input-row .input-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        /* Button styling */
+        .button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .button--primary {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .button--secondary {
+            background: #6c757d;
+            color: white;
+            border-color: #6c757d;
+        }
+
+        .button--small {
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        .button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* Sample data display */
+        .sample-data {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .sample-data h5 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .sample-values {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .sample-value {
+            background: white;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-family: monospace;
+        }
+
+        /* Preview styling */
+        .preview-section {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .preview-section h5 {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+
+        .preview-values {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .preview-value {
+            background: white;
+            padding: 4px 8px;
+            border: 1px solid #c3e6c3;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-family: monospace;
+            color: #155724;
+        }
+
+        /* Advanced section styling */
+        .advanced-section {
+            border-top: 2px dashed #ddd;
+            margin-top: 20px;
+            padding-top: 20px;
+        }
+
+        .advanced-toggle {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: underline;
+            margin-bottom: 15px;
+        }
+
+        .advanced-content {
+            display: none;
+        }
+
+        .advanced-content.show {
+            display: block;
+        }
+
+        /* Validation styling */
+        .validation-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.85em;
+        }
+
+        .validation-success {
+            background: #d4edda;
+            border-color: #c3e6c3;
+            color: #155724;
+        }
+
+        .validation-error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        /* Collapsible sections */
+        .collapsible {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .collapsible-header {
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .collapsible-content {
+            display: none;
+            padding: 0 15px 15px 15px;
+        }
+
+        .collapsible.open .collapsible-content {
+            display: block;
+        }
+
+        .collapsible-arrow {
+            transition: transform 0.2s;
+        }
+
+        .collapsible.open .collapsible-arrow {
+            transform: rotate(90deg);
+        }
+
+        /* Unit search styling */
+        .unit-search-container {
+            position: relative;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .search-result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-family: monospace;
+        }
+
+        .search-result-item:hover {
+            background: #f0f8ff;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .selected-unit {
+            margin-top: 8px;
+            padding: 6px 10px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: monospace;
+        }
+
+        .remove-unit {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .unit-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .unit-suggestion {
+            padding: 4px 8px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .unit-suggestion:hover {
+            background: #e0e0e0;
+        }
+
+        .unit-rules-list {
+            min-height: 40px;
+        }
+
+        .unit-rule {
+            background: #f8f9fa;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: monospace;
+        }
+
+        /* Validation styling */
+        .validation-rule {
+            background: #f8f9fa;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: monospace;
+        }
+
+        .preview-value {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .validation-indicator {
+            font-size: 16px;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .validation-pass {
+            color: #28a745;
+        }
+
+        .validation-fail {
+            color: #dc3545;
+        }
+
+        .validation-summary {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .validation-summary.show {
+            display: block;
+        }
+
+        .validation-summary.all-pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .validation-summary.some-fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Drag and drop styling */
+        .find-replace-rule {
+            cursor: move;
+            transition: all 0.2s ease;
+        }
+
+        .find-replace-rule:hover {
+            background: #e9ecef !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .find-replace-rule.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .find-replace-rules {
+            min-height: 40px;
+        }
+
+        .drag-over {
+            background: #e7f3ff;
+            border: 2px dashed #007bff;
+            border-radius: 4px;
+        }
+
+        .drag-handle {
+            cursor: move;
+            color: #666;
+            margin-right: 8px;
+            user-select: none;
+        }
+
+        .rule-order {
+            background: #007bff;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .data-type-nav {
+                flex-direction: column;
+            }
+            
+            .input-row {
+                flex-direction: column;
+            }
+            
+            .sample-values,
+            .preview-values {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Data Type Preparation Modal Prototype</h1>
+        
+        <div class="description">
+            <p><strong>Overview:</strong> This prototype demonstrates data preparation sections that would be added to the mapping modal for each Wikidata data type. These sections allow users to prepare and transform data before it goes to reconciliation, ensuring better matching and proper formatting.</p>
+            <p><strong>Usage:</strong> Click on the data type tabs below to explore the preparation options for each type. Each section shows transformation tools, validation, and preview functionality.</p>
+        </div>
+
+        <div class="modal-content">
+            <!-- Data Type Navigation -->
+            <div class="data-type-nav">
+                <div class="data-type-tab active" data-type="string">String</div>
+                <div class="data-type-tab" data-type="external-id">External Identifier</div>
+                <div class="data-type-tab" data-type="item">Item</div>
+                <div class="data-type-tab" data-type="quantity">Quantity</div>
+                <div class="data-type-tab" data-type="url">URL</div>
+                <div class="data-type-tab" data-type="commons-media">Commons Media</div>
+                <div class="data-type-tab" data-type="time">Point in Time</div>
+                <div class="data-type-tab" data-type="monolingualtext">Monolingual Text</div>
+                <div class="data-type-tab" data-type="metadata">Metadata</div>
+            </div>
+
+            <!-- String Data Type Section -->
+            <div class="data-type-section active" id="string-section">
+                <div class="section-header">
+                    <h3 class="section-title">String Data Type Preparation</h3>
+                    <p class="section-description">Configure text manipulation and composition for string properties. Use find/replace operations, add prefixes/suffixes, and compose strings using variables from your input data.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"The Mona Lisa"</span>
+                        <span class="sample-value">"Starry Night"</span>
+                        <span class="sample-value">"The Scream"</span>
+                        <span class="sample-value">"Girl with a Pearl Earring"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Find & Replace Operations</h4>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">Case-sensitive, preserves all spaces and whitespace exactly as entered. Rules are applied in order - drag to reorder.</p>
+                    
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="find-text">Find:</label>
+                            <input type="text" id="find-text" placeholder="Text to find">
+                        </div>
+                        <div class="input-group">
+                            <label for="replace-text">Replace with:</label>
+                            <input type="text" id="replace-text" placeholder="Replacement text">
+                        </div>
+                        <button id="add-find-replace-rule" class="button button--secondary button--small">Add Rule</button>
+                    </div>
+                    <div id="find-replace-rules" class="find-replace-rules">
+                        <!-- Find/replace rules will appear here -->
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>String Composition</h4>
+                    <p>Compose strings using variables from your input data. Use {field_name} syntax to reference other fields.</p>
+                    
+                    <div class="input-group">
+                        <label for="string-template">Template:</label>
+                        <textarea id="string-template" placeholder="e.g., '{title} by {creator} ({date})'">{{title}}</textarea>
+                    </div>
+                    
+                    <div class="validation-info">
+                        <strong>Available Variables:</strong> {title}, {creator}, {date}, {publisher}, {description}
+                    </div>
+                </div>
+
+                <div class="advanced-section">
+                    <button class="advanced-toggle" onclick="toggleAdvanced('string')">▼ Advanced String Operations</button>
+                    <div class="advanced-content" id="string-advanced">
+                        <div class="form-section">
+                            <h4>Regular Expression Find & Replace</h4>
+                            <p>Use regex patterns for complex text transformations. <strong>Expert level tool.</strong></p>
+                            
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="regex-pattern">Regex Pattern:</label>
+                                    <input type="text" id="regex-pattern" placeholder="e.g., ^(.+),\s*(.+)$">
+                                </div>
+                                <div class="input-group">
+                                    <label for="regex-replacement">Replacement:</label>
+                                    <input type="text" id="regex-replacement" placeholder="e.g., $2 $1">
+                                </div>
+                                <button id="add-regex-rule" class="button button--secondary button--small">Add Regex Rule</button>
+                            </div>
+                            
+                            <div class="validation-info">
+                                <strong>Example:</strong> Pattern <code>^(.+),\s*(.+)$</code> with replacement <code>$2 $1</code> converts "Last, First" to "First Last"<br>
+                                <strong>Rules applied in order</strong> - drag to reorder.
+                            </div>
+                            
+                            <div id="regex-rules" class="find-replace-rules">
+                                <!-- Regex rules will appear here -->
+                            </div>
+                        </div>
+                        
+                        <div class="form-section">
+                            <h4>Validation Rules</h4>
+                            <p>Add validation patterns to check if values meet specific requirements. Values will show ✓ or ✗ in preview.</p>
+                            
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="validation-pattern">Validation Pattern (Regex):</label>
+                                    <input type="text" id="validation-pattern" placeholder="e.g., ^[A-Z][a-z]+$ (starts with capital)">
+                                </div>
+                                <div class="input-group">
+                                    <label for="validation-description">Description:</label>
+                                    <input type="text" id="validation-description" placeholder="e.g., Must start with capital letter">
+                                </div>
+                                <button id="add-validation-rule" class="button button--secondary button--small">Add Validation</button>
+                            </div>
+                            
+                            <div class="validation-info">
+                                <strong>Common Patterns:</strong><br>
+                                • Email: <code>^[^\s@]+@[^\s@]+\.[^\s@]+$</code><br>
+                                • Only letters: <code>^[A-Za-z\s]+$</code><br>
+                                • Numbers only: <code>^\d+$</code><br>
+                                • Date (YYYY-MM-DD): <code>^\d{4}-\d{2}-\d{2}$</code>
+                            </div>
+                            
+                            <div id="validation-rules" class="find-replace-rules">
+                                <!-- Validation rules will appear here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Transformed Values:</h5>
+                    <div class="preview-values" id="string-preview">
+                        <span class="preview-value">"The Mona Lisa"</span>
+                        <span class="preview-value">"Starry Night"</span>
+                        <span class="preview-value">"The Scream"</span>
+                        <span class="preview-value">"Girl with a Pearl Earring"</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- External Identifier Section -->
+            <div class="data-type-section" id="external-id-section">
+                <div class="section-header">
+                    <h3 class="section-title">External Identifier Data Type Preparation</h3>
+                    <p class="section-description">Clean and extract external identifiers from URLs or other formats. Remove unwanted prefixes, validate formats, and ensure compatibility with Wikidata constraints.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"https://viaf.org/viaf/24604287"</span>
+                        <span class="sample-value">"http://id.loc.gov/authorities/names/n79021164"</span>
+                        <span class="sample-value">"VIAF:24604287"</span>
+                        <span class="sample-value">"isbn:9780123456789"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Identifier Extraction</h4>
+                    <p>Extract clean identifiers from URLs or formatted strings.</p>
+                    
+                    <div class="input-group">
+                        <label for="extract-pattern">Extraction Pattern:</label>
+                        <select id="extract-pattern">
+                            <option value="">Select a pattern...</option>
+                            <option value="url-path">Extract from URL path (last segment)</option>
+                            <option value="after-colon">Extract after colon (:)</option>
+                            <option value="after-slash">Extract after last slash (/)</option>
+                            <option value="between">Extract between specific characters</option>
+                            <option value="regex">Custom regex pattern</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group" id="custom-extraction" style="display: none;">
+                        <label for="custom-pattern">Custom Pattern:</label>
+                        <input type="text" id="custom-pattern" placeholder="e.g., /viaf/(\d+)">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Format Validation</h4>
+                    <p>Validate identifier format against Wikidata property constraints.</p>
+                    
+                    <div class="input-group">
+                        <label for="format-regex">Expected Format (Regex):</label>
+                        <input type="text" id="format-regex" placeholder="e.g., ^\d+$ for numeric IDs" value="^\d+$">
+                    </div>
+                    
+                    <div class="validation-info" id="format-validation">
+                        <strong>Format Check:</strong> All values will be validated against this pattern before reconciliation.
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Extracted Identifiers:</h5>
+                    <div class="preview-values" id="external-id-preview">
+                        <span class="preview-value">24604287</span>
+                        <span class="preview-value">n79021164</span>
+                        <span class="preview-value">24604287</span>
+                        <span class="preview-value">9780123456789</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item (QID) Section -->
+            <div class="data-type-section" id="item-section">
+                <div class="section-header">
+                    <h3 class="section-title">Item Data Type Preparation</h3>
+                    <p class="section-description">Items are Wikidata entity references (Q-IDs). Automatic QID detection searches the entire linked data structure, not just display values, to avoid unnecessary reconciliation.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Linked Data Structures:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">{"@id": "https://www.wikidata.org/wiki/Q20007257", "o:label": "CC-BY 4.0"}</span>
+                        <span class="sample-value">{"@id": "https://viaf.org/viaf/24604287", "o:label": "Leonardo da Vinci"}</span>
+                        <span class="sample-value">"Q762"</span>
+                        <span class="sample-value">"Renaissance artist"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Automatic QID Detection</h4>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">Searches for Q-IDs in @id URLs, property values, and display text. Found QIDs skip reconciliation entirely.</p>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="search-linked-data" checked>
+                            Search entire linked data structure for QIDs
+                        </label>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="extract-from-urls" checked>
+                            Extract QIDs from Wikidata URLs (@id fields)
+                        </label>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="validate-qids" checked>
+                            Validate QID format (Q + numbers only)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Detection Results</h4>
+                    <div class="validation-info validation-success">
+                        <strong>Auto-detection found:</strong> 2 valid QIDs that will skip reconciliation, 2 values need reconciliation.
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <h5 style="margin-bottom: 10px; color: #333;">Detection Details:</h5>
+                        <div style="font-family: monospace; font-size: 0.85em; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+                            <div style="color: #28a745;">✓ Q20007257 ← extracted from @id URL</div>
+                            <div style="color: #28a745;">✓ Q762 ← found in display value</div>
+                            <div style="color: #ffc107;">⚠ "Leonardo da Vinci" ← needs reconciliation</div>
+                            <div style="color: #ffc107;">⚠ "Renaissance artist" ← needs reconciliation</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Pre-matched Items:</h5>
+                    <div class="preview-values" id="item-preview">
+                        <span class="preview-value">Q20007257 ✓ (CC-BY 4.0)</span>
+                        <span class="preview-value">Leonardo da Vinci (needs reconciliation)</span>
+                        <span class="preview-value">Q762 ✓</span>
+                        <span class="preview-value">Renaissance artist (needs reconciliation)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quantity Section -->
+            <div class="data-type-section" id="quantity-section">
+                <div class="section-header">
+                    <h3 class="section-title">Quantity Data Type Preparation</h3>
+                    <p class="section-description">Configure numeric values with units, precision, and bounds. Extract numbers from text and handle different unit formats for consistent Wikidata quantities.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"1503"</span>
+                        <span class="sample-value">"100 cm"</span>
+                        <span class="sample-value">"77.5"</span>
+                        <span class="sample-value">"500 million dollars"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Number Extraction</h4>
+                    <p>Extract numeric values from text and handle different formats.</p>
+                    
+                    <div class="input-group">
+                        <label for="number-extraction">Extraction Method:</label>
+                        <select id="number-extraction">
+                            <option value="auto">Auto-detect numbers</option>
+                            <option value="first">First number found</option>
+                            <option value="last">Last number found</option>
+                            <option value="custom">Custom regex pattern</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="decimal-places">Decimal Places:</label>
+                        <input type="number" id="decimal-places" min="0" max="10" value="2">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Unit Configuration</h4>
+                    <p>Search for and select units using Wikidata Q-IDs. Common units are suggested below.</p>
+                    
+                    <div class="input-group">
+                        <label for="unit-search">Search for Unit:</label>
+                        <div class="unit-search-container">
+                            <input type="text" id="unit-search" placeholder="Type unit name or Q-ID (e.g., 'meter', 'Q11573')">
+                            <div id="unit-search-results" class="search-results" style="display: none;"></div>
+                        </div>
+                        <div class="selected-unit" id="selected-default-unit" style="display: none;">
+                            <span class="unit-label"></span>
+                            <button type="button" class="remove-unit">×</button>
+                        </div>
+                    </div>
+                    
+                    <div class="common-units">
+                        <h5>Common Units:</h5>
+                        <div class="unit-suggestions">
+                            <button type="button" class="unit-suggestion" data-qid="Q11573" data-label="metre">metre (Q11573)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q174728" data-label="centimetre">centimetre (Q174728)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q3710" data-label="foot">foot (Q3710)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q41803" data-label="gram">gram (Q41803)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q199" data-label="1">1 (Q199)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q180154" data-label="second">second (Q180154)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q4916" data-label="euro">euro (Q4916)</button>
+                            <button type="button" class="unit-suggestion" data-qid="Q4917" data-label="US dollar">US dollar (Q4917)</button>
+                        </div>
+                    </div></div>
+                    
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <span>Unit Detection Rules</span>
+                            <span class="collapsible-arrow">▶</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="unit-pattern">If text contains:</label>
+                                    <input type="text" id="unit-pattern" placeholder="e.g., 'cm', 'meter', 'kg'">
+                                </div>
+                                <div class="input-group">
+                                    <label for="rule-unit-search">Use unit:</label>
+                                    <div class="unit-search-container">
+                                        <input type="text" id="rule-unit-search" placeholder="Search for unit...">
+                                        <div id="rule-unit-search-results" class="search-results" style="display: none;"></div>
+                                    </div>
+                                    <div class="selected-unit" id="selected-rule-unit" style="display: none;">
+                                        <span class="unit-label"></span>
+                                        <button type="button" class="remove-unit">×</button>
+                                    </div>
+                                </div>
+                                <button id="add-unit-rule" class="button button--secondary button--small">Add Rule</button>
+                            </div>
+                            
+                            <div id="unit-detection-rules" class="unit-rules-list" style="margin-top: 15px;">
+                                <!-- Unit detection rules will appear here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Precision & Bounds</h4>
+                    <p>Set precision and upper/lower bounds for the quantities.</p>
+                    
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="precision">Precision:</label>
+                            <input type="number" id="precision" step="0.1" placeholder="e.g., 1">
+                        </div>
+                        <div class="input-group">
+                            <label for="upper-bound">Upper Bound:</label>
+                            <input type="number" id="upper-bound" step="any" placeholder="optional">
+                        </div>
+                        <div class="input-group">
+                            <label for="lower-bound">Lower Bound:</label>
+                            <input type="number" id="lower-bound" step="any" placeholder="optional">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Quantities:</h5>
+                    <div class="preview-values" id="quantity-preview">
+                        <span class="preview-value">1503</span>
+                        <span class="preview-value">100 (Q174728)</span>
+                        <span class="preview-value">77.50</span>
+                        <span class="preview-value">500000000</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL Section -->
+            <div class="data-type-section" id="url-section">
+                <div class="section-header">
+                    <h3 class="section-title">URL Data Type Preparation</h3>
+                    <p class="section-description">Validate and clean URL values. Add missing protocols, normalize formats, and ensure URLs meet Wikidata requirements.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"http://example.com"</span>
+                        <span class="sample-value">"https://museum.org/artwork/123"</span>
+                        <span class="sample-value">"example.org/page"</span>
+                        <span class="sample-value">"www.gallery.com/item"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>URL Normalization</h4>
+                    <p>Ensure all URLs have proper format and protocols.</p>
+                    
+                    <div class="input-group">
+                        <label for="default-protocol">Default Protocol:</label>
+                        <select id="default-protocol">
+                            <option value="https">https://</option>
+                            <option value="http">http://</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="add-www" checked>
+                            Add 'www.' if missing
+                        </label>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="remove-trailing-slash">
+                            Remove trailing slash
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>URL Validation</h4>
+                    <p>Validate URLs against format requirements and property constraints.</p>
+                    
+                    <div class="input-group">
+                        <label for="url-pattern">URL Pattern (Regex):</label>
+                        <input type="text" id="url-pattern" value="^https?://.+" placeholder="Validation pattern">
+                    </div>
+                    
+                    <div class="validation-info validation-success" id="url-validation">
+                        <strong>Validation:</strong> All URLs will be checked against the pattern before reconciliation.
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Normalized URLs:</h5>
+                    <div class="preview-values" id="url-preview">
+                        <span class="preview-value">http://example.com</span>
+                        <span class="preview-value">https://museum.org/artwork/123</span>
+                        <span class="preview-value">https://www.example.org/page</span>
+                        <span class="preview-value">https://www.gallery.com/item</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Commons Media Section -->
+            <div class="data-type-section" id="commons-media-section">
+                <div class="section-header">
+                    <h3 class="section-title">Commons Media File Data Type Preparation</h3>
+                    <p class="section-description">Prepare filenames for Wikimedia Commons media files. Extract filenames from URLs, validate extensions, and ensure proper formatting.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"Mona_Lisa.jpg"</span>
+                        <span class="sample-value">"Starry Night.png"</span>
+                        <span class="sample-value">"The_Scream_1893.jpg"</span>
+                        <span class="sample-value">"invalid-file"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Filename Processing</h4>
+                    <p>Extract and clean filenames for Commons media files.</p>
+                    
+                    <div class="input-group">
+                        <label for="filename-extraction">Filename Extraction:</label>
+                        <select id="filename-extraction">
+                            <option value="auto">Auto-detect filenames</option>
+                            <option value="url">Extract from URLs</option>
+                            <option value="none">Use as-is</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="replace-spaces" checked>
+                            Replace spaces with underscores
+                        </label>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="default-extension">Default Extension:</label>
+                        <select id="default-extension">
+                            <option value="">Don't add extension</option>
+                            <option value=".jpg">.jpg</option>
+                            <option value=".png">.png</option>
+                            <option value=".svg">.svg</option>
+                            <option value=".pdf">.pdf</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>File Validation</h4>
+                    <p>Validate file extensions against allowed Commons media types.</p>
+                    
+                    <div class="validation-info">
+                        <strong>Allowed Extensions:</strong> .jpg, .jpeg, .png, .gif, .svg, .pdf, .ogg, .mp3, .mp4, .webm
+                    </div>
+                    
+                    <div class="validation-info validation-error">
+                        <strong>Validation Issues:</strong> 1 file has no valid extension and may need manual correction.
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Filenames:</h5>
+                    <div class="preview-values" id="commons-media-preview">
+                        <span class="preview-value">Mona_Lisa.jpg ✓</span>
+                        <span class="preview-value">Starry_Night.png ✓</span>
+                        <span class="preview-value">The_Scream_1893.jpg ✓</span>
+                        <span class="preview-value">invalid-file ⚠️</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Point in Time Section -->
+            <div class="data-type-section" id="time-section">
+                <div class="section-header">
+                    <h3 class="section-title">Point in Time Data Type Preparation</h3>
+                    <p class="section-description">Analyze temporal data to determine precision and calendar system. Extract dates from various formats and set appropriate precision levels for Wikidata time values.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"1503"</span>
+                        <span class="sample-value">"1503-05"</span>
+                        <span class="sample-value">"1503-05-15"</span>
+                        <span class="sample-value">"1890s"</span>
+                        <span class="sample-value">"early 16th century"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Precision Detection</h4>
+                    <p>Automatically detect temporal precision from date formats.</p>
+                    
+                    <div class="validation-info">
+                        <strong>Auto-detected Precisions:</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>"1503" → Year precision</li>
+                            <li>"1503-05" → Month precision</li>
+                            <li>"1503-05-15" → Day precision</li>
+                            <li>"1890s" → Decade precision</li>
+                            <li>"early 16th century" → Year precision (estimated)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="default-precision">Override Precision:</label>
+                        <select id="default-precision">
+                            <option value="auto">Auto-detect</option>
+                            <option value="day">Day</option>
+                            <option value="month">Month</option>
+                            <option value="year">Year</option>
+                            <option value="decade">Decade</option>
+                            <option value="century">Century</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Calendar System</h4>
+                    <p>Specify the calendar system for these dates.</p>
+                    
+                    <div class="input-group">
+                        <label for="calendar-system">Calendar:</label>
+                        <select id="calendar-system">
+                            <option value="Q1985727">Proleptic Gregorian calendar (default)</option>
+                            <option value="Q1985786">Julian calendar</option>
+                            <option value="Q11184">Gregorian calendar</option>
+                        </select>
+                    </div>
+                    
+                    <div class="validation-info">
+                        <strong>Recommendation:</strong> Use Proleptic Gregorian calendar for most historical dates. Switch to Julian calendar only for dates before 1582 where historical accuracy requires it.
+                    </div>
+                </div>
+
+                <div class="advanced-section">
+                    <button class="advanced-toggle" onclick="toggleAdvanced('time')">▼ Advanced Date Processing</button>
+                    <div class="advanced-content" id="time-advanced">
+                        <div class="form-section">
+                            <h4>Custom Date Patterns</h4>
+                            <p>Define custom patterns for complex date formats.</p>
+                            
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="date-pattern">Date Pattern (Regex):</label>
+                                    <input type="text" id="date-pattern" placeholder="e.g., /(\d{4})s/">
+                                </div>
+                                <div class="input-group">
+                                    <label for="date-precision-custom">Precision:</label>
+                                    <select id="date-precision-custom">
+                                        <option value="decade">Decade</option>
+                                        <option value="year">Year</option>
+                                        <option value="century">Century</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Dates:</h5>
+                    <div class="preview-values" id="time-preview">
+                        <span class="preview-value">1503-01-01 (year precision)</span>
+                        <span class="preview-value">1503-05-01 (month precision)</span>
+                        <span class="preview-value">1503-05-15 (day precision)</span>
+                        <span class="preview-value">1890-01-01 (decade precision)</span>
+                        <span class="preview-value">1500-01-01 (year precision)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monolingual Text Section -->
+            <div class="data-type-section" id="monolingualtext-section">
+                <div class="section-header">
+                    <h3 class="section-title">Monolingual Text Data Type Preparation</h3>
+                    <p class="section-description">Configure text values with language specifications. Set default languages and apply text transformations while preserving language context.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"The Mona Lisa"</span>
+                        <span class="sample-value">"La Joconde"</span>
+                        <span class="sample-value">"La Gioconda"</span>
+                        <span class="sample-value">"Das Lächeln der Mona Lisa"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Language Configuration</h4>
+                    <p>Set the default language for these text values.</p>
+                    
+                    <div class="input-group">
+                        <label for="default-language">Default Language:</label>
+                        <select id="default-language">
+                            <option value="en">English (en)</option>
+                            <option value="fr">French (fr)</option>
+                            <option value="de">German (de)</option>
+                            <option value="it">Italian (it)</option>
+                            <option value="es">Spanish (es)</option>
+                            <option value="nl">Dutch (nl)</option>
+                            <option value="pt">Portuguese (pt)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <span>Language Detection Rules</span>
+                            <span class="collapsible-arrow">▶</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="text-contains">If text contains:</label>
+                                    <input type="text" id="text-contains" placeholder="e.g., 'La', 'Das'">
+                                </div>
+                                <div class="input-group">
+                                    <label for="use-language">Use language:</label>
+                                    <select id="use-language">
+                                        <option value="fr">French (fr)</option>
+                                        <option value="de">German (de)</option>
+                                        <option value="it">Italian (it)</option>
+                                        <option value="es">Spanish (es)</option>
+                                    </select>
+                                </div>
+                                <button class="button button--secondary button--small">Add Rule</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Text Processing</h4>
+                    <p>Apply text transformations while preserving language context.</p>
+                    
+                    <div class="input-group">
+                        <label for="mono-prefix">Add Prefix:</label>
+                        <input type="text" id="mono-prefix" placeholder="e.g., 'Title: '">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="mono-suffix">Add Suffix:</label>
+                        <input type="text" id="mono-suffix" placeholder="e.g., ' (artwork)'">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="title-case">
+                            Convert to Title Case
+                        </label>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Processed Monolingual Text:</h5>
+                    <div class="preview-values" id="monolingualtext-preview">
+                        <span class="preview-value">"The Mona Lisa" @en</span>
+                        <span class="preview-value">"La Joconde" @fr</span>
+                        <span class="preview-value">"La Gioconda" @it</span>
+                        <span class="preview-value">"Das Lächeln der Mona Lisa" @de</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metadata Section -->
+            <div class="data-type-section" id="metadata-section">
+                <div class="section-header">
+                    <h3 class="section-title">Metadata Data Type Preparation</h3>
+                    <p class="section-description">Configure metadata fields (labels, descriptions, aliases) with multi-language support and dynamic composition. This custom data type helps prepare essential Wikidata metadata.</p>
+                </div>
+
+                <div class="sample-data">
+                    <h5>Sample Values from Your Data:</h5>
+                    <div class="sample-values">
+                        <span class="sample-value">"Leonardo da Vinci painting"</span>
+                        <span class="sample-value">"Famous Renaissance artwork"</span>
+                        <span class="sample-value">"Mona Lisa, La Gioconda"</span>
+                        <span class="sample-value">"Portrait painting"</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Metadata Type</h4>
+                    <p>Specify what type of metadata this represents.</p>
+                    
+                    <div class="input-group">
+                        <label for="metadata-type">Metadata Type:</label>
+                        <select id="metadata-type">
+                            <option value="label">Labels</option>
+                            <option value="description">Descriptions</option>
+                            <option value="alias">Aliases</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Template Composition</h4>
+                    <p>Create dynamic metadata using variables from your input data.</p>
+                    
+                    <div class="input-group">
+                        <label for="metadata-template">Metadata Template:</label>
+                        <textarea id="metadata-template" placeholder="e.g., '{title} by {creator}' or '{type} created in {date}'" rows="3">{{title}} by {{creator}}</textarea>
+                    </div>
+                    
+                    <div class="validation-info">
+                        <strong>Available Variables:</strong> {title}, {creator}, {date}, {type}, {publisher}, {location}, {material}
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Language Settings</h4>
+                    <p>Configure language-specific metadata generation.</p>
+                    
+                    <div class="input-group">
+                        <label for="metadata-language">Primary Language:</label>
+                        <select id="metadata-language">
+                            <option value="en">English (en)</option>
+                            <option value="fr">French (fr)</option>
+                            <option value="de">German (de)</option>
+                            <option value="it">Italian (it)</option>
+                            <option value="es">Spanish (es)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="collapsible">
+                        <div class="collapsible-header">
+                            <span>Multi-language Templates</span>
+                            <span class="collapsible-arrow">▶</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="alt-language">Language:</label>
+                                    <select id="alt-language">
+                                        <option value="fr">French</option>
+                                        <option value="de">German</option>
+                                        <option value="it">Italian</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="alt-template">Template:</label>
+                                    <input type="text" id="alt-template" placeholder="e.g., '{title} par {creator}'">
+                                </div>
+                                <button class="button button--secondary button--small">Add Language</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Alias Processing</h4>
+                    <p>Configure how aliases are split and processed (only for alias metadata type).</p>
+                    
+                    <div class="input-group">
+                        <label for="alias-separator">Alias Separator:</label>
+                        <input type="text" id="alias-separator" value="," placeholder="e.g., ',' or ';'">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>
+                            <input type="checkbox" id="trim-aliases" checked>
+                            Trim whitespace from aliases
+                        </label>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h5>Preview of Generated Metadata:</h5>
+                    <div class="preview-values" id="metadata-preview">
+                        <span class="preview-value">"Mona Lisa by Leonardo da Vinci" @en</span>
+                        <span class="preview-value">"Starry Night by Vincent van Gogh" @en</span>
+                        <span class="preview-value">"The Scream by Edvard Munch" @en</span>
+                        <span class="preview-value">"Girl with a Pearl Earring by Johannes Vermeer" @en</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state for managing transformations
+        const transformationState = {
+            currentType: 'string',
+            transforms: {},
+            findReplaceRules: [],
+            regexRules: [],
+            validationRules: [],
+            defaultUnit: null,
+            unitDetectionRules: [],
+            sampleData: {
+                'string': ['The Mona Lisa', 'Starry Night', 'The Scream', 'Girl with a Pearl Earring'],
+                'external-id': ['https://viaf.org/viaf/24604287', 'http://id.loc.gov/authorities/names/n79021164', 'VIAF:24604287', 'isbn:9780123456789'],
+                'item': [
+                    '{"@id": "https://www.wikidata.org/wiki/Q20007257", "o:label": "CC-BY 4.0"}',
+                    '{"@id": "https://viaf.org/viaf/24604287", "o:label": "Leonardo da Vinci"}', 
+                    'Q762',
+                    'Renaissance artist'
+                ],
+                'quantity': ['1503', '100 cm', '77.5', '500 million dollars'],
+                'url': ['http://example.com', 'https://museum.org/artwork/123', 'example.org/page', 'www.gallery.com/item'],
+                'commons-media': ['Mona_Lisa.jpg', 'Starry Night.png', 'The_Scream_1893.jpg', 'invalid-file'],
+                'time': ['1503', '1503-05', '1503-05-15', '1890s', 'early 16th century'],
+                'monolingualtext': ['The Mona Lisa', 'La Joconde', 'La Gioconda', 'Das Lächeln der Mona Lisa'],
+                'metadata': ['Leonardo da Vinci painting', 'Famous Renaissance artwork', 'Mona Lisa, La Gioconda', 'Portrait painting']
+            }
+        };
+
+        // Unit database - common Wikidata units with Q-IDs
+        const unitDatabase = [
+            { qid: 'Q11573', label: 'metre', aliases: ['meter', 'm', 'meters', 'metres'] },
+            { qid: 'Q174728', label: 'centimetre', aliases: ['centimeter', 'cm', 'centimeters', 'centimetres'] },
+            { qid: 'Q218593', label: 'millimetre', aliases: ['millimeter', 'mm', 'millimeters', 'millimetres'] },
+            { qid: 'Q828224', label: 'kilometre', aliases: ['kilometer', 'km', 'kilometers', 'kilometres'] },
+            { qid: 'Q3710', label: 'foot', aliases: ['ft', 'feet'] },
+            { qid: 'Q218593', label: 'inch', aliases: ['in', 'inches', '"'] },
+            { qid: 'Q5881', label: 'yard', aliases: ['yd', 'yards'] },
+            { qid: 'Q253276', label: 'mile', aliases: ['mi', 'miles'] },
+            
+            { qid: 'Q41803', label: 'gram', aliases: ['g', 'grams', 'gramme'] },
+            { qid: 'Q11570', label: 'kilogram', aliases: ['kg', 'kilograms', 'kilo'] },
+            { qid: 'Q41803', label: 'milligram', aliases: ['mg', 'milligrams'] },
+            { qid: 'Q48013', label: 'ounce', aliases: ['oz', 'ounces'] },
+            { qid: 'Q134628', label: 'pound', aliases: ['lb', 'lbs', 'pounds'] },
+            { qid: 'Q191118', label: 'ton', aliases: ['t', 'tons', 'tonne', 'tonnes'] },
+            
+            { qid: 'Q180154', label: 'second', aliases: ['s', 'sec', 'seconds'] },
+            { qid: 'Q7727', label: 'minute', aliases: ['min', 'minutes'] },
+            { qid: 'Q25235', label: 'hour', aliases: ['h', 'hr', 'hours'] },
+            { qid: 'Q573', label: 'day', aliases: ['d', 'days'] },
+            { qid: 'Q23387', label: 'week', aliases: ['w', 'weeks'] },
+            { qid: 'Q5151', label: 'month', aliases: ['months'] },
+            { qid: 'Q577', label: 'year', aliases: ['y', 'yr', 'years'] },
+            
+            { qid: 'Q25343', label: 'square metre', aliases: ['m²', 'm2', 'square meter', 'sq m'] },
+            { qid: 'Q25270', label: 'square centimetre', aliases: ['cm²', 'cm2', 'square centimeter'] },
+            { qid: 'Q35852', label: 'hectare', aliases: ['ha', 'hectares'] },
+            { qid: 'Q232291', label: 'acre', aliases: ['acres'] },
+            
+            { qid: 'Q25517', label: 'cubic metre', aliases: ['m³', 'm3', 'cubic meter'] },
+            { qid: 'Q11582', label: 'litre', aliases: ['l', 'liter', 'litres', 'liters'] },
+            { qid: 'Q828224', label: 'millilitre', aliases: ['ml', 'milliliter'] },
+            { qid: 'Q191118', label: 'gallon', aliases: ['gal', 'gallons'] },
+            
+            { qid: 'Q4916', label: 'euro', aliases: ['€', 'EUR', 'euros'] },
+            { qid: 'Q4917', label: 'US dollar', aliases: ['$', 'USD', 'dollar', 'dollars'] },
+            { qid: 'Q25224', label: 'pound sterling', aliases: ['£', 'GBP', 'pounds'] },
+            { qid: 'Q8146', label: 'yen', aliases: ['¥', 'JPY'] },
+            
+            { qid: 'Q199', label: '1', aliases: ['dimensionless', 'unitless', 'count', 'number', 'piece', 'pieces'] },
+            { qid: 'Q11573', label: 'percent', aliases: ['%', 'percentage'] },
+            { qid: 'Q25377', label: 'degree Celsius', aliases: ['°C', 'celsius', 'centigrade'] },
+            { qid: 'Q25267', label: 'degree Fahrenheit', aliases: ['°F', 'fahrenheit'] },
+            { qid: 'Q11579', label: 'kelvin', aliases: ['K'] }
+        ];
+
+        // Unit search functionality
+        function searchUnits(query) {
+            if (!query || query.length < 1) return [];
+            
+            const lowerQuery = query.toLowerCase().trim();
+            
+            // Direct Q-ID match
+            if (lowerQuery.match(/^q\d+$/)) {
+                const exactMatch = unitDatabase.find(unit => unit.qid.toLowerCase() === lowerQuery);
+                if (exactMatch) return [exactMatch];
+            }
+            
+            // Search in labels and aliases
+            const matches = unitDatabase.filter(unit => {
+                return unit.label.toLowerCase().includes(lowerQuery) ||
+                       unit.aliases.some(alias => alias.toLowerCase().includes(lowerQuery)) ||
+                       unit.qid.toLowerCase().includes(lowerQuery);
+            });
+            
+            // Sort by relevance (exact matches first, then starts with, then contains)
+            return matches.sort((a, b) => {
+                const aExact = a.label.toLowerCase() === lowerQuery || a.aliases.some(alias => alias.toLowerCase() === lowerQuery);
+                const bExact = b.label.toLowerCase() === lowerQuery || b.aliases.some(alias => alias.toLowerCase() === lowerQuery);
+                
+                if (aExact && !bExact) return -1;
+                if (!aExact && bExact) return 1;
+                
+                const aStarts = a.label.toLowerCase().startsWith(lowerQuery) || a.aliases.some(alias => alias.toLowerCase().startsWith(lowerQuery));
+                const bStarts = b.label.toLowerCase().startsWith(lowerQuery) || b.aliases.some(alias => alias.toLowerCase().startsWith(lowerQuery));
+                
+                if (aStarts && !bStarts) return -1;
+                if (!aStarts && bStarts) return 1;
+                
+                return a.label.localeCompare(b.label);
+            }).slice(0, 8); // Limit to 8 results
+        }
+
+        // Setup unit search for a specific input/results pair
+        function setupUnitSearch(inputId, resultsId, selectionId, onSelect) {
+            const input = document.getElementById(inputId);
+            const results = document.getElementById(resultsId);
+            const selection = document.getElementById(selectionId);
+            
+            if (!input || !results || !selection) return;
+            
+            let debounceTimer;
+            
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    const query = this.value;
+                    
+                    if (query.length < 1) {
+                        results.style.display = 'none';
+                        return;
+                    }
+                    
+                    const matches = searchUnits(query);
+                    
+                    if (matches.length === 0) {
+                        results.innerHTML = '<div class="search-result-item" style="color: #666;">No units found</div>';
+                        results.style.display = 'block';
+                        return;
+                    }
+                    
+                    results.innerHTML = matches.map(unit => 
+                        `<div class="search-result-item" data-qid="${unit.qid}" data-label="${unit.label}">
+                            ${unit.label} (${unit.qid})
+                            ${unit.aliases.length > 0 ? '<br><small style="color: #666;">Also: ' + unit.aliases.slice(0, 3).join(', ') + '</small>' : ''}
+                        </div>`
+                    ).join('');
+                    
+                    results.style.display = 'block';
+                    
+                    // Add click handlers
+                    results.querySelectorAll('.search-result-item[data-qid]').forEach(item => {
+                        item.addEventListener('click', function() {
+                            const qid = this.dataset.qid;
+                            const label = this.dataset.label;
+                            selectUnit(input, results, selection, qid, label, onSelect);
+                        });
+                    });
+                }, 200);
+            });
+            
+            // Hide results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !results.contains(e.target)) {
+                    results.style.display = 'none';
+                }
+            });
+        }
+
+        // Select a unit and update UI
+        function selectUnit(input, results, selection, qid, label, onSelect) {
+            input.value = '';
+            results.style.display = 'none';
+            
+            selection.querySelector('.unit-label').textContent = `${label} (${qid})`;
+            selection.style.display = 'flex';
+            
+            // Setup remove button
+            const removeBtn = selection.querySelector('.remove-unit');
+            removeBtn.onclick = function() {
+                selection.style.display = 'none';
+                if (onSelect) onSelect(null);
+            };
+            
+            if (onSelect) onSelect({ qid, label });
+        }
+
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            setupDataTypeNavigation();
+            setupCollapsibleSections();
+            initializeInputHandlers();
+            setupFindReplaceHandlers();
+            setupRegexHandlers();
+            setupUnitSearchHandlers();
+            setupValidationHandlers();
+            updatePreviews();
+        });
+
+        // Setup navigation between data types
+        function setupDataTypeNavigation() {
+            const tabs = document.querySelectorAll('.data-type-tab');
+            const sections = document.querySelectorAll('.data-type-section');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const dataType = tab.getAttribute('data-type');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update active section
+                    sections.forEach(s => s.classList.remove('active'));
+                    const targetSection = document.getElementById(`${dataType}-section`);
+                    if (targetSection) {
+                        targetSection.classList.add('active');
+                    }
+                    
+                    transformationState.currentType = dataType;
+                    updatePreviews();
+                });
+            });
+        }
+
+        // Setup collapsible sections
+        function setupCollapsibleSections() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+            
+            collapsibles.forEach(collapsible => {
+                const header = collapsible.querySelector('.collapsible-header');
+                header.addEventListener('click', () => {
+                    collapsible.classList.toggle('open');
+                });
+            });
+        }
+
+        // Initialize input handlers for real-time preview
+        function initializeInputHandlers() {
+            // String composition handler
+            const stringTemplate = document.getElementById('string-template');
+            if (stringTemplate) stringTemplate.addEventListener('input', updatePreviews);
+
+            // External ID handlers
+            const extractPattern = document.getElementById('extract-pattern');
+            if (extractPattern) {
+                extractPattern.addEventListener('change', function() {
+                    const customExtraction = document.getElementById('custom-extraction');
+                    if (this.value === 'regex' || this.value === 'between') {
+                        customExtraction.style.display = 'block';
+                    } else {
+                        customExtraction.style.display = 'none';
+                    }
+                    updatePreviews();
+                });
+            }
+
+            // URL handlers
+            const defaultProtocol = document.getElementById('default-protocol');
+            const addWww = document.getElementById('add-www');
+            const removeTrailingSlash = document.getElementById('remove-trailing-slash');
+            
+            if (defaultProtocol) defaultProtocol.addEventListener('change', updatePreviews);
+            if (addWww) addWww.addEventListener('change', updatePreviews);
+            if (removeTrailingSlash) removeTrailingSlash.addEventListener('change', updatePreviews);
+
+            // Commons media handlers
+            const filenameExtraction = document.getElementById('filename-extraction');
+            const replaceSpaces = document.getElementById('replace-spaces');
+            const defaultExtension = document.getElementById('default-extension');
+            
+            if (filenameExtraction) filenameExtraction.addEventListener('change', updatePreviews);
+            if (replaceSpaces) replaceSpaces.addEventListener('change', updatePreviews);
+            if (defaultExtension) defaultExtension.addEventListener('change', updatePreviews);
+
+            // Monolingual text handlers
+            const defaultLanguage = document.getElementById('default-language');
+            const monoPrefix = document.getElementById('mono-prefix');
+            const monoSuffix = document.getElementById('mono-suffix');
+            const titleCase = document.getElementById('title-case');
+            
+            if (defaultLanguage) defaultLanguage.addEventListener('change', updatePreviews);
+            if (monoPrefix) monoPrefix.addEventListener('input', updatePreviews);
+            if (monoSuffix) monoSuffix.addEventListener('input', updatePreviews);
+            if (titleCase) titleCase.addEventListener('change', updatePreviews);
+
+            // Metadata handlers
+            const metadataTemplate = document.getElementById('metadata-template');
+            const metadataLanguage = document.getElementById('metadata-language');
+            const metadataType = document.getElementById('metadata-type');
+            
+            if (metadataTemplate) metadataTemplate.addEventListener('input', updatePreviews);
+            if (metadataLanguage) metadataLanguage.addEventListener('change', updatePreviews);
+            if (metadataType) metadataType.addEventListener('change', updatePreviews);
+
+            // Item handlers
+            const searchLinkedData = document.getElementById('search-linked-data');
+            const extractFromUrls = document.getElementById('extract-from-urls');
+            const validateQids = document.getElementById('validate-qids');
+            
+            if (searchLinkedData) searchLinkedData.addEventListener('change', updatePreviews);
+            if (extractFromUrls) extractFromUrls.addEventListener('change', updatePreviews);
+            if (validateQids) validateQids.addEventListener('change', updatePreviews);
+
+            // Quantity handlers
+            const numberExtraction = document.getElementById('number-extraction');
+            const decimalPlaces = document.getElementById('decimal-places');
+            
+            if (numberExtraction) numberExtraction.addEventListener('change', updatePreviews);
+            if (decimalPlaces) decimalPlaces.addEventListener('input', updatePreviews);
+        }
+
+        // Setup find/replace functionality
+        function setupFindReplaceHandlers() {
+            // Find the "Add Rule" button by ID
+            const addRuleButton = document.getElementById('add-find-replace-rule');
+            if (addRuleButton) {
+                addRuleButton.addEventListener('click', addFindReplaceRule);
+            }
+        }
+
+        // Setup regex functionality
+        function setupRegexHandlers() {
+            // Find the "Add Regex Rule" button by ID
+            const addRegexButton = document.getElementById('add-regex-rule');
+            if (addRegexButton) {
+                addRegexButton.addEventListener('click', addRegexRule);
+            }
+        }
+
+        // Setup unit search functionality
+        function setupUnitSearchHandlers() {
+            // Setup main unit search
+            setupUnitSearch('unit-search', 'unit-search-results', 'selected-default-unit', function(unit) {
+                transformationState.defaultUnit = unit;
+                updatePreviews();
+            });
+            
+            // Setup unit detection rule search
+            setupUnitSearch('rule-unit-search', 'rule-unit-search-results', 'selected-rule-unit', null);
+            
+            // Handle unit suggestions (common units)
+            document.querySelectorAll('.unit-suggestion').forEach(button => {
+                button.addEventListener('click', function() {
+                    const qid = this.dataset.qid;
+                    const label = this.dataset.label;
+                    const input = document.getElementById('unit-search');
+                    const results = document.getElementById('unit-search-results');
+                    const selection = document.getElementById('selected-default-unit');
+                    
+                    selectUnit(input, results, selection, qid, label, function(unit) {
+                        transformationState.defaultUnit = unit;
+                        updatePreviews();
+                    });
+                });
+            });
+            
+            // Handle unit detection rule addition
+            const addUnitRuleButton = document.getElementById('add-unit-rule');
+            if (addUnitRuleButton) {
+                addUnitRuleButton.addEventListener('click', addUnitDetectionRule);
+            }
+        }
+
+        // Setup validation functionality
+        function setupValidationHandlers() {
+            const addValidationButton = document.getElementById('add-validation-rule');
+            if (addValidationButton) {
+                addValidationButton.addEventListener('click', addValidationRule);
+            }
+        }
+
+        // Add a validation rule
+        function addValidationRule() {
+            const patternInput = document.getElementById('validation-pattern');
+            const descriptionInput = document.getElementById('validation-description');
+            
+            if (!patternInput || !descriptionInput) return;
+            
+            const pattern = patternInput.value.trim();
+            const description = descriptionInput.value.trim();
+            
+            if (pattern === '') {
+                alert('Please enter a validation pattern');
+                return;
+            }
+            
+            if (description === '') {
+                alert('Please enter a description for this validation rule');
+                return;
+            }
+            
+            // Test if the regex is valid
+            try {
+                new RegExp(pattern);
+            } catch (e) {
+                alert('Invalid regex pattern: ' + e.message);
+                return;
+            }
+            
+            // Add rule to state
+            transformationState.validationRules.push({
+                pattern: pattern,
+                description: description,
+                id: Date.now()
+            });
+            
+            // Clear inputs
+            patternInput.value = '';
+            descriptionInput.value = '';
+            
+            // Update display
+            updateValidationRulesDisplay();
+            updatePreviews();
+        }
+
+        // Update the display of validation rules
+        function updateValidationRulesDisplay() {
+            const rulesContainer = document.getElementById('validation-rules');
+            if (!rulesContainer) return;
+            
+            rulesContainer.innerHTML = '';
+            
+            if (transformationState.validationRules.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = 'color: #666; font-style: italic; padding: 20px; text-align: center; background: #f8f9fa; border-radius: 4px; margin: 5px 0;';
+                placeholder.textContent = 'No validation rules yet. Add patterns above to validate string values.';
+                rulesContainer.appendChild(placeholder);
+                return;
+            }
+            
+            transformationState.validationRules.forEach((rule, index) => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'validation-rule';
+                
+                const ruleText = document.createElement('span');
+                ruleText.style.cssText = 'flex: 1;';
+                ruleText.innerHTML = `<strong>${rule.description}</strong><br><code>/${rule.pattern}/</code>`;
+                
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '✏️';
+                editBtn.className = 'button button--small';
+                editBtn.style.cssText = 'background: #007bff; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer; margin-right: 4px;';
+                editBtn.title = 'Edit validation rule';
+                editBtn.addEventListener('click', function() {
+                    editValidationRule(rule.id);
+                });
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.className = 'button button--small';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer;';
+                removeBtn.addEventListener('click', function() {
+                    transformationState.validationRules = transformationState.validationRules.filter(r => r.id !== rule.id);
+                    updateValidationRulesDisplay();
+                    updatePreviews();
+                });
+                
+                ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(editBtn);
+                ruleDiv.appendChild(removeBtn);
+                rulesContainer.appendChild(ruleDiv);
+            });
+        }
+
+        // Edit a validation rule
+        function editValidationRule(ruleId) {
+            const rule = transformationState.validationRules.find(r => r.id === ruleId);
+            if (!rule) return;
+            
+            const patternInput = document.getElementById('validation-pattern');
+            const descriptionInput = document.getElementById('validation-description');
+            
+            if (!patternInput || !descriptionInput) return;
+            
+            // Populate the input fields with the current rule values
+            patternInput.value = rule.pattern;
+            descriptionInput.value = rule.description;
+            
+            // Remove the old rule
+            transformationState.validationRules = transformationState.validationRules.filter(r => r.id !== ruleId);
+            
+            // Update displays
+            updateValidationRulesDisplay();
+            updatePreviews();
+            
+            // Focus on the pattern input for immediate editing
+            patternInput.focus();
+            patternInput.select();
+        }
+
+        // Validate a value against all validation rules
+        function validateValue(value) {
+            if (transformationState.validationRules.length === 0) {
+                return { isValid: null, failedRules: [] }; // No validation rules
+            }
+            
+            const failedRules = [];
+            
+            for (const rule of transformationState.validationRules) {
+                try {
+                    const regex = new RegExp(rule.pattern);
+                    if (!regex.test(value)) {
+                        failedRules.push(rule);
+                    }
+                } catch (e) {
+                    // Skip invalid regex patterns
+                    continue;
+                }
+            }
+            
+            return {
+                isValid: failedRules.length === 0,
+                failedRules: failedRules
+            };
+        }
+
+        // Add a unit detection rule
+        function addUnitDetectionRule() {
+            const patternInput = document.getElementById('unit-pattern');
+            const selectedUnit = document.getElementById('selected-rule-unit');
+            
+            if (!patternInput || !selectedUnit) return;
+            
+            const pattern = patternInput.value.trim();
+            
+            if (pattern === '') {
+                alert('Please enter a text pattern to match');
+                return;
+            }
+            
+            if (selectedUnit.style.display === 'none') {
+                alert('Please select a unit');
+                return;
+            }
+            
+            const unitLabel = selectedUnit.querySelector('.unit-label').textContent;
+            const unitMatch = unitLabel.match(/\\(([^)]+)\\)$/);
+            const unitQid = unitMatch ? unitMatch[1] : '';
+            const unitName = unitLabel.replace(/ \\([^)]+\\)$/, '');
+            
+            if (!unitQid) {
+                alert('Invalid unit selection');
+                return;
+            }
+            
+            // Add rule to state
+            transformationState.unitDetectionRules.push({
+                pattern: pattern,
+                unit: { qid: unitQid, label: unitName },
+                id: Date.now()
+            });
+            
+            // Clear inputs
+            patternInput.value = '';
+            selectedUnit.style.display = 'none';
+            
+            // Update display
+            updateUnitDetectionRulesDisplay();
+            updatePreviews();
+        }
+
+        // Update the display of unit detection rules
+        function updateUnitDetectionRulesDisplay() {
+            const rulesContainer = document.getElementById('unit-detection-rules');
+            if (!rulesContainer) return;
+            
+            rulesContainer.innerHTML = '';
+            
+            if (transformationState.unitDetectionRules.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = 'color: #666; font-style: italic; padding: 20px; text-align: center; background: #f8f9fa; border-radius: 4px; margin: 5px 0;';
+                placeholder.textContent = 'No unit detection rules yet. Add rules above to see them here.';
+                rulesContainer.appendChild(placeholder);
+                return;
+            }
+            
+            transformationState.unitDetectionRules.forEach((rule, index) => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'unit-rule';
+                
+                const ruleText = document.createElement('span');
+                ruleText.style.cssText = 'flex: 1;';
+                ruleText.innerHTML = `If text contains "<strong>${rule.pattern}</strong>" → use <strong>${rule.unit.label} (${rule.unit.qid})</strong>`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.className = 'button button--small';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer;';
+                removeBtn.addEventListener('click', function() {
+                    transformationState.unitDetectionRules = transformationState.unitDetectionRules.filter(r => r.id !== rule.id);
+                    updateUnitDetectionRulesDisplay();
+                    updatePreviews();
+                });
+                
+                ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(removeBtn);
+                rulesContainer.appendChild(ruleDiv);
+            });
+        }
+
+        // Add a new regex rule
+        function addRegexRule() {
+            const patternInput = document.getElementById('regex-pattern');
+            const replacementInput = document.getElementById('regex-replacement');
+            
+            if (!patternInput || !replacementInput) return;
+            
+            // Get exact values - NO TRIMMING for precision
+            const pattern = patternInput.value;
+            const replacement = replacementInput.value;
+            
+            if (pattern === '') {
+                alert('Please enter a regex pattern (empty pattern not allowed)');
+                return;
+            }
+            
+            // Test if the regex is valid
+            try {
+                new RegExp(pattern);
+            } catch (e) {
+                alert('Invalid regex pattern: ' + e.message);
+                return;
+            }
+            
+            // Add rule to state with exact matching
+            transformationState.regexRules.push({
+                pattern: pattern,
+                replacement: replacement,
+                id: Date.now()
+            });
+            
+            // Clear inputs
+            patternInput.value = '';
+            replacementInput.value = '';
+            
+            // Update the rules display
+            updateRegexRulesDisplay();
+            
+            // Update preview
+            updatePreviews();
+        }
+
+        // Edit a regex rule
+        function editRegexRule(ruleId) {
+            const rule = transformationState.regexRules.find(r => r.id === ruleId);
+            if (!rule) return;
+            
+            const patternInput = document.getElementById('regex-pattern');
+            const replacementInput = document.getElementById('regex-replacement');
+            
+            if (!patternInput || !replacementInput) return;
+            
+            // Populate the input fields with the current rule values
+            patternInput.value = rule.pattern;
+            replacementInput.value = rule.replacement;
+            
+            // Remove the old rule
+            transformationState.regexRules = transformationState.regexRules.filter(r => r.id !== ruleId);
+            
+            // Update displays
+            updateRegexRulesDisplay();
+            updatePreviews();
+            
+            // Focus on the pattern input for immediate editing
+            patternInput.focus();
+            patternInput.select();
+        }
+
+        // Update the display of regex rules
+        function updateRegexRulesDisplay() {
+            const rulesContainer = document.getElementById('regex-rules');
+            if (!rulesContainer) return;
+            
+            rulesContainer.innerHTML = '';
+            
+            if (transformationState.regexRules.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = 'color: #666; font-style: italic; padding: 20px; text-align: center; background: #f8f9fa; border-radius: 4px; margin: 5px 0;';
+                placeholder.textContent = 'No regex rules yet. Add regex patterns above to see them here.';
+                rulesContainer.appendChild(placeholder);
+                return;
+            }
+            
+            transformationState.regexRules.forEach((rule, index) => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'find-replace-rule';
+                ruleDiv.draggable = true;
+                ruleDiv.dataset.ruleId = rule.id;
+                ruleDiv.style.cssText = 'background: #f8f9fa; padding: 8px; margin: 5px 0; border-radius: 4px; display: flex; align-items: center; gap: 8px;';
+                
+                // Order number
+                const orderSpan = document.createElement('span');
+                orderSpan.className = 'rule-order';
+                orderSpan.textContent = index + 1;
+                
+                // Drag handle
+                const dragHandle = document.createElement('span');
+                dragHandle.className = 'drag-handle';
+                dragHandle.innerHTML = '⋮⋮';
+                dragHandle.title = 'Drag to reorder';
+                
+                // Rule text
+                const ruleText = document.createElement('span');
+                ruleText.style.cssText = 'flex: 1; font-family: monospace;';
+                ruleText.innerHTML = `<span title="Pattern: /${rule.pattern}/">/${rule.pattern}/</span> → <span title="Replacement: '${rule.replacement}'">"${rule.replacement}"</span>`;
+                
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '✏️';
+                editBtn.className = 'button button--small';
+                editBtn.style.cssText = 'background: #007bff; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer; margin-right: 4px;';
+                editBtn.title = 'Edit rule';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editRegexRule(rule.id);
+                });
+                
+                // Remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.className = 'button button--small';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer;';
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    transformationState.regexRules = transformationState.regexRules.filter(r => r.id !== rule.id);
+                    updateRegexRulesDisplay();
+                    updatePreviews();
+                });
+                
+                // Add drag event listeners for regex rules
+                ruleDiv.addEventListener('dragstart', handleRegexDragStart);
+                ruleDiv.addEventListener('dragover', handleRegexDragOver);
+                ruleDiv.addEventListener('drop', handleRegexDrop);
+                ruleDiv.addEventListener('dragend', handleRegexDragEnd);
+                
+                ruleDiv.appendChild(orderSpan);
+                ruleDiv.appendChild(dragHandle);
+                ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(editBtn);
+                ruleDiv.appendChild(removeBtn);
+                rulesContainer.appendChild(ruleDiv);
+            });
+        }
+
+        // Regex drag and drop functionality
+        let draggedRegexElement = null;
+
+        function handleRegexDragStart(e) {
+            draggedRegexElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.outerHTML);
+        }
+
+        function handleRegexDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            
+            if (this === draggedRegexElement) return;
+            
+            e.dataTransfer.dropEffect = 'move';
+            
+            // Add visual feedback
+            const rulesContainer = this.parentNode;
+            rulesContainer.classList.add('drag-over');
+            
+            return false;
+        }
+
+        function handleRegexDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            if (this !== draggedRegexElement) {
+                const draggedId = parseInt(draggedRegexElement.dataset.ruleId);
+                const targetId = parseInt(this.dataset.ruleId);
+                
+                // Find the indexes
+                const draggedIndex = transformationState.regexRules.findIndex(r => r.id === draggedId);
+                const targetIndex = transformationState.regexRules.findIndex(r => r.id === targetId);
+                
+                if (draggedIndex !== -1 && targetIndex !== -1) {
+                    // Remove the dragged item and insert it at the new position
+                    const draggedRule = transformationState.regexRules.splice(draggedIndex, 1)[0];
+                    transformationState.regexRules.splice(targetIndex, 0, draggedRule);
+                    
+                    // Update display and preview
+                    updateRegexRulesDisplay();
+                    updatePreviews();
+                }
+            }
+            
+            // Remove visual feedback
+            const rulesContainer = this.parentNode;
+            rulesContainer.classList.remove('drag-over');
+            
+            return false;
+        }
+
+        function handleRegexDragEnd(e) {
+            this.classList.remove('dragging');
+            
+            // Remove visual feedback from all elements
+            const rulesContainer = document.getElementById('regex-rules');
+            if (rulesContainer) {
+                rulesContainer.classList.remove('drag-over');
+            }
+            
+            draggedRegexElement = null;
+        }
+
+        // Add a new find/replace rule
+        function addFindReplaceRule() {
+            const findInput = document.getElementById('find-text');
+            const replaceInput = document.getElementById('replace-text');
+            
+            if (!findInput || !replaceInput) return;
+            
+            // Get exact values - NO TRIMMING for precision
+            const findText = findInput.value;
+            const replaceText = replaceInput.value;
+            
+            if (findText === '') {
+                alert('Please enter text to find (empty string not allowed)');
+                return;
+            }
+            
+            // Add rule to state with exact matching
+            transformationState.findReplaceRules.push({
+                find: findText,
+                replace: replaceText,
+                id: Date.now()
+            });
+            
+            // Clear inputs
+            findInput.value = '';
+            replaceInput.value = '';
+            
+            // Update the rules display
+            updateFindReplaceRulesDisplay();
+            
+            // Update preview
+            updatePreviews();
+        }
+
+        // Edit a find/replace rule
+        function editFindReplaceRule(ruleId) {
+            const rule = transformationState.findReplaceRules.find(r => r.id === ruleId);
+            if (!rule) return;
+            
+            const findInput = document.getElementById('find-text');
+            const replaceInput = document.getElementById('replace-text');
+            
+            if (!findInput || !replaceInput) return;
+            
+            // Populate the input fields with the current rule values
+            findInput.value = rule.find;
+            replaceInput.value = rule.replace;
+            
+            // Remove the old rule
+            transformationState.findReplaceRules = transformationState.findReplaceRules.filter(r => r.id !== ruleId);
+            
+            // Update displays
+            updateFindReplaceRulesDisplay();
+            updatePreviews();
+            
+            // Focus on the find input for immediate editing
+            findInput.focus();
+            findInput.select();
+        }
+
+        // Update the display of find/replace rules
+        function updateFindReplaceRulesDisplay() {
+            const rulesContainer = document.getElementById('find-replace-rules');
+            if (!rulesContainer) return;
+            
+            rulesContainer.innerHTML = '';
+            
+            if (transformationState.findReplaceRules.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = 'color: #666; font-style: italic; padding: 20px; text-align: center; background: #f8f9fa; border-radius: 4px; margin: 5px 0;';
+                placeholder.textContent = 'No find/replace rules yet. Add rules above to see them here.';
+                rulesContainer.appendChild(placeholder);
+                return;
+            }
+            
+            transformationState.findReplaceRules.forEach((rule, index) => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'find-replace-rule';
+                ruleDiv.draggable = true;
+                ruleDiv.dataset.ruleId = rule.id;
+                ruleDiv.style.cssText = 'background: #f8f9fa; padding: 8px; margin: 5px 0; border-radius: 4px; display: flex; align-items: center; gap: 8px;';
+                
+                // Order number
+                const orderSpan = document.createElement('span');
+                orderSpan.className = 'rule-order';
+                orderSpan.textContent = index + 1;
+                
+                // Drag handle
+                const dragHandle = document.createElement('span');
+                dragHandle.className = 'drag-handle';
+                dragHandle.innerHTML = '⋮⋮';
+                dragHandle.title = 'Drag to reorder';
+                
+                // Rule text
+                const ruleText = document.createElement('span');
+                ruleText.style.cssText = 'flex: 1; font-family: monospace;';
+                // Show whitespace visually for clarity
+                const findDisplay = rule.find.replace(/ /g, '·'); // Show spaces as middle dots
+                const replaceDisplay = rule.replace.replace(/ /g, '·');
+                ruleText.innerHTML = `<span title="Find: '${rule.find}'">"${findDisplay}"</span> → <span title="Replace: '${rule.replace}'">"${replaceDisplay}"</span>`;
+                
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '✏️';
+                editBtn.className = 'button button--small';
+                editBtn.style.cssText = 'background: #007bff; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer; margin-right: 4px;';
+                editBtn.title = 'Edit rule';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editFindReplaceRule(rule.id);
+                });
+                
+                // Remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.className = 'button button--small';
+                removeBtn.style.cssText = 'background: #dc3545; color: white; border: none; width: 24px; height: 24px; border-radius: 3px; cursor: pointer;';
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    transformationState.findReplaceRules = transformationState.findReplaceRules.filter(r => r.id !== rule.id);
+                    updateFindReplaceRulesDisplay();
+                    updatePreviews();
+                });
+                
+                // Add drag event listeners
+                ruleDiv.addEventListener('dragstart', handleDragStart);
+                ruleDiv.addEventListener('dragover', handleDragOver);
+                ruleDiv.addEventListener('drop', handleDrop);
+                ruleDiv.addEventListener('dragend', handleDragEnd);
+                
+                ruleDiv.appendChild(orderSpan);
+                ruleDiv.appendChild(dragHandle);
+                ruleDiv.appendChild(ruleText);
+                ruleDiv.appendChild(editBtn);
+                ruleDiv.appendChild(removeBtn);
+                rulesContainer.appendChild(ruleDiv);
+            });
+        }
+
+        // Drag and drop functionality
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.outerHTML);
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            
+            if (this === draggedElement) return;
+            
+            e.dataTransfer.dropEffect = 'move';
+            
+            // Add visual feedback
+            const rulesContainer = this.parentNode;
+            rulesContainer.classList.add('drag-over');
+            
+            return false;
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            if (this !== draggedElement) {
+                const draggedId = parseInt(draggedElement.dataset.ruleId);
+                const targetId = parseInt(this.dataset.ruleId);
+                
+                // Find the indexes
+                const draggedIndex = transformationState.findReplaceRules.findIndex(r => r.id === draggedId);
+                const targetIndex = transformationState.findReplaceRules.findIndex(r => r.id === targetId);
+                
+                if (draggedIndex !== -1 && targetIndex !== -1) {
+                    // Remove the dragged item and insert it at the new position
+                    const draggedRule = transformationState.findReplaceRules.splice(draggedIndex, 1)[0];
+                    transformationState.findReplaceRules.splice(targetIndex, 0, draggedRule);
+                    
+                    // Update display and preview
+                    updateFindReplaceRulesDisplay();
+                    updatePreviews();
+                }
+            }
+            
+            // Remove visual feedback
+            const rulesContainer = this.parentNode;
+            rulesContainer.classList.remove('drag-over');
+            
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            
+            // Remove visual feedback from all elements
+            const rulesContainer = document.getElementById('find-replace-rules');
+            if (rulesContainer) {
+                rulesContainer.classList.remove('drag-over');
+            }
+            
+            draggedElement = null;
+        }
+
+        // Update preview sections with transformed data
+        function updatePreviews() {
+            const currentType = transformationState.currentType;
+            const sampleData = transformationState.sampleData[currentType] || [];
+            
+            let transformedData = [...sampleData];
+            
+            // Apply transformations based on current type
+            switch (currentType) {
+                case 'string':
+                    transformedData = transformStringData(transformedData);
+                    break;
+                case 'external-id':
+                    transformedData = transformExternalIdData(transformedData);
+                    break;
+                case 'item':
+                    transformedData = transformItemData(transformedData);
+                    break;
+                case 'quantity':
+                    transformedData = transformQuantityData(transformedData);
+                    break;
+                case 'url':
+                    transformedData = transformUrlData(transformedData);
+                    break;
+                case 'commons-media':
+                    transformedData = transformCommonsMediaData(transformedData);
+                    break;
+                case 'time':
+                    transformedData = transformTimeData(transformedData);
+                    break;
+                case 'monolingualtext':
+                    transformedData = transformMonolingualTextData(transformedData);
+                    break;
+                case 'metadata':
+                    transformedData = transformMetadataData(transformedData);
+                    break;
+            }
+            
+            // Update the preview section
+            const previewContainer = document.getElementById(`${currentType}-preview`);
+            if (previewContainer) {
+                previewContainer.innerHTML = '';
+                
+                let validationStats = { total: 0, passed: 0, failed: 0 };
+                
+                transformedData.forEach(value => {
+                    const span = document.createElement('span');
+                    span.className = 'preview-value';
+                    
+                    // Handle objects with validation information (primarily strings)
+                    if (typeof value === 'object' && value.validation !== undefined) {
+                        span.textContent = value.display;
+                        
+                        // Add validation indicator if validation rules exist
+                        if (value.validation.isValid !== null) {
+                            validationStats.total++;
+                            
+                            const indicator = document.createElement('span');
+                            indicator.className = 'validation-indicator';
+                            
+                            if (value.validation.isValid) {
+                                indicator.textContent = '✓';
+                                indicator.className += ' validation-pass';
+                                indicator.title = 'Passes all validation rules';
+                                validationStats.passed++;
+                            } else {
+                                indicator.textContent = '✗';
+                                indicator.className += ' validation-fail';
+                                const failedRuleDescriptions = value.validation.failedRules.map(r => r.description).join(', ');
+                                indicator.title = `Failed validation: ${failedRuleDescriptions}`;
+                                validationStats.failed++;
+                            }
+                            
+                            span.appendChild(indicator);
+                        }
+                    } else {
+                        // Handle simple string values or other data types
+                        span.textContent = typeof value === 'object' ? value.display : `"${value}"`;
+                    }
+                    
+                    previewContainer.appendChild(span);
+                });
+                
+                // Add validation summary for strings
+                if (currentType === 'string' && validationStats.total > 0) {
+                    const summary = document.createElement('div');
+                    summary.className = 'validation-summary show';
+                    
+                    if (validationStats.failed === 0) {
+                        summary.className += ' all-pass';
+                        summary.textContent = `✓ All ${validationStats.total} values pass validation`;
+                    } else {
+                        summary.className += ' some-fail';
+                        summary.textContent = `${validationStats.failed} of ${validationStats.total} values failed validation`;
+                    }
+                    
+                    previewContainer.appendChild(summary);
+                }
+            }
+        }
+
+        // Transform string data based on current settings
+        function transformStringData(data) {
+            const template = document.getElementById('string-template')?.value || '';
+            
+            return data.map(value => {
+                let transformed = value;
+                
+                // First apply find/replace rules - EXACT MATCHING (case-sensitive, preserve all whitespace)
+                transformationState.findReplaceRules.forEach(rule => {
+                    // Use split/join for exact string replacement (no regex interpretation)
+                    transformed = transformed.split(rule.find).join(rule.replace);
+                });
+                
+                // Then apply regex rules
+                transformationState.regexRules.forEach(rule => {
+                    try {
+                        const regex = new RegExp(rule.pattern, 'g');
+                        transformed = transformed.replace(regex, rule.replacement);
+                    } catch (e) {
+                        // Skip invalid regex patterns
+                        console.warn('Invalid regex pattern:', rule.pattern, e);
+                    }
+                });
+                
+                // Apply template if specified and contains placeholders
+                if (template && template.includes('{')) {
+                    // Mock data for template variables
+                    const mockData = {
+                        'title': transformed, // Use the current value as title
+                        'creator': 'Unknown Artist',
+                        'date': '1500s',
+                        'publisher': 'Art Gallery',
+                        'description': 'Famous artwork'
+                    };
+                    
+                    // Replace template variables
+                    let templatedValue = template;
+                    Object.keys(mockData).forEach(key => {
+                        const regex = new RegExp(`\\{\\{?${key}\\}?\\}`, 'g');
+                        templatedValue = templatedValue.replace(regex, mockData[key]);
+                    });
+                    
+                    transformed = templatedValue;
+                }
+                
+                // Add validation information
+                const validation = validateValue(transformed);
+                
+                return {
+                    value: transformed,
+                    validation: validation,
+                    display: `"${transformed}"`
+                };
+            });
+        }
+
+        // Transform external ID data based on current settings
+        function transformExternalIdData(data) {
+            const pattern = document.getElementById('extract-pattern')?.value || '';
+            
+            return data.map(value => {
+                let transformed = value;
+                
+                switch (pattern) {
+                    case 'url-path':
+                        const urlMatch = value.match(/\/([^\/]+)$/);
+                        if (urlMatch) transformed = urlMatch[1];
+                        break;
+                    case 'after-colon':
+                        const colonMatch = value.match(/:(.+)$/);
+                        if (colonMatch) transformed = colonMatch[1];
+                        break;
+                    case 'after-slash':
+                        const slashMatch = value.match(/\/([^\/]+)$/);
+                        if (slashMatch) transformed = slashMatch[1];
+                        break;
+                }
+                
+                return transformed;
+            });
+        }
+
+        // Transform item data with intelligent QID detection
+        function transformItemData(data) {
+            const searchLinkedData = document.getElementById('search-linked-data')?.checked ?? true;
+            const extractFromUrls = document.getElementById('extract-from-urls')?.checked ?? true;
+            const validateQids = document.getElementById('validate-qids')?.checked ?? true;
+            
+            return data.map(value => {
+                let extractedQid = null;
+                let displayLabel = '';
+                let source = '';
+                
+                try {
+                    // Try to parse as JSON (linked data structure)
+                    if (value.startsWith('{') && searchLinkedData) {
+                        const linkedData = JSON.parse(value);
+                        displayLabel = linkedData['o:label'] || linkedData['label'] || '';
+                        
+                        // Extract QID from @id URL
+                        if (linkedData['@id'] && extractFromUrls) {
+                            const urlMatch = linkedData['@id'].match(/Q\d+/);
+                            if (urlMatch) {
+                                extractedQid = urlMatch[0];
+                                source = 'extracted from @id URL';
+                            }
+                        }
+                        
+                        // Search all properties for QIDs
+                        if (!extractedQid && searchLinkedData) {
+                            const jsonStr = JSON.stringify(linkedData);
+                            const qidMatch = jsonStr.match(/Q\d+/);
+                            if (qidMatch) {
+                                extractedQid = qidMatch[0];
+                                source = 'found in linked data';
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Not JSON, treat as simple string
+                }
+                
+                // If not found in linked data, check the display value directly
+                if (!extractedQid) {
+                    if (/^Q\d+$/.test(value.trim())) {
+                        extractedQid = value.trim();
+                        source = 'found in display value';
+                    } else {
+                        // Look for QID anywhere in the string
+                        const qidMatch = value.match(/Q\d+/);
+                        if (qidMatch) {
+                            extractedQid = qidMatch[0];
+                            source = 'extracted from text';
+                        }
+                    }
+                }
+                
+                // Validate QID format if requested
+                const isValidQid = extractedQid && (!validateQids || /^Q\d+$/.test(extractedQid));
+                
+                if (isValidQid) {
+                    const displayText = displayLabel ? `${extractedQid} ✓ (${displayLabel})` : `${extractedQid} ✓`;
+                    return {
+                        display: displayText,
+                        value: extractedQid,
+                        isValid: true,
+                        source: source,
+                        label: displayLabel
+                    };
+                } else {
+                    // Extract display text for reconciliation
+                    let displayText = value;
+                    try {
+                        if (value.startsWith('{')) {
+                            const linkedData = JSON.parse(value);
+                            displayText = linkedData['o:label'] || linkedData['label'] || value;
+                        }
+                    } catch (e) {
+                        // Use original value
+                    }
+                    
+                    return {
+                        display: `${displayText} (needs reconciliation)`,
+                        value: displayText,
+                        isValid: false,
+                        source: 'no QID found'
+                    };
+                }
+            });
+        }
+
+        // Transform quantity data based on current settings
+        function transformQuantityData(data) {
+            const extraction = document.getElementById('number-extraction')?.value || 'auto';
+            const decimalPlaces = parseInt(document.getElementById('decimal-places')?.value || '2');
+            
+            return data.map(value => {
+                let transformed = value;
+                let numberValue = null;
+                let detectedUnit = null;
+                
+                // Extract number based on method
+                switch (extraction) {
+                    case 'auto':
+                    case 'first':
+                        const firstMatch = value.match(/(\d+(?:\.\d+)?)/);
+                        if (firstMatch) numberValue = parseFloat(firstMatch[1]);
+                        break;
+                    case 'last':
+                        const allMatches = value.match(/(\d+(?:\.\d+)?)/g);
+                        if (allMatches && allMatches.length > 0) {
+                            numberValue = parseFloat(allMatches[allMatches.length - 1]);
+                        }
+                        break;
+                }
+                
+                if (numberValue !== null) {
+                    // Apply decimal places formatting
+                    let formattedNumber = numberValue.toFixed(decimalPlaces);
+                    
+                    // Handle special multipliers (million, billion, etc.)
+                    if (value.toLowerCase().includes('million')) {
+                        formattedNumber = (numberValue * 1000000).toFixed(decimalPlaces);
+                    } else if (value.toLowerCase().includes('billion')) {
+                        formattedNumber = (numberValue * 1000000000).toFixed(decimalPlaces);
+                    } else if (value.toLowerCase().includes('thousand')) {
+                        formattedNumber = (numberValue * 1000).toFixed(decimalPlaces);
+                    }
+                    
+                    // Check unit detection rules
+                    for (const rule of transformationState.unitDetectionRules) {
+                        if (value.toLowerCase().includes(rule.pattern.toLowerCase())) {
+                            detectedUnit = rule.unit;
+                            break;
+                        }
+                    }
+                    
+                    // Use default unit if no specific unit detected
+                    if (!detectedUnit && transformationState.defaultUnit) {
+                        detectedUnit = transformationState.defaultUnit;
+                    }
+                    
+                    // Format the final result
+                    transformed = formattedNumber;
+                    if (detectedUnit) {
+                        transformed += ` (${detectedUnit.qid})`;
+                    }
+                } else {
+                    // If no number found, show original value with indication
+                    transformed = `${value} (no number detected)`;
+                }
+                
+                return transformed;
+            });
+        }
+
+        // Transform URL data based on current settings
+        function transformUrlData(data) {
+            const protocol = document.getElementById('default-protocol')?.value || 'https';
+            const addWww = document.getElementById('add-www')?.checked || false;
+            const removeSlash = document.getElementById('remove-trailing-slash')?.checked || false;
+            
+            return data.map(value => {
+                let transformed = value;
+                
+                // Add protocol if missing
+                if (!transformed.match(/^https?:\/\//)) {
+                    transformed = `${protocol}://${transformed}`;
+                }
+                
+                // Add www if missing and requested
+                if (addWww && !transformed.includes('://www.') && !transformed.includes('://localhost')) {
+                    transformed = transformed.replace(/^(https?:\/\/)/, '$1www.');
+                }
+                
+                // Remove trailing slash if requested
+                if (removeSlash && transformed.endsWith('/')) {
+                    transformed = transformed.slice(0, -1);
+                }
+                
+                return transformed;
+            });
+        }
+
+        // Transform commons media data based on current settings
+        function transformCommonsMediaData(data) {
+            const extraction = document.getElementById('filename-extraction')?.value || 'auto';
+            const replaceSpaces = document.getElementById('replace-spaces')?.checked || false;
+            const defaultExtension = document.getElementById('default-extension')?.value || '';
+            
+            return data.map(value => {
+                let transformed = value;
+                let hasValidExtension = false;
+                
+                // Extract filename from URL if needed
+                if (extraction === 'url' && value.includes('/')) {
+                    const urlMatch = value.match(/\/([^\/]+)$/);
+                    if (urlMatch) transformed = urlMatch[1];
+                }
+                
+                // Replace spaces with underscores
+                if (replaceSpaces) {
+                    transformed = transformed.replace(/\s+/g, '_');
+                }
+                
+                // Check for valid extension
+                const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.pdf', '.ogg', '.mp3', '.mp4', '.webm'];
+                hasValidExtension = validExtensions.some(ext => transformed.toLowerCase().includes(ext));
+                
+                // Add default extension if none found
+                if (!hasValidExtension && defaultExtension) {
+                    transformed += defaultExtension;
+                    hasValidExtension = true;
+                }
+                
+                return {
+                    display: hasValidExtension ? `${transformed} ✓` : `${transformed} ⚠️`,
+                    value: transformed,
+                    isValid: hasValidExtension
+                };
+            });
+        }
+
+        // Transform time data based on current settings
+        function transformTimeData(data) {
+            const precision = document.getElementById('default-precision')?.value || 'auto';
+            
+            return data.map(value => {
+                let transformed = value;
+                let detectedPrecision = 'year';
+                
+                // Auto-detect precision
+                if (precision === 'auto') {
+                    if (/^\d{4}$/.test(value)) {
+                        detectedPrecision = 'year';
+                        transformed = `${value}-01-01`;
+                    } else if (/^\d{4}-\d{1,2}$/.test(value)) {
+                        detectedPrecision = 'month';
+                        transformed = `${value}-01`;
+                    } else if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(value)) {
+                        detectedPrecision = 'day';
+                    } else if (/\d{3}[0-9][sS]$/.test(value)) {
+                        detectedPrecision = 'decade';
+                        const decade = value.match(/\d{3}/)[0];
+                        transformed = `${decade}0-01-01`;
+                    } else if (value.includes('century')) {
+                        detectedPrecision = 'year';
+                        // Simple extraction for "16th century" -> 1500
+                        const centuryMatch = value.match(/(\d+)th century/);
+                        if (centuryMatch) {
+                            const century = parseInt(centuryMatch[1]);
+                            transformed = `${(century - 1) * 100 + 1}-01-01`;
+                        }
+                    }
+                } else {
+                    detectedPrecision = precision;
+                }
+                
+                return {
+                    display: `${transformed} (${detectedPrecision} precision)`,
+                    value: transformed,
+                    precision: detectedPrecision
+                };
+            });
+        }
+
+        // Transform monolingual text data based on current settings
+        function transformMonolingualTextData(data) {
+            const defaultLang = document.getElementById('default-language')?.value || 'en';
+            const prefix = document.getElementById('mono-prefix')?.value || '';
+            const suffix = document.getElementById('mono-suffix')?.value || '';
+            const titleCase = document.getElementById('title-case')?.checked || false;
+            
+            return data.map(value => {
+                let transformed = value;
+                let detectedLang = defaultLang;
+                
+                // Simple language detection based on content
+                if (value.toLowerCase().includes('la ')) {
+                    detectedLang = 'fr';
+                } else if (value.toLowerCase().includes('das ') || value.toLowerCase().includes('der ')) {
+                    detectedLang = 'de';
+                } else if (value.toLowerCase().includes('la ') && value.toLowerCase().includes('gioconda')) {
+                    detectedLang = 'it';
+                }
+                
+                // Apply transformations
+                if (prefix) transformed = prefix + transformed;
+                if (suffix) transformed = transformed + suffix;
+                
+                if (titleCase) {
+                    transformed = transformed.replace(/\w\S*/g, (txt) => 
+                        txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+                }
+                
+                return {
+                    display: `"${transformed}" @${detectedLang}`,
+                    value: transformed,
+                    language: detectedLang
+                };
+            });
+        }
+
+        // Transform metadata data based on current settings
+        function transformMetadataData(data) {
+            const template = document.getElementById('metadata-template')?.value || '{title}';
+            const language = document.getElementById('metadata-language')?.value || 'en';
+            const type = document.getElementById('metadata-type')?.value || 'label';
+            
+            // Mock data for template variables
+            const mockVariables = {
+                'title': ['Mona Lisa', 'Starry Night', 'The Scream', 'Girl with a Pearl Earring'],
+                'creator': ['Leonardo da Vinci', 'Vincent van Gogh', 'Edvard Munch', 'Johannes Vermeer'],
+                'date': ['1503', '1889', '1893', '1665'],
+                'type': ['painting', 'painting', 'painting', 'painting'],
+                'material': ['oil on poplar', 'oil on canvas', 'oil on cardboard', 'oil on canvas']
+            };
+            
+            return data.map((value, index) => {
+                let transformed = template;
+                
+                // Replace template variables with mock data
+                Object.keys(mockVariables).forEach(key => {
+                    const regex = new RegExp(`\\{\\{?${key}\\}?\\}`, 'g');
+                    const replacement = mockVariables[key][index] || mockVariables[key][0] || value;
+                    transformed = transformed.replace(regex, replacement);
+                });
+                
+                // If no template variables found, use original value
+                if (transformed === template && !template.includes('{')) {
+                    transformed = value;
+                }
+                
+                return {
+                    display: `"${transformed}" @${language}`,
+                    value: transformed,
+                    language: language,
+                    type: type
+                };
+            });
+        }
+
+        // Toggle advanced sections
+        function toggleAdvanced(type) {
+            const content = document.getElementById(`${type}-advanced`);
+            const toggle = content.previousElementSibling;
+            
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                toggle.textContent = toggle.textContent.replace('▲', '▼');
+            } else {
+                content.classList.add('show');
+                toggle.textContent = toggle.textContent.replace('▼', '▲');
+            }
+        }
+    </script>
+</body>
+</html>

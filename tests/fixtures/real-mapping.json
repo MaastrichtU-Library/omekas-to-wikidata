@@ -1,0 +1,136 @@
+{
+  "version": "1.0",
+  "createdAt": "2025-06-04T13:33:08.936Z",
+  "entitySchema": "E473",
+  "mappings": {
+    "mapped": [
+      {
+        "key": "schema:publisher",
+        "linkedDataUri": "https://schema.org/publisher",
+        "contextMap": {},
+        "property": {
+          "id": "P123",
+          "label": "publisher",
+          "description": "organization or person responsible for publishing books, periodicals, printed music, podcasts, games or software"
+        },
+        "mappedAt": "2025-06-04T13:31:37.297Z"
+      },
+      {
+        "key": "schema:datePublished",
+        "linkedDataUri": "https://schema.org/datePublished",
+        "contextMap": {},
+        "property": {
+          "id": "P577",
+          "label": "publication date",
+          "description": "date or point in time when a work was first published or released"
+        },
+        "mappedAt": "2025-06-04T13:31:51.015Z"
+      },
+      {
+        "key": "schema:inLanguage",
+        "linkedDataUri": "https://schema.org/inLanguage",
+        "contextMap": {},
+        "property": {
+          "id": "P407",
+          "label": "language of work or name",
+          "description": "language associated with this creative work (such as books, shows, songs, broadcasts or websites) or a name (for persons use \"native language\" (P103) and \"languages spoken, written or signed\" (P1412))"
+        },
+        "mappedAt": "2025-06-04T13:32:11.881Z"
+      },
+      {
+        "key": "schema:author",
+        "linkedDataUri": "https://schema.org/author",
+        "contextMap": {},
+        "property": {
+          "id": "P50",
+          "label": "author",
+          "description": "main creator(s) of a written work (use on works, not humans); use P2093 (author name string) when Wikidata item is unknown or does not exist"
+        },
+        "mappedAt": "2025-06-04T13:32:36.649Z"
+      },
+      {
+        "key": "schema:license",
+        "linkedDataUri": "https://schema.org/license",
+        "contextMap": {},
+        "property": {
+          "id": "P275",
+          "label": "copyright license",
+          "description": "license under which this copyrighted work is released"
+        },
+        "mappedAt": "2025-06-04T13:33:00.441Z"
+      }
+    ],
+    "ignored": [
+      {
+        "key": "o:id",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#id",
+        "contextMap": {}
+      },
+      {
+        "key": "o:is_public",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#is_public",
+        "contextMap": {}
+      },
+      {
+        "key": "o:owner",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#owner",
+        "contextMap": {}
+      },
+      {
+        "key": "o:resource_class",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#resource_class",
+        "contextMap": {}
+      },
+      {
+        "key": "o:resource_template",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#resource_template",
+        "contextMap": {}
+      },
+      {
+        "key": "o:thumbnail",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#thumbnail",
+        "contextMap": {}
+      },
+      {
+        "key": "o:title",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#title",
+        "contextMap": {}
+      },
+      {
+        "key": "thumbnail_display_urls",
+        "linkedDataUri": null,
+        "contextMap": {}
+      },
+      {
+        "key": "o:created",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#created",
+        "contextMap": {}
+      },
+      {
+        "key": "o:modified",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#modified",
+        "contextMap": {}
+      },
+      {
+        "key": "o:primary_media",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#primary_media",
+        "contextMap": {}
+      },
+      {
+        "key": "o:media",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#media",
+        "contextMap": {}
+      },
+      {
+        "key": "o:item_set",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#item_set",
+        "contextMap": {}
+      },
+      {
+        "key": "o:site",
+        "linkedDataUri": "http://omeka.org/s/vocabs/o#site",
+        "contextMap": {}
+      }
+    ]
+  }
+}

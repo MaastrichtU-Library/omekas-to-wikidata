@@ -40,7 +40,8 @@ The application follows a **modular, event-driven architecture**:
 
 ### **state.js**
 - Purpose: Centralized state management with persistence
-- Key exports: `setupState()`, convenience methods like `updateMappings()`, `incrementReconciliationCompleted()`, `linkItemToWikidata()`, `unlinkItem()`, `getLinkedItem()`
+- Key exports: `setupState()`, `resetState()`, convenience methods like `updateMappings()`, `incrementReconciliationCompleted()`, `linkItemToWikidata()`, `unlinkItem()`, `getLinkedItem()`
+- Features: Stores fetched Omeka data, selected templates, and a cached `resourceClassCache` for lazy-loaded Omeka resource-class JSON used by guided Mapping/Reconciliation flows
 - Dependencies: events.js
 
 ### **events.js**
@@ -62,12 +63,12 @@ The application follows a **modular, event-driven architecture**:
 
 ### **input.js**
 - Purpose: Step 1 - Import data from Omeka S API
-- Key features: API authentication, data fetching, sample display
+- Key features: grouped Omeka API filters with `owner_id` alongside the main collection-scope inputs, default first-page pagination (`page=1`, `per_page=25`), scoped collection warnings, resource template selection/filtering, user-meaningful sample metadata fields in Data Status, and top-of-page handoff when continuing into Mapping
 - Dependencies: utils/cors-proxy.js, data/mock-data.js
 
 ### **mapping.js**
 - Purpose: Step 2 - Map Omeka fields to Wikidata properties
-- Key features: Field analysis, property search, transformation setup
+- Key features: Field analysis, template/frequency field ordering, property search, transformation setup
 - Dependencies: mapping/*, transformations.js, api/wikidata.js
 
 ### **reconciliation.js**
@@ -93,7 +94,13 @@ The application follows a **modular, event-driven architecture**:
 
 **data-analyzer.js**
 - Purpose: Analyze Omeka data structure and extract fields
-- Key exports: `extractAndAnalyzeKeys()`, `extractAvailableFields()`, `extractSampleValue()`
+- Key exports: `extractAndAnalyzeKeys()`, `extractAvailableFields()`, `extractSampleValue()`, `getOmekaFieldFriendlyName()`, `resolveOmekaValue()`
+- Features: Supports template-order and frequency-order field sorting, preserves per-object field groups for mixed JSON value arrays, builds field datatype profiles from resource templates plus observed values, and carries Omeka template display labels into Mapping/Reconciliation
+
+**value-resolution.js**
+- Purpose: Shared Omeka value profiling and extraction strategy logic
+- Key exports: `buildObservedFieldProfile()`, `resolveOmekaValue()`, `summarizeValueSourcesForField()`, `getDefaultExtractionMode()`, `getExtractionModeDescription()`, `describeFieldProfile()`, `getValueSourceMetadata()`, `getOrderedValueSourceTypes()`
+- Features: Defines extraction modes for backward compatibility, keeps source-group ordering stable (`literal -> URL -> authority -> Wikidata`), adds dataset-level source counts per field plus source counts derived from already filtered resolved values, derives generic observed segment families (`segmentKey`, `segmentLabel`, `segmentPreview`) from Omeka value shapes, normalizes source provenance labels for literals/Wikidata/value-suggest authorities, and uses source-type-aware automatic resolution for Mapping previews and Reconciliation
 
 **property-searcher.js**
 - Purpose: Search and suggest Wikidata properties
@@ -110,12 +117,14 @@ The application follows a **modular, event-driven architecture**:
 **mapping-persistence.js**
 - Purpose: Save/load mapping configurations
 - Key exports: `generateMappingData()`, `downloadMappingAsJson()`, `loadMappingFromData()`
+- Features: Persists extraction strategy, observed-segment selections/signatures, contextual source-group filters, and guided `Instance of` mode/text choices alongside mapped keys
 
 #### UI (`mapping/ui/`)
 
 **mapping-lists.js**
 - Purpose: Manage mapping UI lists (non-linked, mapped, ignored)
 - Key exports: `populateLists()`, `moveKeyToCategory()`, `mapKeyToProperty()`
+- Features: Applies the active field ordering mode, refreshes mapped-key analyzer metadata from the current dataset, displays Omeka template labels next to technical keys, publishes mapping updates so Reconciliation refreshes immediately after field moves, and pins required Label/Instance of mappings while preventing duplicates
 
 **transformation-ui.js**
 - Purpose: UI for transformation configuration
@@ -131,6 +140,7 @@ The application follows a **modular, event-driven architecture**:
 
 #### Modals (`mapping/ui/modals/`)
 - `mapping-modal.js` - Main mapping configuration modal
+- `mapping-modal.js` - Main mapping configuration modal with guided Label/Instance of/Description/Aliases flows, lazy Omeka resource-class lookups plus manual-text `Instance of`, a wider three-column standard mapping layout, observed segment-family filters above contextual source-group filters, and sample previews that use the same extraction/transformation/provenance pipeline as Reconciliation with badge rows separated from value rows
 - `add-property-modal.js` - Add manual properties
 - `manual-property-modal.js` - Configure manual property values
 - `json-modal.js` - Import/export JSON configurations
@@ -151,21 +161,24 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-data.js**
 - Purpose: Manage reconciliation data and results
 - Key exports: `storeReconciliationResult()`, `getReconciliationStatus()`
+- Features: Resolves Omeka values through shared extraction modes, hydrates cached Omeka resource-class labels/terms for `o:resource_class`, supports manual guided `Instance of` text as a reconciliation source, extracts object-specific field overrides, preserves per-value provenance and segment metadata, deduplicates identical resolved segments within a field, normalizes recognized external identifier URLs to bare identifier values, backfills template display labels when needed, preserves unchanged reconciliation rows via mapping/value signatures, and respects mapping order with Label/Instance of priority in Step 3
 
 **reconciliation-progress.js**
 - Purpose: Track reconciliation progress
 - Key exports: `updateProgress()`, `calculateCompletion()`, `getProgressStats()`
+- Features: Recalculates progress from actual cell states, supports bulk application to identical values, and allows decision reset without corrupting completion counts
 
 #### UI (`reconciliation/ui/`)
 
 **reconciliation-table.js**
 - Purpose: Display reconciliation results in table
 - Key exports: `renderReconciliationTable()`, `updateTableRow()`, `updateItemCellDisplay()`
-- Features: Item cell with link button to link items to existing Wikidata items
+- Features: Item cell with link button to link items to existing Wikidata items, source badges for literal/authority/Wikidata segments, explicit `colgroup` sizing for static item-column widths, header rows that show both technical Omeka keys and template labels, plus live table updates when custom reconciled values are edited
 
 **reconciliation-modal.js**
 - Purpose: Reconciliation configuration and details modal
 - Key exports: `openReconciliationModal()`, `displayMatchDetails()`
+- Features: Adds shared modal controls for applying a decision to identical values in the same mapped row, places that control in the modal context area, keeps it inline with its label, and supports undoing an existing decision
 
 **reconciliation-display.js**
 - Purpose: Format and display reconciliation information
@@ -255,6 +268,7 @@ The application follows a **modular, event-driven architecture**:
 ### **utils/cors-proxy.js**
 - Purpose: Handle CORS issues with external APIs
 - Key exports: `fetchWithCorsProxy()`, `getCorsExplanation()`, `generateCorsConfig()`
+- Features: Accepts JSON-LD (`application/ld+json`) direct API responses and falls back to multiple currently verified public proxies, including CORSPROXY and CodeTabs, for CORS-blocked endpoints
 
 ### **utils/property-types.js**
 - Purpose: Property type detection and input handling

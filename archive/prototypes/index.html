@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omeka S to Wikidata</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Omeka S to Wikidata</h1>
+    <p>Configure your Omeka S API query to fetch and display the data.</p>
+
+    <div class="form-group">
+        <label for="baseUrl">Omeka S Base URL:</label>
+        <div class="url-container">
+            <input type="text" id="baseUrl" value="https://digitalcollections.library.maastrichtuniversity.nl/"
+                placeholder="https://your-omeka-site.org" />
+            <button id="advancedOptionsBtn" class="small-button" title="Advanced API Options">⚙️</button>
+        </div>
+    </div>
+
+    <div class="query-params" style="display: none;" id="queryParamsSection">
+        <div id="queryParamsContent">
+
+            <div class="form-group">
+                <label for="resourceType">Resource Type:</label>
+                <select id="resourceType">
+                    <option value="items">Items</option>
+                    <option value="item_sets">Collections</option>
+                    <option value="media">Media</option>
+                    <option value="vocabularies">Vocabularies</option>
+                    <option value="properties">Properties</option>
+                    <option value="resource_classes">Resource Classes</option>
+                    <option value="sites">Sites</option>
+                    <option value="users">Users</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="itemSetId">Item Set ID (Collection):</label>
+                <input type="text" id="itemSetId" placeholder="Leave empty for all items" />
+            </div>
+
+            <div class="form-group">
+                <label for="searchQuery">Search Query:</label>
+                <input type="text" id="searchQuery" placeholder="Enter search terms" />
+            </div>
+
+            <h4>Filters</h4>
+            <div id="filters"></div>
+            <button id="addFilterBtn">Add Filter</button>
+
+            <h4>Pagination</h4>
+            <div class="form-group">
+                <label for="page">Page:</label>
+                <input type="number" id="page" value="1" min="1" />
+            </div>
+
+            <div class="form-group">
+                <label for="perPage">Results Per Page:</label>
+                <input type="number" id="perPage" value="25" min="1" max="100" />
+            </div>
+            
+            <h4>Performance Options</h4>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="removeExtractedText" checked style="margin-right: 8px;" />
+                    Remove extracted text from response
+                    <span style="margin-left: 5px; color: #666; font-size: 0.9em; font-style: italic;">
+                        (Improves performance for large text fields)
+                    </span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <button id="fetchBtn">Fetch Data</button>
+
+    <div class="loading" id="loading">Loading data...</div>
+
+    <div id="tabs-container">
+        <div class="tabs-header">
+            <ul id="tabs-list">
+                <!-- Tabs will be added here dynamically -->
+            </ul>
+        </div>
+        <div id="tabs-content">
+            <!-- Tab content will be added here dynamically -->
+        </div>
+    </div>
+    <script type="module" src="main.js" defer></script>
+</body>
+
+</html>

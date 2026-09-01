@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "created": "2025-01-15T10:00:00Z",
+  "name": "Van Gogh Test Project",
+  "data": {
+    "metadata": {
+      "total": 2,
+      "export_date": "2025-01-15T10:00:00Z",
+      "source": "test-project"
+    },
+    "items": [
+      {
+        "id": 1,
+        "title": "Van Gogh Self-Portrait",
+        "dcterms:title": [{
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Van Gogh Self-Portrait"
+        }],
+        "dcterms:creator": [{
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Vincent van Gogh"
+        }],
+        "dcterms:date": [{
+          "type": "literal",
+          "property_id": 4,
+          "@value": "1889"
+        }]
+      },
+      {
+        "id": 2,
+        "title": "The Starry Night Study",
+        "dcterms:title": [{
+          "type": "literal",
+          "property_id": 1,
+          "@value": "The Starry Night Study"
+        }],
+        "dcterms:creator": [{
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Vincent van Gogh"
+        }],
+        "dcterms:date": [{
+          "type": "literal",
+          "property_id": 4,
+          "@value": "1889-06"
+        }]
+      }
+    ]
+  },
+  "mappings": {
+    "dcterms:title": {
+      "wikidataProperty": "P1476",
+      "propertyLabel": "title",
+      "propertyType": "monolingualtext",
+      "constraints": [],
+      "transformation": "direct"
+    },
+    "dcterms:creator": {
+      "wikidataProperty": "P170",
+      "propertyLabel": "creator", 
+      "propertyType": "wikibase-item",
+      "constraints": [],
+      "transformation": "entity_lookup"
+    },
+    "dcterms:date": {
+      "wikidataProperty": "P571",
+      "propertyLabel": "inception",
+      "propertyType": "time",
+      "constraints": [],
+      "transformation": "date_parse"
+    }
+  },
+  "reconciliations": {
+    "Vincent van Gogh": {
+      "wikidataId": "Q5582",
+      "label": "Vincent van Gogh",
+      "description": "Dutch Post-Impressionist painter",
+      "status": "accepted"
+    }
+  },
+  "settings": {
+    "language": "en",
+    "instanceOf": "Q3305213",
+    "instanceOfLabel": "painting"
+  }
+}

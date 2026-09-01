@@ -1,0 +1,1959 @@
+{
+  "metadata": {
+    "total": 50,
+    "export_date": "2025-01-15T10:00:00Z",
+    "source": "test-performance"
+  },
+  "items": [
+    {
+      "id": 1,
+      "title": "Test Item 1",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 1"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 1"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2021"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 1 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Test Item 2",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 2"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 2"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2022"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 2 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Test Item 3",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 3"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 3"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2023"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 3 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Test Item 4",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 4"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 4"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2024"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 4 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Test Item 5",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 5"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 5"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2025"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 5 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Test Item 6",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 6"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 6"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2026"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 6 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Test Item 7",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 7"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 7"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2027"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 7 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Test Item 8",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 8"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 8"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2028"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 8 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Test Item 9",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 9"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 9"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2029"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 9 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Test Item 10",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 10"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 10"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2020"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 10 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Test Item 11",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 11"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 11"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2021"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 11 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Test Item 12",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 12"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 12"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2022"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 12 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Test Item 13",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 13"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 13"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2023"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 13 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Test Item 14",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 14"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 14"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2024"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 14 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Test Item 15",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 15"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 15"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2025"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 15 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Test Item 16",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 16"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 16"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2026"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 16 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Test Item 17",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 17"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 17"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2027"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 17 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Test Item 18",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 18"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 18"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2028"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 18 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Test Item 19",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 19"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 19"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2029"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 19 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Test Item 20",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 20"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 20"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2020"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 20 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Test Item 21",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 21"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 21"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2021"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 21 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Test Item 22",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 22"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 22"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2022"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 22 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Test Item 23",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 23"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 23"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2023"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 23 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Test Item 24",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 24"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 24"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2024"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 24 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Test Item 25",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 25"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 25"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2025"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 25 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Test Item 26",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 26"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 26"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2026"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 26 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Test Item 27",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 27"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 27"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2027"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 27 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Test Item 28",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 28"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 28"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2028"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 28 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "title": "Test Item 29",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 29"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 29"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2029"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 29 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "title": "Test Item 30",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 30"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 30"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2020"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 30 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "title": "Test Item 31",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 31"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 31"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2021"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 31 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "title": "Test Item 32",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 32"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 32"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2022"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 32 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "title": "Test Item 33",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 33"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 33"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2023"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 33 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "title": "Test Item 34",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 34"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 34"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2024"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 34 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "title": "Test Item 35",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 35"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 35"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2025"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 35 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "Test Item 36",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 36"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 36"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2026"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 36 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "Test Item 37",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 37"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 37"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2027"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 37 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "title": "Test Item 38",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 38"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 38"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2028"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 38 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "title": "Test Item 39",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 39"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 39"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2029"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 39 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "title": "Test Item 40",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 40"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 40"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2020"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 40 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "title": "Test Item 41",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 41"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 41"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2021"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 41 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "title": "Test Item 42",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 42"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 42"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2022"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 42 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "title": "Test Item 43",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 43"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 43"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2023"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 43 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "title": "Test Item 44",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 44"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 44"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2024"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 44 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "title": "Test Item 45",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 45"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 45"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2025"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 45 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "title": "Test Item 46",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 46"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 46"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2026"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 46 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 2"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "title": "Test Item 47",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 47"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 47"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2027"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 47 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 3"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "title": "Test Item 48",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 48"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 48"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2028"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 48 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 4"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "title": "Test Item 49",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 49"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 49"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2029"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 49 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 5"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "title": "Test Item 50",
+      "dcterms:title": [
+        {
+          "type": "literal",
+          "property_id": 1,
+          "@value": "Test Item 50"
+        }
+      ],
+      "dcterms:creator": [
+        {
+          "type": "literal",
+          "property_id": 2,
+          "@value": "Creator 50"
+        }
+      ],
+      "dcterms:date": [
+        {
+          "type": "literal",
+          "property_id": 4,
+          "@value": "2020"
+        }
+      ],
+      "dcterms:description": [
+        {
+          "type": "literal",
+          "property_id": 3,
+          "@value": "This is a test description for item 50 used for performance testing"
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "type": "literal",
+          "property_id": 5,
+          "@value": "Subject 1"
+        }
+      ]
+    }
+  ]
+}

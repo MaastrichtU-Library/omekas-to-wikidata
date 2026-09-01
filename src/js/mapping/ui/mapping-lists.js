@@ -1,0 +1,840 @@
+/**
+ * Mapping lists UI module
+ * Handles the three-column interface management for mapping keys
+ * @module mapping/ui/mapping-lists
+ */
+
+// Import dependencies
+import { eventSystem } from '../../events.js';
+import { createElement, createListItem, showMessage } from '../../ui/components.js';
+import {
+    extractAndAnalyzeKeys,
+    convertCamelCaseToSpaces,
+    extractSampleValue,
+    getOmekaFieldFriendlyName,
+    buildIncludedSegmentsSignature
+} from '../core/data-analyzer.js';
+import { getCompletePropertyData } from '../../api/wikidata.js';
+import { createIdentifierMapping } from '../../utils/identifier-detection.js';
+import { processItemsForValueIdentifiers } from '../../utils/value-processor.js';
+
+// Get DOM elements that are used across functions
+const nonLinkedKeysList = document.getElementById('non-linked-keys');
+const mappedKeysList = document.getElementById('mapped-keys');
+const ignoredKeysList = document.getElementById('ignored-keys');
+const proceedToReconciliationBtn = document.getElementById('proceed-to-reconciliation');
+const nonLinkedKeySearchInput = document.getElementById('non-linked-key-search');
+let nonLinkedKeySearchInitialized = false;
+
+function getDisplayPriority(keyObj) {
+    const propertyId = typeof keyObj === 'object' ? keyObj.property?.id : null;
+    if (propertyId === 'label') {
+        return -2;
+    }
+    if (propertyId === 'P31') {
+        return -1;
+    }
+    return 0;
+}
+
+function applySortIndex(keyObj, keyOrderIndex) {
+    if (!keyObj || typeof keyObj !== 'object') {
+        return keyObj;
+    }
+
+    return {
+        ...keyObj,
+        sortIndex: keyOrderIndex.get(keyObj.key) ?? keyObj.sortIndex ?? Number.MAX_SAFE_INTEGER
+    };
+}
+
+function mergeAnalyzerMetadata(keyObj, analyzedKey) {
+    if (!keyObj || typeof keyObj !== 'object' || !analyzedKey) {
+        return keyObj;
+    }
+
+    return {
+        ...analyzedKey,
+        ...keyObj,
+        fieldProfile: keyObj.fieldProfile || analyzedKey.fieldProfile
+    };
+}
+
+function sortKeysForDisplay(keys, type) {
+    return [...keys].sort((a, b) => {
+        if (type === 'mapped') {
+            const priorityDifference = getDisplayPriority(a) - getDisplayPriority(b);
+            if (priorityDifference !== 0) {
+                return priorityDifference;
+            }
+        }
+
+        const aSortIndex = typeof a === 'object' ? a.sortIndex ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+        const bSortIndex = typeof b === 'object' ? b.sortIndex ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+
+        if (aSortIndex !== bSortIndex) {
+            return aSortIndex - bSortIndex;
+        }
+
+        const aLabel = typeof a === 'object'
+            ? `${a.key || ''}::${a.selectedAtField || ''}::${a.selectedObjectIndex ?? ''}::${(a.includedSegments || []).join('|')}`
+            : String(a);
+        const bLabel = typeof b === 'object'
+            ? `${b.key || ''}::${b.selectedAtField || ''}::${b.selectedObjectIndex ?? ''}::${(b.includedSegments || []).join('|')}`
+            : String(b);
+        return aLabel.localeCompare(bLabel);
+    });
+}
+
+function getKeySearchScore(keyObj, searchTerm) {
+    if (!searchTerm) {
+        return 0;
+    }
+
+    const keyData = typeof keyObj === 'string'
+        ? { key: keyObj }
+        : keyObj;
+    const keyName = keyData.key || '';
+    const friendlyName = getOmekaFieldFriendlyName(keyData, keyName) || '';
+    const normalizedTerm = searchTerm.toLowerCase();
+    const normalizedFriendly = friendlyName.toLowerCase();
+    const normalizedKey = keyName.toLowerCase();
+
+    if (normalizedFriendly.startsWith(normalizedTerm)) return 0;
+    if (normalizedFriendly.includes(normalizedTerm)) return 1;
+    if (normalizedKey.startsWith(normalizedTerm)) return 2;
+    if (normalizedKey.includes(normalizedTerm)) return 3;
+    return Number.POSITIVE_INFINITY;
+}
+
+function filterKeysForSearch(keys, type) {
+    if (type !== 'non-linked') {
+        return keys;
+    }
+
+    const searchTerm = nonLinkedKeySearchInput?.value?.trim();
+    if (!searchTerm) {
+        return keys;
+    }
+
+    return keys
+        .map(keyObj => ({
+            keyObj,
+            score: getKeySearchScore(keyObj, searchTerm)
+        }))
+        .filter(result => Number.isFinite(result.score))
+        .sort((a, b) => a.score - b.score)
+        .map(result => result.keyObj);
+}
+
+function setupNonLinkedKeySearch(state) {
+    if (!nonLinkedKeySearchInput || nonLinkedKeySearchInitialized) {
+        return;
+    }
+
+    nonLinkedKeySearchInitialized = true;
+    nonLinkedKeySearchInput.addEventListener('input', () => {
+        const currentState = state.getState();
+        populateKeyList(nonLinkedKeysList, currentState.mappings.nonLinkedKeys, 'non-linked');
+    });
+}
+
+function createKeyLabelGroup(keyData) {
+    const fieldSuffixParts = [];
+    if (keyData.selectedAtField) {
+        fieldSuffixParts.push(keyData.selectedAtField);
+    }
+    if (Number.isInteger(keyData.selectedObjectIndex)) {
+        fieldSuffixParts.push(`object ${keyData.selectedObjectIndex + 1}`);
+    }
+
+    const keyDisplayText = fieldSuffixParts.length > 0
+        ? `${keyData.key} (${fieldSuffixParts.join(', ')})`
+        : keyData.key;
+
+    const labelGroup = createElement('div', {
+        className: 'key-label-group'
+    });
+
+    const friendlyName = getOmekaFieldFriendlyName(keyData, keyData.key);
+    if (friendlyName && friendlyName !== keyData.key) {
+        const keyTemplateLabel = createElement('span', {
+            className: 'key-name-compact key-name-compact--friendly'
+        }, friendlyName);
+        labelGroup.appendChild(keyTemplateLabel);
+    }
+
+    const keyName = createElement('span', {
+        className: friendlyName && friendlyName !== keyData.key
+            ? 'key-template-label key-template-label--technical'
+            : 'key-name-compact'
+    }, keyDisplayText);
+    labelGroup.appendChild(keyName);
+
+    if (Array.isArray(keyData.includedSegmentLabels) && keyData.includedSegmentLabels.length > 0) {
+        labelGroup.appendChild(createElement('span', {
+            className: 'key-segment-summary'
+        }, `Segments: ${keyData.includedSegmentLabels.join(', ')}`));
+    }
+
+    return labelGroup;
+}
+
+function syncRequiredMappingButtons(keys) {
+    const labelButton = document.getElementById('add-label');
+    const instanceOfButton = document.getElementById('add-instance-of');
+    const hasLabelMapping = hasMappingForProperty(keys, 'label');
+    const hasInstanceOfMapping = hasMappingForProperty(keys, 'P31');
+
+    if (labelButton) {
+        labelButton.disabled = hasLabelMapping;
+        labelButton.textContent = hasLabelMapping ? 'Label Set' : 'Set Label';
+        labelButton.title = hasLabelMapping
+            ? 'This project already has a Label mapping. Edit the existing Label entry in Mapped Keys to change it.'
+            : 'Map the source field that contains the main title or name.';
+    }
+
+    if (instanceOfButton) {
+        instanceOfButton.disabled = hasInstanceOfMapping;
+        instanceOfButton.textContent = hasInstanceOfMapping ? 'Instance of Set' : 'Set Instance of';
+        instanceOfButton.title = hasInstanceOfMapping
+            ? 'This project already has an Instance of mapping. Edit the existing Instance of entry in Mapped Keys to change it.'
+            : 'Map the source field that classifies what each item is. This usually follows the selected resource template class.';
+    }
+}
+
+/**
+ * Populates all mapping interface lists with analyzed property data
+ */
+export async function populateLists(state) {
+    const currentState = state.getState();
+
+    if (!currentState.fetchedData) {
+        return;
+    }
+
+    setupNonLinkedKeySearch(state);
+
+    // Determine field ordering mode (default: template order)
+    const sortMode = (currentState.mappings && currentState.mappings.sortMode) ? currentState.mappings.sortMode : 'template';
+
+    // Update UI indicator for ordering mode
+    const indicator = document.getElementById('field-order-indicator');
+    if (indicator) {
+        if (sortMode === 'frequency') {
+            indicator.textContent = 'Sorted by frequency';
+            indicator.style.display = '';
+        } else if (sortMode === 'template') {
+            indicator.textContent = 'Sorted by template order';
+            indicator.style.display = '';
+        } else {
+            indicator.textContent = '';
+            indicator.style.display = 'none';
+        }
+    }
+
+    // Process value-level identifiers in the fetched data
+    const processedData = await processItemsForValueIdentifiers(currentState.fetchedData);
+
+    // Update state with processed data (maintains original fetchedData reference)
+    if (processedData !== currentState.fetchedData) {
+        state.updateState('fetchedData', processedData);
+    }
+
+    // Analyze all keys from the complete dataset (respect ordering mode)
+    const analysisOptions = { sortMode };
+    if (sortMode === 'template') {
+        analysisOptions.resourceTemplates = currentState.resourceTemplates;
+        analysisOptions.selectedTemplateIds = currentState.selectedTemplates;
+    }
+    const keyAnalysis = await extractAndAnalyzeKeys(processedData, analysisOptions);
+    const keyAnalysisByKey = new Map(keyAnalysis.map(entry => [entry.key, entry]));
+
+    // Build a stable order index map based on analyzer output
+    const keyOrderIndex = new Map();
+    keyAnalysis.forEach((k, idx) => keyOrderIndex.set(k.key, idx));
+    
+    // Initialize arrays if they don't exist in state
+    state.ensureMappingArrays();
+    
+    // Get updated state after initialization
+    const updatedState = state.getState();
+    
+    // Filter keys that haven't been processed yet
+    const processedKeys = new Set([
+        ...updatedState.mappings.mappedKeys.map(k => k.key || k),
+        ...updatedState.mappings.ignoredKeys.map(k => k.key || k)
+    ]);
+    
+    const newKeys = keyAnalysis.filter(keyObj => !processedKeys.has(keyObj.key));
+    
+    // Load ignore settings
+    let ignorePatterns = ['o:'];
+    try {
+        const response = await fetch('./config/ignore-keys.json');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const settings = await response.json();
+        ignorePatterns = settings.ignoredKeyPatterns || ['o:'];
+    } catch (error) {
+    }
+    
+    // Function to check if key should be ignored
+    /**
+     * Determines if a property key should be automatically ignored
+     * 
+     * This function implements business rules for automatic property filtering.
+     * Certain technical or system properties are not suitable for Wikidata mapping
+     * and should be filtered out to reduce interface complexity.
+     * 
+     * @param {string} key - Property key to evaluate
+     * @returns {boolean} True if key should be automatically ignored
+     * 
+     * @description
+     * Auto-ignore criteria:
+     * - JSON-LD system properties (@context, @id, @type)
+     * - Omeka system properties (o:id, o:resource_class, etc.)
+     * - Internal technical fields not relevant to content description
+     */
+    const shouldIgnoreKey = (key) => {
+        const mediaLikeKeys = new Set(['dcterms:hasFormat', 'o:media', 'thumbnail_display_urls']);
+        if (mediaLikeKeys.has(key) || key.toLowerCase().includes('iiif')) {
+            return true;
+        }
+
+        return ignorePatterns.some(pattern => {
+            if (pattern.endsWith(':')) {
+                return key.startsWith(pattern);
+            } else {
+                return key === pattern;
+            }
+        });
+    };
+    
+    // Separate keys by type - ignored keys and regular keys
+    const ignoredKeys = newKeys.filter(k => shouldIgnoreKey(k.key));
+    const regularKeys = newKeys.filter(k => !shouldIgnoreKey(k.key));
+    
+    // Process keys with detected identifiers - auto-map them (async)
+    const autoMappedKeys = [];
+    const keysToAddAsNonLinked = [];
+    
+    // Collect all identifier fields that need auto-mapping
+    const identifierFields = regularKeys.filter(keyObj => keyObj.hasIdentifier && keyObj.identifierInfo);
+    const nonIdentifierFields = regularKeys.filter(keyObj => !keyObj.hasIdentifier || !keyObj.identifierInfo);
+    
+    // Process identifier fields concurrently for better performance
+    if (identifierFields.length > 0) {
+        try {
+            const mappingPromises = identifierFields.map(async (keyObj) => {
+                // Add identifiers without a known property ID to non-linked keys
+                // These include Wikidata entities and ISO language codes that need manual mapping
+                if (keyObj.identifierInfo.propertyId === null) {
+                    console.info(
+                        `Adding identifier field '${keyObj.key}' to non-linked keys: ` +
+                        `Detected as ${keyObj.identifierInfo.type} (${keyObj.identifierInfo.label}) ` +
+                        `but no automatic property mapping is available. ` +
+                        `Sample value: ${JSON.stringify(keyObj.sampleValue)}`
+                    );
+                    keysToAddAsNonLinked.push(keyObj);
+                    return null;
+                }
+
+                // Create an auto-mapping for this identifier field with API constraint fetching
+                const mappingObj = await createIdentifierMapping(
+                    keyObj.key,
+                    keyObj.identifierInfo,
+                    keyObj.sampleValue
+                );
+
+                // Add the full key data with enhanced property mapping
+                return {
+                    ...keyObj,
+                    property: mappingObj.property,
+                    mappingId: state.generateMappingId(
+                        keyObj.key,
+                        mappingObj.property.id,
+                        mappingObj.selectedAtField,
+                        mappingObj.selectedObjectIndex
+                    ),
+                    mappedAt: mappingObj.mappedAt,
+                    autoMapped: true,
+                    identifierType: mappingObj.identifierType,
+                    displayName: mappingObj.displayName,
+                    sampleValue: mappingObj.sampleValue,
+                    selectedAtField: mappingObj.selectedAtField,
+                    availableFields: mappingObj.availableFields
+                };
+            });
+
+            // Wait for all auto-mappings to complete and filter out null results
+            const completedMappings = (await Promise.all(mappingPromises)).filter(m => m !== null);
+            autoMappedKeys.push(...completedMappings);
+        } catch (error) {
+            console.error('Error during auto-mapping process:', error);
+            // Fall back to adding identifier fields as non-linked if auto-mapping fails
+            keysToAddAsNonLinked.push(...identifierFields);
+        }
+    }
+    
+    // Merge failed auto-mapped identifier fields with non-identifier fields
+    // and restore the analyzer's original order to avoid reordering by type
+    const mergedNonLinked = [...keysToAddAsNonLinked, ...nonIdentifierFields]
+        .map(keyObj => applySortIndex(keyObj, keyOrderIndex))
+        .sort((a, b) => (a.sortIndex ?? Number.MAX_SAFE_INTEGER) - (b.sortIndex ?? Number.MAX_SAFE_INTEGER));
+    
+    // Add ignored keys to ignored list
+    const currentIgnoredKeys = [
+        ...updatedState.mappings.ignoredKeys.map(keyObj => mergeAnalyzerMetadata(keyObj, keyAnalysisByKey.get(keyObj.key || keyObj))),
+        ...ignoredKeys
+    ].map(keyObj => applySortIndex(keyObj, keyOrderIndex));
+    
+    // Add regular keys (without identifiers) and failed auto-mappings to non-linked keys
+    const currentNonLinkedKeys = updatedState.mappings.nonLinkedKeys
+        .filter(k => !keyAnalysis.find(ka => ka.key === (k.key || k)))
+        .map(keyObj => applySortIndex(keyObj, keyOrderIndex));
+    const allNonLinkedKeys = [...currentNonLinkedKeys, ...mergedNonLinked];
+    
+    // Add auto-mapped keys to existing mapped keys
+    const hydratedMappedKeys = updatedState.mappings.mappedKeys.map(keyObj =>
+        mergeAnalyzerMetadata(keyObj, keyAnalysisByKey.get(keyObj.key || keyObj))
+    );
+    const allMappedKeys = [...hydratedMappedKeys, ...autoMappedKeys]
+        .map(keyObj => applySortIndex(keyObj, keyOrderIndex));
+    
+    // Update all mappings atomically
+    state.updateMappings(allNonLinkedKeys, allMappedKeys, currentIgnoredKeys);
+    
+    // If we auto-mapped any keys, show a enhanced message
+    if (autoMappedKeys.length > 0) {
+        const identifierTypes = [...new Set(autoMappedKeys.map(k => k.identifierType))].join(', ');
+        const constraintsFetched = autoMappedKeys.filter(k => k.property.constraintsFetched).length;
+        
+        showMessage(
+            `Auto-mapped ${autoMappedKeys.length} identifier field(s): ${identifierTypes} (${constraintsFetched}/${autoMappedKeys.length} with constraints)`,
+            'success',
+            6000
+        );
+    }
+    
+    // Get final state for UI update
+    const finalState = state.getState();
+    
+    // Populate the UI lists
+    populateKeyList(nonLinkedKeysList, finalState.mappings.nonLinkedKeys, 'non-linked');
+    populateKeyList(mappedKeysList, finalState.mappings.mappedKeys, 'mapped');
+    populateKeyList(ignoredKeysList, finalState.mappings.ignoredKeys, 'ignored');
+    syncRequiredMappingButtons(finalState.mappings.mappedKeys);
+    
+    // Update section counts
+    updateSectionCounts(finalState.mappings);
+    
+    // Auto-open mapped keys section if there are mapped keys
+    if (finalState.mappings.mappedKeys.length > 0) {
+        const mappedKeysList = document.getElementById('mapped-keys');
+        if (mappedKeysList) {
+            const mappedSection = mappedKeysList.closest('details');
+            if (mappedSection) {
+                mappedSection.open = true;
+            }
+        }
+    }
+    
+    
+    // Enable continue button if there are mapped keys
+    if (proceedToReconciliationBtn) {
+        proceedToReconciliationBtn.disabled = !finalState.mappings.mappedKeys.length;
+    }
+}
+
+
+
+/**
+ * Updates the section counts display
+ */
+export function updateSectionCounts(mappings) {
+    const totalKeys = mappings.nonLinkedKeys.length + mappings.mappedKeys.length + mappings.ignoredKeys.length;
+    const existingIndicator = document.getElementById('field-order-indicator');
+    const indicatorText = existingIndicator?.textContent || '';
+    const indicatorDisplay = existingIndicator?.style.display || 'none';
+    
+    // Update Non-linked Keys section (now first)
+    const nonLinkedSection = document.querySelector('.key-sections .section:nth-child(1) summary');
+    if (nonLinkedSection) {
+        nonLinkedSection.innerHTML = `
+            <span class="section-title">Non-linked Keys</span>
+            <span id="field-order-indicator" class="badge" style="display: ${indicatorDisplay}; margin-left: 8px;">${indicatorText}</span>
+            <span class="section-count">(${mappings.nonLinkedKeys.length}/${totalKeys})</span>
+        `;
+    }
+    
+    // Update Mapped Keys section (now second)
+    const mappedSection = document.querySelector('.key-sections .section:nth-child(2) summary');
+    if (mappedSection) {
+        mappedSection.innerHTML = `<span class="section-title">Mapped Keys</span><span class="section-count">(${mappings.mappedKeys.length}/${totalKeys})</span>`;
+    }
+    
+    // Update Ignored Keys section (now third)
+    const ignoredSection = document.querySelector('.key-sections .section:nth-child(3) summary');
+    if (ignoredSection) {
+        ignoredSection.innerHTML = `<span class="section-title">Ignored Keys</span><span class="section-count">(${mappings.ignoredKeys.length}/${totalKeys})</span>`;
+    }
+}
+
+/**
+ * Checks if a mapping exists for a given property ID
+ */
+function hasMappingForProperty(keys, propertyId) {
+    return keys.some(keyObj => {
+        const property = typeof keyObj === 'object' ? keyObj.property : null;
+        return property?.id === propertyId;
+    });
+}
+
+/**
+ * Creates a required property placeholder element
+ */
+function createRequiredPropertyPlaceholder(propertyId, propertyLabel, description) {
+    // Create the main container
+    const placeholderDisplay = createElement('div', {
+        className: 'key-item-compact required-mapping-placeholder'
+    });
+
+    // Property name in red
+    const propertyName = createElement('span', {
+        className: 'required-property-name'
+    }, propertyLabel);
+    placeholderDisplay.appendChild(propertyName);
+
+    // Arrow separator
+    const arrow = createElement('span', {
+        className: 'property-info'
+    }, ' → ');
+    placeholderDisplay.appendChild(arrow);
+
+    // Description text
+    const descriptionText = createElement('span', {
+        className: 'required-property-description'
+    }, description);
+    placeholderDisplay.appendChild(descriptionText);
+
+    // Create list item with click handler
+    const onClick = propertyId === 'label'
+        ? () => window.openModalWithLabelPreselected?.()
+        : () => window.openModalWithInstanceOfPreselected?.();
+
+    const li = createListItem(placeholderDisplay, {
+        className: 'clickable key-item-clickable-compact required-mapping-item',
+        onClick: onClick
+    });
+
+    return li;
+}
+
+/**
+ * Populates a specific key list
+ */
+export function populateKeyList(listElement, keys, type) {
+    if (!listElement) return;
+
+    listElement.innerHTML = '';
+    const displayKeys = filterKeysForSearch(sortKeysForDisplay(keys, type), type);
+
+    // Add required property placeholders for mapped keys section
+    if (type === 'mapped') {
+        const hasLabelMapping = hasMappingForProperty(displayKeys, 'label');
+        const hasInstanceOfMapping = hasMappingForProperty(displayKeys, 'P31');
+
+        // Add Label placeholder if no label mapping exists
+        if (!hasLabelMapping) {
+            const labelPlaceholder = createRequiredPropertyPlaceholder(
+                'label',
+                'Label',
+                'Labels are required for all Wikidata items'
+            );
+            listElement.appendChild(labelPlaceholder);
+        }
+
+        // Add Instance of placeholder if no instance of mapping exists
+        if (!hasInstanceOfMapping) {
+            const instanceOfPlaceholder = createRequiredPropertyPlaceholder(
+                'P31',
+                'Instance of',
+                'Instance of is required and usually matches the selected resource template class'
+            );
+            listElement.appendChild(instanceOfPlaceholder);
+        }
+    }
+
+    if (!displayKeys.length) {
+        // Only show "No mapped keys yet" if there are also no placeholders
+        if (type !== 'mapped' || listElement.children.length === 0) {
+            const placeholderText = type === 'non-linked'
+                ? (nonLinkedKeySearchInput?.value?.trim() ? 'No matching keys found' : 'All keys have been processed')
+                : type === 'mapped'
+                    ? 'No mapped keys yet'
+                    : 'No ignored keys';
+            const placeholder = createListItem(placeholderText, { isPlaceholder: true });
+            listElement.appendChild(placeholder);
+        }
+        return;
+    }
+    
+    displayKeys.forEach(keyObj => {
+        // Handle both string keys (legacy) and key objects
+        const keyData = typeof keyObj === 'string' 
+            ? { key: keyObj, type: 'unknown', frequency: 1, totalItems: 1 }
+            : keyObj;
+        
+        // Create compact key display
+        const keyDisplay = createElement('div', {
+            className: keyData.notInCurrentDataset 
+                ? 'key-item-compact not-in-current-dataset'
+                : 'key-item-compact'
+        });
+        
+        keyDisplay.appendChild(createKeyLabelGroup(keyData));
+        
+        // Show property info for mapped keys immediately after key name
+        if (type === 'mapped' && keyData.property) {
+            const sourceSummary = keyData.property.id === 'label'
+                ? 'Label from selected Omeka field'
+                : keyData.property.id === 'P31'
+                    ? 'Instance of from selected Omeka field or template class'
+                    : `${keyData.property.id}: ${keyData.property.label}`;
+            const propertyInfo = createElement('span', {
+                className: 'property-info'
+            }, ` → ${sourceSummary}`);
+            keyDisplay.appendChild(propertyInfo);
+        }
+        
+        // Show frequency information at the end
+        if (keyData.frequency && keyData.totalItems) {
+            const frequencyIndicator = createElement('span', {
+                className: 'key-frequency'
+            }, `(${keyData.frequency}/${keyData.totalItems})`);
+            keyDisplay.appendChild(frequencyIndicator);
+        } else if (keyData.notInCurrentDataset) {
+            // Show indicator for keys not in current dataset
+            const notInDatasetIndicator = createElement('span', {
+                className: 'not-in-dataset-indicator'
+            }, '(not in current dataset)');
+            keyDisplay.appendChild(notInDatasetIndicator);
+        }
+        
+        // Create list item with appropriate options
+        const liOptions = {
+            className: keyData.notInCurrentDataset 
+                ? 'clickable key-item-clickable-compact not-in-current-dataset disabled'
+                : 'clickable key-item-clickable-compact',
+            onClick: !keyData.notInCurrentDataset ? () => window.openMappingModal(keyData) : null,
+            dataset: { key: keyData.key }
+        };
+        
+        if (keyData.notInCurrentDataset) {
+            liOptions.title = 'This key is not present in the current dataset';
+        }
+        
+        const li = createListItem(keyDisplay, liOptions);
+        
+        listElement.appendChild(li);
+        
+        // Add animation if this is a newly moved item
+        if (keyData.isNewlyMoved) {
+            li.classList.add('newly-moved');
+            setTimeout(() => {
+                li.classList.remove('newly-moved');
+            }, 2000);
+        }
+    });
+}
+
+
+/**
+ * Moves a key to a specific category
+ */
+export function moveKeyToCategory(keyData, category, state) {
+    const currentState = state.getState();
+    const targetKey = typeof keyData === 'string' ? keyData : keyData.key;
+    const previousCategory = currentState.mappings.mappedKeys.some(k => {
+        if (keyData.mappingId && k.mappingId) {
+            return k.mappingId === keyData.mappingId;
+        }
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare === targetKey;
+    }) ? 'mapped' : currentState.mappings.ignoredKeys.some(k => {
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare === targetKey;
+    }) ? 'ignored' : 'non-linked';
+    
+    // Remove from ALL existing categories first
+    const updatedNonLinkedKeys = currentState.mappings.nonLinkedKeys.filter(k => {
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare !== targetKey;
+    });
+    
+    const updatedMappedKeys = currentState.mappings.mappedKeys.filter(k => {
+        // For mapped items with mappingId, use mappingId for comparison to allow duplicates
+        if (keyData.mappingId && k.mappingId) {
+            return k.mappingId !== keyData.mappingId;
+        }
+        // For items without mappingId, use key comparison (fallback)
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare !== targetKey;
+    });
+    
+    const updatedIgnoredKeys = currentState.mappings.ignoredKeys.filter(k => {
+        const keyToCompare = typeof k === 'string' ? k : k.key;
+        return keyToCompare !== targetKey;
+    });
+    
+    // Update all categories
+    state.updateMappings(updatedNonLinkedKeys, updatedMappedKeys, updatedIgnoredKeys);
+    
+    // Clear isNewlyMoved flag from all existing items to prevent old animations
+    const clearAnimationFlag = (items) => items.map(item => {
+        const { isNewlyMoved, ...cleanItem } = item;
+        return cleanItem;
+    });
+    
+    const cleanedNonLinkedKeys = clearAnimationFlag(updatedNonLinkedKeys);
+    const cleanedMappedKeys = clearAnimationFlag(updatedMappedKeys);
+    const cleanedIgnoredKeys = clearAnimationFlag(updatedIgnoredKeys);
+    
+    // Add to target category with animation marker (only for the current item)
+    const keyDataWithAnimation = { ...keyData, isNewlyMoved: true };
+    
+    if (category === 'ignored') {
+        const finalIgnoredKeys = [...cleanedIgnoredKeys, keyDataWithAnimation];
+        state.updateMappings(cleanedNonLinkedKeys, cleanedMappedKeys, finalIgnoredKeys);
+    } else if (category === 'mapped') {
+        const finalMappedKeys = [...cleanedMappedKeys, keyDataWithAnimation];
+        state.updateMappings(cleanedNonLinkedKeys, finalMappedKeys, cleanedIgnoredKeys);
+    } else if (category === 'non-linked') {
+        const finalNonLinkedKeys = [...cleanedNonLinkedKeys, keyDataWithAnimation];
+        state.updateMappings(finalNonLinkedKeys, cleanedMappedKeys, cleanedIgnoredKeys);
+    }
+    
+    // Update UI
+    populateLists(state);
+    state.markChangesUnsaved();
+
+    eventSystem.publish(eventSystem.Events.MAPPING_UPDATED, {
+        type: category,
+        previousCategory,
+        keyData: keyDataWithAnimation,
+        mappingId: keyDataWithAnimation.mappingId || null
+    });
+}
+
+/**
+ * Maps a key to a property
+ */
+export function mapKeyToProperty(keyData, property, state) {
+    const currentState = state.getState();
+    const singletonPropertyIds = new Set(['label', 'P31']);
+    const segmentSignature = keyData.segmentSignature || buildIncludedSegmentsSignature(keyData.includedSegments);
+    const includedSegmentLabels = Array.isArray(keyData.segmentOptions)
+        ? keyData.segmentOptions
+            .filter(option => Array.isArray(keyData.includedSegments) && keyData.includedSegments.includes(option.key))
+            .map(option => option.label)
+        : (keyData.includedSegmentLabels || []);
+
+    if (singletonPropertyIds.has(property.id)) {
+        const existingMapping = currentState.mappings.mappedKeys.find(mappedKey =>
+            mappedKey?.property?.id === property.id && mappedKey.mappingId !== keyData.mappingId
+        );
+
+        if (existingMapping) {
+            const propertyLabel = property.id === 'label' ? 'Label' : 'Instance of';
+            showMessage(
+                `${propertyLabel} can only be mapped once. Edit the existing ${propertyLabel} entry in Mapped Keys if you want to change it.`,
+                'warning',
+                5000
+            );
+            return false;
+        }
+    }
+
+    // Generate the mapping ID for this key-property combination, including @ field if selected
+    const newMappingId = state.generateMappingId(
+        keyData.key,
+        property.id,
+        keyData.selectedAtField,
+        keyData.selectedObjectIndex,
+        segmentSignature
+    );
+
+    // When editing an existing mapping, preserve its transformation blocks and
+    // replace only that mapping by its current mappingId. This avoids collapsing
+    // deliberate duplicates that reuse the same source key.
+    if (keyData.mappingId && keyData.mappingId !== newMappingId) {
+        // MappingId has changed - need to migrate transformation blocks
+        const oldMappingId = keyData.mappingId;
+        const transformationBlocks = state.getTransformationBlocks(oldMappingId);
+
+        if (transformationBlocks && transformationBlocks.length > 0) {
+            // Migrate each transformation block to the new mappingId
+            transformationBlocks.forEach(block => {
+                state.addTransformationBlock(newMappingId, block);
+            });
+
+            // Remove transformation blocks from old mappingId by clearing the array
+            // We can't delete the key directly, so we set it to empty array
+            currentState.mappings.transformationBlocks[oldMappingId] = [];
+        }
+
+        // CRITICAL FIX: Remove the old mapping with the old mappingId to prevent duplicates
+        // This is necessary because moveKeyToCategory will use the NEW mappingId for comparison,
+        // which won't match the old mappingId, leaving the old mapping in place
+        const updatedMappedKeys = currentState.mappings.mappedKeys.filter(k =>
+            k.mappingId !== oldMappingId
+        );
+        state.updateMappings(
+            currentState.mappings.nonLinkedKeys,
+            updatedMappedKeys,
+            currentState.mappings.ignoredKeys
+        );
+    }
+
+    // Create enhanced key data with property information and mapping ID
+    const mappedKey = {
+        ...keyData,
+        property: property,
+        extractionMode: keyData.extractionMode || 'auto',
+        includedSegments: keyData.includedSegments || undefined,
+        includedSegmentLabels: includedSegmentLabels.length > 0 ? includedSegmentLabels : undefined,
+        segmentSignature: segmentSignature || undefined,
+        mappingId: newMappingId,
+        mappedAt: new Date().toISOString()
+    };
+
+    // Use moveKeyToCategory to handle the movement properly
+    moveKeyToCategory(mappedKey, 'mapped', state);
+
+    // Publish mapping updated event for reconciliation table updates
+    eventSystem.publish(eventSystem.Events.MAPPING_UPDATED, {
+        type: 'mapped',
+        keyData: mappedKey,
+        previousKeyData: keyData,
+        property: property,
+        mappingId: newMappingId
+    });
+
+    return true;
+}
+
+/**
+ * Moves to the next unmapped key
+ */
+export function moveToNextUnmappedKey(state) {
+    const currentState = state.getState();
+    if (currentState.mappings.nonLinkedKeys.length > 0) {
+        // Small delay to let UI update, then open next key
+        setTimeout(() => {
+            const nextKey = currentState.mappings.nonLinkedKeys[0];
+            window.openMappingModal(nextKey);
+        }, 200);
+    }
+}
