@@ -24,28 +24,10 @@ function extractDomain(url) {
 }
 
 /**
- * Configuration for available CORS proxy services.
- * Ordered by current browser-level verification against the Radboud sample API.
+ * Public CORS proxies are a convenience fallback, not infrastructure the app controls.
+ * Keep the list short and bounded so an unavailable service does not hold up import.
  */
 const CORS_PROXIES = [
-    {
-        name: 'CORSPROXY',
-        transform: (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-        parseResponse: (response) => response,
-        headers: {}
-    },
-    {
-        name: 'CodeTabs Proxy',
-        transform: (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
-        parseResponse: (response) => response,
-        headers: {}
-    },
-    {
-        name: 'Corsfix',
-        transform: (url) => `https://proxy.corsfix.com/?${url}`,
-        parseResponse: (response) => response,
-        headers: {}
-    },
     {
         name: 'Community CORS Proxy (CORS.lol)',
         transform: (url) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
@@ -87,8 +69,36 @@ const CORS_PROXIES = [
             throw new Error('AllOrigins returned unexpected response format');
         },
         headers: {}
+    },
+    {
+        name: 'CodeTabs Proxy',
+        transform: (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
+        parseResponse: (response) => response,
+        headers: {}
     }
 ];
+
+const DIRECT_FETCH_TIMEOUT_MS = 12_000;
+const PROXY_FETCH_TIMEOUT_MS = 6_000;
+
+async function fetchWithTimeout(url, options, timeoutMs, sourceName) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        return await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+    } catch (error) {
+        if (controller.signal.aborted) {
+            throw new Error(`${sourceName} timed out after ${Math.round(timeoutMs / 1000)} seconds`);
+        }
+        throw error;
+    } finally {
+        window.clearTimeout(timeoutId);
+    }
+}
 
 function isJsonContentType(contentType) {
     if (!contentType) {
@@ -133,7 +143,7 @@ export async function fetchWithCorsProxy(url, options = {}) {
     } else {
         // First attempt: Direct fetch (no proxy)
         try {
-            const response = await fetch(url, options);
+            const response = await fetchWithTimeout(url, options, DIRECT_FETCH_TIMEOUT_MS, 'Direct API request');
 
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
@@ -182,7 +192,12 @@ export async function fetchWithCorsProxy(url, options = {}) {
                 }
             };
 
-            const response = await fetch(proxyUrl, proxyOptions);
+            const response = await fetchWithTimeout(
+                proxyUrl,
+                proxyOptions,
+                PROXY_FETCH_TIMEOUT_MS,
+                proxy.name
+            );
 
             if (!response.ok) {
                 throw new Error(`Proxy ${proxy.name} returned ${response.status}: ${response.statusText}`);
