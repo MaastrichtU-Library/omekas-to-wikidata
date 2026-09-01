@@ -7,6 +7,32 @@
 import { detectPropertyType, getInputFieldConfig, standardizeDateInput } from '../../utils/property-types.js';
 import { isDateValue, tryReconciliationApi, tryDirectWikidataSearch } from './entity-matcher.js';
 
+function getResolvedPropertyObject(propertyMetadata) {
+    if (!propertyMetadata || typeof propertyMetadata !== 'object') {
+        return null;
+    }
+
+    if (propertyMetadata.property && typeof propertyMetadata.property === 'object') {
+        return propertyMetadata.property;
+    }
+
+    return propertyMetadata;
+}
+
+function getResolvedPropertyType(propertyName, propertyMetadata) {
+    const resolvedProperty = getResolvedPropertyObject(propertyMetadata);
+
+    if (resolvedProperty?.datatype) {
+        return resolvedProperty.datatype;
+    }
+
+    if (propertyMetadata?.propertyType) {
+        return propertyMetadata.propertyType;
+    }
+
+    return detectPropertyType(propertyName);
+}
+
 /**
  * Check if an error is retryable based on error message patterns
  * Determines whether a failed reconciliation operation should be retried
@@ -138,6 +164,7 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
             mappedKeys.forEach(keyObj => {
                 const keyName = typeof keyObj === 'string' ? keyObj : keyObj.key;
                 const mappingId = keyObj?.mappingId || keyName;
+                const propertyMetadata = keyObj?.property || keyObj || null;
                 // Pass the full keyObj and state to extractPropertyValues to apply transformations and handle @ field selection
                 const values = extractPropertyValues(item, keyObj, state);
 
@@ -146,6 +173,7 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
                         itemId,
                         property: keyName,
                         mappingId,  // NEW: Add mappingId to job
+                        propertyMetadata,
                         valueIndex,
                         value
                     });
@@ -158,7 +186,7 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
         const dateValues = [];
         
         batchJobs.forEach(job => {
-            const propertyType = detectPropertyType(job.property);
+            const propertyType = getResolvedPropertyType(job.property, job.propertyMetadata);
             const inputConfig = getInputFieldConfig(propertyType);
             
             // Handle dates immediately (no API call needed)
@@ -219,7 +247,11 @@ export function createBatchAutoAcceptanceProcessor(dependencies) {
                     updateCellQueueStatus(job.itemId, job.mappingId, job.valueIndex, 'queued');
                     
                     // Try reconciliation API with enhanced error recovery
-                    let matches = await tryReconciliationApi(job.value, job.property, []);
+                    let matches = await tryReconciliationApi(
+                        job.value,
+                        getResolvedPropertyObject(job.propertyMetadata) || job.property,
+                        []
+                    );
                     
                     // If no good matches from API, try direct search
                     if (!matches || matches.length === 0) {
@@ -417,6 +449,7 @@ export function createColumnReconciliationProcessor(dependencies) {
                             itemId,
                             property,
                             mappingId,  // NEW: Add mappingId to job
+                            propertyMetadata: keyObj?.property || keyObj || null,
                             valueIndex,
                             value,
                             keyObj
@@ -447,7 +480,11 @@ export function createColumnReconciliationProcessor(dependencies) {
                         updateCellLoadingState(job.itemId, job.mappingId, job.valueIndex, true);
 
                         // Try reconciliation API
-                        let matches = await tryReconciliationApi(job.value, job.property, []);
+                        let matches = await tryReconciliationApi(
+                            job.value,
+                            getResolvedPropertyObject(job.propertyMetadata) || job.property,
+                            []
+                        );
                         
                         // If no good matches from API, try direct search
                         if (!matches || matches.length === 0) {

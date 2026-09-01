@@ -7,6 +7,51 @@
 // Import dependencies (minimal for data analysis)
 import { detectIdentifier } from '../../utils/identifier-detection.js';
 import { fetchWithCorsProxy } from '../../utils/cors-proxy.js';
+import {
+    EXTRACTION_MODES,
+    createFieldProfileStats,
+    finalizeFieldProfileStats,
+    mergeObservedValueIntoProfileStats,
+    buildObservedFieldProfile,
+    resolveOmekaValue
+} from './value-resolution.js';
+
+export {
+    EXTRACTION_MODES,
+    buildObservedFieldProfile,
+    getExtractionModeDescription,
+    getExtractionModeLabel,
+    getDefaultExtractionMode,
+    getAvailableExtractionModes,
+    describeFieldProfile,
+    resolveOmekaValue,
+    getValueSourceTypeLabel,
+    getValueSourceTypeDescription,
+    getOrderedValueSourceTypes,
+    summarizeValueSourcesForField,
+    summarizeValueSourcesForResolvedDetails,
+    summarizeObservedSegments,
+    getSegmentMetadata,
+    buildIncludedSegmentsSignature,
+    getValueSourceMetadata,
+    classifyValueSource,
+    VALUE_SOURCE_TYPES
+} from './value-resolution.js';
+
+export function getOmekaFieldFriendlyName(keyOrKeyObj, fallbackKey = '') {
+    const keyData = typeof keyOrKeyObj === 'object' && keyOrKeyObj !== null
+        ? keyOrKeyObj
+        : { key: typeof keyOrKeyObj === 'string' ? keyOrKeyObj : fallbackKey };
+
+    const keyName = keyData.key || fallbackKey;
+    const templateDisplayLabel = keyData.templateDisplayLabel || keyData.templateAlternateLabel || '';
+
+    if (templateDisplayLabel && templateDisplayLabel !== keyName) {
+        return templateDisplayLabel;
+    }
+
+    return keyName || fallbackKey || '';
+}
 
 // Context cache for JSON-LD definitions
 const contextCache = new Map();
@@ -138,6 +183,7 @@ export function extractSampleValue(value) {
     return value;
 }
 
+
 /**
  * Extracts and analyzes all property keys from Omeka S data with semantic context resolution
  * 
@@ -230,9 +276,10 @@ export function extractSampleValue(value) {
  * 
  * @throws {Error} When data structure is invalid or context fetching fails
  */
-export async function extractAndAnalyzeKeys(data) {
+export async function extractAndAnalyzeKeys(data, options = {}) {
     const keyFrequency = new Map();
     const contextMap = new Map();
+    const fieldProfileStats = new Map();
     let items = [];
     
     // Normalize data structure to get array of items
@@ -272,28 +319,125 @@ export async function extractAndAnalyzeKeys(data) {
         }
     }
     
-    // Analyze all items to get key frequency
-    // Frequency analysis reveals data patterns and helps prioritize mapping efforts:
-    // - Properties in every item are core metadata (title, type)
-    // - Properties in some items might be optional or specialized
-    // - Very rare properties might be data entry errors or edge cases
+    // Track first-seen order to preserve original API/template field order
+    const firstSeenOrder = new Map();
+    let nextOrderIndex = 0;
+
+    // Track template order if provided
+    const templatePropertyIdOrder = new Map(); // key: property_id, value: global index
+    const templateTermOrder = new Map();       // fallback key: term, value: global index
+
+    const templateAllowedTypesByPropertyId = new Map();
+    const templateAllowedTypesByTerm = new Map();
+    const templateAlternateLabelByPropertyId = new Map();
+    const templateAlternateLabelByTerm = new Map();
+    const templatePropertyLabelByPropertyId = new Map();
+    const templatePropertyLabelByTerm = new Map();
+
+    if (options && options.resourceTemplates && options.selectedTemplateIds) {
+        let globalPropIndex = 0;
+        options.selectedTemplateIds.forEach(templateId => {
+            const template = options.resourceTemplates.find(t => String(t['o:id']) === String(templateId));
+            if (template && template['o:resource_template_property']) {
+                template['o:resource_template_property'].forEach(rtp => {
+                    const property = rtp['o:property'];
+                    const dataTypes = Array.isArray(rtp['o:data_type']) ? rtp['o:data_type'] : [];
+                    const alternateLabel = typeof rtp['o:alternate_label'] === 'string'
+                        ? rtp['o:alternate_label'].trim()
+                        : '';
+                    const propertyLabel = typeof property?.['o:label'] === 'string'
+                        ? property['o:label'].trim()
+                        : '';
+                    if (property) {
+                        const propId = property['o:id'];
+                        const term = property['o:term'];
+
+                        const pidStr = propId ? String(propId) : null;
+
+                        if (pidStr && !templatePropertyIdOrder.has(pidStr)) {
+                            templatePropertyIdOrder.set(pidStr, globalPropIndex);
+                        }
+                        if (term && !templateTermOrder.has(term)) {
+                            templateTermOrder.set(term, globalPropIndex);
+                        }
+                        if (pidStr && alternateLabel && !templateAlternateLabelByPropertyId.has(pidStr)) {
+                            templateAlternateLabelByPropertyId.set(pidStr, alternateLabel);
+                        }
+                        if (term && alternateLabel && !templateAlternateLabelByTerm.has(term)) {
+                            templateAlternateLabelByTerm.set(term, alternateLabel);
+                        }
+                        if (pidStr && propertyLabel && !templatePropertyLabelByPropertyId.has(pidStr)) {
+                            templatePropertyLabelByPropertyId.set(pidStr, propertyLabel);
+                        }
+                        if (term && propertyLabel && !templatePropertyLabelByTerm.has(term)) {
+                            templatePropertyLabelByTerm.set(term, propertyLabel);
+                        }
+                        if (pidStr) {
+                            if (!templateAllowedTypesByPropertyId.has(pidStr)) {
+                                templateAllowedTypesByPropertyId.set(pidStr, new Set());
+                            }
+                            dataTypes.forEach(type => templateAllowedTypesByPropertyId.get(pidStr).add(type));
+                        }
+                        if (term) {
+                            if (!templateAllowedTypesByTerm.has(term)) {
+                                templateAllowedTypesByTerm.set(term, new Set());
+                            }
+                            dataTypes.forEach(type => templateAllowedTypesByTerm.get(term).add(type));
+                        }
+                        globalPropIndex++;
+                    }
+                });
+            }
+        });
+    }
+
+    // Map to track which property ID belongs to which key in the dataset
+    const keyToPropertyId = new Map();
+
+    // Analyze all items to get key frequency and first-seen order
     items.forEach(item => {
         if (typeof item === 'object' && item !== null) {
             Object.keys(item).forEach(key => {
-                // Skip JSON-LD system keys (@context, @id, @type)
-                // These are structural metadata, not content properties
                 if (key.startsWith('@')) return;
+
+                // Record first appearance order
+                if (!firstSeenOrder.has(key)) {
+                    firstSeenOrder.set(key, nextOrderIndex++);
+                }
+
+                // Extract property_id from item data if available
+                if (!keyToPropertyId.has(key) && Array.isArray(item[key]) && item[key].length > 0) {
+                    const arr = item[key];
+                    for (let i = 0; i < arr.length; i++) {
+                        const val = arr[i];
+                        if (val && val.property_id != null) {
+                            keyToPropertyId.set(key, String(val.property_id));
+                            break;
+                        }
+                    }
+                }
                 
-                // Count all keys including o: keys - we'll categorize them later
-                // o: prefix typically indicates Omeka-specific properties
                 const count = keyFrequency.get(key) || 0;
                 keyFrequency.set(key, count + 1);
+
+                if (!fieldProfileStats.has(key)) {
+                    const propId = keyToPropertyId.get(key);
+                    const templateTypes = propId && templateAllowedTypesByPropertyId.has(propId)
+                        ? Array.from(templateAllowedTypesByPropertyId.get(propId))
+                        : templateAllowedTypesByTerm.has(key)
+                            ? Array.from(templateAllowedTypesByTerm.get(key))
+                            : [];
+                    fieldProfileStats.set(key, createFieldProfileStats(templateTypes));
+                }
+                mergeObservedValueIntoProfileStats(item[key], fieldProfileStats.get(key));
             });
         }
     });
     
-    // Convert to array and sort by frequency
-    // Higher frequency properties appear first, making core metadata more prominent
+    // Determine sorting mode (default: preserve template order)
+    const sortMode = (options && options.sortMode) ? options.sortMode : 'template';
+
+    // Convert to array and prepare metadata for sorting
     const keyAnalysis = Array.from(keyFrequency.entries())
         .map(([key, frequency]) => {
             // Get sample value from first item that has this key
@@ -356,7 +500,32 @@ export async function extractAndAnalyzeKeys(data) {
             
             // Check if this field contains an identifier
             const identifierDetection = detectIdentifier(sampleValue, key);
-            
+
+            // Determine template order index
+            let templateOrderIndex = Number.MAX_SAFE_INTEGER;
+            if (sortMode === 'template') {
+                const propId = keyToPropertyId.get(key);
+                if (propId && templatePropertyIdOrder.has(propId)) {
+                    templateOrderIndex = templatePropertyIdOrder.get(propId);
+                } else if (templateTermOrder.has(key)) {
+                    // Fallback to term matching if ID match failed
+                    templateOrderIndex = templateTermOrder.get(key);
+                }
+            }
+
+            const fieldProfile = fieldProfileStats.has(key)
+                ? finalizeFieldProfileStats(fieldProfileStats.get(key))
+                : buildObservedFieldProfile(sampleValue);
+
+            const propId = keyToPropertyId.get(key);
+            const templateAlternateLabel = propId && templateAlternateLabelByPropertyId.has(propId)
+                ? templateAlternateLabelByPropertyId.get(propId)
+                : templateAlternateLabelByTerm.get(key) || null;
+            const templatePropertyLabel = propId && templatePropertyLabelByPropertyId.has(propId)
+                ? templatePropertyLabelByPropertyId.get(propId)
+                : templatePropertyLabelByTerm.get(key) || null;
+            const templateDisplayLabel = templateAlternateLabel || templatePropertyLabel || null;
+
             return {
                 key,
                 frequency,
@@ -366,10 +535,40 @@ export async function extractAndAnalyzeKeys(data) {
                 type: Array.isArray(sampleValue) ? 'array' : typeof sampleValue,
                 contextMap: contextMap,
                 hasIdentifier: identifierDetection !== null,
-                identifierInfo: identifierDetection
+                identifierInfo: identifierDetection,
+                orderIndex: firstSeenOrder.has(key) ? firstSeenOrder.get(key) : Number.MAX_SAFE_INTEGER,
+                templateOrderIndex: templateOrderIndex,
+                fieldProfile,
+                templateAlternateLabel,
+                templatePropertyLabel,
+                templateDisplayLabel,
+                extractionMode: EXTRACTION_MODES.AUTO
             };
         })
-        .sort((a, b) => b.frequency - a.frequency); // Sort by frequency descending
+        .sort((a, b) => {
+            if (sortMode === 'template') {
+                // Primary: template order index (templated keys first)
+                if (a.templateOrderIndex !== b.templateOrderIndex) {
+                    return a.templateOrderIndex - b.templateOrderIndex;
+                }
+                // If both are not in template, order by frequency desc
+                if (a.templateOrderIndex === Number.MAX_SAFE_INTEGER && b.templateOrderIndex === Number.MAX_SAFE_INTEGER) {
+                    if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+                    // Tie-breaker: first-seen order for stability
+                    return a.orderIndex - b.orderIndex;
+                }
+                // If both are templated (same index), keep stable by first-seen
+                return a.orderIndex - b.orderIndex;
+            }
+            if (sortMode === 'frequency') {
+                // Primary: frequency desc; Secondary: API order asc for stability
+                if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+                return a.orderIndex - b.orderIndex;
+            }
+            // Default 'api' mode: preserve first-seen API order; Secondary: frequency desc
+            if (a.orderIndex !== b.orderIndex) return a.orderIndex - b.orderIndex;
+            return b.frequency - a.frequency;
+        });
     
     return keyAnalysis;
 }
@@ -467,58 +666,11 @@ export function convertSampleValueToString(value) {
 
     // Handle Omeka S objects with type-aware extraction
     if (value && typeof value === 'object') {
-        // Type-aware value extraction for Omeka S
-        if (value.type && typeof value.type === 'string') {
-            switch (true) {
-                // Literal values - use @value
-                case value.type === 'literal':
-                case value.type === 'numeric:timestamp':
-                    if ('@value' in value && value['@value'] !== null && value['@value'] !== undefined) {
-                        return String(value['@value']);
-                    }
-                    break;
-                
-                // Value suggest types - use o:label (human-readable label)
-                case value.type.startsWith('valuesuggest:'):
-                    if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
-                        return String(value['o:label']);
-                    }
-                    break;
-                
-                // URI types - prefer o:label, fallback to @id
-                case value.type === 'uri':
-                    if ('o:label' in value && value['o:label'] !== null && value['o:label'] !== undefined) {
-                        return String(value['o:label']);
-                    }
-                    if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
-                        return String(value['@id']);
-                    }
-                    break;
-            }
+        const resolvedValue = resolveOmekaValue(value);
+        if (resolvedValue?.value) {
+            return resolvedValue.value;
         }
-        
-        // Fallback to standard property extraction for non-typed objects
-        const valueProps = ['@value', 'o:label', 'value', 'name', 'title', 'label', 'display_title'];
-        for (const prop of valueProps) {
-            if (prop in value && value[prop] !== null && value[prop] !== undefined) {
-                return convertSampleValueToString(value[prop]);
-            }
-        }
-        
-        // Look for @id as last resort for URIs
-        if ('@id' in value && value['@id'] !== null && value['@id'] !== undefined) {
-            return String(value['@id']);
-        }
-        
-        // If no known property found, look for any string values
-        const entries = Object.entries(value);
-        for (const [key, val] of entries) {
-            if (typeof val === 'string' && val.trim() !== '' && !key.startsWith('property_') && key !== 'type') {
-                return val;
-            }
-        }
-        
-        // As a last resort, stringify the object in a readable way
+
         try {
             return JSON.stringify(value);
         } catch (e) {
@@ -655,7 +807,6 @@ export function extractAtFieldsFromAllItems(keyName, items) {
  */
 export function extractAllFieldsFromItems(keyName, items) {
     const fieldGroups = [];
-    const maxSamples = 3;
     const excludedFields = ['is_public']; // Fields to exclude from the dropdown
     
     if (!Array.isArray(items) || items.length === 0) {
@@ -685,7 +836,7 @@ export function extractAllFieldsFromItems(keyName, items) {
             const fieldKeys = Object.keys(value)
                 .filter(key => !excludedFields.includes(key))
                 .sort();
-            const signature = fieldKeys.join('|');
+            const signature = `${index}::${fieldKeys.join('|')}`;
             
             // Check if we've already seen this object structure
             if (!uniqueObjectSignatures.has(signature)) {
@@ -737,12 +888,14 @@ export function extractAllFieldsFromItems(keyName, items) {
                 // Add this group to our results
                 uniqueObjectSignatures.set(signature, fields);
                 fieldGroups.push({
-                    objectIndex: fieldGroups.length,
+                    objectIndex: index,
                     fields: fields
                 });
             }
         });
     }
-    
+
+    fieldGroups.sort((a, b) => a.objectIndex - b.objectIndex);
+
     return fieldGroups;
 }
