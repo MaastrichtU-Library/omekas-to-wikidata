@@ -79,7 +79,8 @@ const CORS_PROXIES = [
 ];
 
 const DIRECT_FETCH_TIMEOUT_MS = 12_000;
-const PROXY_FETCH_TIMEOUT_MS = 6_000;
+const PROXY_FETCH_TIMEOUT_MS = 4_000;
+const PROXY_FALLBACK_WINDOW_MS = 10_000;
 
 async function fetchWithTimeout(url, options, timeoutMs, sourceName) {
     const controller = new AbortController();
@@ -173,9 +174,19 @@ export async function fetchWithCorsProxy(url, options = {}) {
         }
     }
     
-    // Attempt each proxy in order
+    const proxyDeadline = Date.now() + PROXY_FALLBACK_WINDOW_MS;
+
+    // Attempt each proxy in order without letting public fallback services delay import indefinitely.
     for (let i = 0; i < CORS_PROXIES.length; i++) {
         const proxy = CORS_PROXIES[i];
+        const remainingProxyTime = proxyDeadline - Date.now();
+
+        if (remainingProxyTime <= 0) {
+            lastError = new Error(
+                `Public CORS proxy attempts timed out after ${Math.round(PROXY_FALLBACK_WINDOW_MS / 1000)} seconds`
+            );
+            break;
+        }
 
         try {
             // Only show attempting message if previous proxies failed
@@ -195,7 +206,7 @@ export async function fetchWithCorsProxy(url, options = {}) {
             const response = await fetchWithTimeout(
                 proxyUrl,
                 proxyOptions,
-                PROXY_FETCH_TIMEOUT_MS,
+                Math.min(PROXY_FETCH_TIMEOUT_MS, remainingProxyTime),
                 proxy.name
             );
 

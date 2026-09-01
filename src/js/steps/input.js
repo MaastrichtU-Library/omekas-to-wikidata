@@ -539,22 +539,6 @@ export function setupInputStep(state) {
                     dataStatus.innerHTML = '<p>Attempting to fetch data...</p>';
                 }
 
-                // First, attempt to fetch resource templates to have proper names and order
-                let resourceTemplates = [];
-                state.updateState('resourceTemplates', resourceTemplates, false);
-                try {
-                    const baseUrl = apiUrl.split('/api/')[0];
-                    const templatesUrl = `${baseUrl}/api/resource_templates`;
-                    const templatesResult = await fetchWithCorsProxy(templatesUrl);
-                    if (templatesResult.success && Array.isArray(templatesResult.data)) {
-                        resourceTemplates = templatesResult.data;
-                        state.updateState('resourceTemplates', resourceTemplates, false);
-                        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
-                    }
-                } catch (templateError) {
-                    console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
-                }
-                
                 apiUrlInput.value = ensureDefaultPagination(apiUrl);
                 const shouldFetchAllPages =
                     hasScopedCollectionFilters(apiUrlInput.value) &&
@@ -568,6 +552,22 @@ export function setupInputStep(state) {
                 // Validate JSON structure
                 if (!isValidOmekaResponse(data)) {
                     throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
+                }
+
+                // Template metadata improves Step 1 labels but should never delay the primary item request.
+                let resourceTemplates = [];
+                state.updateState('resourceTemplates', resourceTemplates, false);
+                try {
+                    const baseUrl = apiUrl.split('/api/')[0];
+                    const templatesUrl = `${baseUrl}/api/resource_templates`;
+                    const templatesResult = await fetchWithCorsProxy(templatesUrl);
+                    if (templatesResult.success && Array.isArray(templatesResult.data)) {
+                        resourceTemplates = templatesResult.data;
+                        state.updateState('resourceTemplates', resourceTemplates, false);
+                        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
+                    }
+                } catch (templateError) {
+                    console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
                 }
                 
                 // Process the successful data
