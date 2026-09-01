@@ -539,22 +539,6 @@ export function setupInputStep(state) {
                     dataStatus.innerHTML = '<p>Attempting to fetch data...</p>';
                 }
 
-                // First, attempt to fetch resource templates to have proper names and order
-                let resourceTemplates = [];
-                state.updateState('resourceTemplates', resourceTemplates, false);
-                try {
-                    const baseUrl = apiUrl.split('/api/')[0];
-                    const templatesUrl = `${baseUrl}/api/resource_templates`;
-                    const templatesResult = await fetchWithCorsProxy(templatesUrl);
-                    if (templatesResult.success && Array.isArray(templatesResult.data)) {
-                        resourceTemplates = templatesResult.data;
-                        state.updateState('resourceTemplates', resourceTemplates, false);
-                        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
-                    }
-                } catch (templateError) {
-                    console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
-                }
-                
                 apiUrlInput.value = ensureDefaultPagination(apiUrl);
                 const shouldFetchAllPages =
                     hasScopedCollectionFilters(apiUrlInput.value) &&
@@ -568,6 +552,22 @@ export function setupInputStep(state) {
                 // Validate JSON structure
                 if (!isValidOmekaResponse(data)) {
                     throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
+                }
+
+                // Template metadata improves Step 1 labels but should never delay the primary item request.
+                let resourceTemplates = [];
+                state.updateState('resourceTemplates', resourceTemplates, false);
+                try {
+                    const baseUrl = apiUrl.split('/api/')[0];
+                    const templatesUrl = `${baseUrl}/api/resource_templates`;
+                    const templatesResult = await fetchWithCorsProxy(templatesUrl);
+                    if (templatesResult.success && Array.isArray(templatesResult.data)) {
+                        resourceTemplates = templatesResult.data;
+                        state.updateState('resourceTemplates', resourceTemplates, false);
+                        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
+                    }
+                } catch (templateError) {
+                    console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
                 }
                 
                 // Process the successful data
@@ -831,9 +831,16 @@ export function setupInputStep(state) {
                 
                 <div class="error-solutions">
                     <h4>Solutions:</h4>
+                    <p>
+                        The API may still be publicly available even when this browser cannot read it.
+                        Open the JSON in a new tab, then copy or download it and use Manual JSON input below.
+                    </p>
                     <div class="solution-buttons">
+                        <button id="open-api-json" class="solution-btn">
+                            Open API JSON
+                        </button>
                         <button id="try-manual-input" class="solution-btn primary">
-                            📋 Use Manual Data Entry
+                            Use Manual JSON Input
                         </button>
                         <button id="show-admin-help" class="solution-btn">
                             👤 Contact Administrator
@@ -870,14 +877,21 @@ export function setupInputStep(state) {
     
     // Helper function to set up event listeners for error solution buttons
     function setupErrorSolutionListeners(apiUrl) {
+        const openApiJsonBtn = document.getElementById('open-api-json');
         const tryManualBtn = document.getElementById('try-manual-input');
         const showAdminBtn = document.getElementById('show-admin-help');
         const retryBtn = document.getElementById('retry-fetch');
         
+        if (openApiJsonBtn) {
+            openApiJsonBtn.addEventListener('click', () => {
+                window.open(apiUrl, '_blank', 'noopener');
+            });
+        }
+
         if (tryManualBtn) {
             tryManualBtn.addEventListener('click', () => {
                 // Hide the error display and show the manual JSON input
-                dataStatus.innerHTML = '<p class="placeholder">Use the "📋 Enter JSON manually" button above to input your data</p>';
+                dataStatus.innerHTML = '<p class="placeholder">Paste the JSON you opened or downloaded into the Manual JSON area below.</p>';
                 showManualJsonInput();
             });
         }
