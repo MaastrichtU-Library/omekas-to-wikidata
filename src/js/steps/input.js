@@ -183,6 +183,8 @@ export function setupInputStep(state) {
     const manualJsonArea = document.getElementById('manual-json-area');
     const manualJsonTextarea = document.getElementById('manual-json-textarea');
     const manualTemplateJsonTextarea = document.getElementById('manual-template-json-textarea');
+    const manualTemplateApiHelp = document.getElementById('manual-template-api-help');
+    const manualTemplateApiLink = document.getElementById('manual-template-api-link');
     const processManualJsonButton = document.getElementById('process-manual-json-button');
     const cancelManualJsonButton = document.getElementById('cancel-manual-json');
 
@@ -232,6 +234,24 @@ export function setupInputStep(state) {
         return getOmekaApiBaseUrl(itemUrl) ||
             getOmekaApiBaseUrl(templateUrl) ||
             getOmekaApiBaseUrl(preferredApiUrl);
+    }
+
+    function getResourceTemplateCollectionUrl(data = null) {
+        const apiBaseUrl = data
+            ? getResourceTemplateApiBaseUrl(data, apiUrlInput?.value.trim() || '')
+            : getOmekaApiBaseUrl(apiUrlInput?.value.trim() || '');
+
+        return apiBaseUrl ? `${apiBaseUrl}/api/resource_templates` : '';
+    }
+
+    function updateManualTemplateApiLink(data = null) {
+        const resourceTemplatesUrl = getResourceTemplateCollectionUrl(data);
+        if (manualTemplateApiLink) {
+            manualTemplateApiLink.href = resourceTemplatesUrl || '#';
+        }
+        if (manualTemplateApiHelp) {
+            manualTemplateApiHelp.hidden = !resourceTemplatesUrl;
+        }
     }
 
     function getReferencedResourceTemplateIds(data) {
@@ -844,6 +864,7 @@ export function setupInputStep(state) {
     function showManualJsonInput() {
         if (manualJsonArea) {
             manualJsonArea.style.display = 'block';
+            updateManualTemplateApiLink();
             manualJsonTextarea.focus();
             
             // Clear any existing data status
@@ -890,6 +911,7 @@ export function setupInputStep(state) {
         
         try {
             const data = JSON.parse(jsonText);
+            updateManualTemplateApiLink(data);
             const embeddedTemplates = extractResourceTemplateDefinitions(data);
             let providedTemplates = embeddedTemplates;
 
@@ -926,6 +948,7 @@ export function setupInputStep(state) {
                 .filter(templateId => !resourceTemplates.some(template => getResourceTemplateId(template) === templateId));
             processSuccessfulData(data, 'manual', {
                 templateMetadataUnavailable: missingTemplateIds.length > 0,
+                templateMetadataCollectionUrl: getResourceTemplateCollectionUrl(data),
                 templateMetadataUrls: apiBaseUrl
                     ? missingTemplateIds.map(templateId =>
                         `${apiBaseUrl}/api/resource_templates/${encodeURIComponent(templateId)}`
@@ -1253,6 +1276,20 @@ export function setupInputStep(state) {
                 createElement('strong', {}, 'Custom template labels could not be loaded.'),
                 createElement('span', {}, ' Mapping will use the property names supplied in the item JSON. To use the template labels, paste the matching resource-template JSON in the optional Manual JSON field and process the import again.')
             ]);
+
+            if (details.templateMetadataCollectionUrl) {
+                metadataWarning.appendChild(
+                    createElement('p', { className: 'hint' }, [
+                        createElement('span', {}, 'Open the '),
+                        createElement('a', {
+                            href: details.templateMetadataCollectionUrl,
+                            target: '_blank',
+                            rel: 'noopener noreferrer'
+                        }, 'resource-template JSON for this Omeka S instance'),
+                        createElement('span', {}, ' and paste its response in the optional field.')
+                    ])
+                );
+            }
 
             if (details.templateMetadataUrls?.length > 0) {
                 const metadataLinks = createElement('p', { className: 'hint' }, [
