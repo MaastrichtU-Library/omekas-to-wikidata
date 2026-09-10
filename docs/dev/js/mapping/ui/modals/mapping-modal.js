@@ -361,6 +361,43 @@ function getResourceClassUri(resourceClassValue) {
     return null;
 }
 
+function getResourceClassId(resourceClassValue) {
+    if (!resourceClassValue || typeof resourceClassValue !== 'object') {
+        return null;
+    }
+
+    const value = resourceClassValue['o:id'] ?? resourceClassValue.id ?? null;
+    return Number.isInteger(value) || (typeof value === 'string' && /^\d+$/.test(value))
+        ? String(value)
+        : null;
+}
+
+function buildResourceClassUri(resourceClassValue, currentState = null) {
+    const directUri = getResourceClassUri(resourceClassValue);
+    if (directUri) {
+        return directUri;
+    }
+
+    const resourceClassId = getResourceClassId(resourceClassValue);
+    const apiUrl = currentState?.apiUrl;
+    if (!resourceClassId || !apiUrl) {
+        return null;
+    }
+
+    try {
+        const parsedUrl = new URL(apiUrl);
+        const apiPathIndex = parsedUrl.pathname.indexOf('/api/');
+        if (apiPathIndex === -1) {
+            return null;
+        }
+
+        const basePath = parsedUrl.pathname.slice(0, apiPathIndex).replace(/\/$/, '');
+        return `${parsedUrl.origin}${basePath}/api/resource_classes/${resourceClassId}`;
+    } catch {
+        return null;
+    }
+}
+
 function mergeResourceClassCandidate(candidate, resourceClassData = null) {
     if (!candidate) {
         return null;
@@ -404,7 +441,9 @@ async function ensureResourceClassDefinition(candidate, stateInstance = window.m
     const currentState = typeof stateInstance?.getState === 'function'
         ? stateInstance.getState()
         : null;
-    const resourceClassUri = candidate.resourceClassUri || candidate.linkedDataUri || getResourceClassUri(candidate.resourceClassData);
+    const resourceClassUri = candidate.resourceClassUri
+        || candidate.linkedDataUri
+        || buildResourceClassUri(candidate.resourceClassData, currentState);
     if (!resourceClassUri) {
         return mergeResourceClassCandidate(candidate);
     }
@@ -474,13 +513,12 @@ function createResourceClassCandidate(currentState) {
             || sample?.['o:term']
             || sample?.['o:local_name']
             || sample?.['@value']
-            || (typeof sample?.['@id'] === 'string' ? sample['@id'].split('/').pop() : null)
             || 'Resource class',
         templateDisplayLabel: 'Resource class',
         templateAlternateLabel: 'Resource class',
         fieldProfile: buildObservedFieldProfile(samples.length > 0 ? samples : [sample]),
-        linkedDataUri: getResourceClassUri(sample),
-        resourceClassUri: getResourceClassUri(sample),
+        linkedDataUri: buildResourceClassUri(sample, currentState),
+        resourceClassUri: buildResourceClassUri(sample, currentState),
         resourceClassLabel: sample?.['o:label'] || sample?.['o:local_name'] || null,
         resourceClassTerm: sample?.['o:term'] || null,
         preferredSourceField: 'o:label',
@@ -2151,17 +2189,18 @@ export function createMappingModalContent(keyData) {
         
         const entitySchemaDropdownHTML = hasEntitySchemaProperties ? `
             <div class="entity-schema-properties" id="entity-schema-properties">
-                <label for="entity-schema-property-select">Properties from Entity Schema:</label>
+                <h4>1. Recommended by this Entity Schema</h4>
+                <label for="entity-schema-property-select">Choose a schema property:</label>
                 <select class="entity-schema-property-select" id="entity-schema-property-select">
                     <option value="">Select a property from schema...</option>
                 </select>
-                <small class="schema-indicator">These properties are recommended by the selected entity schema</small>
+                <small class="schema-indicator">Start here when the imported field describes a required or recommended part of this kind of item. Field names can be ambiguous, so choose the property that matches the field's meaning.</small>
             </div>
         ` : '';
         
         const regularSearchHTML = `
             ${entitySchemaDropdownHTML}
-            <h4>Search Properties</h4>
+            <h4>${hasEntitySchemaProperties ? '2. Search all Wikidata properties' : 'Search Wikidata properties'}</h4>
             <input type="text" id="property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
             <div id="property-suggestions" class="property-suggestions"></div>
             <div id="selected-property" class="selected-property" style="display: none;">
