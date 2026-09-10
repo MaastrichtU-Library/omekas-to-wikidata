@@ -52,7 +52,7 @@ function createModalContextBanner(itemId, property, valueIndex, value, keyObjOrM
 
     banner.appendChild(createElement('div', {
         className: 'reconciliation-modal-context__shortcuts'
-    }, 'Shortcuts: Enter confirms an enabled choice; I skips this value.'));
+    }, 'Shortcuts: click a result or press 1-9 to choose it; I skips this value.'));
 
     return banner;
 }
@@ -74,6 +74,16 @@ function setupReconciliationKeyboardShortcuts(controller) {
             if (confirmButton instanceof HTMLButtonElement) {
                 event.preventDefault();
                 confirmButton.click();
+            }
+        }
+
+        const matchIndex = Number(event.key) - 1;
+        if (Number.isInteger(matchIndex) && matchIndex >= 0 && matchIndex <= 8) {
+            const matchCards = document.querySelectorAll('#modal-content .wikidata-match-item, #modal-content .match-item');
+            const matchCard = matchCards[matchIndex];
+            if (matchCard instanceof HTMLElement) {
+                event.preventDefault();
+                matchCard.click();
             }
         }
 
@@ -304,7 +314,7 @@ function getPropertyTypeFromMappings(property, state) {
  */
 function getDataTypeAndPropertyData(property, propertyData, state = null) {
     // Priority 1: Check if we have explicit property data with datatype
-    if (propertyData && propertyData.datatype) {
+    if (propertyData && propertyData.datatype && propertyData.datatype !== 'unknown') {
         return {
             datatype: propertyData.datatype,
             enhancedPropertyData: propertyData // Use existing property data as-is

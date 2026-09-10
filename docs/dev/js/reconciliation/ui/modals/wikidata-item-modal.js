@@ -255,7 +255,7 @@ export function createWikidataMatchItem(match) {
     const safeMatchId = escapeHtml(match.id);
     // Escape match.id for safe use in JavaScript string literals
     const jsEscapedId = match.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-    const label = escapeHtml(match.label || 'Unnamed');
+    const label = escapeHtml(match.label || match.name || match.id || 'Unnamed');
     const description = match.description ? escapeHtml(match.description) : '';
 
     return `
