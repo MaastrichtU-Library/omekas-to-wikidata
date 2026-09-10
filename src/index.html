@@ -95,7 +95,12 @@
                                 </fieldset>
                                 <fieldset class="api-parameter-group api-parameter-group--optional">
                                     <legend>Pagination</legend>
-                                    <p class="api-parameter-hint">Broad `/api/items` browsing uses one page at a time. When you apply a resource template ID, item set ID, site ID, owner ID, or a combination of those, the tool removes `page` and `per_page` from the visible URL and automatically fetches all matching pages for that scope.</p>
+                                    <p class="api-parameter-hint">Broad `/api/items` browsing uses one page at a time. A collection scope fetches all matching pages by default.</p>
+                                    <label class="api-checkbox-option" for="api-use-scoped-pagination">
+                                        <input type="checkbox" id="api-use-scoped-pagination" disabled>
+                                        Limit a selected scope to one page
+                                    </label>
+                                    <p id="api-scoped-pagination-help" class="api-parameter-hint">Select at least one collection scope first. You can then choose a page and page size instead of retrieving every matching item.</p>
                                     <label for="api-page">Page</label>
                                     <input type="number" id="api-page" min="1" step="1" value="1" placeholder="1">
                                     <label for="api-per-page">Items per page</label>
@@ -160,10 +165,12 @@
                         <div class="mapping-checklist__item">
                             <p><strong>1. Label</strong> Choose the Omeka S field that contains the title or name for the Wikidata item.</p>
                             <button id="add-label" class="button button--secondary">Set Label</button>
+                            <p id="label-mapping-summary" class="mapping-checklist__summary" hidden></p>
                         </div>
                         <div class="mapping-checklist__item">
                             <p><strong>2. Instance of</strong> Confirm what kind of thing the items are, often from the resource template class.</p>
                             <button id="add-instance-of" class="button button--secondary">Set Instance of</button>
+                            <p id="instance-of-mapping-summary" class="mapping-checklist__summary" hidden></p>
                         </div>
                         <div class="mapping-checklist__item">
                             <p><strong>3. Optional names</strong> Add descriptions or aliases when the imported fields contain values you want on Wikidata.</p>

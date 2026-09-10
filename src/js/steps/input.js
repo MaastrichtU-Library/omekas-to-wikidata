@@ -165,6 +165,10 @@ export function setupInputStep(state) {
     const defaultApiUrl = apiUrlInput?.value || '';
     const defaultPage = '1';
     const defaultPerPage = '25';
+    const scopedPaginationToggle = document.getElementById('api-use-scoped-pagination');
+    const scopedPaginationHelp = document.getElementById('api-scoped-pagination-help');
+    const pageInput = document.getElementById('api-page');
+    const perPageInput = document.getElementById('api-per-page');
     // Advanced parameters removed for MVP
     // const apiKeyInput = document.getElementById('api-key');
     // const paginationInput = document.getElementById('pagination');
@@ -186,8 +190,8 @@ export function setupInputStep(state) {
         { input: document.getElementById('api-item-set-id'), param: 'item_set_id' },
         { input: document.getElementById('api-site-id'), param: 'site_id' },
         { input: document.getElementById('api-owner-id'), param: 'owner_id' },
-        { input: document.getElementById('api-page'), param: 'page' },
-        { input: document.getElementById('api-per-page'), param: 'per_page' }
+        { input: pageInput, param: 'page' },
+        { input: perPageInput, param: 'per_page' }
     ];
 
     function parseApiUrl(url) {
@@ -204,11 +208,43 @@ export function setupInputStep(state) {
             return;
         }
 
-        apiParameterFields.forEach(({ input, param }) => {
+        apiParameterFields.filter(({ param }) => param !== 'page' && param !== 'per_page').forEach(({ input, param }) => {
             if (input) {
                 input.value = parsedUrl.searchParams.get(param) || '';
             }
         });
+
+        const hasScope = hasScopedCollectionFilters(parsedUrl.toString());
+        const hasScopedPagination = hasScope && Boolean(
+            parsedUrl.searchParams.get('page') || parsedUrl.searchParams.get('per_page')
+        );
+
+        if (scopedPaginationToggle) {
+            scopedPaginationToggle.disabled = !hasScope;
+            scopedPaginationToggle.checked = hasScopedPagination;
+        }
+
+        if (pageInput) {
+            pageInput.disabled = hasScope && !hasScopedPagination;
+            pageInput.value = hasScope && !hasScopedPagination
+                ? ''
+                : parsedUrl.searchParams.get('page') || defaultPage;
+        }
+
+        if (perPageInput) {
+            perPageInput.disabled = hasScope && !hasScopedPagination;
+            perPageInput.value = hasScope && !hasScopedPagination
+                ? ''
+                : parsedUrl.searchParams.get('per_page') || defaultPerPage;
+        }
+
+        if (scopedPaginationHelp) {
+            scopedPaginationHelp.textContent = !hasScope
+                ? 'Select at least one collection scope first. You can then choose a page and page size instead of retrieving every matching item.'
+                : hasScopedPagination
+                    ? 'This scope will load only the selected page. Turn this off to retrieve every matching item.'
+                    : 'This scope will retrieve every matching item. Turn on the limit to choose one page instead.';
+        }
     }
 
     function hasScopedCollectionFilters(url) {
@@ -227,7 +263,9 @@ export function setupInputStep(state) {
             return url;
         }
 
-        if (hasScopedCollectionFilters(parsedUrl.toString())) {
+        const hasScope = hasScopedCollectionFilters(parsedUrl.toString());
+        const shouldKeepScopedPagination = hasScope && Boolean(scopedPaginationToggle?.checked);
+        if (hasScope && !shouldKeepScopedPagination) {
             parsedUrl.searchParams.delete('page');
             parsedUrl.searchParams.delete('per_page');
             return parsedUrl.toString();
@@ -270,7 +308,7 @@ export function setupInputStep(state) {
                 }
             });
         } else {
-            apiParameterFields.forEach(({ input, param }) => {
+            apiParameterFields.filter(({ param }) => param !== 'page' && param !== 'per_page').forEach(({ input, param }) => {
                 const fallbackValue = param === 'page'
                     ? defaultPage
                     : param === 'per_page'
@@ -286,6 +324,18 @@ export function setupInputStep(state) {
                     parsedUrl.searchParams.delete(param);
                 }
             });
+
+            const hasScope = hasScopedCollectionFilters(parsedUrl.toString());
+            const shouldKeepScopedPagination = hasScope && Boolean(scopedPaginationToggle?.checked);
+            if (!hasScope || shouldKeepScopedPagination) {
+                const pageValue = pageInput?.value?.trim() || defaultPage;
+                const perPageValue = perPageInput?.value?.trim() || defaultPerPage;
+                parsedUrl.searchParams.set('page', pageValue);
+                parsedUrl.searchParams.set('per_page', perPageValue);
+            } else {
+                parsedUrl.searchParams.delete('page');
+                parsedUrl.searchParams.delete('per_page');
+            }
         }
 
         apiUrlInput.value = ensureDefaultPagination(parsedUrl.toString());
@@ -326,6 +376,37 @@ export function setupInputStep(state) {
     if (resetApiParamsBtn) {
         resetApiParamsBtn.addEventListener('click', () => {
             updateApiUrlFromParameterControls({ clear: true });
+        });
+    }
+
+    if (scopedPaginationToggle) {
+        scopedPaginationToggle.addEventListener('change', () => {
+            if (scopedPaginationToggle.checked) {
+                if (pageInput) {
+                    pageInput.disabled = false;
+                    pageInput.value = pageInput.value || defaultPage;
+                }
+                if (perPageInput) {
+                    perPageInput.disabled = false;
+                    perPageInput.value = perPageInput.value || defaultPerPage;
+                }
+                if (scopedPaginationHelp) {
+                    scopedPaginationHelp.textContent = 'Choose a page and page size, then apply the parameters to load only that part of the scoped result.';
+                }
+                return;
+            }
+
+            if (pageInput) {
+                pageInput.disabled = true;
+                pageInput.value = '';
+            }
+            if (perPageInput) {
+                perPageInput.disabled = true;
+                perPageInput.value = '';
+            }
+            if (scopedPaginationHelp) {
+                scopedPaginationHelp.textContent = 'This scope will retrieve every matching item. Turn on the limit to choose one page instead.';
+            }
         });
     }
 
@@ -528,9 +609,6 @@ export function setupInputStep(state) {
                     return;
                 }
                 
-                // Update state
-                state.updateState('apiUrl', apiUrl);
-                
                 // Show loading indicator
                 if (loadingIndicator) loadingIndicator.style.display = 'block';
                 
@@ -540,8 +618,14 @@ export function setupInputStep(state) {
                 }
 
                 apiUrlInput.value = ensureDefaultPagination(apiUrl);
+                state.updateState('apiUrl', apiUrlInput.value);
+                const hasScopedPagination = hasScopedCollectionFilters(apiUrlInput.value) && Boolean(
+                    parseApiUrl(apiUrlInput.value)?.searchParams.get('page') ||
+                    parseApiUrl(apiUrlInput.value)?.searchParams.get('per_page')
+                );
                 const shouldFetchAllPages =
                     hasScopedCollectionFilters(apiUrlInput.value) &&
+                    !hasScopedPagination &&
                     supportsPagedItemFetching(apiUrlInput.value);
 
                 const result = shouldFetchAllPages

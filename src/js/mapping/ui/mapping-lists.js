@@ -183,8 +183,12 @@ function createKeyLabelGroup(keyData) {
 function syncRequiredMappingButtons(keys) {
     const labelButton = document.getElementById('add-label');
     const instanceOfButton = document.getElementById('add-instance-of');
+    const labelSummary = document.getElementById('label-mapping-summary');
+    const instanceOfSummary = document.getElementById('instance-of-mapping-summary');
     const hasLabelMapping = hasMappingForProperty(keys, 'label');
     const hasInstanceOfMapping = hasMappingForProperty(keys, 'P31');
+    const labelMapping = keys.find(key => key?.property?.id === 'label');
+    const instanceOfMapping = keys.find(key => key?.property?.id === 'P31');
 
     if (labelButton) {
         labelButton.disabled = hasLabelMapping;
@@ -200,6 +204,24 @@ function syncRequiredMappingButtons(keys) {
         instanceOfButton.title = hasInstanceOfMapping
             ? 'This project already has an Instance of mapping. Edit the existing Instance of entry in Mapped Keys to change it.'
             : 'Map the source field that classifies what each item is. This usually follows the selected resource template class.';
+    }
+
+    if (labelSummary) {
+        const sourceField = labelMapping?.selectedAtField || labelMapping?.key;
+        labelSummary.hidden = !sourceField;
+        labelSummary.textContent = sourceField ? `Mapped from ${sourceField}` : '';
+    }
+
+    if (instanceOfSummary) {
+        const classTerm = instanceOfMapping?.guidedSourceMode === 'manual_text'
+            ? instanceOfMapping.guidedManualText
+            : instanceOfMapping?.resourceClassTerm || instanceOfMapping?.selectedAtField || instanceOfMapping?.key;
+        instanceOfSummary.hidden = !classTerm;
+        instanceOfSummary.textContent = classTerm
+            ? instanceOfMapping?.guidedSourceMode === 'manual_text'
+                ? `Using manual text: ${classTerm}`
+                : `Using ${classTerm}`
+            : '';
     }
 }
 

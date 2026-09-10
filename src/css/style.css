@@ -1319,6 +1319,10 @@ main {
     width: auto;
 }
 
+#step1 .api-checkbox-option input:disabled {
+    cursor: not-allowed;
+}
+
 #step1 .data-status,
 #step1 .data-summary {
     line-height: 1.55;
@@ -1578,6 +1582,13 @@ main {
     border: 1px solid #d8e2ee;
     border-radius: 8px;
     background: #f7fbff;
+}
+
+.mapping-checklist__summary {
+    margin: 0;
+    color: #486581;
+    font-size: 0.88rem;
+    line-height: 1.4;
 }
 
 .segment-family-section {
