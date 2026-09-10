@@ -290,9 +290,13 @@ export function setupMappingStep(state) {
     function openGuidedMappingModal(kind) {
         const totalItems = getFetchedItemCount();
         const guidedProperty = getGuidedProperty(kind);
+        const existingMapping = state.getState().mappings?.mappedKeys?.find(mapping =>
+            mapping?.property?.id === guidedProperty?.id
+        );
 
         openMappingModal({
-            key: '',
+            ...existingMapping,
+            key: existingMapping?.key || '',
             type: 'unknown',
             frequency: totalItems,
             totalItems,

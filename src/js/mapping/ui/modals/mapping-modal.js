@@ -362,6 +362,10 @@ function getResourceClassUri(resourceClassValue) {
 }
 
 function getResourceClassId(resourceClassValue) {
+    if (Number.isInteger(resourceClassValue) || (typeof resourceClassValue === 'string' && /^\d+$/.test(resourceClassValue))) {
+        return String(resourceClassValue);
+    }
+
     if (!resourceClassValue || typeof resourceClassValue !== 'object') {
         return null;
     }
@@ -372,6 +376,38 @@ function getResourceClassId(resourceClassValue) {
         : null;
 }
 
+function getOmekaApiBaseUrl(url) {
+    if (!url) {
+        return null;
+    }
+
+    try {
+        const parsedUrl = new URL(url);
+        const apiPathIndex = parsedUrl.pathname.indexOf('/api/');
+        if (apiPathIndex === -1) {
+            return null;
+        }
+
+        const basePath = parsedUrl.pathname.slice(0, apiPathIndex).replace(/\/$/, '');
+        return `${parsedUrl.origin}${basePath}`;
+    } catch {
+        return null;
+    }
+}
+
+function getResourceClassApiBaseUrl(currentState = null) {
+    const items = normalizeFetchedItems(currentState?.fetchedData || currentState?.allFetchedData);
+    const candidateUrls = [
+        currentState?.apiUrl,
+        ...(currentState?.resourceTemplates || []).map(template => template?.['@id']),
+        ...items.map(item => item?.['@id'])
+    ];
+
+    return candidateUrls
+        .map(getOmekaApiBaseUrl)
+        .find(Boolean) || null;
+}
+
 function buildResourceClassUri(resourceClassValue, currentState = null) {
     const directUri = getResourceClassUri(resourceClassValue);
     if (directUri) {
@@ -379,23 +415,12 @@ function buildResourceClassUri(resourceClassValue, currentState = null) {
     }
 
     const resourceClassId = getResourceClassId(resourceClassValue);
-    const apiUrl = currentState?.apiUrl;
-    if (!resourceClassId || !apiUrl) {
+    const apiBaseUrl = getResourceClassApiBaseUrl(currentState);
+    if (!resourceClassId || !apiBaseUrl) {
         return null;
     }
 
-    try {
-        const parsedUrl = new URL(apiUrl);
-        const apiPathIndex = parsedUrl.pathname.indexOf('/api/');
-        if (apiPathIndex === -1) {
-            return null;
-        }
-
-        const basePath = parsedUrl.pathname.slice(0, apiPathIndex).replace(/\/$/, '');
-        return `${parsedUrl.origin}${basePath}/api/resource_classes/${resourceClassId}`;
-    } catch {
-        return null;
-    }
+    return `${apiBaseUrl}/api/resource_classes/${resourceClassId}`;
 }
 
 function mergeResourceClassCandidate(candidate, resourceClassData = null) {
@@ -747,13 +772,27 @@ function createGuidedSourceFieldSelector(keyData, mode, selectedProperty) {
         samplePreview.appendChild(createGuidedPreviewRow('Selected source', keyLine));
 
         if (mode === 'instance_of') {
-            samplePreview.appendChild(createGuidedPreviewRow('Label', enrichedCandidate.resourceClassLabel || 'No class label available'));
-            samplePreview.appendChild(createGuidedPreviewRow('Term', enrichedCandidate.resourceClassTerm || 'No class term available'));
-            samplePreview.appendChild(createGuidedPreviewRow(
-                'Sample value used for reconciliation',
-                sampleDetail?.value || enrichedCandidate.resourceClassLabel || enrichedCandidate.sampleValue || 'No sample available',
-                'guided-field-selector__preview-row--stacked'
-            ));
+            if (enrichedCandidate.resourceClassLabel || enrichedCandidate.resourceClassTerm) {
+                samplePreview.appendChild(createGuidedPreviewRow('Label', enrichedCandidate.resourceClassLabel || 'No class label available'));
+                samplePreview.appendChild(createGuidedPreviewRow('Term', enrichedCandidate.resourceClassTerm || 'No class term available'));
+                samplePreview.appendChild(createGuidedPreviewRow(
+                    'Sample value used for reconciliation',
+                    sampleDetail?.value || enrichedCandidate.resourceClassLabel || 'No sample available',
+                    'guided-field-selector__preview-row--stacked'
+                ));
+            } else {
+                samplePreview.appendChild(createElement('p', {
+                    className: 'guided-field-selector__fallback'
+                }, 'The Omeka S class details could not be read from this endpoint. Choose “Enter instance-of text manually” and enter the class label you want to reconcile.'));
+
+                if (enrichedCandidate.resourceClassUri) {
+                    samplePreview.appendChild(createElement('a', {
+                        href: enrichedCandidate.resourceClassUri,
+                        target: '_blank',
+                        rel: 'noopener'
+                    }, 'View the resource-class JSON →'));
+                }
+            }
             return;
         }
 

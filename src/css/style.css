@@ -7754,6 +7754,12 @@ pre.sample-value {
     color: #334e68;
 }
 
+.guided-field-selector__fallback {
+    margin: 0;
+    color: #7b341e;
+    line-height: 1.5;
+}
+
 .guided-target-card {
     border: 1px solid #d8e2ee;
     border-radius: 10px;
