@@ -191,18 +191,18 @@ function syncRequiredMappingButtons(keys) {
     const instanceOfMapping = keys.find(key => key?.property?.id === 'P31');
 
     if (labelButton) {
-        labelButton.disabled = hasLabelMapping;
-        labelButton.textContent = hasLabelMapping ? 'Label Set' : 'Set Label';
+        labelButton.disabled = false;
+        labelButton.textContent = hasLabelMapping ? 'Change Label' : 'Set Label';
         labelButton.title = hasLabelMapping
-            ? 'This project already has a Label mapping. Edit the existing Label entry in Mapped Keys to change it.'
+            ? 'Change the current Label mapping.'
             : 'Map the source field that contains the main title or name.';
     }
 
     if (instanceOfButton) {
-        instanceOfButton.disabled = hasInstanceOfMapping;
-        instanceOfButton.textContent = hasInstanceOfMapping ? 'Instance of Set' : 'Set Instance of';
+        instanceOfButton.disabled = false;
+        instanceOfButton.textContent = hasInstanceOfMapping ? 'Change Instance of' : 'Set Instance of';
         instanceOfButton.title = hasInstanceOfMapping
-            ? 'This project already has an Instance of mapping. Edit the existing Instance of entry in Mapped Keys to change it.'
+            ? 'Change the current Instance of mapping.'
             : 'Map the source field that classifies what each item is. This usually follows the selected resource template class.';
     }
 
@@ -215,7 +215,7 @@ function syncRequiredMappingButtons(keys) {
     if (instanceOfSummary) {
         const classTerm = instanceOfMapping?.guidedSourceMode === 'manual_text'
             ? instanceOfMapping.guidedManualText
-            : instanceOfMapping?.resourceClassTerm || instanceOfMapping?.selectedAtField || instanceOfMapping?.key;
+            : instanceOfMapping?.resourceClassTerm || instanceOfMapping?.resourceClassLabel;
         instanceOfSummary.hidden = !classTerm;
         instanceOfSummary.textContent = classTerm
             ? instanceOfMapping?.guidedSourceMode === 'manual_text'
