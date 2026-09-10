@@ -202,6 +202,61 @@ export function setupInputStep(state) {
         }
     }
 
+    function getOmekaApiBaseUrl(url) {
+        const parsedUrl = parseApiUrl(url);
+        if (!parsedUrl) {
+            return '';
+        }
+
+        const apiMarkerIndex = parsedUrl.pathname.indexOf('/api/');
+        if (apiMarkerIndex === -1) {
+            return '';
+        }
+
+        return `${parsedUrl.origin}${parsedUrl.pathname.slice(0, apiMarkerIndex)}`;
+    }
+
+    function getResourceTemplateApiBaseUrl(data, preferredApiUrl = '') {
+        const items = normalizeItems(data);
+        const hasResourceTemplate = items.some(item => item?.['o:resource_template']);
+        if (!hasResourceTemplate) {
+            return '';
+        }
+
+        const itemUrl = items.find(item => typeof item?.['@id'] === 'string')?.['@id'] || '';
+        const templateUrl = items.find(item => typeof item?.['o:resource_template']?.['@id'] === 'string')
+            ?.['o:resource_template']?.['@id'] || '';
+
+        // Item and template URLs describe the pasted dataset itself, so prefer them over a stale input value.
+        return getOmekaApiBaseUrl(itemUrl) ||
+            getOmekaApiBaseUrl(templateUrl) ||
+            getOmekaApiBaseUrl(preferredApiUrl);
+    }
+
+    async function loadResourceTemplates(data, preferredApiUrl = '') {
+        state.updateState('resourceTemplates', [], false);
+
+        const apiBaseUrl = getResourceTemplateApiBaseUrl(data, preferredApiUrl);
+        if (!apiBaseUrl) {
+            return [];
+        }
+
+        try {
+            const templatesResult = await fetchWithCorsProxy(`${apiBaseUrl}/api/resource_templates`);
+            if (!templatesResult.success || !Array.isArray(templatesResult.data)) {
+                return [];
+            }
+
+            state.updateState('resourceTemplates', templatesResult.data, false);
+            console.log(`Successfully fetched ${templatesResult.data.length} resource templates`);
+            return templatesResult.data;
+        } catch (templateError) {
+            // The records remain usable without template metadata, but alternative labels need this endpoint.
+            console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
+            return [];
+        }
+    }
+
     function syncApiParameterControls(url) {
         const parsedUrl = parseApiUrl(url);
         if (!parsedUrl) {
@@ -638,21 +693,8 @@ export function setupInputStep(state) {
                     throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
                 }
 
-                // Template metadata improves Step 1 labels but should never delay the primary item request.
-                let resourceTemplates = [];
-                state.updateState('resourceTemplates', resourceTemplates, false);
-                try {
-                    const baseUrl = apiUrl.split('/api/')[0];
-                    const templatesUrl = `${baseUrl}/api/resource_templates`;
-                    const templatesResult = await fetchWithCorsProxy(templatesUrl);
-                    if (templatesResult.success && Array.isArray(templatesResult.data)) {
-                        resourceTemplates = templatesResult.data;
-                        state.updateState('resourceTemplates', resourceTemplates, false);
-                        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
-                    }
-                } catch (templateError) {
-                    console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
-                }
+                // Template metadata supplies the human labels used in Mapping and Reconciliation.
+                await loadResourceTemplates(data, apiUrlInput.value);
                 
                 // Process the successful data
                 processSuccessfulData(data, result.method, {
@@ -717,7 +759,7 @@ export function setupInputStep(state) {
     // Process manual JSON button
     if (processManualJsonButton) {
         processManualJsonButton.addEventListener('click', () => {
-            processManualJsonInput();
+            void processManualJsonInput();
         });
     }
     
@@ -763,7 +805,7 @@ export function setupInputStep(state) {
         }
     }
     
-    function processManualJsonInput() {
+    async function processManualJsonInput() {
         const jsonText = manualJsonTextarea.value.trim();
         const preservedApiUrl = apiUrlInput?.value.trim() || '';
         
@@ -784,8 +826,13 @@ export function setupInputStep(state) {
                 return;
             }
             
-            // Process the manually entered data
-            state.updateState('resourceTemplates', [], false);
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'block';
+            }
+
+            // Use the same template-metadata enrichment as API imports. When the input URL is absent,
+            // the Omeka item URL embedded in the pasted JSON identifies the matching API instance.
+            await loadResourceTemplates(data, preservedApiUrl);
             processSuccessfulData(data, 'manual');
             
             // Hide the manual input area
@@ -793,6 +840,10 @@ export function setupInputStep(state) {
             
         } catch (parseError) {
             alert(`Invalid JSON data: ${parseError.message}`);
+        } finally {
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
         }
     }
 
