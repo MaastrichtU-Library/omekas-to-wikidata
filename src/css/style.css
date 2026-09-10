@@ -7734,6 +7734,40 @@ pre.sample-value {
     resize: vertical;
 }
 
+.manual-template-metadata {
+    margin-top: 14px;
+    color: #4b5563;
+    font-size: 14px;
+}
+
+.manual-template-metadata summary {
+    cursor: pointer;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.manual-template-metadata p {
+    margin: 10px 0;
+}
+
+.manual-template-metadata textarea {
+    min-height: 120px;
+}
+
+.input-metadata-warning {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border-left: 4px solid #c98a11;
+    background: #fff8e8;
+    color: #6b4a00;
+    font-size: 14px;
+}
+
+.input-metadata-warning .hint {
+    margin: 8px 0 0;
+    overflow-wrap: anywhere;
+}
+
 .guided-field-selector__select {
     min-height: 2.75rem;
 }

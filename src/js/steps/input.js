@@ -182,6 +182,7 @@ export function setupInputStep(state) {
     const manualJsonButton = document.getElementById('manual-json-button');
     const manualJsonArea = document.getElementById('manual-json-area');
     const manualJsonTextarea = document.getElementById('manual-json-textarea');
+    const manualTemplateJsonTextarea = document.getElementById('manual-template-json-textarea');
     const processManualJsonButton = document.getElementById('process-manual-json-button');
     const cancelManualJsonButton = document.getElementById('cancel-manual-json');
 
@@ -233,28 +234,97 @@ export function setupInputStep(state) {
             getOmekaApiBaseUrl(preferredApiUrl);
     }
 
-    async function loadResourceTemplates(data, preferredApiUrl = '') {
+    function getReferencedResourceTemplateIds(data) {
+        return [...new Set(
+            normalizeItems(data)
+                .map(item => getResourceTemplateId(item?.['o:resource_template']))
+                .filter(Boolean)
+        )];
+    }
+
+    function extractResourceTemplateDefinitions(data) {
+        const candidates = Array.isArray(data)
+            ? data
+            : data?.resourceTemplates || data?.resource_templates || [data];
+
+        return candidates.filter(template =>
+            template &&
+            typeof template === 'object' &&
+            Array.isArray(template['o:resource_template_property'])
+        );
+    }
+
+    function mergeResourceTemplates(currentTemplates, additionalTemplates) {
+        const templatesById = new Map();
+
+        [...currentTemplates, ...additionalTemplates].forEach(template => {
+            const templateId = getResourceTemplateId(template);
+            if (templateId && !templatesById.has(templateId)) {
+                templatesById.set(templateId, template);
+            }
+        });
+
+        return [...templatesById.values()];
+    }
+
+    async function loadResourceTemplateById(apiBaseUrl, templateId) {
+        try {
+            const templateResult = await fetchWithCorsProxy(
+                `${apiBaseUrl}/api/resource_templates/${encodeURIComponent(templateId)}`
+            );
+            const template = Array.isArray(templateResult.data)
+                ? templateResult.data[0]
+                : templateResult.data;
+
+            return template && typeof template === 'object' ? template : null;
+        } catch (templateError) {
+            console.warn(`Could not fetch resource template ${templateId}:`, templateError);
+            return null;
+        }
+    }
+
+    async function loadResourceTemplates(data, preferredApiUrl = '', providedTemplates = []) {
         state.updateState('resourceTemplates', [], false);
+
+        if (providedTemplates.length > 0) {
+            const resourceTemplates = mergeResourceTemplates([], providedTemplates);
+            state.updateState('resourceTemplates', resourceTemplates, false);
+            return resourceTemplates;
+        }
 
         const apiBaseUrl = getResourceTemplateApiBaseUrl(data, preferredApiUrl);
         if (!apiBaseUrl) {
             return [];
         }
 
+        let resourceTemplates = [];
         try {
             const templatesResult = await fetchWithCorsProxy(`${apiBaseUrl}/api/resource_templates`);
-            if (!templatesResult.success || !Array.isArray(templatesResult.data)) {
-                return [];
+            if (templatesResult.success && Array.isArray(templatesResult.data)) {
+                resourceTemplates = templatesResult.data;
             }
-
-            state.updateState('resourceTemplates', templatesResult.data, false);
-            console.log(`Successfully fetched ${templatesResult.data.length} resource templates`);
-            return templatesResult.data;
         } catch (templateError) {
-            // The records remain usable without template metadata, but alternative labels need this endpoint.
-            console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
-            return [];
+            console.warn('Could not fetch the resource template list; trying referenced templates instead:', templateError);
         }
+
+        const referencedTemplateIds = getReferencedResourceTemplateIds(data);
+        const loadedTemplateIds = new Set(resourceTemplates.map(getResourceTemplateId));
+        const missingTemplateIds = referencedTemplateIds.filter(templateId => !loadedTemplateIds.has(templateId));
+
+        if (resourceTemplates.length > 0 && missingTemplateIds.length > 0) {
+            // Individual definitions are much smaller than the complete list and survive more CORS proxies.
+            const referencedTemplates = await Promise.all(
+                missingTemplateIds.map(templateId => loadResourceTemplateById(apiBaseUrl, templateId))
+            );
+            resourceTemplates = mergeResourceTemplates(
+                resourceTemplates,
+                referencedTemplates.filter(Boolean)
+            );
+        }
+
+        state.updateState('resourceTemplates', resourceTemplates, false);
+        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
+        return resourceTemplates;
     }
 
     function syncApiParameterControls(url) {
@@ -791,6 +861,9 @@ export function setupInputStep(state) {
         if (manualJsonArea) {
             manualJsonArea.style.display = 'none';
             manualJsonTextarea.value = '';
+            if (manualTemplateJsonTextarea) {
+                manualTemplateJsonTextarea.value = '';
+            }
             
             // Restore data status if there was previous data
             const currentState = state.getState();
@@ -807,6 +880,7 @@ export function setupInputStep(state) {
     
     async function processManualJsonInput() {
         const jsonText = manualJsonTextarea.value.trim();
+        const templateJsonText = manualTemplateJsonTextarea?.value.trim() || '';
         const preservedApiUrl = apiUrlInput?.value.trim() || '';
         
         if (!jsonText) {
@@ -816,6 +890,20 @@ export function setupInputStep(state) {
         
         try {
             const data = JSON.parse(jsonText);
+            const embeddedTemplates = extractResourceTemplateDefinitions(data);
+            let providedTemplates = embeddedTemplates;
+
+            if (templateJsonText) {
+                const parsedTemplates = JSON.parse(templateJsonText);
+                providedTemplates = mergeResourceTemplates(
+                    embeddedTemplates,
+                    extractResourceTemplateDefinitions(parsedTemplates)
+                );
+
+                if (providedTemplates.length === 0) {
+                    throw new Error('Resource template JSON must contain one or more Omeka resource template definitions.');
+                }
+            }
             
             // Validate the data
             if (!isValidOmekaResponse(data)) {
@@ -832,8 +920,18 @@ export function setupInputStep(state) {
 
             // Use the same template-metadata enrichment as API imports. When the input URL is absent,
             // the Omeka item URL embedded in the pasted JSON identifies the matching API instance.
-            await loadResourceTemplates(data, preservedApiUrl);
-            processSuccessfulData(data, 'manual');
+            const resourceTemplates = await loadResourceTemplates(data, preservedApiUrl, providedTemplates);
+            const apiBaseUrl = getResourceTemplateApiBaseUrl(data, preservedApiUrl);
+            const missingTemplateIds = getReferencedResourceTemplateIds(data)
+                .filter(templateId => !resourceTemplates.some(template => getResourceTemplateId(template) === templateId));
+            processSuccessfulData(data, 'manual', {
+                templateMetadataUnavailable: missingTemplateIds.length > 0,
+                templateMetadataUrls: apiBaseUrl
+                    ? missingTemplateIds.map(templateId =>
+                        `${apiBaseUrl}/api/resource_templates/${encodeURIComponent(templateId)}`
+                    )
+                    : []
+            });
             
             // Hide the manual input area
             hideManualJsonInput();
@@ -1148,6 +1246,30 @@ export function setupInputStep(state) {
                     createElement('em', {}, pageSummary)
                 ])
             );
+        }
+
+        if (details.templateMetadataUnavailable) {
+            const metadataWarning = createElement('div', { className: 'input-metadata-warning' }, [
+                createElement('strong', {}, 'Custom template labels could not be loaded.'),
+                createElement('span', {}, ' Mapping will use the property names supplied in the item JSON. To use the template labels, paste the matching resource-template JSON in the optional Manual JSON field and process the import again.')
+            ]);
+
+            if (details.templateMetadataUrls?.length > 0) {
+                const metadataLinks = createElement('p', { className: 'hint' }, [
+                    createElement('span', {}, 'Resource templates needed: '),
+                    ...details.templateMetadataUrls.flatMap((url, index) => [
+                        ...(index > 0 ? [createElement('span', {}, ', ')] : []),
+                        createElement('a', {
+                            href: url,
+                            target: '_blank',
+                            rel: 'noopener noreferrer'
+                        }, url)
+                    ])
+                ]);
+                metadataWarning.appendChild(metadataLinks);
+            }
+
+            summaryContainer.appendChild(metadataWarning);
         }
 
         const summaryList = createElement('ul');

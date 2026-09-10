@@ -128,6 +128,11 @@
                         <h3>Manual JSON Input</h3>
                         <p>Copy JSON data from your Omeka S API endpoint and paste it below:</p>
                         <textarea id="manual-json-textarea" placeholder="Paste your JSON data here..." rows="10"></textarea>
+                        <details class="manual-template-metadata">
+                            <summary>Optional: retain custom template field labels</summary>
+                            <p>When the API cannot be read by the browser, paste the matching resource-template JSON here as well. You can paste one template, an array of templates, or the response from <code>/api/resource_templates</code>.</p>
+                            <textarea id="manual-template-json-textarea" placeholder="Paste resource-template JSON here when available..." rows="5"></textarea>
+                        </details>
                         <div class="manual-json-actions">
                             <button id="process-manual-json-button" class="button button--primary">Process JSON Data</button>
                             <button id="cancel-manual-json" class="button button--secondary">Cancel</button>
