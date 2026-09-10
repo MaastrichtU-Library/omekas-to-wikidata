@@ -157,18 +157,11 @@ function createKeyLabelGroup(keyData) {
     });
 
     const friendlyName = getOmekaFieldFriendlyName(keyData, keyData.key);
-    if (friendlyName && friendlyName !== keyData.key) {
-        const keyTemplateLabel = createElement('span', {
-            className: 'key-name-compact key-name-compact--friendly'
-        }, friendlyName);
-        labelGroup.appendChild(keyTemplateLabel);
-    }
-
     const keyName = createElement('span', {
-        className: friendlyName && friendlyName !== keyData.key
-            ? 'key-template-label key-template-label--technical'
-            : 'key-name-compact'
-    }, keyDisplayText);
+        className: 'key-name-compact key-name-compact--friendly'
+    }, friendlyName && friendlyName !== keyData.key
+        ? `${friendlyName} (${keyDisplayText})`
+        : keyDisplayText);
     labelGroup.appendChild(keyName);
 
     if (Array.isArray(keyData.includedSegmentLabels) && keyData.includedSegmentLabels.length > 0) {
@@ -209,18 +202,24 @@ function syncRequiredMappingButtons(keys) {
     if (labelSummary) {
         const sourceField = labelMapping?.selectedAtField || labelMapping?.key;
         labelSummary.hidden = !sourceField;
-        labelSummary.textContent = sourceField ? `Mapped from ${sourceField}` : '';
+        const sourceLabel = sourceField
+            ? getOmekaFieldFriendlyName(labelMapping || { key: sourceField }, sourceField)
+            : '';
+        labelSummary.textContent = sourceField
+            ? `Mapped from ${sourceLabel} (${sourceField})`
+            : '';
     }
 
     if (instanceOfSummary) {
-        const classTerm = instanceOfMapping?.guidedSourceMode === 'manual_text'
+        const classLabel = instanceOfMapping?.guidedSourceMode === 'manual_text'
             ? instanceOfMapping.guidedManualText
-            : instanceOfMapping?.resourceClassTerm || instanceOfMapping?.resourceClassLabel;
-        instanceOfSummary.hidden = !classTerm;
-        instanceOfSummary.textContent = classTerm
+            : instanceOfMapping?.resourceClassLabel;
+        const classTerm = instanceOfMapping?.resourceClassTerm;
+        instanceOfSummary.hidden = !(classLabel || classTerm);
+        instanceOfSummary.textContent = classLabel || classTerm
             ? instanceOfMapping?.guidedSourceMode === 'manual_text'
-                ? `Using manual text: ${classTerm}`
-                : `Using ${classTerm}`
+                ? `Using manual text: ${classLabel}`
+                : `Using ${classLabel || classTerm}${classLabel && classTerm ? ` (${classTerm})` : ''}`
             : '';
     }
 }

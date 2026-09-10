@@ -422,6 +422,36 @@ function buildResourceClassUri(resourceClassValue, currentState = null) {
     return `${apiBaseUrl}/api/resource_classes/${resourceClassId}`;
 }
 
+function getReadableResourceClassLabel(term) {
+    if (typeof term !== 'string' || !term.trim()) {
+        return null;
+    }
+
+    const localName = term.trim().split(/[:/#]/).pop();
+    if (!localName) {
+        return null;
+    }
+
+    return localName
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_-]+/g, ' ')
+        .replace(/^./, character => character.toUpperCase());
+}
+
+function getResourceClassTermFromItems(items = []) {
+    for (const item of items) {
+        const types = Array.isArray(item?.['@type']) ? item['@type'] : [item?.['@type']];
+        const classTerm = types.find(type => typeof type === 'string'
+            && type.includes(':')
+            && !type.startsWith('o:'));
+        if (classTerm) {
+            return classTerm;
+        }
+    }
+
+    return null;
+}
+
 function mergeResourceClassCandidate(candidate, resourceClassData = null) {
     if (!candidate) {
         return null;
@@ -430,14 +460,15 @@ function mergeResourceClassCandidate(candidate, resourceClassData = null) {
     const mergedData = resourceClassData && typeof resourceClassData === 'object'
         ? resourceClassData
         : {};
+    const resourceClassTerm = mergedData['o:term']
+        || candidate.resourceClassTerm
+        || null;
     const resourceClassLabel = mergedData['o:label']
         || candidate.resourceClassLabel
         || mergedData.label
         || mergedData.display_title
         || mergedData['o:local_name']
-        || null;
-    const resourceClassTerm = mergedData['o:term']
-        || candidate.resourceClassTerm
+        || getReadableResourceClassLabel(resourceClassTerm)
         || null;
     const resourceClassUri = getResourceClassUri(mergedData)
         || candidate.resourceClassUri
@@ -526,6 +557,15 @@ function createResourceClassCandidate(currentState) {
         return null;
     }
 
+    const resourceClassTerm = templateResourceClass?.['o:term']
+        || sample?.['o:term']
+        || getResourceClassTermFromItems(items);
+    const resourceClassLabel = templateResourceClass?.['o:label']
+        || templateResourceClass?.['o:local_name']
+        || sample?.['o:label']
+        || sample?.['o:local_name']
+        || getReadableResourceClassLabel(resourceClassTerm);
+
     return mergeResourceClassCandidate({
         key: 'o:resource_class',
         type: 'guided',
@@ -543,8 +583,8 @@ function createResourceClassCandidate(currentState) {
         fieldProfile: buildObservedFieldProfile(samples.length > 0 ? samples : [sample]),
         linkedDataUri: buildResourceClassUri(sample, currentState),
         resourceClassUri: buildResourceClassUri(sample, currentState),
-        resourceClassLabel: sample?.['o:label'] || sample?.['o:local_name'] || null,
-        resourceClassTerm: sample?.['o:term'] || null,
+        resourceClassLabel,
+        resourceClassTerm,
         preferredSourceField: 'o:label',
         resourceClassData: sample,
         sortIndex: -1
