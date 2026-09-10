@@ -21,7 +21,7 @@
  * @module input
  */
 import { eventSystem } from '../events.js';
-import { fetchWithCorsProxy, getCorsExplanation, getAdminEmailTemplate } from '../utils/cors-proxy.js';
+import { fetchWithCorsProxy, getCorsExplanation } from '../utils/cors-proxy.js';
 import { createButton, createElement } from '../ui/components.js';
 
 function normalizeItems(data) {
@@ -889,8 +889,7 @@ export function setupInputStep(state) {
      * @description
      * Error handling strategy:
      * - Provides clear explanation of CORS and why it affects data access
-     * - Offers multiple solution paths (manual JSON, admin contact, proxy services)
-     * - Generates ready-to-send email templates for contacting Omeka S administrators
+     * - Offers manual JSON input as the reliable recovery path
      * - Explains technical concepts in user-friendly language
      * - Maintains trust by explaining data privacy and security considerations
      * 
@@ -926,30 +925,9 @@ export function setupInputStep(state) {
                         <button id="try-manual-input" class="solution-btn primary">
                             Use Manual JSON Input
                         </button>
-                        <button id="show-admin-help" class="solution-btn">
-                            👤 Contact Administrator
-                        </button>
                         <button id="retry-fetch" class="solution-btn">
                             🔄 Try Again
                         </button>
-                    </div>
-                </div>
-                
-                
-                <div id="admin-help-area" class="admin-help-area" style="display: none;">
-                    <h4>Administrator Contact Template</h4>
-                    <p>Send this message to your Omeka S administrator:</p>
-                    <div class="email-template">
-                        <div class="template-field">
-                            <label>Subject:</label>
-                            <input type="text" id="email-subject" readonly value="Request to Enable CORS Headers for Omeka S API Access">
-                            <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">📋 Copy</button>
-                        </div>
-                        <div class="template-field">
-                            <label>Message:</label>
-                            <textarea id="email-body" readonly rows="12"></textarea>
-                            <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">📋 Copy</button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -963,7 +941,6 @@ export function setupInputStep(state) {
     function setupErrorSolutionListeners(apiUrl) {
         const openApiJsonBtn = document.getElementById('open-api-json');
         const tryManualBtn = document.getElementById('try-manual-input');
-        const showAdminBtn = document.getElementById('show-admin-help');
         const retryBtn = document.getElementById('retry-fetch');
         
         if (openApiJsonBtn) {
@@ -977,18 +954,6 @@ export function setupInputStep(state) {
                 // Hide the error display and show the manual JSON input
                 dataStatus.innerHTML = '<p class="placeholder">Paste the JSON you opened or downloaded into the Manual JSON area below.</p>';
                 showManualJsonInput();
-            });
-        }
-        
-        if (showAdminBtn) {
-            showAdminBtn.addEventListener('click', () => {
-                document.getElementById('admin-help-area').style.display = 'block';
-                document.getElementById('manual-input-area').style.display = 'none';
-                
-                // Populate email template
-                const template = getAdminEmailTemplate(window.location.origin);
-                document.getElementById('email-subject').value = template.subject;
-                document.getElementById('email-body').value = template.body;
             });
         }
         
