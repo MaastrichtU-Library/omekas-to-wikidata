@@ -1583,6 +1583,14 @@ main {
     line-height: 1.4;
 }
 
+.property-source-technical::before {
+    content: "(";
+}
+
+.property-source-technical::after {
+    content: ")";
+}
+
 .value-family-section {
     margin: 1rem 0;
     padding: 0.85rem;
@@ -3244,6 +3252,12 @@ pre.sample-value {
     background: #fff;
     color: #243b53;
     word-break: break-word;
+}
+
+.reconciliation-modal-context__shortcuts {
+    margin-top: 0.6rem;
+    color: #52606d;
+    font-size: 0.78rem;
 }
 
 .date-interval-choice {

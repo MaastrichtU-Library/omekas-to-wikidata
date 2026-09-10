@@ -50,7 +50,41 @@ function createModalContextBanner(itemId, property, valueIndex, value, keyObjOrM
         className: 'reconciliation-modal-context__value'
     }, value || 'Empty value'));
 
+    banner.appendChild(createElement('div', {
+        className: 'reconciliation-modal-context__shortcuts'
+    }, 'Shortcuts: Enter confirms an enabled choice; I skips this value.'));
+
     return banner;
+}
+
+function setupReconciliationKeyboardShortcuts(controller) {
+    document.addEventListener('keydown', event => {
+        if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
+            return;
+        }
+
+        const target = event.target;
+        if (target instanceof HTMLElement
+            && target.matches('input, textarea, select, [contenteditable="true"]')) {
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            const confirmButton = document.querySelector('#modal-content #confirm-btn:not(:disabled)');
+            if (confirmButton instanceof HTMLButtonElement) {
+                event.preventDefault();
+                confirmButton.click();
+            }
+        }
+
+        if (event.key.toLowerCase() === 'i') {
+            const skipButton = document.querySelector('#modal-content button[onclick="skipReconciliation()"]');
+            if (skipButton instanceof HTMLButtonElement) {
+                event.preventDefault();
+                skipButton.click();
+            }
+        }
+    }, { signal: controller.signal });
 }
 
 /**
@@ -997,6 +1031,7 @@ export function createOpenReconciliationModalFactory(dependencies) {
     } = dependencies;
 
     let currentReconciliationCell = null;
+    let shortcutController = null;
     
     return async function openReconciliationModal(itemId, property, valueIndex, value, keyObjOrManualProp = null) {
         // Calculate mappingId from keyObj or use property as fallback
@@ -1054,8 +1089,14 @@ export function createOpenReconciliationModalFactory(dependencies) {
             modalElement.firstChild
         );
 
+        shortcutController?.abort();
+        shortcutController = new AbortController();
+        setupReconciliationKeyboardShortcuts(shortcutController);
+
         // Open modal using the modal UI system
         modalUI.openModal('Reconcile Value', modalElement.innerHTML, [], () => {
+            shortcutController?.abort();
+            shortcutController = null;
             currentReconciliationCell = null;
             window.currentModalContext = null;
         });

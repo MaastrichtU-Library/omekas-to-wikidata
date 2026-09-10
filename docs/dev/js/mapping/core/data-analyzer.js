@@ -50,7 +50,21 @@ export function getOmekaFieldFriendlyName(keyOrKeyObj, fallbackKey = '') {
         return templateDisplayLabel;
     }
 
-    return keyName || fallbackKey || '';
+    // Resource templates can be unavailable for manually loaded JSON or a
+    // CORS-blocked endpoint. A readable term fallback still keeps the mapping
+    // and reconciliation screens understandable in those cases.
+    const technicalKey = keyName || fallbackKey || '';
+    const localName = technicalKey.includes(':')
+        ? technicalKey.split(':').pop()
+        : technicalKey;
+    const readableName = String(localName)
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_-]+/g, ' ')
+        .trim();
+
+    return readableName
+        ? readableName.charAt(0).toUpperCase() + readableName.slice(1)
+        : technicalKey;
 }
 
 // Context cache for JSON-LD definitions
