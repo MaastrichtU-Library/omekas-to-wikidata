@@ -7,6 +7,7 @@
 import { getConstraintBasedTypes, buildContextualProperties, validateAgainstFormatConstraints, scoreMatchWithConstraints, getConstraintSummary } from '../../utils/constraint-helpers.js';
 import { detectPropertyType, getInputFieldConfig } from '../../utils/property-types.js';
 import { createElement } from '../../ui/components.js';
+import { searchWikidataItems } from '../../utils/wikidata-search.js';
 
 function getResolvedPropertyObject(propertyMetadata) {
     if (!propertyMetadata || typeof propertyMetadata !== 'object') {
@@ -489,27 +490,14 @@ export async function tryDirectWikidataSearch(value) {
     
     async function attemptSearch(retryCount = 0) {
         try {
-            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(value)}&language=en&format=json&origin=*`;
-            
-            const response = await fetchWithTimeout(searchUrl, {}, 15000); // 15 second timeout
-            
-            if (!response.ok) {
-                if (response.status === 429) {
-                    throw new Error(`Wikidata search rate limited (429): ${response.statusText}`);
-                } else if (response.status >= 500) {
-                    throw new Error(`Wikidata search server error (${response.status}): ${response.statusText}`);
-                } else {
-                    throw new Error(`Wikidata search API error: ${response.status}`);
-                }
-            }
-            
-            const data = await response.json();
-            
-            if (!data.search || data.search.length === 0) {
+            const results = await searchWikidataItems(value, {
+                fetcher: url => fetchWithTimeout(url, {}, 15000)
+            });
+            if (results.length === 0) {
                 return [];
             }
             
-            return data.search.slice(0, 10).map(result => ({
+            return results.map(result => ({
                 id: result.id,
                 name: result.label || result.id,
                 description: result.description || '',
@@ -524,9 +512,9 @@ export async function tryDirectWikidataSearch(value) {
             
         } catch (error) {
             const isRetryableError = (
+                error.status === 429 ||
+                error.status >= 500 ||
                 error.message.includes('timeout') ||
-                error.message.includes('rate limited') ||
-                error.message.includes('server error') ||
                 error.message.includes('fetch')
             );
             

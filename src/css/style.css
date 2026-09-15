@@ -1290,9 +1290,12 @@ main {
 #step1 .api-checkbox-option {
     display: flex;
     align-items: center;
+    justify-self: start;
+    justify-content: flex-start;
     gap: 0.5rem;
     font-weight: 600;
     margin-bottom: 0.1rem;
+    text-align: left;
 }
 
 #step1 .api-checkbox-option input {

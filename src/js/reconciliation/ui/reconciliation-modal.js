@@ -11,6 +11,7 @@
 
 import { createElement } from '../../ui/components.js';
 import { getOmekaFieldFriendlyName } from '../../mapping/core/data-analyzer.js';
+import { searchWikidataItems as searchWikidataItemsByName } from '../../utils/wikidata-search.js';
 import { 
     createReconciliationModalByType,
     initializeReconciliationModal,
@@ -540,21 +541,8 @@ function getTransformedValue(value, property) {
  */
 async function searchWikidataItems(query) {
     try {
-        const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=item&limit=10`;
-        
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`Wikidata API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.search || data.search.length === 0) {
-            return [];
-        }
-        
-        // Return simple format: id, label, description
-        return data.search.map(result => ({
+        const results = await searchWikidataItemsByName(query);
+        return results.map(result => ({
             id: result.id,
             label: result.label || result.id,
             description: result.description || ''

@@ -63,7 +63,7 @@ The application follows a **modular, event-driven architecture**:
 
 ### **input.js**
 - Purpose: Step 1 - Import data from Omeka S API
-- Key features: grouped Omeka API filters with `owner_id` alongside the main collection-scope inputs, default first-page pagination (`page=1`, `per_page=25`), scoped collection warnings, resource template selection/filtering, user-meaningful sample metadata fields in Data Status, and top-of-page handoff when continuing into Mapping
+- Key features: grouped Omeka API filters with `owner_id` alongside the main collection-scope inputs, default first-page pagination (`page=1`, `per_page=25`), scoped collection warnings, manual-JSON links for the active items selection and resource templates, resource template selection/filtering, user-meaningful sample metadata fields in Data Status, and top-of-page handoff when continuing into Mapping
 - Dependencies: utils/cors-proxy.js, data/mock-data.js
 
 ### **mapping.js**
@@ -153,6 +153,7 @@ The application follows a **modular, event-driven architecture**:
 **entity-matcher.js**
 - Purpose: Match items with Wikidata entities
 - Key exports: `reconcileEntity()`, `searchWikidataEntities()`, `scoreMatch()`
+- Features: Uses the shared name-aware Wikidata item search for direct fallback matches
 
 **batch-processor.js**
 - Purpose: Process reconciliation in batches
@@ -178,7 +179,7 @@ The application follows a **modular, event-driven architecture**:
 **reconciliation-modal.js**
 - Purpose: Reconciliation configuration and details modal
 - Key exports: `openReconciliationModal()`, `displayMatchDetails()`
-- Features: Adds shared modal controls for applying a decision to identical values in the same mapped row, places that control in the modal context area, keeps it inline with its label, and supports undoing an existing decision
+- Features: Adds shared modal controls for applying a decision to identical values in the same mapped row, places that control in the modal context area, keeps it inline with its label, supports undoing an existing decision, and uses name-aware item lookup
 
 **reconciliation-display.js**
 - Purpose: Format and display reconciliation information
@@ -197,6 +198,7 @@ The application follows a **modular, event-driven architecture**:
 **wikidata-item-modal.js**
 - Purpose: Wikidata entity reconciliation modal interface
 - Key exports: `createWikidataItemModal()`, `initializeWikidataItemModal()`
+- Features: Shows clickable QIDs and searches catalogue-style personal names in either comma-separated or Wikidata label order
 
 **string-modal.js**
 - Purpose: String and monolingual text reconciliation modal interface
@@ -269,6 +271,11 @@ The application follows a **modular, event-driven architecture**:
 - Purpose: Handle CORS issues with external APIs
 - Key exports: `fetchWithCorsProxy()`, `getCorsExplanation()`, `generateCorsConfig()`
 - Features: Accepts JSON-LD (`application/ld+json`) direct API responses and falls back to multiple currently verified public proxies, including CORSPROXY and CodeTabs, for CORS-blocked endpoints
+
+### **utils/wikidata-search.js**
+- Purpose: Shared Wikidata item lookup helpers
+- Key exports: `getWikidataSearchQueries()`, `searchWikidataItems()`
+- Features: Searches the original value plus a safe `Family name, given name` -> `given name Family name` variant, then deduplicates returned QIDs while retaining the original-query order
 
 ### **utils/property-types.js**
 - Purpose: Property type detection and input handling

@@ -13,6 +13,8 @@
  * - Alternative actions (create new item, skip, etc.)
  */
 
+import { searchWikidataItems } from '../../../utils/wikidata-search.js';
+
 /**
  * Create Wikidata Item reconciliation modal content
  * @param {string} itemId - Item ID being reconciled
@@ -219,21 +221,8 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
  */
 export async function searchWikidataEntities(query) {
     try {
-        const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=item&limit=10`;
-        
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`Wikidata API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.search || data.search.length === 0) {
-            return [];
-        }
-        
-        // Return simple format: id, label, description
-        return data.search.map(result => ({
+        const results = await searchWikidataItems(query);
+        return results.map(result => ({
             id: result.id,
             label: result.label || result.id,
             description: result.description || ''

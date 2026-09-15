@@ -182,6 +182,8 @@ export function setupInputStep(state) {
     const manualJsonButton = document.getElementById('manual-json-button');
     const manualJsonArea = document.getElementById('manual-json-area');
     const manualJsonTextarea = document.getElementById('manual-json-textarea');
+    const manualItemsApiHelp = document.getElementById('manual-items-api-help');
+    const manualItemsApiLink = document.getElementById('manual-items-api-link');
     const manualTemplateJsonTextarea = document.getElementById('manual-template-json-textarea');
     const manualTemplateApiHelp = document.getElementById('manual-template-api-help');
     const manualTemplateApiLink = document.getElementById('manual-template-api-link');
@@ -242,6 +244,20 @@ export function setupInputStep(state) {
             : getOmekaApiBaseUrl(apiUrlInput?.value.trim() || '');
 
         return apiBaseUrl ? `${apiBaseUrl}/api/resource_templates` : '';
+    }
+
+    function updateManualItemsApiLink() {
+        const parsedUrl = parseApiUrl(apiUrlInput?.value.trim() || '');
+        const itemsUrl = parsedUrl?.pathname.endsWith('/api/items')
+            ? parsedUrl.toString()
+            : '';
+
+        if (manualItemsApiLink) {
+            manualItemsApiLink.href = itemsUrl || '#';
+        }
+        if (manualItemsApiHelp) {
+            manualItemsApiHelp.hidden = !itemsUrl;
+        }
     }
 
     function updateManualTemplateApiLink(data = null) {
@@ -485,6 +501,7 @@ export function setupInputStep(state) {
 
         apiUrlInput.value = ensureDefaultPagination(parsedUrl.toString());
         syncApiParameterControls(apiUrlInput.value);
+        updateManualItemsApiLink();
         return true;
     }
 
@@ -497,11 +514,13 @@ export function setupInputStep(state) {
         apiUrlInput.addEventListener('change', () => {
             apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
             syncApiParameterControls(apiUrlInput.value);
+            updateManualItemsApiLink();
         });
 
         apiUrlInput.addEventListener('blur', () => {
             apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
             syncApiParameterControls(apiUrlInput.value);
+            updateManualItemsApiLink();
         });
     }
 
@@ -509,6 +528,7 @@ export function setupInputStep(state) {
         apiUrlPreset.addEventListener('change', () => {
             apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
             syncApiParameterControls(apiUrlInput.value);
+            updateManualItemsApiLink();
         });
     }
 
@@ -864,6 +884,7 @@ export function setupInputStep(state) {
     function showManualJsonInput() {
         if (manualJsonArea) {
             manualJsonArea.style.display = 'block';
+            updateManualItemsApiLink();
             updateManualTemplateApiLink();
             manualJsonTextarea.focus();
             
