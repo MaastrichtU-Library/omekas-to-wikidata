@@ -157,18 +157,11 @@ function createKeyLabelGroup(keyData) {
     });
 
     const friendlyName = getOmekaFieldFriendlyName(keyData, keyData.key);
-    if (friendlyName && friendlyName !== keyData.key) {
-        const keyTemplateLabel = createElement('span', {
-            className: 'key-name-compact key-name-compact--friendly'
-        }, friendlyName);
-        labelGroup.appendChild(keyTemplateLabel);
-    }
-
     const keyName = createElement('span', {
-        className: friendlyName && friendlyName !== keyData.key
-            ? 'key-template-label key-template-label--technical'
-            : 'key-name-compact'
-    }, keyDisplayText);
+        className: 'key-name-compact key-name-compact--friendly'
+    }, friendlyName && friendlyName !== keyData.key
+        ? `${friendlyName} (${keyDisplayText})`
+        : keyDisplayText);
     labelGroup.appendChild(keyName);
 
     if (Array.isArray(keyData.includedSegmentLabels) && keyData.includedSegmentLabels.length > 0) {
@@ -183,23 +176,51 @@ function createKeyLabelGroup(keyData) {
 function syncRequiredMappingButtons(keys) {
     const labelButton = document.getElementById('add-label');
     const instanceOfButton = document.getElementById('add-instance-of');
+    const labelSummary = document.getElementById('label-mapping-summary');
+    const instanceOfSummary = document.getElementById('instance-of-mapping-summary');
     const hasLabelMapping = hasMappingForProperty(keys, 'label');
     const hasInstanceOfMapping = hasMappingForProperty(keys, 'P31');
+    const labelMapping = keys.find(key => key?.property?.id === 'label');
+    const instanceOfMapping = keys.find(key => key?.property?.id === 'P31');
 
     if (labelButton) {
-        labelButton.disabled = hasLabelMapping;
-        labelButton.textContent = hasLabelMapping ? 'Label Set' : 'Set Label';
+        labelButton.disabled = false;
+        labelButton.textContent = hasLabelMapping ? 'Change Label' : 'Set Label';
         labelButton.title = hasLabelMapping
-            ? 'This project already has a Label mapping. Edit the existing Label entry in Mapped Keys to change it.'
+            ? 'Change the current Label mapping.'
             : 'Map the source field that contains the main title or name.';
     }
 
     if (instanceOfButton) {
-        instanceOfButton.disabled = hasInstanceOfMapping;
-        instanceOfButton.textContent = hasInstanceOfMapping ? 'Instance of Set' : 'Set Instance of';
+        instanceOfButton.disabled = false;
+        instanceOfButton.textContent = hasInstanceOfMapping ? 'Change Instance of' : 'Set Instance of';
         instanceOfButton.title = hasInstanceOfMapping
-            ? 'This project already has an Instance of mapping. Edit the existing Instance of entry in Mapped Keys to change it.'
+            ? 'Change the current Instance of mapping.'
             : 'Map the source field that classifies what each item is. This usually follows the selected resource template class.';
+    }
+
+    if (labelSummary) {
+        const sourceField = labelMapping?.selectedAtField || labelMapping?.key;
+        labelSummary.hidden = !sourceField;
+        const sourceLabel = sourceField
+            ? getOmekaFieldFriendlyName(labelMapping || { key: sourceField }, sourceField)
+            : '';
+        labelSummary.textContent = sourceField
+            ? `Mapped from ${sourceLabel} (${sourceField})`
+            : '';
+    }
+
+    if (instanceOfSummary) {
+        const classLabel = instanceOfMapping?.guidedSourceMode === 'manual_text'
+            ? instanceOfMapping.guidedManualText
+            : instanceOfMapping?.resourceClassLabel;
+        const classTerm = instanceOfMapping?.resourceClassTerm;
+        instanceOfSummary.hidden = !(classLabel || classTerm);
+        instanceOfSummary.textContent = classLabel || classTerm
+            ? instanceOfMapping?.guidedSourceMode === 'manual_text'
+                ? `Using manual text: ${classLabel}`
+                : `Using ${classLabel || classTerm}${classLabel && classTerm ? ` (${classTerm})` : ''}`
+            : '';
     }
 }
 

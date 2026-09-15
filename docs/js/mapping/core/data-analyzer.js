@@ -50,7 +50,21 @@ export function getOmekaFieldFriendlyName(keyOrKeyObj, fallbackKey = '') {
         return templateDisplayLabel;
     }
 
-    return keyName || fallbackKey || '';
+    // Resource templates can be unavailable for manually loaded JSON or a
+    // CORS-blocked endpoint. A readable term fallback still keeps the mapping
+    // and reconciliation screens understandable in those cases.
+    const technicalKey = keyName || fallbackKey || '';
+    const localName = technicalKey.includes(':')
+        ? technicalKey.split(':').pop()
+        : technicalKey;
+    const readableName = String(localName)
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_-]+/g, ' ')
+        .trim();
+
+    return readableName
+        ? readableName.charAt(0).toUpperCase() + readableName.slice(1)
+        : technicalKey;
 }
 
 // Context cache for JSON-LD definitions
@@ -393,6 +407,7 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
 
     // Map to track which property ID belongs to which key in the dataset
     const keyToPropertyId = new Map();
+    const observedPropertyLabelByKey = new Map();
 
     // Analyze all items to get key frequency and first-seen order
     items.forEach(item => {
@@ -406,12 +421,20 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                 }
 
                 // Extract property_id from item data if available
-                if (!keyToPropertyId.has(key) && Array.isArray(item[key]) && item[key].length > 0) {
+                if (Array.isArray(item[key]) && item[key].length > 0) {
                     const arr = item[key];
                     for (let i = 0; i < arr.length; i++) {
                         const val = arr[i];
-                        if (val && val.property_id != null) {
+                        if (!keyToPropertyId.has(key) && val && val.property_id != null) {
                             keyToPropertyId.set(key, String(val.property_id));
+                        }
+                        if (!observedPropertyLabelByKey.has(key) && typeof val?.property_label === 'string') {
+                            const propertyLabel = val.property_label.trim();
+                            if (propertyLabel) {
+                                observedPropertyLabelByKey.set(key, propertyLabel);
+                            }
+                        }
+                        if (keyToPropertyId.has(key) && observedPropertyLabelByKey.has(key)) {
                             break;
                         }
                     }
@@ -524,7 +547,8 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
             const templatePropertyLabel = propId && templatePropertyLabelByPropertyId.has(propId)
                 ? templatePropertyLabelByPropertyId.get(propId)
                 : templatePropertyLabelByTerm.get(key) || null;
-            const templateDisplayLabel = templateAlternateLabel || templatePropertyLabel || null;
+            const observedPropertyLabel = observedPropertyLabelByKey.get(key) || null;
+            const templateDisplayLabel = templateAlternateLabel || templatePropertyLabel || observedPropertyLabel || null;
 
             return {
                 key,
@@ -541,6 +565,7 @@ export async function extractAndAnalyzeKeys(data, options = {}) {
                 fieldProfile,
                 templateAlternateLabel,
                 templatePropertyLabel,
+                observedPropertyLabel,
                 templateDisplayLabel,
                 extractionMode: EXTRACTION_MODES.AUTO
             };
