@@ -11,6 +11,7 @@
 
 import { createElement } from '../../ui/components.js';
 import { getOmekaFieldFriendlyName } from '../../mapping/core/data-analyzer.js';
+import { searchWikidataItems as searchWikidataItemsByName } from '../../utils/wikidata-search.js';
 import { 
     createReconciliationModalByType,
     initializeReconciliationModal,
@@ -52,12 +53,56 @@ function createModalContextBanner(itemId, property, valueIndex, value, keyObjOrM
 
     banner.appendChild(createElement('div', {
         className: 'reconciliation-modal-context__shortcuts'
-    }, 'Shortcuts: click a result or press 1-9 to choose it; I skips this value.'));
+    }, 'Shortcuts: click a result or press its number (1-9) to choose it; I skips this value.'));
 
     return banner;
 }
 
 function setupReconciliationKeyboardShortcuts(controller) {
+    const getVisibleMatchCards = () => [...document.querySelectorAll(
+        '#modal-content .wikidata-match-item, #modal-content .match-item'
+    )].filter(matchCard => matchCard instanceof HTMLElement && matchCard.offsetParent !== null);
+
+    const updateMatchShortcutBadges = () => {
+        getVisibleMatchCards().forEach((matchCard, index) => {
+            const shortcutNumber = index < 9 ? String(index + 1) : '';
+            let shortcutBadge = matchCard.querySelector('.match-shortcut');
+
+            if (!shortcutNumber) {
+                shortcutBadge?.remove();
+                return;
+            }
+
+            if (!shortcutBadge) {
+                shortcutBadge = createElement('span', {
+                    className: 'match-shortcut',
+                    ariaLabel: `Keyboard shortcut ${shortcutNumber}`
+                });
+                matchCard.prepend(shortcutBadge);
+            }
+
+            if (shortcutBadge.textContent !== shortcutNumber) {
+                shortcutBadge.textContent = shortcutNumber;
+            }
+            const shortcutLabel = `Keyboard shortcut ${shortcutNumber}`;
+            if (shortcutBadge.getAttribute('aria-label') !== shortcutLabel) {
+                shortcutBadge.setAttribute('aria-label', shortcutLabel);
+            }
+        });
+    };
+
+    queueMicrotask(() => {
+        const modalContent = document.querySelector('#modal-content');
+        if (!modalContent) {
+            return;
+        }
+
+        const resultObserver = new MutationObserver(updateMatchShortcutBadges);
+        resultObserver.observe(modalContent, { childList: true, subtree: true });
+        updateMatchShortcutBadges();
+        controller.signal.addEventListener('abort', () => resultObserver.disconnect(), { once: true });
+    });
+
     document.addEventListener('keydown', event => {
         if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
             return;
@@ -69,17 +114,9 @@ function setupReconciliationKeyboardShortcuts(controller) {
             return;
         }
 
-        if (event.key === 'Enter') {
-            const confirmButton = document.querySelector('#modal-content #confirm-btn:not(:disabled)');
-            if (confirmButton instanceof HTMLButtonElement) {
-                event.preventDefault();
-                confirmButton.click();
-            }
-        }
-
         const matchIndex = Number(event.key) - 1;
         if (Number.isInteger(matchIndex) && matchIndex >= 0 && matchIndex <= 8) {
-            const matchCards = document.querySelectorAll('#modal-content .wikidata-match-item, #modal-content .match-item');
+            const matchCards = getVisibleMatchCards();
             const matchCard = matchCards[matchIndex];
             if (matchCard instanceof HTMLElement) {
                 event.preventDefault();
@@ -504,21 +541,8 @@ function getTransformedValue(value, property) {
  */
 async function searchWikidataItems(query) {
     try {
-        const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=item&limit=10`;
-        
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`Wikidata API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.search || data.search.length === 0) {
-            return [];
-        }
-        
-        // Return simple format: id, label, description
-        return data.search.map(result => ({
+        const results = await searchWikidataItemsByName(query);
+        return results.map(result => ({
             id: result.id,
             label: result.label || result.id,
             description: result.description || ''

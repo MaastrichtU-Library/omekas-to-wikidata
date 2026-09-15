@@ -13,6 +13,8 @@
  * - Alternative actions (create new item, skip, etc.)
  */
 
+import { searchWikidataItems } from '../../../utils/wikidata-search.js';
+
 /**
  * Create Wikidata Item reconciliation modal content
  * @param {string} itemId - Item ID being reconciled
@@ -219,21 +221,8 @@ export async function loadWikidataItemMatches(value, existingMatches = null) {
  */
 export async function searchWikidataEntities(query) {
     try {
-        const apiUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=item&limit=10`;
-        
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`Wikidata API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.search || data.search.length === 0) {
-            return [];
-        }
-        
-        // Return simple format: id, label, description
-        return data.search.map(result => ({
+        const results = await searchWikidataItems(query);
+        return results.map(result => ({
             id: result.id,
             label: result.label || result.id,
             description: result.description || ''
@@ -262,7 +251,8 @@ export function createWikidataMatchItem(match) {
         <div class="wikidata-match-item" data-match-id="${safeMatchId}" onclick="applyWikidataMatchDirectly('${jsEscapedId}')">
             <div class="match-content">
                 <div class="match-title">
-                    <span class="match-label">${label}</span> <span class="match-qid-inline">(${safeMatchId})</span>
+                    <span class="match-label">${label}</span>
+                    <a class="match-qid-inline" href="https://www.wikidata.org/wiki/${safeMatchId}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">(${safeMatchId})</a>
                 </div>
                 ${description ? `<div class="match-description">${description}</div>` : ''}
             </div>
@@ -289,7 +279,7 @@ function renderCurrentWikidataSelection(currentSelection) {
     currentSelectionContainer.classList.remove('current-selection--hidden');
     currentSelectionContainer.innerHTML = `
         <div class="current-selection-label">Current selection</div>
-        <div class="current-selection-value">${label}${qid ? ` <span class="match-qid-inline">(${qid})</span>` : ''}</div>
+        <div class="current-selection-value">${label}${qid ? ` <a class="match-qid-inline" href="https://www.wikidata.org/wiki/${qid}" target="_blank" rel="noopener noreferrer">(${qid})</a>` : ''}</div>
         ${description}
         <div class="current-selection-help">Choose another match below to replace it, or use "Undo decision" to reset this value.</div>
     `;

@@ -25,6 +25,7 @@ import {
 import { extractAllFields } from '../../../transformations.js';
 import { fetchWithCorsProxy } from '../../../utils/cors-proxy.js';
 import { extractPropertyValueDetails } from '../../../reconciliation/core/reconciliation-data.js';
+import { searchWikidataItems as searchWikidataItemsByName } from '../../../utils/wikidata-search.js';
 
 /**
  * Search Wikidata items using the wbsearchentities API
@@ -38,16 +39,8 @@ async function searchWikidataItems(query, resultsContainer) {
     resultsContainer.innerHTML = '<div class="search-loading">Searching...</div>';
     
     try {
-        const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=item&limit=10`;
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.search || data.search.length === 0) {
+        const items = await searchWikidataItemsByName(query);
+        if (items.length === 0) {
             resultsContainer.innerHTML = '<div class="no-results">No items found</div>';
             return;
         }
@@ -56,7 +49,7 @@ async function searchWikidataItems(query, resultsContainer) {
         resultsContainer.innerHTML = '';
         
         // Display results
-        data.search.forEach(item => {
+        items.forEach(item => {
             const resultItem = createElement('div', {
                 className: 'wikidata-search-result-item',
                 onClick: () => insertWikidataItemReference(item)

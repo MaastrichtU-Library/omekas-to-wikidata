@@ -1290,9 +1290,12 @@ main {
 #step1 .api-checkbox-option {
     display: flex;
     align-items: center;
+    justify-self: start;
+    justify-content: flex-start;
     gap: 0.5rem;
     font-weight: 600;
     margin-bottom: 0.1rem;
+    text-align: left;
 }
 
 #step1 .api-checkbox-option input {
@@ -7647,6 +7650,11 @@ pre.sample-value {
     font-weight: normal;
 }
 
+a.match-qid-inline:hover,
+a.match-qid-inline:focus-visible {
+    text-decoration: underline;
+}
+
 .match-description {
     font-size: 0.9rem;
     color: #666;
@@ -7732,6 +7740,66 @@ pre.sample-value {
 .guided-instance-mode__textarea {
     min-height: 6.5rem;
     resize: vertical;
+}
+
+.manual-template-metadata {
+    margin-top: 14px;
+    color: #4b5563;
+    font-size: 14px;
+}
+
+.manual-template-metadata summary {
+    cursor: pointer;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.manual-template-metadata p {
+    margin: 10px 0;
+}
+
+.manual-template-metadata textarea {
+    min-height: 120px;
+}
+
+.input-metadata-warning {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border-left: 4px solid #c98a11;
+    background: #fff8e8;
+    color: #6b4a00;
+    font-size: 14px;
+}
+
+.input-metadata-warning .hint {
+    margin: 8px 0 0;
+    overflow-wrap: anywhere;
+}
+
+#modal-content .wikidata-match-item,
+#modal-content .match-item {
+    position: relative;
+}
+
+#modal-content .match-shortcut {
+    position: absolute;
+    top: 0.55rem;
+    left: 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 50%;
+    background: #e8f1fb;
+    color: #114a7b;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+#modal-content .wikidata-match-item .match-content,
+#modal-content .match-item .match-content {
+    padding-left: 2rem;
 }
 
 .guided-field-selector__select {
