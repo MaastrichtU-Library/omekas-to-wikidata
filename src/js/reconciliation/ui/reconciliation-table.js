@@ -10,6 +10,19 @@ import { createElement } from '../../ui/components.js';
 import { combineAndSortProperties, extractPropertyValues, extractPropertyValueDetails } from '../core/reconciliation-data.js';
 import { getOmekaFieldFriendlyName } from '../../mapping/core/data-analyzer.js';
 
+const KNOWN_WIKIBASE_ITEM_PROPERTIES = new Set([
+    'P17', 'P27', 'P31', 'P39', 'P50', 'P57', 'P58', 'P106', 'P108', 'P123',
+    'P131', 'P155', 'P156', 'P159', 'P162', 'P170', 'P175', 'P195', 'P276',
+    'P279', 'P291', 'P361', 'P488', 'P495', 'P749', 'P800', 'P921', 'P1001',
+    'P1435', 'P2283'
+]);
+
+function isWikibaseItemMapping(mapping) {
+    const property = mapping?.property || mapping || {};
+    return property.datatype === 'wikibase-item'
+        || KNOWN_WIKIBASE_ITEM_PROPERTIES.has(property.id);
+}
+
 /**
  * Create item cell content with link button
  * @param {string} itemId - Item ID (e.g., 'item-0')
@@ -190,12 +203,15 @@ export function updateCellDisplayWithMatch(itemId, mappingId, valueIndex, bestMa
                     bestMatch.score : 0;
                 
                 // Just show percentage, not the specific match details
-                statusSpan.textContent = `${score.toFixed(1)}% match`;
-                statusSpan.className = 'value-status with-match';
-                
-                // Ensure we have a label for the tooltip
                 const matchLabel = bestMatch.label || bestMatch.name || 'Unlabeled item';
-                statusSpan.title = `Best match: ${matchLabel} (${score.toFixed(1)}%)`;
+                if (bestMatch.fallback) {
+                    statusSpan.textContent = 'Search result - review needed';
+                    statusSpan.title = `Wikidata search result: ${matchLabel}. This is not a similarity score.`;
+                } else {
+                    statusSpan.textContent = `${score.toFixed(1)}% match`;
+                    statusSpan.title = `Best match: ${matchLabel} (${score.toFixed(1)}%)`;
+                }
+                statusSpan.className = 'value-status with-match';
             }
             
             // Add a visual indicator for good matches - use yellow for partial matches
@@ -555,7 +571,7 @@ export function createReconciliationTableFactory(dependencies) {
         headerContent.appendChild(sourceRow);
         headerContent.appendChild(mappedRow);
 
-        if (keyObj.property?.datatype === 'wikibase-item') {
+        if (isWikibaseItemMapping(keyObj)) {
             const buttonContainer = createElement('div', {
                 className: 'reconcile-button-container'
             });
@@ -625,7 +641,7 @@ export function createReconciliationTableFactory(dependencies) {
         headerContent.appendChild(sourceRow);
         headerContent.appendChild(mappedRow);
 
-        if (manualProp.property?.datatype === 'wikibase-item') {
+        if (isWikibaseItemMapping(manualProp)) {
             const buttonContainer = createElement('div', {
                 className: 'reconcile-button-container'
             });

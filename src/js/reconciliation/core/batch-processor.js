@@ -381,27 +381,34 @@ function updateButtonState(button, state) {
     
     button.dataset.status = state;
     const textSpan = button.querySelector('span');
+    const setButtonText = text => {
+        if (textSpan) {
+            textSpan.textContent = text;
+        } else {
+            button.textContent = text;
+        }
+    };
     
     switch (state) {
         case 'processing':
-            textSpan.textContent = '⏳ Processing...';
+            setButtonText('Processing...');
             button.disabled = true;
             break;
         case 'completed':
-            textSpan.textContent = '✅ Reconciled';
+            setButtonText('Reconciled');
             button.disabled = false;
             setTimeout(() => {
-                textSpan.textContent = '🔄 Reconcile';
+                setButtonText('Reconcile field');
                 button.dataset.status = 'ready';
             }, 2000);
             break;
         case 'error':
-            textSpan.textContent = '❌ Retry';
+            setButtonText('Retry field');
             button.disabled = false;
             break;
         case 'ready':
         default:
-            textSpan.textContent = '🔄 Reconcile';
+            setButtonText('Reconcile field');
             button.disabled = false;
             break;
     }

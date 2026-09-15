@@ -21,7 +21,7 @@
  * @module input
  */
 import { eventSystem } from '../events.js';
-import { fetchWithCorsProxy, getCorsExplanation, getAdminEmailTemplate } from '../utils/cors-proxy.js';
+import { fetchWithCorsProxy, getCorsExplanation } from '../utils/cors-proxy.js';
 import { createButton, createElement } from '../ui/components.js';
 
 function normalizeItems(data) {
@@ -165,6 +165,10 @@ export function setupInputStep(state) {
     const defaultApiUrl = apiUrlInput?.value || '';
     const defaultPage = '1';
     const defaultPerPage = '25';
+    const scopedPaginationToggle = document.getElementById('api-use-scoped-pagination');
+    const scopedPaginationHelp = document.getElementById('api-scoped-pagination-help');
+    const pageInput = document.getElementById('api-page');
+    const perPageInput = document.getElementById('api-per-page');
     // Advanced parameters removed for MVP
     // const apiKeyInput = document.getElementById('api-key');
     // const paginationInput = document.getElementById('pagination');
@@ -178,6 +182,11 @@ export function setupInputStep(state) {
     const manualJsonButton = document.getElementById('manual-json-button');
     const manualJsonArea = document.getElementById('manual-json-area');
     const manualJsonTextarea = document.getElementById('manual-json-textarea');
+    const manualItemsApiHelp = document.getElementById('manual-items-api-help');
+    const manualItemsApiLink = document.getElementById('manual-items-api-link');
+    const manualTemplateJsonTextarea = document.getElementById('manual-template-json-textarea');
+    const manualTemplateApiHelp = document.getElementById('manual-template-api-help');
+    const manualTemplateApiLink = document.getElementById('manual-template-api-link');
     const processManualJsonButton = document.getElementById('process-manual-json-button');
     const cancelManualJsonButton = document.getElementById('cancel-manual-json');
 
@@ -186,8 +195,8 @@ export function setupInputStep(state) {
         { input: document.getElementById('api-item-set-id'), param: 'item_set_id' },
         { input: document.getElementById('api-site-id'), param: 'site_id' },
         { input: document.getElementById('api-owner-id'), param: 'owner_id' },
-        { input: document.getElementById('api-page'), param: 'page' },
-        { input: document.getElementById('api-per-page'), param: 'per_page' }
+        { input: pageInput, param: 'page' },
+        { input: perPageInput, param: 'per_page' }
     ];
 
     function parseApiUrl(url) {
@@ -198,17 +207,205 @@ export function setupInputStep(state) {
         }
     }
 
+    function getOmekaApiBaseUrl(url) {
+        const parsedUrl = parseApiUrl(url);
+        if (!parsedUrl) {
+            return '';
+        }
+
+        const apiMarkerIndex = parsedUrl.pathname.indexOf('/api/');
+        if (apiMarkerIndex === -1) {
+            return '';
+        }
+
+        return `${parsedUrl.origin}${parsedUrl.pathname.slice(0, apiMarkerIndex)}`;
+    }
+
+    function getResourceTemplateApiBaseUrl(data, preferredApiUrl = '') {
+        const items = normalizeItems(data);
+        const hasResourceTemplate = items.some(item => item?.['o:resource_template']);
+        if (!hasResourceTemplate) {
+            return '';
+        }
+
+        const itemUrl = items.find(item => typeof item?.['@id'] === 'string')?.['@id'] || '';
+        const templateUrl = items.find(item => typeof item?.['o:resource_template']?.['@id'] === 'string')
+            ?.['o:resource_template']?.['@id'] || '';
+
+        // Item and template URLs describe the pasted dataset itself, so prefer them over a stale input value.
+        return getOmekaApiBaseUrl(itemUrl) ||
+            getOmekaApiBaseUrl(templateUrl) ||
+            getOmekaApiBaseUrl(preferredApiUrl);
+    }
+
+    function getResourceTemplateCollectionUrl(data = null) {
+        const apiBaseUrl = data
+            ? getResourceTemplateApiBaseUrl(data, apiUrlInput?.value.trim() || '')
+            : getOmekaApiBaseUrl(apiUrlInput?.value.trim() || '');
+
+        return apiBaseUrl ? `${apiBaseUrl}/api/resource_templates` : '';
+    }
+
+    function updateManualItemsApiLink() {
+        const parsedUrl = parseApiUrl(apiUrlInput?.value.trim() || '');
+        const itemsUrl = parsedUrl?.pathname.endsWith('/api/items')
+            ? parsedUrl.toString()
+            : '';
+
+        if (manualItemsApiLink) {
+            manualItemsApiLink.href = itemsUrl || '#';
+        }
+        if (manualItemsApiHelp) {
+            manualItemsApiHelp.hidden = !itemsUrl;
+        }
+    }
+
+    function updateManualTemplateApiLink(data = null) {
+        const resourceTemplatesUrl = getResourceTemplateCollectionUrl(data);
+        if (manualTemplateApiLink) {
+            manualTemplateApiLink.href = resourceTemplatesUrl || '#';
+        }
+        if (manualTemplateApiHelp) {
+            manualTemplateApiHelp.hidden = !resourceTemplatesUrl;
+        }
+    }
+
+    function getReferencedResourceTemplateIds(data) {
+        return [...new Set(
+            normalizeItems(data)
+                .map(item => getResourceTemplateId(item?.['o:resource_template']))
+                .filter(Boolean)
+        )];
+    }
+
+    function extractResourceTemplateDefinitions(data) {
+        const candidates = Array.isArray(data)
+            ? data
+            : data?.resourceTemplates || data?.resource_templates || [data];
+
+        return candidates.filter(template =>
+            template &&
+            typeof template === 'object' &&
+            Array.isArray(template['o:resource_template_property'])
+        );
+    }
+
+    function mergeResourceTemplates(currentTemplates, additionalTemplates) {
+        const templatesById = new Map();
+
+        [...currentTemplates, ...additionalTemplates].forEach(template => {
+            const templateId = getResourceTemplateId(template);
+            if (templateId && !templatesById.has(templateId)) {
+                templatesById.set(templateId, template);
+            }
+        });
+
+        return [...templatesById.values()];
+    }
+
+    async function loadResourceTemplateById(apiBaseUrl, templateId) {
+        try {
+            const templateResult = await fetchWithCorsProxy(
+                `${apiBaseUrl}/api/resource_templates/${encodeURIComponent(templateId)}`
+            );
+            const template = Array.isArray(templateResult.data)
+                ? templateResult.data[0]
+                : templateResult.data;
+
+            return template && typeof template === 'object' ? template : null;
+        } catch (templateError) {
+            console.warn(`Could not fetch resource template ${templateId}:`, templateError);
+            return null;
+        }
+    }
+
+    async function loadResourceTemplates(data, preferredApiUrl = '', providedTemplates = []) {
+        state.updateState('resourceTemplates', [], false);
+
+        if (providedTemplates.length > 0) {
+            const resourceTemplates = mergeResourceTemplates([], providedTemplates);
+            state.updateState('resourceTemplates', resourceTemplates, false);
+            return resourceTemplates;
+        }
+
+        const apiBaseUrl = getResourceTemplateApiBaseUrl(data, preferredApiUrl);
+        if (!apiBaseUrl) {
+            return [];
+        }
+
+        let resourceTemplates = [];
+        try {
+            const templatesResult = await fetchWithCorsProxy(`${apiBaseUrl}/api/resource_templates`);
+            if (templatesResult.success && Array.isArray(templatesResult.data)) {
+                resourceTemplates = templatesResult.data;
+            }
+        } catch (templateError) {
+            console.warn('Could not fetch the resource template list; trying referenced templates instead:', templateError);
+        }
+
+        const referencedTemplateIds = getReferencedResourceTemplateIds(data);
+        const loadedTemplateIds = new Set(resourceTemplates.map(getResourceTemplateId));
+        const missingTemplateIds = referencedTemplateIds.filter(templateId => !loadedTemplateIds.has(templateId));
+
+        if (resourceTemplates.length > 0 && missingTemplateIds.length > 0) {
+            // Individual definitions are much smaller than the complete list and survive more CORS proxies.
+            const referencedTemplates = await Promise.all(
+                missingTemplateIds.map(templateId => loadResourceTemplateById(apiBaseUrl, templateId))
+            );
+            resourceTemplates = mergeResourceTemplates(
+                resourceTemplates,
+                referencedTemplates.filter(Boolean)
+            );
+        }
+
+        state.updateState('resourceTemplates', resourceTemplates, false);
+        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
+        return resourceTemplates;
+    }
+
     function syncApiParameterControls(url) {
         const parsedUrl = parseApiUrl(url);
         if (!parsedUrl) {
             return;
         }
 
-        apiParameterFields.forEach(({ input, param }) => {
+        apiParameterFields.filter(({ param }) => param !== 'page' && param !== 'per_page').forEach(({ input, param }) => {
             if (input) {
                 input.value = parsedUrl.searchParams.get(param) || '';
             }
         });
+
+        const hasScope = hasScopedCollectionFilters(parsedUrl.toString());
+        const hasScopedPagination = hasScope && Boolean(
+            parsedUrl.searchParams.get('page') || parsedUrl.searchParams.get('per_page')
+        );
+
+        if (scopedPaginationToggle) {
+            scopedPaginationToggle.disabled = !hasScope;
+            scopedPaginationToggle.checked = hasScopedPagination;
+        }
+
+        if (pageInput) {
+            pageInput.disabled = hasScope && !hasScopedPagination;
+            pageInput.value = hasScope && !hasScopedPagination
+                ? ''
+                : parsedUrl.searchParams.get('page') || defaultPage;
+        }
+
+        if (perPageInput) {
+            perPageInput.disabled = hasScope && !hasScopedPagination;
+            perPageInput.value = hasScope && !hasScopedPagination
+                ? ''
+                : parsedUrl.searchParams.get('per_page') || defaultPerPage;
+        }
+
+        if (scopedPaginationHelp) {
+            scopedPaginationHelp.textContent = !hasScope
+                ? 'Select at least one collection scope first. You can then choose a page and page size instead of retrieving every matching item.'
+                : hasScopedPagination
+                    ? 'This scope will load only the selected page. Turn this off to retrieve every matching item.'
+                    : 'This scope will retrieve every matching item. Turn on the limit to choose one page instead.';
+        }
     }
 
     function hasScopedCollectionFilters(url) {
@@ -227,7 +424,9 @@ export function setupInputStep(state) {
             return url;
         }
 
-        if (hasScopedCollectionFilters(parsedUrl.toString())) {
+        const hasScope = hasScopedCollectionFilters(parsedUrl.toString());
+        const shouldKeepScopedPagination = hasScope && Boolean(scopedPaginationToggle?.checked);
+        if (hasScope && !shouldKeepScopedPagination) {
             parsedUrl.searchParams.delete('page');
             parsedUrl.searchParams.delete('per_page');
             return parsedUrl.toString();
@@ -270,7 +469,7 @@ export function setupInputStep(state) {
                 }
             });
         } else {
-            apiParameterFields.forEach(({ input, param }) => {
+            apiParameterFields.filter(({ param }) => param !== 'page' && param !== 'per_page').forEach(({ input, param }) => {
                 const fallbackValue = param === 'page'
                     ? defaultPage
                     : param === 'per_page'
@@ -286,10 +485,23 @@ export function setupInputStep(state) {
                     parsedUrl.searchParams.delete(param);
                 }
             });
+
+            const hasScope = hasScopedCollectionFilters(parsedUrl.toString());
+            const shouldKeepScopedPagination = hasScope && Boolean(scopedPaginationToggle?.checked);
+            if (!hasScope || shouldKeepScopedPagination) {
+                const pageValue = pageInput?.value?.trim() || defaultPage;
+                const perPageValue = perPageInput?.value?.trim() || defaultPerPage;
+                parsedUrl.searchParams.set('page', pageValue);
+                parsedUrl.searchParams.set('per_page', perPageValue);
+            } else {
+                parsedUrl.searchParams.delete('page');
+                parsedUrl.searchParams.delete('per_page');
+            }
         }
 
         apiUrlInput.value = ensureDefaultPagination(parsedUrl.toString());
         syncApiParameterControls(apiUrlInput.value);
+        updateManualItemsApiLink();
         return true;
     }
 
@@ -302,11 +514,13 @@ export function setupInputStep(state) {
         apiUrlInput.addEventListener('change', () => {
             apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
             syncApiParameterControls(apiUrlInput.value);
+            updateManualItemsApiLink();
         });
 
         apiUrlInput.addEventListener('blur', () => {
             apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
             syncApiParameterControls(apiUrlInput.value);
+            updateManualItemsApiLink();
         });
     }
 
@@ -314,6 +528,7 @@ export function setupInputStep(state) {
         apiUrlPreset.addEventListener('change', () => {
             apiUrlInput.value = ensureDefaultPagination(apiUrlInput.value.trim());
             syncApiParameterControls(apiUrlInput.value);
+            updateManualItemsApiLink();
         });
     }
 
@@ -326,6 +541,37 @@ export function setupInputStep(state) {
     if (resetApiParamsBtn) {
         resetApiParamsBtn.addEventListener('click', () => {
             updateApiUrlFromParameterControls({ clear: true });
+        });
+    }
+
+    if (scopedPaginationToggle) {
+        scopedPaginationToggle.addEventListener('change', () => {
+            if (scopedPaginationToggle.checked) {
+                if (pageInput) {
+                    pageInput.disabled = false;
+                    pageInput.value = pageInput.value || defaultPage;
+                }
+                if (perPageInput) {
+                    perPageInput.disabled = false;
+                    perPageInput.value = perPageInput.value || defaultPerPage;
+                }
+                if (scopedPaginationHelp) {
+                    scopedPaginationHelp.textContent = 'Choose a page and page size, then apply the parameters to load only that part of the scoped result.';
+                }
+                return;
+            }
+
+            if (pageInput) {
+                pageInput.disabled = true;
+                pageInput.value = '';
+            }
+            if (perPageInput) {
+                perPageInput.disabled = true;
+                perPageInput.value = '';
+            }
+            if (scopedPaginationHelp) {
+                scopedPaginationHelp.textContent = 'This scope will retrieve every matching item. Turn on the limit to choose one page instead.';
+            }
         });
     }
 
@@ -528,9 +774,6 @@ export function setupInputStep(state) {
                     return;
                 }
                 
-                // Update state
-                state.updateState('apiUrl', apiUrl);
-                
                 // Show loading indicator
                 if (loadingIndicator) loadingIndicator.style.display = 'block';
                 
@@ -540,8 +783,14 @@ export function setupInputStep(state) {
                 }
 
                 apiUrlInput.value = ensureDefaultPagination(apiUrl);
+                state.updateState('apiUrl', apiUrlInput.value);
+                const hasScopedPagination = hasScopedCollectionFilters(apiUrlInput.value) && Boolean(
+                    parseApiUrl(apiUrlInput.value)?.searchParams.get('page') ||
+                    parseApiUrl(apiUrlInput.value)?.searchParams.get('per_page')
+                );
                 const shouldFetchAllPages =
                     hasScopedCollectionFilters(apiUrlInput.value) &&
+                    !hasScopedPagination &&
                     supportsPagedItemFetching(apiUrlInput.value);
 
                 const result = shouldFetchAllPages
@@ -554,21 +803,8 @@ export function setupInputStep(state) {
                     throw new Error('Invalid Omeka S API response format. Expected an array or object with items.');
                 }
 
-                // Template metadata improves Step 1 labels but should never delay the primary item request.
-                let resourceTemplates = [];
-                state.updateState('resourceTemplates', resourceTemplates, false);
-                try {
-                    const baseUrl = apiUrl.split('/api/')[0];
-                    const templatesUrl = `${baseUrl}/api/resource_templates`;
-                    const templatesResult = await fetchWithCorsProxy(templatesUrl);
-                    if (templatesResult.success && Array.isArray(templatesResult.data)) {
-                        resourceTemplates = templatesResult.data;
-                        state.updateState('resourceTemplates', resourceTemplates, false);
-                        console.log(`Successfully fetched ${resourceTemplates.length} resource templates`);
-                    }
-                } catch (templateError) {
-                    console.warn('Could not fetch resource templates, falling back to basic naming:', templateError);
-                }
+                // Template metadata supplies the human labels used in Mapping and Reconciliation.
+                await loadResourceTemplates(data, apiUrlInput.value);
                 
                 // Process the successful data
                 processSuccessfulData(data, result.method, {
@@ -633,7 +869,7 @@ export function setupInputStep(state) {
     // Process manual JSON button
     if (processManualJsonButton) {
         processManualJsonButton.addEventListener('click', () => {
-            processManualJsonInput();
+            void processManualJsonInput();
         });
     }
     
@@ -648,6 +884,8 @@ export function setupInputStep(state) {
     function showManualJsonInput() {
         if (manualJsonArea) {
             manualJsonArea.style.display = 'block';
+            updateManualItemsApiLink();
+            updateManualTemplateApiLink();
             manualJsonTextarea.focus();
             
             // Clear any existing data status
@@ -665,6 +903,9 @@ export function setupInputStep(state) {
         if (manualJsonArea) {
             manualJsonArea.style.display = 'none';
             manualJsonTextarea.value = '';
+            if (manualTemplateJsonTextarea) {
+                manualTemplateJsonTextarea.value = '';
+            }
             
             // Restore data status if there was previous data
             const currentState = state.getState();
@@ -679,8 +920,9 @@ export function setupInputStep(state) {
         }
     }
     
-    function processManualJsonInput() {
+    async function processManualJsonInput() {
         const jsonText = manualJsonTextarea.value.trim();
+        const templateJsonText = manualTemplateJsonTextarea?.value.trim() || '';
         const preservedApiUrl = apiUrlInput?.value.trim() || '';
         
         if (!jsonText) {
@@ -690,6 +932,21 @@ export function setupInputStep(state) {
         
         try {
             const data = JSON.parse(jsonText);
+            updateManualTemplateApiLink(data);
+            const embeddedTemplates = extractResourceTemplateDefinitions(data);
+            let providedTemplates = embeddedTemplates;
+
+            if (templateJsonText) {
+                const parsedTemplates = JSON.parse(templateJsonText);
+                providedTemplates = mergeResourceTemplates(
+                    embeddedTemplates,
+                    extractResourceTemplateDefinitions(parsedTemplates)
+                );
+
+                if (providedTemplates.length === 0) {
+                    throw new Error('Resource template JSON must contain one or more Omeka resource template definitions.');
+                }
+            }
             
             // Validate the data
             if (!isValidOmekaResponse(data)) {
@@ -700,15 +957,35 @@ export function setupInputStep(state) {
                 return;
             }
             
-            // Process the manually entered data
-            state.updateState('resourceTemplates', [], false);
-            processSuccessfulData(data, 'manual');
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'block';
+            }
+
+            // Use the same template-metadata enrichment as API imports. When the input URL is absent,
+            // the Omeka item URL embedded in the pasted JSON identifies the matching API instance.
+            const resourceTemplates = await loadResourceTemplates(data, preservedApiUrl, providedTemplates);
+            const apiBaseUrl = getResourceTemplateApiBaseUrl(data, preservedApiUrl);
+            const missingTemplateIds = getReferencedResourceTemplateIds(data)
+                .filter(templateId => !resourceTemplates.some(template => getResourceTemplateId(template) === templateId));
+            processSuccessfulData(data, 'manual', {
+                templateMetadataUnavailable: missingTemplateIds.length > 0,
+                templateMetadataCollectionUrl: getResourceTemplateCollectionUrl(data),
+                templateMetadataUrls: apiBaseUrl
+                    ? missingTemplateIds.map(templateId =>
+                        `${apiBaseUrl}/api/resource_templates/${encodeURIComponent(templateId)}`
+                    )
+                    : []
+            });
             
             // Hide the manual input area
             hideManualJsonInput();
             
         } catch (parseError) {
             alert(`Invalid JSON data: ${parseError.message}`);
+        } finally {
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
         }
     }
 
@@ -805,8 +1082,7 @@ export function setupInputStep(state) {
      * @description
      * Error handling strategy:
      * - Provides clear explanation of CORS and why it affects data access
-     * - Offers multiple solution paths (manual JSON, admin contact, proxy services)
-     * - Generates ready-to-send email templates for contacting Omeka S administrators
+     * - Offers manual JSON input as the reliable recovery path
      * - Explains technical concepts in user-friendly language
      * - Maintains trust by explaining data privacy and security considerations
      * 
@@ -842,30 +1118,9 @@ export function setupInputStep(state) {
                         <button id="try-manual-input" class="solution-btn primary">
                             Use Manual JSON Input
                         </button>
-                        <button id="show-admin-help" class="solution-btn">
-                            👤 Contact Administrator
-                        </button>
                         <button id="retry-fetch" class="solution-btn">
                             🔄 Try Again
                         </button>
-                    </div>
-                </div>
-                
-                
-                <div id="admin-help-area" class="admin-help-area" style="display: none;">
-                    <h4>Administrator Contact Template</h4>
-                    <p>Send this message to your Omeka S administrator:</p>
-                    <div class="email-template">
-                        <div class="template-field">
-                            <label>Subject:</label>
-                            <input type="text" id="email-subject" readonly value="Request to Enable CORS Headers for Omeka S API Access">
-                            <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">📋 Copy</button>
-                        </div>
-                        <div class="template-field">
-                            <label>Message:</label>
-                            <textarea id="email-body" readonly rows="12"></textarea>
-                            <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">📋 Copy</button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -879,7 +1134,6 @@ export function setupInputStep(state) {
     function setupErrorSolutionListeners(apiUrl) {
         const openApiJsonBtn = document.getElementById('open-api-json');
         const tryManualBtn = document.getElementById('try-manual-input');
-        const showAdminBtn = document.getElementById('show-admin-help');
         const retryBtn = document.getElementById('retry-fetch');
         
         if (openApiJsonBtn) {
@@ -893,18 +1147,6 @@ export function setupInputStep(state) {
                 // Hide the error display and show the manual JSON input
                 dataStatus.innerHTML = '<p class="placeholder">Paste the JSON you opened or downloaded into the Manual JSON area below.</p>';
                 showManualJsonInput();
-            });
-        }
-        
-        if (showAdminBtn) {
-            showAdminBtn.addEventListener('click', () => {
-                document.getElementById('admin-help-area').style.display = 'block';
-                document.getElementById('manual-input-area').style.display = 'none';
-                
-                // Populate email template
-                const template = getAdminEmailTemplate(window.location.origin);
-                document.getElementById('email-subject').value = template.subject;
-                document.getElementById('email-body').value = template.body;
             });
         }
         
@@ -1048,6 +1290,44 @@ export function setupInputStep(state) {
                     createElement('em', {}, pageSummary)
                 ])
             );
+        }
+
+        if (details.templateMetadataUnavailable) {
+            const metadataWarning = createElement('div', { className: 'input-metadata-warning' }, [
+                createElement('strong', {}, 'Custom template labels could not be loaded.'),
+                createElement('span', {}, ' Mapping will use the property names supplied in the item JSON. To use the template labels, paste the matching resource-template JSON in the optional Manual JSON field and process the import again.')
+            ]);
+
+            if (details.templateMetadataCollectionUrl) {
+                metadataWarning.appendChild(
+                    createElement('p', { className: 'hint' }, [
+                        createElement('span', {}, 'Open the '),
+                        createElement('a', {
+                            href: details.templateMetadataCollectionUrl,
+                            target: '_blank',
+                            rel: 'noopener noreferrer'
+                        }, 'resource-template JSON for this Omeka S instance'),
+                        createElement('span', {}, ' and paste its response in the optional field.')
+                    ])
+                );
+            }
+
+            if (details.templateMetadataUrls?.length > 0) {
+                const metadataLinks = createElement('p', { className: 'hint' }, [
+                    createElement('span', {}, 'Resource templates needed: '),
+                    ...details.templateMetadataUrls.flatMap((url, index) => [
+                        ...(index > 0 ? [createElement('span', {}, ', ')] : []),
+                        createElement('a', {
+                            href: url,
+                            target: '_blank',
+                            rel: 'noopener noreferrer'
+                        }, url)
+                    ])
+                ]);
+                metadataWarning.appendChild(metadataLinks);
+            }
+
+            summaryContainer.appendChild(metadataWarning);
         }
 
         const summaryList = createElement('ul');
