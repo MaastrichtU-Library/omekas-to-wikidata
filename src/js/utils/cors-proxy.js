@@ -259,84 +259,15 @@ function isCorsError(error) {
 }
 
 /**
- * Gets a human-readable explanation of CORS and potential solutions
- * @returns {Object} - Object containing explanation and solutions
+ * Gets a human-readable explanation of a CORS restriction.
+ * @returns {Object} - Object containing the explanation text
  */
 export function getCorsExplanation() {
     return {
         what: "CORS (Cross-Origin Resource Sharing) is a security feature that prevents websites from accessing resources on other domains without permission.",
         
-        why: "The Omeka S server at this URL hasn't been configured to allow cross-origin requests from web applications like this tool.",
-        
-        solutions: [
-            {
-                title: "Contact the Administrator",
-                description: "Ask the Omeka S administrator to enable CORS headers (this is safe for public APIs)",
-                action: "show-admin-template"
-            },
-            {
-                title: "Use Proxy Service",
-                description: "We can route your request through a proxy service (data remains public)",
-                action: "try-proxy"
-            },
-            {
-                title: "Manual Data Entry",
-                description: "Copy and paste the JSON data directly from the API URL",
-                action: "manual-input"
-            }
-        ]
+        why: "The Omeka S server at this URL hasn't been configured to allow cross-origin requests from web applications like this tool. You can still open the API JSON and paste it into Manual JSON Input."
     };
-}
-
-/**
- * Generates a template email for administrators to enable CORS
- * @param {string} domain - The domain that needs CORS access
- * @returns {Object} - Email template with subject and body
- */
-export function getAdminEmailTemplate(domain) {
-    const subject = "Request to Enable CORS Headers for Omeka S API Access";
-    
-    const body = `Dear Omeka S Administrator,
-
-I am trying to access your Omeka S API from a web application (${domain || 'a cultural heritage mapping tool'}) but am encountering CORS (Cross-Origin Resource Sharing) restrictions.
-
-WHAT IS NEEDED:
-Enable CORS headers on your Omeka S installation to allow web applications to access your public API.
-
-WHY THIS IS SAFE:
-- CORS only affects browser-based access, not direct API access
-- This change only allows reading public data that's already accessible via your API
-- No authentication or private data is involved
-- This is a standard configuration for public APIs
-
-HOW TO IMPLEMENT:
-Add the following lines to your .htaccess file in the Omeka S root directory:
-
-\`\`\`apache
-# Enable CORS for API access
-<IfModule mod_headers.c>
-    Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Headers "origin, x-requested-with, content-type"
-    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
-</IfModule>
-\`\`\`
-
-For more secure configuration (recommended), replace "*" with specific domains:
-\`\`\`apache
-Header set Access-Control-Allow-Origin "${domain || 'https://your-trusted-domain.com'}"
-\`\`\`
-
-DOCUMENTATION:
-- Omeka Forum discussion: https://forum.omeka.org/t/cors-header-not-present-in-default-installations/15400
-- CORS explanation: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-
-This change will enable broader access to your public collections data through web-based tools while maintaining security.
-
-Thank you for considering this request!
-
-Best regards`;
-
-    return { subject, body };
 }
 
 /**
