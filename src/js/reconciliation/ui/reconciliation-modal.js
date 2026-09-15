@@ -52,12 +52,56 @@ function createModalContextBanner(itemId, property, valueIndex, value, keyObjOrM
 
     banner.appendChild(createElement('div', {
         className: 'reconciliation-modal-context__shortcuts'
-    }, 'Shortcuts: click a result or press 1-9 to choose it; I skips this value.'));
+    }, 'Shortcuts: click a result or press its number (1-9) to choose it; I skips this value.'));
 
     return banner;
 }
 
 function setupReconciliationKeyboardShortcuts(controller) {
+    const getVisibleMatchCards = () => [...document.querySelectorAll(
+        '#modal-content .wikidata-match-item, #modal-content .match-item'
+    )].filter(matchCard => matchCard instanceof HTMLElement && matchCard.offsetParent !== null);
+
+    const updateMatchShortcutBadges = () => {
+        getVisibleMatchCards().forEach((matchCard, index) => {
+            const shortcutNumber = index < 9 ? String(index + 1) : '';
+            let shortcutBadge = matchCard.querySelector('.match-shortcut');
+
+            if (!shortcutNumber) {
+                shortcutBadge?.remove();
+                return;
+            }
+
+            if (!shortcutBadge) {
+                shortcutBadge = createElement('span', {
+                    className: 'match-shortcut',
+                    ariaLabel: `Keyboard shortcut ${shortcutNumber}`
+                });
+                matchCard.prepend(shortcutBadge);
+            }
+
+            if (shortcutBadge.textContent !== shortcutNumber) {
+                shortcutBadge.textContent = shortcutNumber;
+            }
+            const shortcutLabel = `Keyboard shortcut ${shortcutNumber}`;
+            if (shortcutBadge.getAttribute('aria-label') !== shortcutLabel) {
+                shortcutBadge.setAttribute('aria-label', shortcutLabel);
+            }
+        });
+    };
+
+    queueMicrotask(() => {
+        const modalContent = document.querySelector('#modal-content');
+        if (!modalContent) {
+            return;
+        }
+
+        const resultObserver = new MutationObserver(updateMatchShortcutBadges);
+        resultObserver.observe(modalContent, { childList: true, subtree: true });
+        updateMatchShortcutBadges();
+        controller.signal.addEventListener('abort', () => resultObserver.disconnect(), { once: true });
+    });
+
     document.addEventListener('keydown', event => {
         if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
             return;
@@ -69,17 +113,9 @@ function setupReconciliationKeyboardShortcuts(controller) {
             return;
         }
 
-        if (event.key === 'Enter') {
-            const confirmButton = document.querySelector('#modal-content #confirm-btn:not(:disabled)');
-            if (confirmButton instanceof HTMLButtonElement) {
-                event.preventDefault();
-                confirmButton.click();
-            }
-        }
-
         const matchIndex = Number(event.key) - 1;
         if (Number.isInteger(matchIndex) && matchIndex >= 0 && matchIndex <= 8) {
-            const matchCards = document.querySelectorAll('#modal-content .wikidata-match-item, #modal-content .match-item');
+            const matchCards = getVisibleMatchCards();
             const matchCard = matchCards[matchIndex];
             if (matchCard instanceof HTMLElement) {
                 event.preventDefault();
