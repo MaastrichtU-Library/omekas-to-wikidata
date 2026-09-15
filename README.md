@@ -21,18 +21,16 @@ Start using the tool immediately—no installation required. Process your Omeka 
 ## 📚 Documentation
 
 ### For Everyone
-- **[User Manual](docs/USER-MANUAL.md)** - Complete step-by-step guide for using the tool
-  - Detailed walkthrough of all five steps
-  - Project and file management
-  - Tips, best practices, and troubleshooting
-  - Perfect for librarians, archivists, and collection managers
+- **[User Guide](documentation/USER_GUIDE.md)** - Current walkthrough of Input, Mapping, Reconciliation, References, and Export
+- **[Product Decisions](documentation/DECISIONS.md)** - Why Mapping/Reconciliation are central and Step 4 is reference-focused
 
 ### For Developers & Contributors
-- **[Technical Documentation](docs/DOCUMENTATION.md)** - Developer hub and architecture overview
-- **[Making Your First Edit](docs/FIRST_EDIT_GUIDE.md)** - Get started contributing with Claude Code
-- **[Contributing Guidelines](docs/CONTRIBUTING.md)** - How to contribute to this project
+- **[Developer Guide](documentation/DEVELOPER_GUIDE.md)** - Local setup, conventions, branch flow, and issue practice
+- **[Architecture](documentation/ARCHITECTURE.md)** - Current client-side design and value-resolution model
+- **[Testing and Release](documentation/TESTING_AND_RELEASE.md)** - Scenario checks and `dev -> test -> main` promotion
 - **[JavaScript Module Map](docs/JS_MODULE_MAP.md)** - Complete codebase reference
-- **[Entity Schema Guide](docs/Entity-Schema-Guide.md)** - Understanding Wikidata schemas
+
+Older plans and specifications remain available in [Historical Project Material](archive/README.md). They are preserved for context and may describe an earlier Item Designer direction.
 
 ---
 
@@ -43,7 +41,7 @@ The Omeka S to Wikidata tool bridges cultural heritage collections with the sema
 1. **Import** data from Omeka S APIs (with automatic CORS handling)
 2. **Map** your metadata fields to Wikidata properties using Entity Schemas
 3. **Reconcile** values with existing Wikidata entities to avoid duplicates
-4. **Add references** to document your data sources
+4. **Assign references** to document your data sources
 5. **Export** QuickStatements code for bulk import into Wikidata
 
 **Who is this for?**
@@ -100,28 +98,28 @@ Never lose your work:
 The tool guides you through five clear steps:
 
 ### 1️⃣ Input
-Configure your Omeka S API endpoint and import JSON data. The tool automatically handles CORS issues and validates your data structure.
+Configure an Omeka S API endpoint and select its scope. The tool supports resource-template, item-set, site, owner, and optional one-page pagination filters. If browser access is blocked by CORS, paste the items JSON manually and, when needed, the matching resource-template JSON.
 
 ### 2️⃣ Mapping
-Map your Omeka S fields to Wikidata properties. Select an Entity Schema to get relevant suggestions, and save your mapping as a reusable template.
+Start with Label and Instance of, then map only the Omeka S fields you want to reconcile and send to Wikidata. Use Entity Schema guidance, observed segment families, source filters, transformations, and live samples to handle mixed values safely.
 
 ### 3️⃣ Reconciliation
-Refine individual values, link items to existing Wikidata entities, and configure property-specific settings like language codes.
+Review individual values, verify Wikidata QIDs, choose label languages, validate dates and identifiers, and use source badges to see whether a value came from literal text, an authority, or Wikidata.
 
 ### 4️⃣ References
-Add source attribution to your statements. Configure which properties receive which references for proper documentation.
+Assign detected or custom source URLs to mapped properties. This step focuses on provenance for statements rather than a separate item designer.
 
 ### 5️⃣ Export
 Generate QuickStatements code and import your data into Wikidata. Test in the Wikidata Sandbox before going live.
 
-**[Read the complete User Manual →](docs/USER-MANUAL.md)**
+**[Read the current User Guide →](documentation/USER_GUIDE.md)**
 
 ---
 
 ## 🔗 Related Links
 
 - **[Wikidata Project Page](https://www.wikidata.org/wiki/Wikidata:WikiProject_Open_Topstukken_Maastricht_University_and_Radboud_University)** - Learn about the Open Topstukken project
-- **[QuickStatements Documentation](docs/QuickStatements-documentation.md)** - Understanding the export format
+- **[QuickStatements](https://quickstatements.toolforge.org/)** - Review and run the generated export
 - **[GitHub Repository](https://github.com/MaastrichtU-Library/omekas-to-wikidata)** - Source code and issue tracking
 
 ---
@@ -131,9 +129,9 @@ Generate QuickStatements code and import your data into Wikidata. Test in the Wi
 We welcome contributions from developers, documentarians, and users!
 
 **Getting Started:**
-1. Read the **[First Edit Guide](docs/FIRST_EDIT_GUIDE.md)** - Complete walkthrough for new contributors
-2. Check the **[Contributing Guidelines](docs/CONTRIBUTING.md)** - Standards and expectations
-3. Review the **[Technical Documentation](docs/DOCUMENTATION.md)** - Architecture and patterns
+1. Read the **[Developer Guide](documentation/DEVELOPER_GUIDE.md)** - Local setup and project conventions
+2. Review the **[Architecture](documentation/ARCHITECTURE.md)** - Current design and data flow
+3. Follow **[Testing and Release](documentation/TESTING_AND_RELEASE.md)** - Validation and promotion practice
 4. Explore the **[JavaScript Module Map](docs/JS_MODULE_MAP.md)** - Navigate the codebase
 
 **Ways to Contribute:**
