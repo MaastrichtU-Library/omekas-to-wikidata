@@ -1,6 +1,6 @@
 # JavaScript Module Map
 
-**[← Back to Technical Documentation](DOCUMENTATION.md)** | **[← Back to Project](../README.md)**
+**[← Back to Developer Guide](../documentation/DEVELOPER_GUIDE.md)** | **[← Back to Project](../README.md)**
 
 ## Quick Reference
 
