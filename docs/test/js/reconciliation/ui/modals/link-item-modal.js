@@ -127,7 +127,8 @@ function createLinkItemResult(result) {
         <div class="wikidata-match-item link-item-result" data-qid="${safeId}" onclick="selectLinkItem('${jsEscapedId}')">
             <div class="match-content">
                 <div class="match-title">
-                    ${label} <span class="match-qid-inline">(${safeId})</span>
+                    ${label}
+                    <a class="match-qid-inline" href="https://www.wikidata.org/wiki/${safeId}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">(${safeId})</a>
                 </div>
                 ${description ? `<div class="match-description">${description}</div>` : ''}
             </div>

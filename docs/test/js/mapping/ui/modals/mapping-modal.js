@@ -16,7 +16,6 @@ import {
     describeFieldProfile,
     getOrderedValueSourceTypes,
     summarizeObservedSegments,
-    summarizeValueSourcesForResolvedDetails,
     buildIncludedSegmentsSignature,
     getValueSourceTypeLabel,
     getValueSourceTypeDescription,
@@ -26,6 +25,7 @@ import {
 import { extractAllFields } from '../../../transformations.js';
 import { fetchWithCorsProxy } from '../../../utils/cors-proxy.js';
 import { extractPropertyValueDetails } from '../../../reconciliation/core/reconciliation-data.js';
+import { searchWikidataItems as searchWikidataItemsByName } from '../../../utils/wikidata-search.js';
 
 /**
  * Search Wikidata items using the wbsearchentities API
@@ -39,16 +39,8 @@ async function searchWikidataItems(query, resultsContainer) {
     resultsContainer.innerHTML = '<div class="search-loading">Searching...</div>';
     
     try {
-        const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&origin=*&type=item&limit=10`;
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.search || data.search.length === 0) {
+        const items = await searchWikidataItemsByName(query);
+        if (items.length === 0) {
             resultsContainer.innerHTML = '<div class="no-results">No items found</div>';
             return;
         }
@@ -57,7 +49,7 @@ async function searchWikidataItems(query, resultsContainer) {
         resultsContainer.innerHTML = '';
         
         // Display results
-        data.search.forEach(item => {
+        items.forEach(item => {
             const resultItem = createElement('div', {
                 className: 'wikidata-search-result-item',
                 onClick: () => insertWikidataItemReference(item)
@@ -361,6 +353,98 @@ function getResourceClassUri(resourceClassValue) {
     return null;
 }
 
+function getResourceClassId(resourceClassValue) {
+    if (Number.isInteger(resourceClassValue) || (typeof resourceClassValue === 'string' && /^\d+$/.test(resourceClassValue))) {
+        return String(resourceClassValue);
+    }
+
+    if (!resourceClassValue || typeof resourceClassValue !== 'object') {
+        return null;
+    }
+
+    const value = resourceClassValue['o:id'] ?? resourceClassValue.id ?? null;
+    return Number.isInteger(value) || (typeof value === 'string' && /^\d+$/.test(value))
+        ? String(value)
+        : null;
+}
+
+function getOmekaApiBaseUrl(url) {
+    if (!url) {
+        return null;
+    }
+
+    try {
+        const parsedUrl = new URL(url);
+        const apiPathIndex = parsedUrl.pathname.indexOf('/api/');
+        if (apiPathIndex === -1) {
+            return null;
+        }
+
+        const basePath = parsedUrl.pathname.slice(0, apiPathIndex).replace(/\/$/, '');
+        return `${parsedUrl.origin}${basePath}`;
+    } catch {
+        return null;
+    }
+}
+
+function getResourceClassApiBaseUrl(currentState = null) {
+    const items = normalizeFetchedItems(currentState?.fetchedData || currentState?.allFetchedData);
+    const candidateUrls = [
+        currentState?.apiUrl,
+        ...(currentState?.resourceTemplates || []).map(template => template?.['@id']),
+        ...items.map(item => item?.['@id'])
+    ];
+
+    return candidateUrls
+        .map(getOmekaApiBaseUrl)
+        .find(Boolean) || null;
+}
+
+function buildResourceClassUri(resourceClassValue, currentState = null) {
+    const directUri = getResourceClassUri(resourceClassValue);
+    if (directUri) {
+        return directUri;
+    }
+
+    const resourceClassId = getResourceClassId(resourceClassValue);
+    const apiBaseUrl = getResourceClassApiBaseUrl(currentState);
+    if (!resourceClassId || !apiBaseUrl) {
+        return null;
+    }
+
+    return `${apiBaseUrl}/api/resource_classes/${resourceClassId}`;
+}
+
+function getReadableResourceClassLabel(term) {
+    if (typeof term !== 'string' || !term.trim()) {
+        return null;
+    }
+
+    const localName = term.trim().split(/[:/#]/).pop();
+    if (!localName) {
+        return null;
+    }
+
+    return localName
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_-]+/g, ' ')
+        .replace(/^./, character => character.toUpperCase());
+}
+
+function getResourceClassTermFromItems(items = []) {
+    for (const item of items) {
+        const types = Array.isArray(item?.['@type']) ? item['@type'] : [item?.['@type']];
+        const classTerm = types.find(type => typeof type === 'string'
+            && type.includes(':')
+            && !type.startsWith('o:'));
+        if (classTerm) {
+            return classTerm;
+        }
+    }
+
+    return null;
+}
+
 function mergeResourceClassCandidate(candidate, resourceClassData = null) {
     if (!candidate) {
         return null;
@@ -369,14 +453,15 @@ function mergeResourceClassCandidate(candidate, resourceClassData = null) {
     const mergedData = resourceClassData && typeof resourceClassData === 'object'
         ? resourceClassData
         : {};
+    const resourceClassTerm = mergedData['o:term']
+        || candidate.resourceClassTerm
+        || null;
     const resourceClassLabel = mergedData['o:label']
         || candidate.resourceClassLabel
         || mergedData.label
         || mergedData.display_title
         || mergedData['o:local_name']
-        || null;
-    const resourceClassTerm = mergedData['o:term']
-        || candidate.resourceClassTerm
+        || getReadableResourceClassLabel(resourceClassTerm)
         || null;
     const resourceClassUri = getResourceClassUri(mergedData)
         || candidate.resourceClassUri
@@ -404,7 +489,9 @@ async function ensureResourceClassDefinition(candidate, stateInstance = window.m
     const currentState = typeof stateInstance?.getState === 'function'
         ? stateInstance.getState()
         : null;
-    const resourceClassUri = candidate.resourceClassUri || candidate.linkedDataUri || getResourceClassUri(candidate.resourceClassData);
+    const resourceClassUri = candidate.resourceClassUri
+        || candidate.linkedDataUri
+        || buildResourceClassUri(candidate.resourceClassData, currentState);
     if (!resourceClassUri) {
         return mergeResourceClassCandidate(candidate);
     }
@@ -463,6 +550,15 @@ function createResourceClassCandidate(currentState) {
         return null;
     }
 
+    const resourceClassTerm = templateResourceClass?.['o:term']
+        || sample?.['o:term']
+        || getResourceClassTermFromItems(items);
+    const resourceClassLabel = templateResourceClass?.['o:label']
+        || templateResourceClass?.['o:local_name']
+        || sample?.['o:label']
+        || sample?.['o:local_name']
+        || getReadableResourceClassLabel(resourceClassTerm);
+
     return mergeResourceClassCandidate({
         key: 'o:resource_class',
         type: 'guided',
@@ -474,15 +570,14 @@ function createResourceClassCandidate(currentState) {
             || sample?.['o:term']
             || sample?.['o:local_name']
             || sample?.['@value']
-            || (typeof sample?.['@id'] === 'string' ? sample['@id'].split('/').pop() : null)
             || 'Resource class',
         templateDisplayLabel: 'Resource class',
         templateAlternateLabel: 'Resource class',
         fieldProfile: buildObservedFieldProfile(samples.length > 0 ? samples : [sample]),
-        linkedDataUri: getResourceClassUri(sample),
-        resourceClassUri: getResourceClassUri(sample),
-        resourceClassLabel: sample?.['o:label'] || sample?.['o:local_name'] || null,
-        resourceClassTerm: sample?.['o:term'] || null,
+        linkedDataUri: buildResourceClassUri(sample, currentState),
+        resourceClassUri: buildResourceClassUri(sample, currentState),
+        resourceClassLabel,
+        resourceClassTerm,
         preferredSourceField: 'o:label',
         resourceClassData: sample,
         sortIndex: -1
@@ -585,6 +680,41 @@ function updateSelectedSegmentsFromKeys(keyData, segmentOptions, selectedKeys = 
         .filter(option => keyData.includedSegments.includes(option.key))
         .map(option => option.label);
     keyData.segmentSignature = buildIncludedSegmentsSignature(keyData.includedSegments);
+}
+
+function getSegmentSourceType(segmentKey = '') {
+    if (segmentKey.startsWith('literal::')) {
+        return 'literal';
+    }
+    if (segmentKey.startsWith('uri::')) {
+        return 'uri';
+    }
+    if (segmentKey.startsWith('authority::')) {
+        return 'authority';
+    }
+    if (segmentKey.startsWith('wikidata::')) {
+        return 'wikidata';
+    }
+    return null;
+}
+
+function migrateSourceFilterToSegmentFamilies(keyData, segmentOptions) {
+    if (!Array.isArray(keyData.includedValueSources)) {
+        return;
+    }
+
+    const currentSelection = Array.isArray(keyData.includedSegments) && keyData.includedSegments.length > 0
+        ? keyData.includedSegments
+        : segmentOptions.map(option => option.key);
+    const filteredSelection = currentSelection.filter(segmentKey =>
+        keyData.includedValueSources.includes(getSegmentSourceType(segmentKey))
+    );
+
+    if (filteredSelection.length > 0) {
+        updateSelectedSegmentsFromKeys(keyData, segmentOptions, filteredSelection);
+    }
+
+    delete keyData.includedValueSources;
 }
 
 function getSourceFieldSearchScore(candidate, searchTerm) {
@@ -709,13 +839,27 @@ function createGuidedSourceFieldSelector(keyData, mode, selectedProperty) {
         samplePreview.appendChild(createGuidedPreviewRow('Selected source', keyLine));
 
         if (mode === 'instance_of') {
-            samplePreview.appendChild(createGuidedPreviewRow('Label', enrichedCandidate.resourceClassLabel || 'No class label available'));
-            samplePreview.appendChild(createGuidedPreviewRow('Term', enrichedCandidate.resourceClassTerm || 'No class term available'));
-            samplePreview.appendChild(createGuidedPreviewRow(
-                'Sample value used for reconciliation',
-                sampleDetail?.value || enrichedCandidate.resourceClassLabel || enrichedCandidate.sampleValue || 'No sample available',
-                'guided-field-selector__preview-row--stacked'
-            ));
+            if (enrichedCandidate.resourceClassLabel || enrichedCandidate.resourceClassTerm) {
+                samplePreview.appendChild(createGuidedPreviewRow('Label', enrichedCandidate.resourceClassLabel || 'No class label available'));
+                samplePreview.appendChild(createGuidedPreviewRow('Term', enrichedCandidate.resourceClassTerm || 'No class term available'));
+                samplePreview.appendChild(createGuidedPreviewRow(
+                    'Sample value used for reconciliation',
+                    sampleDetail?.value || enrichedCandidate.resourceClassLabel || 'No sample available',
+                    'guided-field-selector__preview-row--stacked'
+                ));
+            } else {
+                samplePreview.appendChild(createElement('p', {
+                    className: 'guided-field-selector__fallback'
+                }, 'The Omeka S class details could not be read from this endpoint. Choose “Enter instance-of text manually” and enter the class label you want to reconcile.'));
+
+                if (enrichedCandidate.resourceClassUri) {
+                    samplePreview.appendChild(createElement('a', {
+                        href: enrichedCandidate.resourceClassUri,
+                        target: '_blank',
+                        rel: 'noopener'
+                    }, 'View the resource-class JSON →'));
+                }
+            }
             return;
         }
 
@@ -1740,37 +1884,21 @@ export function createMappingModalContent(keyData) {
     fieldProfileSection.appendChild(fieldProfileSummary);
     keyInfo.appendChild(fieldProfileSection);
 
-    const segmentSection = createElement('div', {
-        className: 'segment-family-section'
+    const valueSelectionSection = createElement('div', {
+        className: 'value-family-section'
     });
-    const segmentTitle = createElement('div', {
+    const valueSelectionTitle = createElement('div', {
         className: 'value-source-title'
-    }, 'Observed segments in this field:');
-    const segmentHelp = createElement('p', {
+    }, 'Choose values to map:');
+    const valueSelectionHelp = createElement('p', {
         className: 'field-override-help'
-    }, 'Choose which value family from this Omeka S field should be used for this Wikidata property. One field can contain several families, including more than one literal family or more than one URI or authority family. You can map the same field again when another family should go to a different Wikidata property.');
-    const segmentOptionsContainer = createElement('div', {
-        className: 'segment-family-options'
+    }, 'Values are grouped by where they come from. Choose the reusable families that belong in this Wikidata property. A field can contain several families of the same type, so you can map this field again when another family belongs in a different property.');
+    const valueFamilyGroups = createElement('div', {
+        className: 'value-family-groups'
     });
-    segmentSection.appendChild(segmentTitle);
-    segmentSection.appendChild(segmentHelp);
-    segmentSection.appendChild(segmentOptionsContainer);
-
-    const valueSourceSection = createElement('div', {
-        className: 'value-source-section'
-    });
-    const valueSourceTitle = createElement('div', {
-        className: 'value-source-title'
-    }, 'Value sources to include:');
-    const valueSourceHelp = createElement('p', {
-        className: 'field-override-help'
-    }, 'Choose which value-entry groups are allowed at all. Authority-linked and direct Wikidata-linked entries reconcile by readable label text, while standalone URL entries stay URL-valued segments.');
-    const valueSourceOptions = createElement('div', {
-        className: 'value-source-options'
-    });
-    valueSourceSection.appendChild(valueSourceTitle);
-    valueSourceSection.appendChild(valueSourceHelp);
-    valueSourceSection.appendChild(valueSourceOptions);
+    valueSelectionSection.appendChild(valueSelectionTitle);
+    valueSelectionSection.appendChild(valueSelectionHelp);
+    valueSelectionSection.appendChild(valueFamilyGroups);
 
     const samplesSection = createElement('div', {
         className: useThreeColumnLayout ? 'samples-section samples-section--open' : 'samples-section'
@@ -1787,135 +1915,91 @@ export function createMappingModalContent(keyData) {
     samplesSection.appendChild(samplesHeading);
     samplesSection.appendChild(samplesHelp);
     samplesSection.appendChild(samplesContent);
-    let lastAvailableSources = [];
-
-    const getSegmentFilteredValueDetails = () => {
-        const analysisKeyData = {
-            ...keyData,
-            includedValueSources: undefined
-        };
-
-        return items
-            .filter(item => item?.[keyData.key] !== undefined)
-            .map(item => extractPropertyValueDetails(item, analysisKeyData, window.mappingStepState))
-            .filter(details => Array.isArray(details) && details.length > 0);
-    };
-
-    const renderSegmentOptions = () => {
+    const renderValueFamilyOptions = () => {
         const currentSegmentOptions = getObservedSegmentOptions(items, keyData, window.mappingStepState);
         keyData.segmentOptions = currentSegmentOptions;
+        migrateSourceFilterToSegmentFamilies(keyData, currentSegmentOptions);
         syncSelectedSegments(keyData, currentSegmentOptions);
-        segmentOptionsContainer.innerHTML = '';
-        segmentSection.style.display = currentSegmentOptions.length > 1 ? '' : 'none';
+        valueFamilyGroups.innerHTML = '';
+        valueSelectionSection.style.display = currentSegmentOptions.length > 1 ? '' : 'none';
 
+        const optionsBySourceType = new Map();
         currentSegmentOptions.forEach(option => {
-            const optionId = `segment-family-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}-${option.key.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            const optionLabel = createElement('label', {
-                className: 'value-source-option segment-family-option',
-                title: option.preview || option.label
-            });
-            const checkbox = createElement('input', {
-                type: 'checkbox',
-                id: optionId,
-                checked: keyData.includedSegments.includes(option.key),
-                onChange: (event) => {
-                    const checkedSegments = Array.from(segmentOptionsContainer.querySelectorAll('input[type="checkbox"]:checked'))
-                        .map(input => input.value);
+            const sourceType = getSegmentSourceType(option.key) || 'other';
+            const options = optionsBySourceType.get(sourceType) || [];
+            options.push(option);
+            optionsBySourceType.set(sourceType, options);
+        });
 
-                    if (checkedSegments.length === 0) {
-                        event.target.checked = true;
-                        return;
+        getOrderedValueSourceTypes([...optionsBySourceType.keys()]).forEach(sourceType => {
+            const options = optionsBySourceType.get(sourceType) || [];
+            const valueCount = options.reduce((count, option) => count + (option.valueCount || 0), 0);
+            const itemCount = Math.max(...options.map(option => option.itemCount || 0), 0);
+            const group = createElement('section', {
+                className: 'value-family-group'
+            });
+            group.appendChild(createElement('h5', {
+                className: 'value-family-group__heading',
+                title: getValueSourceTypeDescription(sourceType, propertyDatatype())
+            }, `${getValueSourceTypeLabel(sourceType)} (${valueCount} values across ${itemCount} items)`));
+
+            const optionsContainer = createElement('div', {
+                className: 'value-family-options'
+            });
+            options.forEach(option => {
+                const optionId = `value-family-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}-${option.key.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const optionLabel = createElement('label', {
+                    className: 'value-source-option value-family-option',
+                    title: option.preview || option.label
+                });
+                const checkbox = createElement('input', {
+                    type: 'checkbox',
+                    id: optionId,
+                    checked: keyData.includedSegments.includes(option.key),
+                    onChange: (event) => {
+                        const checkedSegments = Array.from(valueFamilyGroups.querySelectorAll('input[type="checkbox"]:checked'))
+                            .map(input => input.value);
+
+                        if (checkedSegments.length === 0) {
+                            event.target.checked = true;
+                            return;
+                        }
+
+                        updateSelectedSegmentsFromKeys(keyData, currentSegmentOptions, checkedSegments);
+                        loadSampleValues(samplesContent, keyData, window.mappingStepState);
                     }
+                });
+                checkbox.value = option.key;
+                optionLabel.appendChild(checkbox);
 
-                    updateSelectedSegmentsFromKeys(keyData, currentSegmentOptions, checkedSegments);
-                    refreshExtractionUI({ restoreNewlyAvailableSources: true });
+                const optionText = createElement('div', {
+                    className: 'value-source-option__content'
+                });
+                optionText.appendChild(createElement('span', {}, option.label));
+                optionText.appendChild(createElement('small', {}, `${option.valueCount || 0} values across ${option.itemCount || 0} items`));
+                if (option.preview) {
+                    optionText.appendChild(createElement('small', {
+                        className: 'value-family-option__preview'
+                    }, `Example: ${option.preview}`));
                 }
-            });
-            checkbox.value = option.key;
-            optionLabel.appendChild(checkbox);
 
-            const optionText = createElement('div', {
-                className: 'value-source-option__content'
+                optionLabel.appendChild(optionText);
+                optionsContainer.appendChild(optionLabel);
             });
-            optionText.appendChild(createElement('span', {}, option.label));
-            optionText.appendChild(createElement('small', {}, `${option.valueCount || 0} values across ${option.itemCount || 0} items`));
-            if (option.preview) {
-                optionText.appendChild(createElement('small', {
-                    className: 'segment-family-option__preview'
-                }, `Example: ${option.preview}`));
-            }
 
-            optionLabel.appendChild(optionText);
-            segmentOptionsContainer.appendChild(optionLabel);
+            group.appendChild(optionsContainer);
+            valueFamilyGroups.appendChild(group);
         });
     };
 
-    const refreshExtractionUI = ({ restoreNewlyAvailableSources = false } = {}) => {
+    const refreshExtractionUI = () => {
         const profileDescription = describeFieldProfile(keyData.fieldProfile, propertyDatatype());
         fieldProfileSummary.textContent = profileDescription.summary;
-        renderSegmentOptions();
-
-        const segmentFilteredValueDetails = getSegmentFilteredValueDetails();
-        const filteredSourceStats = summarizeValueSourcesForResolvedDetails(segmentFilteredValueDetails);
-        const availableSources = getOrderedValueSourceTypes(
-            Object.entries(filteredSourceStats)
-                .filter(([, counts]) => (counts?.valueCount || 0) > 0)
-                .map(([sourceType]) => sourceType)
-        );
-        valueSourceOptions.innerHTML = '';
-        valueSourceSection.style.display = availableSources.length > 1 ? '' : 'none';
-
-        if (availableSources.length <= 1) {
-            keyData.includedValueSources = undefined;
-        } else if (!Array.isArray(keyData.includedValueSources) && availableSources.length > 0) {
-            keyData.includedValueSources = [...availableSources];
-        } else if (Array.isArray(keyData.includedValueSources)) {
-            const validSelectedSources = keyData.includedValueSources.filter(sourceType => availableSources.includes(sourceType));
-            if (restoreNewlyAvailableSources) {
-                const newlyAvailableSources = availableSources.filter(sourceType => !lastAvailableSources.includes(sourceType));
-                keyData.includedValueSources = [...new Set([...validSelectedSources, ...newlyAvailableSources])];
-            } else {
-                keyData.includedValueSources = validSelectedSources;
-            }
-            if (keyData.includedValueSources.length === 0 && availableSources.length > 0) {
-                keyData.includedValueSources = [...availableSources];
-            }
-        }
-        lastAvailableSources = [...availableSources];
-
-        availableSources.forEach(sourceType => {
-            const optionId = `value-source-${sourceType}-${keyData.key.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            const optionLabel = createElement('label', {
-                className: 'value-source-option',
-                title: getValueSourceTypeDescription(sourceType, propertyDatatype())
-            });
-            const checkbox = createElement('input', {
-                type: 'checkbox',
-                id: optionId,
-                checked: !Array.isArray(keyData.includedValueSources) || keyData.includedValueSources.includes(sourceType),
-                onChange: () => {
-                    const checkedSources = Array.from(valueSourceOptions.querySelectorAll('input[type="checkbox"]:checked'))
-                        .map(input => input.value);
-                    keyData.includedValueSources = checkedSources.length > 0 ? checkedSources : [...availableSources];
-                    loadSampleValues(samplesContent, keyData, window.mappingStepState);
-                }
-            });
-            checkbox.value = sourceType;
-            optionLabel.appendChild(checkbox);
-            const optionText = createElement('div', {
-                className: 'value-source-option__content'
-            });
-            optionText.appendChild(createElement('span', {}, getValueSourceTypeLabel(sourceType)));
-            optionText.appendChild(createElement('small', {}, `${filteredSourceStats[sourceType]?.valueCount || 0} values across ${filteredSourceStats[sourceType]?.itemCount || 0} items`));
-            optionLabel.appendChild(optionText);
-            valueSourceOptions.appendChild(optionLabel);
-        });
-
+        renderValueFamilyOptions();
         loadSampleValues(samplesContent, keyData, window.mappingStepState);
     };
 
-    keyInfo.appendChild(segmentSection);
-    keyInfo.appendChild(valueSourceSection);
+    keyInfo.appendChild(valueSelectionSection);
     refreshExtractionUI();
     window.updateMappingExtractionUI = refreshExtractionUI;
     window.refreshMappingSamples = () => loadSampleValues(samplesContent, keyData, window.mappingStepState);
@@ -2151,17 +2235,18 @@ export function createMappingModalContent(keyData) {
         
         const entitySchemaDropdownHTML = hasEntitySchemaProperties ? `
             <div class="entity-schema-properties" id="entity-schema-properties">
-                <label for="entity-schema-property-select">Properties from Entity Schema:</label>
+                <h4>1. Recommended by this Entity Schema</h4>
+                <label for="entity-schema-property-select">Choose a schema property:</label>
                 <select class="entity-schema-property-select" id="entity-schema-property-select">
                     <option value="">Select a property from schema...</option>
                 </select>
-                <small class="schema-indicator">These properties are recommended by the selected entity schema</small>
+                <small class="schema-indicator">Start here when the imported field describes a required or recommended part of this kind of item. Field names can be ambiguous, so choose the property that matches the field's meaning.</small>
             </div>
         ` : '';
         
         const regularSearchHTML = `
             ${entitySchemaDropdownHTML}
-            <h4>Search Properties</h4>
+            <h4>${hasEntitySchemaProperties ? '2. Search all Wikidata properties' : 'Search Wikidata properties'}</h4>
             <input type="text" id="property-search-input" placeholder="Type to search for Wikidata properties..." class="property-search-input">
             <div id="property-suggestions" class="property-suggestions"></div>
             <div id="selected-property" class="selected-property" style="display: none;">
