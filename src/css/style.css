@@ -7647,6 +7647,11 @@ pre.sample-value {
     font-weight: normal;
 }
 
+a.match-qid-inline:hover,
+a.match-qid-inline:focus-visible {
+    text-decoration: underline;
+}
+
 .match-description {
     font-size: 0.9rem;
     color: #666;
@@ -7776,7 +7781,7 @@ pre.sample-value {
 #modal-content .match-shortcut {
     position: absolute;
     top: 0.55rem;
-    right: 0.65rem;
+    left: 0.65rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -7791,7 +7796,7 @@ pre.sample-value {
 
 #modal-content .wikidata-match-item .match-content,
 #modal-content .match-item .match-content {
-    padding-right: 2rem;
+    padding-left: 2rem;
 }
 
 .guided-field-selector__select {

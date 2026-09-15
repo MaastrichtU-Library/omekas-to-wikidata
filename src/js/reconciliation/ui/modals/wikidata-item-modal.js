@@ -262,7 +262,8 @@ export function createWikidataMatchItem(match) {
         <div class="wikidata-match-item" data-match-id="${safeMatchId}" onclick="applyWikidataMatchDirectly('${jsEscapedId}')">
             <div class="match-content">
                 <div class="match-title">
-                    <span class="match-label">${label}</span> <span class="match-qid-inline">(${safeMatchId})</span>
+                    <span class="match-label">${label}</span>
+                    <a class="match-qid-inline" href="https://www.wikidata.org/wiki/${safeMatchId}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">(${safeMatchId})</a>
                 </div>
                 ${description ? `<div class="match-description">${description}</div>` : ''}
             </div>
@@ -289,7 +290,7 @@ function renderCurrentWikidataSelection(currentSelection) {
     currentSelectionContainer.classList.remove('current-selection--hidden');
     currentSelectionContainer.innerHTML = `
         <div class="current-selection-label">Current selection</div>
-        <div class="current-selection-value">${label}${qid ? ` <span class="match-qid-inline">(${qid})</span>` : ''}</div>
+        <div class="current-selection-value">${label}${qid ? ` <a class="match-qid-inline" href="https://www.wikidata.org/wiki/${qid}" target="_blank" rel="noopener noreferrer">(${qid})</a>` : ''}</div>
         ${description}
         <div class="current-selection-help">Choose another match below to replace it, or use "Undo decision" to reset this value.</div>
     `;
