@@ -50,7 +50,7 @@ jobs:
           if [ "$BRANCH" = "main" ]; then
             for path in docs/*; do
               name=$(basename "$path")
-              if [ "$name" != "dev" ] && [ "$name" != "test" ] && [ "$name" != "JS_MODULE_MAP.md" ]; then
+              if [ "$name" != "dev" ] && [ "$name" != "test" ] && [ "$name" != "JS_MODULE_MAP.md" ] && [ "$name" != "CNAME" ]; then
                 rm -rf "docs/$name"
               fi
             done
